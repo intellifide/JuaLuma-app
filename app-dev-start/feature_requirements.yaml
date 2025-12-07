@@ -1,0 +1,97 @@
+# Feature Requirements Registry
+# Source of truth for feature-to-tier mappings
+# DO NOT manually edit generated files (accessControl.ts, registry.py)
+# Always update this YAML file and regenerate
+
+features:
+  # AI Features
+  ai.cloud:
+    tier: essential
+    preview_enabled: true
+    description: Cloud AI chat interface with RAG context
+
+  # Budget Features
+  budgets.basic:
+    tier: free
+    preview_enabled: false
+    description: Basic budget tracking and visualization
+
+  budgets.advanced:
+    tier: pro
+    preview_enabled: true
+    description: Advanced budgets with rollover, threshold alerts, budget-vs-actual
+
+  # Investment Features
+  investment.aggregation:
+    tier: pro
+    preview_enabled: false
+    description: Investment account aggregation via Plaid Investments API
+
+  # Account Limits
+  accounts.traditional:
+    free_limit: 2
+    essential_limit: 3
+    pro_limit: 5
+    ultimate_limit: 20
+    description: Traditional bank account connection limits
+
+  accounts.investment:
+    free_limit: 1
+    essential_limit: 2
+    pro_limit: 5
+    ultimate_limit: 20
+    description: Investment account connection limits
+
+  accounts.web3:
+    free_limit: 1
+    essential_limit: 1
+    pro_limit: 5
+    ultimate_limit: 20
+    description: Web3 wallet connection limits
+
+  accounts.cex:
+    free_limit: 1
+    essential_limit: 3
+    pro_limit: 10
+    ultimate_limit: 20
+    description: CEX account connection limits
+
+  # Marketplace Features
+  marketplace.preview:
+    tier: free
+    preview_enabled: false
+    description: Preview-only access to marketplace widgets
+
+  marketplace.publish:
+    tier: pro
+    preview_enabled: false
+    description: Ability to publish widgets to marketplace
+
+  # Family Features
+  family.tracking:
+    tier: ultimate
+    preview_enabled: true
+    description: Family/couple net worth tracking and account assignment
+
+  # Manual Assets
+  assets.manual:
+    tier: free
+    preview_enabled: false
+    description: Manual asset tracking for non-API assets
+
+  # Recurring Detection
+  recurring.detection:
+    tier: free
+    preview_enabled: false
+    description: Automated detection of recurring transactions
+
+  # Reporting
+  reporting.basic:
+    tier: free
+    preview_enabled: false
+    description: Basic reporting and infographics
+
+  reporting.advanced:
+    tier: pro
+    preview_enabled: true
+    description: Advanced reporting and analytics

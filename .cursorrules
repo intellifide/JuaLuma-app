@@ -1,0 +1,54 @@
+# Cursor Rules for Finity App
+
+## Developer Context
+- User is a junior developer. When explaining technical terms, assume no prior knowledge and use plain language.
+- Avoid jargon without explanation. If you must use technical terms, define them simply first.
+- Break down complex concepts into smaller, digestible parts.
+- Provide context for why something is done a certain way, not just what to do.
+
+## Workspace Structure
+- This is the `finity-app` workspace - the main application development environment.
+- Infrastructure-as-code is in the `infra/` directory at the workspace root.
+- App code, documentation, and configuration files are in this workspace at their natural locations.
+- **Important:** The `app-dev-start/` directory contains reference documentation and a website template guide only. Do NOT create or modify files within `app-dev-start/`. Use it as a reference for development, but build the actual production code in the workspace root or appropriate directories.
+
+## Website Template Reference
+- The website template in `app-dev-start/website_template/` serves as a design and structure reference for the production development version.
+- Use the template as a guide for UI/UX patterns, page structure, navigation, and styling approaches.
+- Build the actual production website files in the appropriate workspace directories (not in `app-dev-start/`).
+
+## Roles & Access
+- App roles: `user`, `support_agent`, `support_manager`.
+- Marketplace developers: app users with `developer_payout_id` and a `developers` table record; Pro/Ultimate can publish widgets; Free/Essential are preview-only.
+- Internal staff (engineering/devops/security/compliance/finance/product/ops) are managed via IdP/SSO/GCP IAM; not app-facing roles.
+- Automation/AI support agents use dedicated service accounts; scoped to tickets/knowledge base; no payouts/secrets/financial data access.
+- Keep GCP IAM role names as-is for cloud permissions (e.g., `roles/storage.admin`, `roles/iam.securityAdmin`); do not mirror them into app user roles.
+
+## Development & Environments
+- Local dev uses emulators/mocks (Postgres for Cloud SQL, Firestore emulator, Pub/Sub emulator, FastAPI on 8001, Vite on 5175). AI Studio for local AI calls.
+- No MVP/Phase/OFAC flows; scope is single-phase, support-portal-only.
+- Support surface: Customer Support Portal only; no admin dashboard.
+- Secrets locally via `.env`; Secret Manager is cloud-only.
+- Terraform infrastructure code is in `infra/` directory; use for cloud deployments only, not local development.
+
+## Source Control & Safety
+- Never run global searches; scope searches narrowly.
+- No destructive commands (no `git reset --hard`, no mass deletions of user changes).
+- Keep `.DS_Store` and `.terraform/` out of commits; respect existing .gitignore.
+- Use clear commit messages; avoid committing secrets.
+- Do not touch GCP IAM configs or billing without approval.
+
+## Testing & Linting (when code exists)
+- For backend: lint/typecheck/tests as defined; for frontend: lint/format/accessibility checks (4.5:1 contrast).
+- Use mocked/emulated services for local tests.
+
+## Documentation
+- Master App Dev Guide is the product source of truth for role taxonomy, marketplace rules, support portal, and single-phase scope.
+- Local App Dev Guide covers emulator/mocks setup for local development.
+
+## When Unsure
+- Ask for clarification before restructuring or touching infra references.
+- Favor minimal, scoped changes; avoid broad refactors without approval.
+
+## Scope
+- Never work outside of this workspace directory /finity-app unless instructed by the user. When utilizing the Notion MCP server you are only authorized to operate within https://www.notion.so/Finity-app-2c22c5428b0880a9b6c7d265d452f79e?v=f4f55b0e704346cb95ab4d0b2571f9e7&source=copy_link

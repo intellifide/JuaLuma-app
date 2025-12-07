@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<!-- Last Updated: December 05, 2025 at 09:33 PM -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Finity Customer Support Portal - Ticket Management">
+  <title>Support Portal - Finity</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6B46C1">
+  <link rel="icon" href="assets/finity-logo.png">
+  <link rel="apple-touch-icon" href="assets/finity-logo.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .ticket-list {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .ticket-item {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .ticket-item:hover {
+      background-color: var(--bg-secondary);
+    }
+    .ticket-item.selected {
+      background-color: rgba(107, 70, 193, 0.1);
+      border-left: 3px solid var(--color-primary);
+    }
+    .ticket-detail-pane {
+      min-height: 600px;
+    }
+    .mock-banner {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #FEF3C7;
+      border-bottom: 2px solid #F59E0B;
+      color: #92400E;
+      padding: var(--spacing-sm) var(--spacing-md);
+      text-align: center;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  
+  <div class="mock-banner">
+    ⚠️ MOCK IMPLEMENTATION - All controls are disabled. No data changes will occur.
+  </div>
+  
+  <header class="header">
+    <div class="header-container">
+      <a href="support-portal.html" class="logo"><img src="assets/finity-logo.png" alt="Finity logo" class="logo-img"><span class="sr-only">Finity Support Portal</span></a>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="support-portal.html" class="nav-link active">Support Portal</a>
+        <a href="index.html" class="nav-link logout-link">Logout</a>
+      </nav>
+      <button class="nav-mobile-toggle" aria-label="Toggle mobile menu" aria-expanded="false">☰</button>
+      <button class="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <nav class="nav-mobile" aria-label="Mobile navigation">
+      <a href="support-portal.html" class="nav-link">Support Portal</a>
+      <a href="index.html" class="nav-link logout-link">Logout</a>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section class="container" style="padding: var(--spacing-xl) 0;">
+      <!-- Agent Information -->
+      <div class="glass-panel" style="margin-bottom: var(--spacing-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="margin: 0 0 var(--spacing-xs) 0;">Agent Information</h2>
+            <p style="color: var(--text-secondary); margin: 0;">
+              <strong>Name:</strong> Sarah Johnson | <strong>Company ID:</strong> INT-AGENT-2024-001
+            </p>
+          </div>
+          <div style="text-align: right;">
+            <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin: 0;">
+              Session started: 2:15 PM CT
+            </p>
+            <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">
+              All actions are tracked and audited
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: var(--spacing-xl);">
+        <h1>Customer Support Portal</h1>
+        <p style="color: var(--text-secondary); margin-top: var(--spacing-sm);">
+          Ticket Management & Customer Inquiry Handling
+        </p>
+        <div class="alert alert-info" style="margin-top: var(--spacing-md);">
+          <strong>Note:</strong> This portal is designed for non-technical customer service representatives. 
+          All actions are read-only in this mock implementation. No PII (Personally Identifiable Information) or AI chat logs are displayed.
+          All agent actions are tracked for accountability, quality assurance, and customer service metrics.
+        </div>
+      </div>
+
+      <!-- Stats Overview -->
+      <div class="grid grid-4" style="margin-bottom: var(--spacing-xl);">
+        <div class="card">
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Open Tickets</h3>
+          <p style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">47</p>
+          <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">12 high priority</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">In Progress</h3>
+          <p style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">23</p>
+          <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">Assigned to agents</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Avg Response Time</h3>
+          <p style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">2.3h</p>
+          <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">Target: &lt;4 hours</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Resolved Today</h3>
+          <p style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">18</p>
+          <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">+5 from yesterday</p>
+        </div>
+      </div>
+
+      <!-- Ticket Management Interface -->
+      <div class="grid grid-2" style="gap: var(--spacing-lg); margin-bottom: var(--spacing-xl);">
+        <!-- Ticket List -->
+        <div class="glass-panel">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
+            <h2 style="margin: 0;">Ticket Queue</h2>
+            <div style="display: flex; gap: var(--spacing-sm);">
+              <select class="form-select" style="width: auto;" disabled>
+                <option>All Status</option>
+                <option>Open</option>
+                <option>In Progress</option>
+                <option>Resolved</option>
+              </select>
+              <select class="form-select" style="width: auto;" disabled>
+                <option>All Priority</option>
+                <option>High</option>
+                <option>Normal</option>
+                <option>Low</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom: var(--spacing-md);">
+            <input type="text" class="form-input" placeholder="Search tickets..." disabled>
+          </div>
+          <div class="ticket-list">
+            <div class="card ticket-item selected" data-ticket="1234" style="margin-bottom: var(--spacing-md);">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                  <h3 style="margin: 0 0 var(--spacing-xs) 0;">Ticket #1234</h3>
+                  <p style="color: var(--text-secondary); font-size: var(--font-size-sm); margin: 0;">
+                    Account linking issue - Unable to connect Chase account
+                  </p>
+                  <p style="color: var(--text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-xs);">
+                    Created: 2 hours ago | Customer: j***@example.com
+                  </p>
+                </div>
+                <span class="badge" style="background: #EF4444;">High</span>
+              </div>
+              <div style="margin-top: var(--spacing-sm);">
+                <span class="badge" style="background: #F59E0B;">Open</span>
+                <span class="badge" style="background: #6B7280; margin-left: var(--spacing-xs);">Unassigned</span>
+              </div>
+            </div>
+            
+            <div class="card ticket-item" data-ticket="1233" style="margin-bottom: var(--spacing-md);">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                  <h3 style="margin: 0 0 var(--spacing-xs) 0;">Ticket #1233</h3>
+                  <p style="color: var(--text-secondary); font-size: var(--font-size-sm); margin: 0;">
+                    Billing question - Pro tier trial expiration
+                  </p>
+                  <p style="color: var(--text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-xs);">
+                    Created: 5 hours ago | Customer: s***@example.com
+                  </p>
+                </div>
+                <span class="badge" style="background: #6B7280;">Normal</span>
+              </div>
+              <div style="margin-top: var(--spacing-sm);">
+                <span class="badge" style="background: #10B981;">In Progress</span>
+                <span class="badge" style="background: #3B82F6; margin-left: var(--spacing-xs);">Agent: Sarah</span>
+              </div>
+            </div>
+
+            <div class="card ticket-item" data-ticket="1232" style="margin-bottom: var(--spacing-md);">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                  <h3 style="margin: 0 0 var(--spacing-xs) 0;">Ticket #1232</h3>
+                  <p style="color: var(--text-secondary); font-size: var(--font-size-sm); margin: 0;">
+                    Feature request - Export transactions to CSV
+                  </p>
+                  <p style="color: var(--text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-xs);">
+                    Created: 1 day ago | Customer: m***@example.com
+                  </p>
+                </div>
+                <span class="badge" style="background: #6B7280;">Low</span>
+              </div>
+              <div style="margin-top: var(--spacing-sm);">
+                <span class="badge" style="background: #10B981;">Resolved</span>
+                <span class="badge" style="background: #3B82F6; margin-left: var(--spacing-xs);">Agent: Mike</span>
+              </div>
+            </div>
+
+            <div class="card ticket-item" data-ticket="1231" style="margin-bottom: var(--spacing-md);">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                  <h3 style="margin: 0 0 var(--spacing-xs) 0;">Ticket #1231</h3>
+                  <p style="color: var(--text-secondary); font-size: var(--font-size-sm); margin: 0;">
+                    Password reset request
+                  </p>
+                  <p style="color: var(--text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-xs);">
+                    Created: 1 day ago | Customer: a***@example.com
+                  </p>
+                </div>
+                <span class="badge" style="background: #6B7280;">Normal</span>
+              </div>
+              <div style="margin-top: var(--spacing-sm);">
+                <span class="badge" style="background: #10B981;">Resolved</span>
+                <span class="badge" style="background: #3B82F6; margin-left: var(--spacing-xs);">Agent: Sarah</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ticket Detail Pane -->
+        <div class="glass-panel ticket-detail-pane">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
+            <h2 style="margin: 0;">Ticket #1234</h2>
+            <div style="display: flex; gap: var(--spacing-sm);">
+              <button class="btn btn-sm btn-outline" disabled>Assign to Me</button>
+              <button class="btn btn-sm btn-outline" disabled>Escalate</button>
+            </div>
+          </div>
+
+          <!-- Ticket Info -->
+          <div class="card" style="margin-bottom: var(--spacing-lg);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Status</p>
+                <p><span class="badge" style="background: #F59E0B;">Open</span></p>
+              </div>
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Priority</p>
+                <p><span class="badge" style="background: #EF4444;">High</span></p>
+              </div>
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Created</p>
+                <p>2 hours ago</p>
+              </div>
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Assigned To</p>
+                <p>Unassigned</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Customer Info (Masked) -->
+          <div class="card" style="margin-bottom: var(--spacing-lg);">
+            <h3 style="margin-bottom: var(--spacing-md);">Customer Information</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Email</p>
+                <p>j***@example.com</p>
+              </div>
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Account Status</p>
+                <p><span class="badge badge-success">Active</span> - Pro Tier</p>
+              </div>
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Linked Accounts</p>
+                <p>3 accounts</p>
+              </div>
+              <div>
+                <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Member Since</p>
+                <p>Jan 2024</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ticket Messages -->
+          <div style="margin-bottom: var(--spacing-lg);">
+            <h3 style="margin-bottom: var(--spacing-md);">Conversation</h3>
+            <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+              <div class="card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
+                  <strong>Customer</strong>
+                  <span style="font-size: var(--font-size-xs); color: var(--text-muted);">2 hours ago</span>
+                </div>
+                <p style="margin: 0;">I'm unable to connect my Chase checking account. The Plaid link keeps failing with an error message. I've tried multiple times but it's not working.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Internal Notes -->
+          <div style="margin-bottom: var(--spacing-lg);">
+            <h3 style="margin-bottom: var(--spacing-md);">Internal Notes</h3>
+            <div class="card" style="margin-bottom: var(--spacing-md);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
+                <strong>System</strong>
+                <span style="font-size: var(--font-size-xs); color: var(--text-muted);">2 hours ago</span>
+              </div>
+              <p style="margin: 0; font-size: var(--font-size-sm); color: var(--text-muted);">Ticket automatically categorized as "Technical Support"</p>
+            </div>
+            <textarea class="form-textarea" placeholder="Add internal note..." disabled style="margin-bottom: var(--spacing-sm);"></textarea>
+            <button class="btn btn-outline" disabled>Add Note</button>
+          </div>
+
+          <!-- Canned Responses -->
+          <div style="margin-bottom: var(--spacing-lg);">
+            <h3 style="margin-bottom: var(--spacing-md);">Quick Responses</h3>
+            <select class="form-select" disabled style="margin-bottom: var(--spacing-sm);">
+              <option>Select a canned response...</option>
+              <option>Account linking troubleshooting steps</option>
+              <option>Plaid connection reset instructions</option>
+              <option>Escalate to technical team</option>
+            </select>
+            <button class="btn btn-outline" disabled>Insert Response</button>
+          </div>
+
+          <!-- Response Form -->
+          <div>
+            <h3 style="margin-bottom: var(--spacing-md);">Reply to Customer</h3>
+            <textarea class="form-textarea" placeholder="Type your response..." disabled style="margin-bottom: var(--spacing-sm); min-height: 120px;"></textarea>
+            <div style="display: flex; gap: var(--spacing-sm);">
+              <button class="btn btn-primary" disabled>Send Response</button>
+              <button class="btn btn-outline" disabled>Mark as Resolved</button>
+              <select class="form-select" style="width: auto;" disabled>
+                <option>Reassign to...</option>
+                <option>Sarah</option>
+                <option>Mike</option>
+                <option>Unassigned</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Status -->
+      <div class="glass-panel">
+        <h2 style="margin-bottom: var(--spacing-lg);">System Status</h2>
+        <div class="alert alert-info">
+          <strong>System Status:</strong> All systems operational. No scheduled maintenance.
+        </div>
+        <div class="alert" style="background: #DBEAFE; border-color: #3B82F6; color: #1E40AF;">
+          <strong>Note:</strong> Automated ticket management via GCP Cloud Workflows is in development.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>Product</h3>
+          <ul>
+            <li><a href="features.html">Features</a></li>
+            <li><a href="pricing.html">Pricing</a></li>
+            <li><a href="marketplace.html">Marketplace</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Support</h3>
+          <ul>
+            <li><a href="support.html">Contact Support</a></li>
+            <li><a href="support.html#faq">FAQ</a></li>
+            <li><a href="feature-request.html">Feature Request</a></li>
+            <li><a href="legal/terms.html">Terms of Service</a></li>
+            <li><a href="legal/privacy.html">Privacy Policy</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Company</h3>
+          <ul>
+            <li><a href="about.html">About Us</a></li>
+            <li><a href="about.html#mission">Mission</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Connect</h3>
+          <div class="social-links">
+            <a href="https://twitter.com/finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Twitter">𝕏</a>
+            <a href="https://discord.gg/finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Discord"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></a>
+            <a href="https://youtube.com/@finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+            <a href="https://tiktok.com/@finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2025 Intellifide, LLC. All rights reserved.</p>
+        <p style="margin-top: var(--spacing-sm); font-size: var(--font-size-xs);">
+          Finity is for informational and educational purposes only. Finity does not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script>
+    // Mock ticket selection
+    document.querySelectorAll('.ticket-item').forEach(item => {
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.ticket-item').forEach(i => i.classList.remove('selected'));
+        this.classList.add('selected');
+        // In production, would load ticket details via API
+      });
+    });
+  </script>
+</body>
+</html>
+

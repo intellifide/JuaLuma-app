@@ -1,0 +1,20 @@
+# Example backend configuration
+# Copy this file to backend.tf and update with your actual values
+# DO NOT commit backend.tf with real credentials to version control
+
+terraform {
+  backend "gcs" {
+    bucket = "finity-terraform-state"  # Replace with your GCS bucket name
+    prefix = "terraform/state"         # Optional: prefix for state files
+    # Optional: encrypt state with KMS
+    # encryption_key = "projects/PROJECT_ID/locations/LOCATION/keyRings/RING_NAME/cryptoKeys/KEY_NAME"
+  }
+}
+
+# To use this backend:
+# 1. Create GCS bucket: gsutil mb -p PROJECT_ID gs://finity-terraform-state
+# 2. Enable versioning: gsutil versioning set on gs://finity-terraform-state
+# 3. Create KMS key (optional but recommended)
+# 4. Copy this file to backend.tf
+# 5. Update bucket name and encryption key (if using)
+# 6. Run terraform init
