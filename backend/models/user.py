@@ -1,10 +1,10 @@
 """User model definition."""
 
-# Updated 2025-12-08 17:37 CST by ChatGPT
+# Updated 2025-12-08 17:45 CST by ChatGPT
 
 import uuid
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from sqlalchemy import DateTime, String
 from sqlalchemy import func
@@ -46,6 +46,43 @@ class User(Base):
     )
     accounts: Mapped[list["Account"]] = relationship(
         "Account",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    payments: Mapped[list["Payment"]] = relationship(
+        "Payment",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    ai_settings: Mapped[Optional["AISettings"]] = relationship(
+        "AISettings",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+        lazy="selectin",
+    )
+    notification_preferences: Mapped[list["NotificationPreference"]] = relationship(
+        "NotificationPreference",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    manual_assets: Mapped[list["ManualAsset"]] = relationship(
+        "ManualAsset",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    developer_payouts: Mapped[list["DeveloperPayout"]] = relationship(
+        "DeveloperPayout",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",

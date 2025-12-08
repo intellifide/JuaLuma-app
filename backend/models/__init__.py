@@ -5,7 +5,7 @@ Sets up the declarative Base, engine, and session factory for the rest of the
 models. Uses DATABASE_URL from the environment.
 """
 
-# Updated 2025-12-08 17:37 CST by ChatGPT
+# Updated 2025-12-08 17:45 CST by ChatGPT
 
 import os
 from typing import Generator
@@ -46,6 +46,15 @@ def get_session() -> Generator:
 
 from .account import Account
 from .developer import Developer
+from .transaction import Transaction
+from .payment import Payment
+from .ai_settings import AISettings
+from .notification import NotificationPreference
+from .audit import AuditLog, FeaturePreview, LLMLog, SupportPortalAction
+from .support import SupportAgent, SupportTicketRating
+from .payout import DeveloperPayout
+from .manual_asset import ManualAsset
+from .ledger import LedgerHotEssential, LedgerHotFree
 from .subscription import Subscription
 from .user import User
 
@@ -58,4 +67,18 @@ __all__ = [
     "Developer",
     "Subscription",
     "Account",
+    "Transaction",
+    "Payment",
+    "AISettings",
+    "NotificationPreference",
+    "AuditLog",
+    "FeaturePreview",
+    "LLMLog",
+    "SupportPortalAction",
+    "SupportAgent",
+    "SupportTicketRating",
+    "DeveloperPayout",
+    "ManualAsset",
+    "LedgerHotFree",
+    "LedgerHotEssential",
 ]

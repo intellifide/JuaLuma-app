@@ -1,6 +1,6 @@
 """Account model definition."""
 
-# Updated 2025-12-08 17:37 CST by ChatGPT
+# Updated 2025-12-08 17:45 CST by ChatGPT
 
 import uuid
 from datetime import datetime
@@ -46,7 +46,24 @@ class Account(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="accounts", lazy="selectin")
-    # Relationship to transactions will be added when the Transaction model is defined.
+    transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    ledger_hot_free: Mapped[list["LedgerHotFree"]] = relationship(
+        "LedgerHotFree",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    ledger_hot_essential: Mapped[list["LedgerHotEssential"]] = relationship(
+        "LedgerHotEssential",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     def __repr__(self) -> str:
         return (
