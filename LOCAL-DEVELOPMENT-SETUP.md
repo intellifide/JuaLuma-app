@@ -97,6 +97,18 @@ JWT_SECRET=local_development_secret_change_in_production
 AI_RATE_LIMIT_RPM=10
 AI_RATE_LIMIT_TPM=250000
 AI_RATE_LIMIT_RPD=250
+
+# Stripe Configuration
+STRIPE_PUBLISHABLE_KEY=pk_test_replace_in_env_only
+STRIPE_SECRET_KEY=sk_test_replace_in_env_only
+STRIPE_WEBHOOK_SECRET=whsec_replace_in_env_only
+# Stripe webhook listener (run separately): stripe listen --forward-to localhost:4242/webhook
+
+# Postman Configuration (for Newman CLI)
+POSTMAN_API_KEY=your_postman_api_key_here
+
+# Testmail Configuration
+TESTMAIL_API_KEY=your_testmail_api_key_here
 ```
 
 **Important:** 

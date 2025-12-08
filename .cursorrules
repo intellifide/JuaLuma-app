@@ -31,11 +31,26 @@
 - Secrets locally via `.env`; Secret Manager is cloud-only.
 - Terraform infrastructure code is in `infra/` directory; use for cloud deployments only, not local development.
 
+## Development Toolchain
+- **Primary IDE**: Cursor IDE for daily development and AI-assisted coding
+- **Secondary IDE**: JetBrains (PyCharm/WebStorm/DataGrip) for deep debugging, heavy refactoring, and database work
+- **Version Control**: GitHub Pro (TCoder920x account) - private repository at `github.com/TCoder920x/finity-app`
+- **CI/CD**: GitHub Actions for automated lint, test, typecheck, and deployment workflows
+- **API Testing**: Postman collections with Newman CLI for headless execution in CI/CD
+- **Payment Processing**: Stripe CLI for webhook forwarding (`stripe listen --forward-to localhost:4242/webhook`), Stripe MCP server for AI-assisted operations
+- **Email Testing**: Testmail API for disposable inboxes
+- **Secrets Management**: `.env` file (local, gitignored), GitHub Secrets (CI/CD), GCP Secret Manager (production)
+- All external tools are CLI/API-driven to minimize GUI interface overhead
+
 ## Source Control & Safety
+- Repository: `github.com/TCoder920x/finity-app` (private, GitHub Pro)
+- Branches: `main` (production), `Dev` (development)
 - Never run global searches; scope searches narrowly.
 - No destructive commands (no `git reset --hard`, no mass deletions of user changes).
 - Keep `.DS_Store` and `.terraform/` out of commits; respect existing .gitignore.
 - Use clear commit messages; avoid committing secrets.
+- Never commit `.env` file or any secrets to version control.
+- Real secrets must live only in gitignored `.env` (local) and GitHub/GCP secrets; documentation must use placeholders only.
 - Do not touch GCP IAM configs or billing without approval.
 
 ## Testing & Linting (when code exists)
@@ -45,6 +60,7 @@
 ## Documentation
 - Master App Dev Guide is the product source of truth for role taxonomy, marketplace rules, support portal, and single-phase scope.
 - Local App Dev Guide covers emulator/mocks setup for local development.
+- All documentation created needs to go into the /docs directory.
 
 ## When Unsure
 - Ask for clarification before restructuring or touching infra references.
@@ -52,3 +68,5 @@
 
 ## Scope
 - Never work outside of this workspace directory /finity-app unless instructed by the user. When utilizing the Notion MCP server you are only authorized to operate within https://www.notion.so/Finity-app-2c22c5428b0880a9b6c7d265d452f79e?v=f4f55b0e704346cb95ab4d0b2571f9e7&source=copy_link
+
+- ignore all contents in notes.md
