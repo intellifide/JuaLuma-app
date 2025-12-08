@@ -21,3 +21,5 @@ Creates Cloud Run service with authenticated ingress and VPC connector.
 - `service_name` - Cloud Run service name
 - `service_url` - Service URL
 - `service_id` - Service ID
+
+**Last Updated:** December 07, 2025 at 08:39 PM

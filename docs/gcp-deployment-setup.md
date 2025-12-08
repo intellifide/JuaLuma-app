@@ -1,7 +1,6 @@
 # Finity App - GCP Deployment Setup Guide
 
 **Status:** Future Phase (Post Local Development)  
-**Last Updated:** December 7, 2025
 
 ---
 
@@ -853,10 +852,10 @@ gcloud run services list --project=finity-dev
 
 ### Internal Documentation
 
-- **Master App Dev Guide:** `app-dev-start/Master App Dev Guide.md`
-- **Security Architecture:** `app-dev-start/Security-Architecture.md`
+- **Master App Dev Guide:** `docs/Master App Dev Guide.md`
+- **Security Architecture:** `docs/Security-Architecture.md`
 - **Infrastructure README:** `infra/README.md`
-- **Getting Started GCP:** `app-dev-start/getting started gcp.md`
+- **Local Development Setup:** `docs/local-development-setup.md`
 
 ---
 
@@ -874,3 +873,5 @@ After GCP setup is complete:
 
 **Status:** Awaiting Local Development Completion  
 **Deployment Target:** Q1 2026 (Estimated)
+
+**Last Updated:** December 07, 2025 at 08:39 PM

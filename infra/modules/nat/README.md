@@ -15,3 +15,5 @@ Creates Cloud NAT for controlled egress with logging.
 **Outputs:**
 - `router_name` - Cloud Router name
 - `nat_name` - Cloud NAT name
+
+**Last Updated:** December 07, 2025 at 08:39 PM

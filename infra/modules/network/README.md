@@ -14,3 +14,5 @@ Creates VPC, subnets, and baseline firewall rules.
 - `network_name` - VPC network name
 - `network_self_link` - VPC network self link
 - `subnet_self_links` - Map of subnet names to self links
+
+**Last Updated:** December 07, 2025 at 08:39 PM

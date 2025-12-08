@@ -14,3 +14,5 @@ Creates Serverless VPC Connector for Cloud Run/Functions to access VPC resources
 **Outputs:**
 - `connector_name` - Connector name
 - `connector_id` - Connector ID
+
+**Last Updated:** December 07, 2025 at 08:39 PM

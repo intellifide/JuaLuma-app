@@ -497,4 +497,4 @@ This Privacy Policy relates to the following planning documents:
 - `Data-Flow-Diagrams.md` - Data flow architecture (data collection and use)
 - `Master App Dev Guide.md` - Technical specification (privacy by design)
 
-**Last Updated:** December 05, 2025 at 01:34 AM
+**Last Updated:** December 07, 2025 at 08:39 PM

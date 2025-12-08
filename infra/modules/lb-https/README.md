@@ -17,3 +17,5 @@ Creates Global HTTPS Load Balancer with Cloud Armor WAF, CDN, and serverless NEG
 **Outputs:**
 - `lb_ip_address` - Load balancer IP address
 - `lb_url` - Load balancer URL
+
+**Last Updated:** December 07, 2025 at 08:39 PM

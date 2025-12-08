@@ -12,3 +12,5 @@ Creates DNS policy to force googleapis.com resolution to Private Service Connect
 
 **Outputs:**
 - `policy_id` - DNS policy ID
+
+**Last Updated:** December 07, 2025 at 08:39 PM

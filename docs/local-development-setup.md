@@ -1,7 +1,6 @@
 # Finity App - Local Development Setup Guide
 
 **Status:** Currently in Local Development Phase  
-**Last Updated:** December 7, 2025
 
 ---
 
@@ -963,8 +962,9 @@ Once your local environment is running:
 
 ## Resources
 
-- **Master App Dev Guide:** `app-dev-start/Master App Dev Guide.md`
-- **Local App Dev Guide:** `app-dev-start/Local App Dev Guide.md`
+- **Master App Dev Guide:** `docs/Master App Dev Guide.md`
+- **GCP Deployment Setup:** `docs/gcp-deployment-setup.md`
+- **Tech Stack:** `docs/tech-stack.md`
 - **Cursor Rules:** `.cursorrules`
 - **Docker Documentation:** https://docs.docker.com
 - **FastAPI Documentation:** https://fastapi.tiangolo.com
@@ -975,3 +975,5 @@ Once your local environment is running:
 
 **Status:** Ready for Phase 1 Implementation  
 **Current Phase:** Local Development Setup Complete
+
+**Last Updated:** December 07, 2025 at 08:39 PM

@@ -99,9 +99,9 @@ website_template/
    - Feature request intake
 
 7. **Legal Pages**
-   - Terms of Service (complete text from `app-dev-start/legal/Terms-of-Service.md`)
-   - Privacy Policy (complete text from `app-dev-start/legal/Privacy-Policy.md`)
-   - AI Assistant Disclaimer (complete text from `app-dev-start/legal/AI-Assistant-Disclaimer.md`)
+   - Terms of Service (complete text from `docs/legal/Terms-of-Service.md`)
+   - Privacy Policy (complete text from `docs/legal/Privacy-Policy.md`)
+   - AI Assistant Disclaimer (complete text from `docs/legal/AI-Assistant-Disclaimer.md`)
    - All TBDs replaced with explicit contact information
 
 8. **Account & Categorization**
@@ -159,7 +159,7 @@ The dashboard includes realistic fake data:
 **IMPORTANT:** This is a multi-page static site, NOT a single-page application. Run the server without the `-s` (SPA) flag:
 
 ```bash
-npx --yes serve app-dev-start/website_template -l 4173
+npx --yes serve website_template -l 4173
 ```
 
 **Do NOT use:** `npx serve -s` (the `-s` flag causes navigation failures)
@@ -212,7 +212,7 @@ Tier specifications match `Master App Dev Guide.md`:
 ## Notes
 
 - All contact information uses explicit fictional corporate details (no TBDs)
-- All legal text matches the source documents from `app-dev-start/legal/`
+- All legal text matches the source documents from `docs/legal/`
 - Marketing language follows approved guidelines from `Marketing-Content-Guidelines.md`
 - Tier details match specifications from `Master App Dev Guide.md`
 - Social media links are placeholder URLs
@@ -240,4 +240,4 @@ The template includes two developer-facing pages:
 
 Both pages are linked from the main navigation and footer across all marketing pages. The customer-facing `marketplace.html` includes a banner CTA directing developers to the Developer Marketplace.
 
-**Last Updated:** December 07, 2025
+**Last Updated:** December 07, 2025 at 08:39 PM

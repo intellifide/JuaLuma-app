@@ -167,7 +167,7 @@ This is a curated catalog where developers earn revenue based on user engagement
 - **Free & Essential Tiers**: Preview-only access to widgets (interactions blocked, upgrade CTA shown). Cannot publish widgets.
 - **Pro & Ultimate Tiers**: Full marketplace access including ability to publish and distribute widgets via the Developer Marketplace.
 
-The static website template (`app-dev-start/website_template/`) includes mock Developer Marketplace and Developer SDK pages demonstrating the submission workflow, SDK tools, and tier-based access controls\.
+The static website template (`website_template/`) includes mock Developer Marketplace and Developer SDK pages demonstrating the submission workflow, SDK tools, and tier-based access controls\.
 
 #### 2\.4\.1 MCP Server & Developer SDK
 
@@ -1456,4 +1456,4 @@ This master technical specification relates to the following planning documents:
 - `Data-Flow-Diagrams.md` - Data flow architecture (Section 3.3, 3.4)
 - `getting started gcp.md` - GCP infrastructure setup (Section 3.0)
 
-**Last Updated:** December 05, 2025 at 09:33 PM
+**Last Updated:** December 07, 2025 at 08:39 PM

@@ -4,7 +4,7 @@ This document lists all artifacts required to transition from planning to develo
 
 ## 1. Unified Scope Statement
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Section 2.0.0
+**Location:** `docs/Master App Dev Guide.md` Section 2.0.0
 
 Complete product scope including:
 - Core aggregation & data features
@@ -18,7 +18,7 @@ Complete product scope including:
 
 ## 2. Feature Requirements Registry
 
-**Location:** `app-dev-start/feature_requirements.yaml`
+**Location:** `docs/feature_requirements.yaml`
 
 Source of truth for feature-to-tier mappings. Includes:
 - Feature keys and tier requirements
@@ -45,7 +45,7 @@ Endpoints to document:
 - Billing (`/subscription`, `/subscription/checkout`, `/stripe/webhook`)
 - Support Portal (`/api/users/{uid}`, `/api/accounts/{uid}`, `/api/support/*`)
 
-**Database Schemas:** Documented in `app-dev-start/Master App Dev Guide.md` Section 4.0
+**Database Schemas:** Documented in `docs/Master App Dev Guide.md` Section 4.0
 
 - Cloud SQL (PostgreSQL) schema DDL
 - Firestore (Datastore Mode) collections
@@ -53,7 +53,7 @@ Endpoints to document:
 
 ## 4. SLO/SLI & Performance Targets
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Section 7.3
+**Location:** `docs/Master App Dev Guide.md` Section 7.3
 
 **SLOs Defined:**
 - API Availability: 99.9% monthly
@@ -70,7 +70,7 @@ Endpoints to document:
 
 ## 5. Environment Matrix & Emulator Map
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Section 7.4
+**Location:** `docs/Master App Dev Guide.md` Section 7.4
 
 **Environments:**
 - Local: Docker Compose with emulators
@@ -88,7 +88,7 @@ Endpoints to document:
 
 ## 6. Observability Baseline
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Section 7.4
+**Location:** `docs/Master App Dev Guide.md` Section 7.4
 
 **Stack:**
 - Logging: OpenTelemetry → Cloud Logging
@@ -104,7 +104,7 @@ Endpoints to document:
 
 ## 7. MCP Server Catalog
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Section 2.4.1
+**Location:** `docs/Master App Dev Guide.md` Section 2.4.1
 
 **MCP Tools:**
 - `getLedgerSlice` (filters: date, account, category)
@@ -130,7 +130,7 @@ Endpoints to document:
 
 ## 8. Security & Compliance
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Sections 1.0, 8.0, 8.3
+**Location:** `docs/Master App Dev Guide.md` Sections 1.0, 8.0, 8.3
 
 **Non-Custodial Mandate:** Read-only operations enforced at all layers
 
@@ -145,7 +145,7 @@ Endpoints to document:
 
 ## 9. Delivery & Quality Gates
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Section 9.0
+**Location:** `docs/Master App Dev Guide.md` Section 9.0
 
 **Branching:** `main` + PRs, release branches for hotfixes
 
@@ -167,7 +167,7 @@ Endpoints to document:
 
 ## 10. Development Milestones
 
-**Location:** `app-dev-start/Master App Dev Guide.md` Section 9.1
+**Location:** `docs/Master App Dev Guide.md` Section 9.1
 
 **M0: Foundation & Scaffolding**
 - Repository structure
@@ -212,20 +212,19 @@ Endpoints to document:
 ## 11. Related Documentation
 
 **Primary Guides:**
-- `app-dev-start/Master App Dev Guide.md` - Complete technical specification
-- `app-dev-start/Local App Dev Guide.md` - Local development setup
-- `planning/README.md` - Planning documents index
+- `docs/Master App Dev Guide.md` - Complete technical specification
+- `docs/local-development-setup.md` - Local development setup
+- `docs/gcp-deployment-setup.md` - GCP deployment setup
 
 **Legal Documents:**
-- `app-dev-start/legal/Terms-of-Service.md`
-- `app-dev-start/legal/Privacy-Policy.md`
-- `app-dev-start/legal/AI-Assistant-Disclaimer.md`
+- `docs/legal/Terms-of-Service.md`
+- `docs/legal/Privacy-Policy.md`
+- `docs/legal/AI-Assistant-Disclaimer.md`
 
 **Technical Documentation:**
-- `app-dev-start/Security-Architecture.md`
-- `app-dev-start/Data-Flow-Diagrams.md`
-- `app-dev-start/getting started gcp.md`
+- `docs/Security-Architecture.md`
+- `docs/Data-Flow-Diagrams.md`
 
 ---
 
-**Last Updated:** December 7, 2025
+**Last Updated:** December 07, 2025 at 08:39 PM

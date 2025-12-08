@@ -13,3 +13,5 @@ Creates log export sinks for LB, Armor, NAT, DNS, and audit logs.
 **Outputs:**
 - `sink_id` - Log sink ID
 - `writer_identity` - Service account used for writing logs
+
+**Last Updated:** December 07, 2025 at 08:39 PM

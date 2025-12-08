@@ -14,3 +14,5 @@ Creates Private Service Connect endpoints for Google APIs and Cloud SQL.
 **Outputs:**
 - `psc_endpoint_id` - PSC endpoint ID
 - `psc_endpoint_ip` - PSC endpoint IP address
+
+**Last Updated:** December 07, 2025 at 08:39 PM

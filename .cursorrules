@@ -10,12 +10,13 @@
 - This is the `finity-app` workspace - the main application development environment.
 - Infrastructure-as-code is in the `infra/` directory at the workspace root.
 - App code, documentation, and configuration files are in this workspace at their natural locations.
-- **Important:** The `app-dev-start/` directory contains reference documentation and a website template guide only. Do NOT create or modify files within `app-dev-start/`. Use it as a reference for development, but build the actual production code in the workspace root or appropriate directories.
+- All reference documentation now lives in `docs/` (includes Master App Dev Guide, security, CI/CD, feature registry, and legal docs). Use these as the single source of truth for development.
+- The `website_template/` directory is a reference-only static template. Use it for design guidance; do not treat it as production code.
 
 ## Website Template Reference
-- The website template in `app-dev-start/website_template/` serves as a design and structure reference for the production development version.
+- The website template in `website_template/` serves as a design and structure reference for the production development version.
 - Use the template as a guide for UI/UX patterns, page structure, navigation, and styling approaches.
-- Build the actual production website files in the appropriate workspace directories (not in `app-dev-start/`).
+- Build the actual production website files in the appropriate workspace directories (not in `website_template/`).
 
 ## Roles & Access
 - App roles: `user`, `support_agent`, `support_manager`.
@@ -58,9 +59,13 @@
 - Use mocked/emulated services for local tests.
 
 ## Documentation
-- Master App Dev Guide is the product source of truth for role taxonomy, marketplace rules, support portal, and single-phase scope.
-- Local App Dev Guide covers emulator/mocks setup for local development.
+- Master App Dev Guide (`docs/Master App Dev Guide.md`) is the product source of truth for role taxonomy, marketplace rules, support portal, and single-phase scope.
+- Local Development Setup (`docs/local-development-setup.md`) is the primary guide for emulator/mocks and local workflows.
+- GCP Deployment Setup (`docs/gcp-deployment-setup.md`) replaces the legacy "getting started gcp" guide.
 - All documentation created needs to go into the /docs directory.
+
+## Utilities
+- Do not use automated "Last Updated" scripts (the previous script was removed). When you modify a file, add a brief comment noting the date and time of your change in Central Time within that file.
 
 ## When Unsure
 - Ask for clarification before restructuring or touching infra references.

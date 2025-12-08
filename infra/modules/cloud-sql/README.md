@@ -21,3 +21,5 @@ Creates Cloud SQL instance with private IP, high availability, and backups.
 - `instance_name` - Cloud SQL instance name
 - `instance_connection_name` - Connection name for applications
 - `private_ip_address` - Private IP address
+
+**Last Updated:** December 07, 2025 at 08:39 PM
