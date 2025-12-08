@@ -27,13 +27,13 @@ jobs:
       - name: Lint with Ruff
         run: |
           pip install ruff
-          if [ -d backend ] || [ -f *.py ]; then ruff check . --output-format=github || true; fi
+          if [ -d backend ] || [ -n "$(find . -maxdepth 1 -name '*.py' -print -quit)" ]; then ruff check . --output-format=github || true; fi
         continue-on-error: true
       
       - name: Type check with mypy
         run: |
           pip install mypy
-          if [ -d backend ] || [ -f *.py ]; then mypy . --ignore-missing-imports || true; fi
+          if [ -d backend ] || [ -n "$(find . -maxdepth 1 -name '*.py' -print -quit)" ]; then mypy . --ignore-missing-imports || true; fi
         continue-on-error: true
       
       - name: Run tests
@@ -53,7 +53,7 @@ jobs:
       - name: Run Postman collections
         if: hashFiles('postman/collections/*.json') != ''
         run: |
-          if [ -f postman/collections/*.json ]; then
+          if [ -n "$(find postman/collections -maxdepth 1 -name '*.json' -print -quit 2>/dev/null)" ]; then
             newman run postman/collections/*.json \
               --environment postman/environments/local.json \
               --api-key ${{ secrets.POSTMAN_API_KEY }} \
