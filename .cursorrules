@@ -5,6 +5,7 @@
 - Avoid jargon without explanation. If you must use technical terms, define them simply first.
 - Break down complex concepts into smaller, digestible parts.
 - Provide context for why something is done a certain way, not just what to do.
+- Never use emojis unless requested.
 
 ## Workspace Structure
 - This is the `finity-app` workspace - the main application development environment.
