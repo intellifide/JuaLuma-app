@@ -1,4 +1,4 @@
-# Updated 2025-12-08 17:53 CST by ChatGPT
+# Updated 2025-12-08 20:16 CST by ChatGPT
 import os
 from typing import Any, Dict
 
@@ -8,6 +8,7 @@ from firebase_admin.auth import (
     ExpiredIdTokenError,
     InvalidIdTokenError,
     RevokedIdTokenError,
+    UserNotFoundError,
 )
 from firebase_admin.exceptions import FirebaseError
 from sqlalchemy.exc import IntegrityError
@@ -83,4 +84,28 @@ def refresh_custom_claims(uid: str, claims: Dict[str, Any]) -> None:
         raise RuntimeError("Failed to refresh custom claims.") from exc
 
 
-__all__ = ["verify_token", "create_user_record", "refresh_custom_claims"]
+def generate_password_reset_link(email: str) -> str:
+    """Return a password reset link for the given email."""
+    try:
+        return auth.generate_password_reset_link(email, app=_get_firebase_app())
+    except UserNotFoundError as exc:
+        raise ValueError("User not found.") from exc
+    except FirebaseError as exc:
+        raise RuntimeError("Failed to generate reset link.") from exc
+
+
+def revoke_refresh_tokens(uid: str) -> None:
+    """Revoke all refresh tokens for a given user."""
+    try:
+        auth.revoke_refresh_tokens(uid, app=_get_firebase_app())
+    except FirebaseError as exc:
+        raise RuntimeError("Failed to revoke refresh tokens.") from exc
+
+
+__all__ = [
+    "verify_token",
+    "create_user_record",
+    "refresh_custom_claims",
+    "generate_password_reset_link",
+    "revoke_refresh_tokens",
+]

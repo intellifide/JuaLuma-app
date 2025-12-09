@@ -1,17 +1,25 @@
-# Updated 2025-12-08 17:53 CST by ChatGPT
+# Updated 2025-12-08 20:16 CST by ChatGPT
+import logging
 from collections import defaultdict, deque
 from threading import Lock
-from typing import Deque, Dict
+from typing import Deque, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr, Field, model_validator
+from sqlalchemy.orm import Session, selectinload
 
-from backend.models import Subscription, User
-from backend.services.auth import create_user_record, verify_token
+from backend.middleware.auth import get_current_user
+from backend.models import AuditLog, Subscription, User
+from backend.services.auth import (
+    create_user_record,
+    generate_password_reset_link,
+    revoke_refresh_tokens,
+    verify_token,
+)
 from backend.utils import get_db
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 class SignupRequest(BaseModel):
@@ -21,6 +29,69 @@ class SignupRequest(BaseModel):
 
 class TokenRequest(BaseModel):
     token: str = Field(min_length=10)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ProfileUpdateRequest(BaseModel):
+    theme_pref: Optional[str] = Field(default=None, max_length=32)
+    currency_pref: Optional[str] = Field(default=None, min_length=3, max_length=3)
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "ProfileUpdateRequest":
+        if not self.theme_pref and not self.currency_pref:
+            raise ValueError("Provide at least one field to update.")
+        return self
+
+
+# Structured helpers ---------------------------------------------------------
+def _serialize_profile(user: User) -> dict:
+    """Build a complete profile payload."""
+    subscriptions = [
+        {
+            "id": str(sub.id),
+            "plan": sub.plan,
+            "status": sub.status,
+            "renew_at": sub.renew_at,
+            "ai_quota_used": sub.ai_quota_used,
+            "created_at": sub.created_at,
+            "updated_at": sub.updated_at,
+        }
+        for sub in (user.subscriptions or [])
+    ]
+
+    ai_settings = None
+    if user.ai_settings:
+        ai_settings = {
+            "id": str(user.ai_settings.id),
+            "provider": user.ai_settings.provider,
+            "model_id": user.ai_settings.model_id,
+            "user_dek_ref": user.ai_settings.user_dek_ref,
+            "created_at": user.ai_settings.created_at,
+            "updated_at": user.ai_settings.updated_at,
+        }
+
+    notification_preferences = [
+        {
+            "id": str(pref.id),
+            "event_key": pref.event_key,
+            "channel_email": pref.channel_email,
+            "channel_sms": pref.channel_sms,
+            "quiet_hours_start": pref.quiet_hours_start,
+            "quiet_hours_end": pref.quiet_hours_end,
+            "created_at": pref.created_at,
+            "updated_at": pref.updated_at,
+        }
+        for pref in (user.notification_preferences or [])
+    ]
+
+    profile = user.to_dict()
+    profile["subscriptions"] = subscriptions
+    profile["ai_settings"] = ai_settings
+    profile["notification_preferences"] = notification_preferences
+    return profile
 
 
 # Simple in-memory rate limiter keyed by client IP
@@ -127,6 +198,119 @@ def login(
         profile["subscription_status"] = subscription.status
 
     return {"user": profile}
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest) -> dict:
+    """Generate and dispatch a password reset link."""
+    try:
+        reset_link = generate_password_reset_link(payload.email)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send reset link right now.",
+        ) from exc
+
+    logger.info("Password reset link for %s: %s", payload.email, reset_link)
+    return {"message": "Reset link sent"}
+
+
+@router.get("/profile")
+def get_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Return the authenticated user's profile with preferences and subscriptions."""
+    user = (
+        db.query(User)
+        .options(
+            selectinload(User.subscriptions),
+            selectinload(User.ai_settings),
+            selectinload(User.notification_preferences),
+        )
+        .filter(User.uid == current_user.uid)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+        )
+
+    return {"user": _serialize_profile(user)}
+
+
+@router.patch("/profile")
+def update_profile(
+    payload: ProfileUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Update theme and currency preferences for the current user."""
+    user = (
+        db.query(User)
+        .options(
+            selectinload(User.subscriptions),
+            selectinload(User.ai_settings),
+            selectinload(User.notification_preferences),
+        )
+        .filter(User.uid == current_user.uid)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+        )
+
+    if payload.theme_pref is not None:
+        user.theme_pref = payload.theme_pref
+    if payload.currency_pref is not None:
+        user.currency_pref = payload.currency_pref.upper()
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"user": _serialize_profile(user)}
+
+
+@router.post("/logout")
+def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Revoke refresh tokens and record an audit log entry."""
+    try:
+        revoke_refresh_tokens(current_user.uid)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to revoke tokens right now.",
+        ) from exc
+
+    metadata = {
+        "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+    }
+
+    log_entry = AuditLog(
+        actor_uid=current_user.uid,
+        target_uid=current_user.uid,
+        action="logout",
+        source="backend",
+        metadata_json=metadata,
+    )
+
+    db.add(log_entry)
+    db.commit()
+
+    return {"message": "Logged out successfully"}
 
 
 __all__ = ["router"]

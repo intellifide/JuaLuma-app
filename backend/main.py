@@ -1,4 +1,4 @@
-# Updated 2025-12-08 17:53 CST by ChatGPT
+# Updated 2025-12-08 20:16 CST by ChatGPT
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -25,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 
 
 @app.get("/")
