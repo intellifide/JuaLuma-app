@@ -1,10 +1,11 @@
-# Updated 2025-12-08 20:16 CST by ChatGPT
+# Updated 2025-12-08 20:48 CST by ChatGPT
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
 from backend.api.auth import router as auth_router
+from backend.api.accounts import router as accounts_router
 from backend.utils import get_db  # noqa: F401 - imported for dependency wiring
 
 # Load environment variables early
@@ -26,6 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(accounts_router)
 
 
 @app.get("/")
