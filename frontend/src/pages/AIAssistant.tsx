@@ -4,6 +4,7 @@ import { ChatMessage } from '../components/ChatMessage';
 import { ChatInput } from '../components/ChatInput';
 import { QuotaDisplay } from '../components/QuotaDisplay';
 import { aiService, QuotaStatus } from '../services/aiService';
+import { AIPrivacyModal } from '../components/AIPrivacyModal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -42,8 +43,6 @@ export default function AIAssistant() {
   const { user } = useAuth();
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [canAcceptPrivacy, setCanAcceptPrivacy] = useState(false);
-  const policyScrollRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -105,19 +104,15 @@ export default function AIAssistant() {
     fetchData();
   }, [user, privacyAccepted, hasFetchedHistory]);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const element = e.currentTarget;
-    const atBottom = Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 2;
-    if (atBottom) {
-      setCanAcceptPrivacy(true);
-    }
-  };
-
   const handleAcceptPrivacy = () => {
     localStorage.setItem('finity_privacy_accepted', 'true');
     setPrivacyAccepted(true);
     setShowPrivacyModal(false);
   };
+
+  const handleClosePrivacyModal = () => {
+    setShowPrivacyModal(false);
+  }
 
   const handleSendMessage = async (text: string) => {
     if (!user) return;
@@ -192,77 +187,11 @@ export default function AIAssistant() {
         </p>
       </div>
 
-      <div className={`modal ${showPrivacyModal ? 'open' : ''}`} aria-hidden={!showPrivacyModal} role="dialog" aria-labelledby="privacy-modal-title">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h2 id="privacy-modal-title">Privacy & User Agreement</h2>
-            <button className="modal-close" onClick={() => setShowPrivacyModal(false)} aria-label="Close modal">×</button>
-          </div>
-          <div className="modal-body">
-            <div
-              className="policy-scroll"
-              id="privacy-policy-scroll"
-              tabIndex={0}
-              aria-label="AI Assistant disclaimer - scroll to read full text before accepting"
-              onScroll={handleScroll}
-              ref={policyScrollRef}
-            >
-              <p><strong>AI Assistant Disclaimer and User Acknowledgment</strong></p>
-              <p>The Finity AI Assistant provides access to third-party large language models (Vertex AI Gemini). It is <strong>not</strong> a financial, investment, tax, or legal advisor.</p>
-              <h3>1. No Advice</h3>
-              <ul>
-                <li>Not a financial, investment, tax, or legal advisor.</li>
-                <li>Responses are not endorsed or verified and may be inaccurate or inappropriate.</li>
-              </ul>
-              <h3>2. Your Responsibility</h3>
-              <ul>
-                <li>Do not rely on AI responses for financial decisions.</li>
-                <li>Consult qualified professionals for financial, investment, tax, or legal matters.</li>
-                <li>You use the AI Assistant at your own risk.</li>
-              </ul>
-              <h3>3. No Liability</h3>
-              <ul>
-                <li>Intellifide, LLC disclaims liability for decisions based on AI responses.</li>
-                <li>No warranties on accuracy, completeness, or appropriateness.</li>
-              </ul>
-              <h3>4. Data & Privacy</h3>
-              <ul>
-                <li>AI chat history has no retention limits; transactions remain visible.</li>
-                <li>Use is subject to the Terms of Service and Privacy Policy.</li>
-              </ul>
-              <h3>5. Third-Party Services</h3>
-              <ul>
-                <li>Uses third-party LLM services (Vertex AI); their terms and privacy policies apply.</li>
-              </ul>
-              <h3>6. Acknowledgment</h3>
-              <ul>
-                <li>By accepting, you confirm you have read and understand this disclaimer and accept all risks.</li>
-              </ul>
-            </div>
-            <p id="privacy-scroll-hint" className="policy-scroll-footer">
-              {canAcceptPrivacy ? 'You can now accept and continue.' : 'Scroll to the bottom to enable “Accept & Continue”.'}
-            </p>
-            <div className="flex gap-4 mt-8">
-              <button
-                id="accept-privacy"
-                className="btn btn-primary flex-1"
-                disabled={!canAcceptPrivacy}
-                aria-disabled={!canAcceptPrivacy}
-                onClick={handleAcceptPrivacy}
-              >
-                Accept & Continue
-              </button>
-              <button
-                id="deny-privacy"
-                className="btn btn-outline flex-1"
-                onClick={() => setShowPrivacyModal(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AIPrivacyModal
+        isOpen={showPrivacyModal}
+        onAccept={handleAcceptPrivacy}
+        onClose={handleClosePrivacyModal}
+      />
 
       <div className="glass-panel mb-8" id="ai-chat-wrapper">
         <div className="flex justify-between items-start mb-4">
