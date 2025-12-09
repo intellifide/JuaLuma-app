@@ -90,7 +90,7 @@ def _serialize_profile(user: User) -> dict:
     profile = user.to_dict()
     profile["subscriptions"] = subscriptions
     profile["ai_settings"] = ai_settings
-    profile["notification_preferences"] = notification_preferences
+    profile["is_developer"] = True if user.developer else False
     return profile
 
 
@@ -181,7 +181,13 @@ def login(
             detail="Token missing uid.",
         )
 
-    user = db.query(User).filter(User.uid == uid).first()
+    user = (
+        db.query(User)
+        .options(
+             selectinload(User.developer)
+        )
+        .filter(User.uid == uid).first()
+    )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -196,6 +202,8 @@ def login(
     if subscription:
         profile["plan"] = subscription.plan
         profile["subscription_status"] = subscription.status
+    
+    profile["is_developer"] = True if user.developer else False
 
     return {"user": profile}
 
@@ -231,6 +239,7 @@ def get_profile(
             selectinload(User.subscriptions),
             selectinload(User.ai_settings),
             selectinload(User.notification_preferences),
+            selectinload(User.developer),
         )
         .filter(User.uid == current_user.uid)
         .first()

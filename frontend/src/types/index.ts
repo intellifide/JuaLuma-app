@@ -107,3 +107,19 @@ export interface PaginatedResponse<T> {
   page: number
   pageSize: number
 }
+
+export interface Widget {
+  id: string
+  developer_uid: string
+  name: string
+  description?: string
+  category: string
+  version: string
+  status: string
+  downloads: number
+  rating_avg: number
+  rating_count: number
+  preview_data?: any
+  created_at: string
+  updated_at: string
+}

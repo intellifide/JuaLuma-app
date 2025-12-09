@@ -5,7 +5,7 @@ Sets up the declarative Base, engine, and session factory for the rest of the
 models. Uses DATABASE_URL from the environment.
 """
 
-# Updated 2025-12-08 17:45 CST by ChatGPT
+# Updated 2025-12-09 by AI
 
 import os
 from typing import Generator
@@ -57,6 +57,8 @@ from .manual_asset import ManualAsset
 from .ledger import LedgerHotEssential, LedgerHotFree
 from .subscription import Subscription
 from .user import User
+from .widget import Widget
+from .widget_rating import WidgetRating
 
 __all__ = [
     "Base",
@@ -81,4 +83,6 @@ __all__ = [
     "ManualAsset",
     "LedgerHotFree",
     "LedgerHotEssential",
+    "Widget",
+    "WidgetRating",
 ]

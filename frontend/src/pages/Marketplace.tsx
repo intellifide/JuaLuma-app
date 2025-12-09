@@ -1,7 +1,62 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { widgetService } from '../services/widgets';
+import { Widget } from '../types';
+import { useAuth } from '../hooks/useAuth';
+
+const CATEGORIES = ["All", "Financial", "Productivity", "Analysis", "Utility", "General"];
 
 export const Marketplace = () => {
+    const { profile } = useAuth();
+    const [widgets, setWidgets] = useState<Widget[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("All");
+
+    const hasPro = profile?.subscriptions?.some(s =>
+        s.status === 'active' && ['pro', 'ultimate'].includes(s.plan || '')
+    );
+
+    useEffect(() => {
+        const fetchWidgets = async () => {
+            setLoading(true);
+            try {
+                const categoryFilter = selectedCategory === "All" ? undefined : selectedCategory.toLowerCase();
+                const searchFilter = searchTerm.length > 0 ? searchTerm : undefined;
+
+                const data = await widgetService.list(categoryFilter, searchFilter);
+                setWidgets(data);
+            } catch (error) {
+                console.error("Failed to load widgets", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        // Debounce search slightly
+        const timeoutId = setTimeout(() => {
+            fetchWidgets();
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [selectedCategory, searchTerm]);
+
+    const handleDownload = async (id: string, isOwner: boolean) => {
+        if (!hasPro && !isOwner) {
+            // Should be blocked by UI, but double check
+            window.alert("Pro subscription required to download.");
+            return;
+        }
+
+        try {
+            await widgetService.download(id);
+            setWidgets(prev => prev.map(w => w.id === id ? { ...w, downloads: w.downloads + 1 } : w));
+            window.alert("Widget downloaded successfully!");
+        } catch (e: any) {
+            window.alert("Download failed: " + e.message);
+        }
+    };
+
     return (
         <div className="container py-16">
             <h1 className="text-center mb-4">Finity Marketplace</h1>
@@ -14,145 +69,102 @@ export const Marketplace = () => {
                 <strong>Building widgets?</strong> Visit the <Link to="/developer-marketplace" className="font-semibold underline">Developer Marketplace</Link> to create and submit your own widgets for distribution.
             </div>
 
-            {/* Marketplace Info */}
-            <div className="glass-panel mb-12">
-                <h2 className="mb-4">About the Marketplace</h2>
-                <p className="mb-4">
-                    The Finity Marketplace is a curated catalog where developers can create and distribute widgets that integrate with the Finity platform. Developers earn revenue based on user engagement and verified ratings (1-5 star system).
-                </p>
-                <p className="mb-4">
-                    All developers must execute a Developer Agreement that has been reviewed and approved by qualified legal counsel. The Developer Agreement includes intellectual property assignment clauses assigning all rights, title, and interest in any work product related to the Finity platform to Intellifide, LLC.
-                </p>
-                <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-lg">
-                    <strong>Note:</strong> The Marketplace is currently in development and will be available in a future release. Check back soon for updates!
+            {/* Filters & Search */}
+            <div className="glass-panel mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${selectedCategory === cat
+                                    ? 'bg-primary text-white'
+                                    : 'bg-white/5 hover:bg-white/10 text-text-secondary'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+                <div className="w-full md:w-auto relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">🔍</span>
+                    <input
+                        type="text"
+                        placeholder="Search widgets..."
+                        className="input pl-10 w-full md:w-64"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
 
-            {/* Preview Widgets */}
-            <h2 className="text-center mb-12">Featured Widgets (Preview)</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-                <div className="card flex flex-col">
-                    <div className="mb-4 border-b border-white/10 pb-4">
-                        <h3 className="m-0">Budget Calculator</h3>
-                        <div className="flex gap-2 mt-2">
-                            <span className="badge bg-emerald-500 text-white">Popular</span>
-                            <span className="badge bg-bg-secondary text-text-primary">4.8 ⭐</span>
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        <p>Advanced budget calculator with scenario planning and forecasting capabilities.</p>
-                        <p className="text-sm text-text-muted mt-2">
-                            <strong>Developer:</strong> FinanceTools Inc.<br />
-                            <strong>Downloads:</strong> 12,450<br />
-                            <strong>Updated:</strong> 2 weeks ago
-                        </p>
-                    </div>
-                    <div className="mt-6">
-                        <button className="btn btn-outline w-full" disabled>Coming Soon</button>
-                    </div>
-                </div>
+            {/* Widgets List */}
+            {loading ? (
+                <div className="text-center py-12 text-text-muted">Loading available widgets...</div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+                    {widgets.map(widget => {
+                        const isOwner = profile?.uid === widget.developer_uid;
+                        const canDownload = hasPro || isOwner;
 
-                <div className="card flex flex-col">
-                    <div className="mb-4 border-b border-white/10 pb-4">
-                        <h3 className="m-0">Tax Report Generator</h3>
-                        <div className="flex gap-2 mt-2">
-                            <span className="badge bg-purple-500 text-white">New</span>
-                            <span className="badge bg-bg-secondary text-text-primary">4.6 ⭐</span>
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        <p>Generate comprehensive tax reports from your transaction data. Export to CSV or PDF formats.</p>
-                        <p className="text-sm text-text-muted mt-2">
-                            <strong>Developer:</strong> TaxHelper Pro<br />
-                            <strong>Downloads:</strong> 8,230<br />
-                            <strong>Updated:</strong> 1 month ago
-                        </p>
-                    </div>
-                    <div className="mt-6">
-                        <button className="btn btn-outline w-full" disabled>Coming Soon</button>
-                    </div>
-                </div>
+                        return (
+                            <div key={widget.id} className="card flex flex-col relative overflow-hidden group">
+                                <div className="mb-4 border-b border-white/10 pb-4">
+                                    <h3 className="m-0 truncate" title={widget.name}>{widget.name}</h3>
+                                    <div className="flex gap-2 mt-2">
+                                        <span className="badge bg-bg-secondary text-text-primary capitalize">{widget.category}</span>
+                                        <span className="badge bg-bg-secondary text-text-primary flex items-center gap-1">
+                                            {widget.rating_avg > 0 ? widget.rating_avg.toFixed(1) : "New"} ⭐
+                                            ({widget.rating_count})
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="line-clamp-3 text-text-secondary">{widget.description || "No description provided."}</p>
+                                    <div className="text-sm text-text-muted mt-4 space-y-1">
+                                        <div className="flex justify-between">
+                                            <span>Downloads:</span>
+                                            <span className="font-mono text-text-primary">{widget.downloads.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Version:</span>
+                                            <span className="font-mono text-text-primary">{widget.version}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Updated:</span>
+                                            <span>{new Date(widget.updated_at).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-6 relative z-10">
+                                    <button
+                                        className={`btn w-full transition-colors ${canDownload ? 'btn-outline hover:bg-white/5' : 'btn-disabled opacity-50 cursor-not-allowed'}`}
+                                        onClick={() => canDownload && handleDownload(widget.id, isOwner)}
+                                        disabled={!canDownload}
+                                    >
+                                        {canDownload ? 'Download / Install' : 'Pro Required'}
+                                    </button>
+                                </div>
 
-                <div className="card flex flex-col">
-                    <div className="mb-4 border-b border-white/10 pb-4">
-                        <h3 className="m-0">Investment Analyzer</h3>
-                        <div className="flex gap-2 mt-2">
-                            <span className="badge bg-bg-secondary text-text-primary">4.9 ⭐</span>
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        <p>Analyze your investment portfolio performance with detailed charts and metrics.</p>
-                        <p className="text-sm text-text-muted mt-2">
-                            <strong>Developer:</strong> Portfolio Insights<br />
-                            <strong>Downloads:</strong> 15,680<br />
-                            <strong>Updated:</strong> 3 days ago
-                        </p>
-                    </div>
-                    <div className="mt-6">
-                        <button className="btn btn-outline w-full" disabled>Coming Soon</button>
-                    </div>
-                </div>
+                                {/* Paywall Overlay for Non-Pro */}
+                                {!canDownload && (
+                                    <div className="absolute inset-0 bg-bg-primary/80 backdrop-blur-[2px] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 p-4 text-center">
+                                        <div className="text-xl font-bold mb-2">Pro Feature</div>
+                                        <p className="text-sm text-text-secondary mb-4">Upgrade to Pro to download and use this widget.</p>
+                                        <Link to="/pricing" className="btn btn-primary btn-sm">Upgrade Now</Link>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
 
-                <div className="card flex flex-col">
-                    <div className="mb-4 border-b border-white/10 pb-4">
-                        <h3 className="m-0">Expense Tracker Pro</h3>
-                        <div className="flex gap-2 mt-2">
-                            <span className="badge bg-bg-secondary text-text-primary">4.7 ⭐</span>
+                    {widgets.length === 0 && (
+                        <div className="col-span-full text-center py-16 glass-panel border border-dashed border-white/10">
+                            <p className="text-xl text-text-secondary mb-2">No widgets found matching your criteria.</p>
+                            <p className="text-text-muted">Try a different category or search term.</p>
                         </div>
-                    </div>
-                    <div className="flex-1">
-                        <p>Enhanced expense tracking with receipt scanning and automatic categorization.</p>
-                        <p className="text-sm text-text-muted mt-2">
-                            <strong>Developer:</strong> ExpenseMaster<br />
-                            <strong>Downloads:</strong> 9,120<br />
-                            <strong>Updated:</strong> 1 week ago
-                        </p>
-                    </div>
-                    <div className="mt-6">
-                        <button className="btn btn-outline w-full" disabled>Coming Soon</button>
-                    </div>
+                    )}
                 </div>
-
-                <div className="card flex flex-col">
-                    <div className="mb-4 border-b border-white/10 pb-4">
-                        <h3 className="m-0">Goal Tracker</h3>
-                        <div className="flex gap-2 mt-2">
-                            <span className="badge bg-bg-secondary text-text-primary">4.5 ⭐</span>
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        <p>Set and track financial goals with progress visualization and milestone alerts.</p>
-                        <p className="text-sm text-text-muted mt-2">
-                            <strong>Developer:</strong> GoalSetter Apps<br />
-                            <strong>Downloads:</strong> 6,890<br />
-                            <strong>Updated:</strong> 2 months ago
-                        </p>
-                    </div>
-                    <div className="mt-6">
-                        <button className="btn btn-outline w-full" disabled>Coming Soon</button>
-                    </div>
-                </div>
-
-                <div className="card flex flex-col">
-                    <div className="mb-4 border-b border-white/10 pb-4">
-                        <h3 className="m-0">Bill Reminder</h3>
-                        <div className="flex gap-2 mt-2">
-                            <span className="badge bg-bg-secondary text-text-primary">4.4 ⭐</span>
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        <p>Never miss a bill with smart reminders and automatic payment tracking.</p>
-                        <p className="text-sm text-text-muted mt-2">
-                            <strong>Developer:</strong> BillTracker Solutions<br />
-                            <strong>Downloads:</strong> 11,340<br />
-                            <strong>Updated:</strong> 3 weeks ago
-                        </p>
-                    </div>
-                    <div className="mt-6">
-                        <button className="btn btn-outline w-full" disabled>Coming Soon</button>
-                    </div>
-                </div>
-            </div>
+            )}
 
             {/* Developer Info */}
             <div className="glass-panel">
@@ -168,7 +180,7 @@ export const Marketplace = () => {
                         The Marketplace is currently in development. If you're interested in becoming a developer partner, please contact us for more information.
                     </p>
                     <div className="text-center mt-12">
-                        <Link to="/support" className="btn btn-primary">Contact Us About Developer Program</Link>
+                        <Link to="/developer-marketplace" className="btn btn-primary">Go to Developer Marketplace</Link>
                     </div>
                 </div>
             </div>
