@@ -1,6 +1,6 @@
 """Transaction model definition."""
 
-# Updated 2025-12-08 17:45 CST by ChatGPT
+# Updated 2025-12-08 21:27 CST by ChatGPT
 
 import uuid
 from datetime import datetime
@@ -8,7 +8,17 @@ from decimal import Decimal
 from typing import Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text, desc, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    desc,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,6 +31,13 @@ class Transaction(Base):
         Index("idx_transactions_uid_ts_desc", "uid", desc("ts")),
         Index("idx_transactions_uid_category", "uid", "category"),
         Index("idx_transactions_account_id", "account_id"),
+        Index("idx_transactions_merchant_description", "merchant_name", "description"),
+        Index(
+            "idx_transactions_external_id_uid",
+            "uid",
+            "external_id",
+            unique=True,
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -38,6 +55,9 @@ class Transaction(Base):
     category: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     merchant_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    external_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    is_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     raw_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     embedding: Mapped[Optional[Vector]] = mapped_column(Vector(768), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
