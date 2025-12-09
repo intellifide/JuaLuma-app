@@ -299,6 +299,19 @@ def sync_account_transactions(
     synced = 0
     new_count = 0
 
+    def _clean_raw(txn_dict: dict) -> dict:
+        clean = {}
+        for k, v in txn_dict.items():
+            if isinstance(v, Decimal):
+                clean[k] = float(v)
+            elif isinstance(v, datetime):
+                clean[k] = v.isoformat()
+            elif isinstance(v, date):
+                clean[k] = v.isoformat()
+            else:
+                clean[k] = v
+        return clean
+
     for txn in plaid_transactions:
         txn_ts = datetime.combine(
             txn["date"], datetime.min.time(), tzinfo=timezone.utc
@@ -320,7 +333,7 @@ def sync_account_transactions(
             existing.category = txn.get("category")
             existing.merchant_name = txn.get("merchant_name")
             existing.description = txn.get("name") or txn.get("merchant_name")
-            existing.raw_json = txn
+            existing.raw_json = _clean_raw(txn)
             db.add(existing)
             synced += 1
             continue
@@ -337,7 +350,7 @@ def sync_account_transactions(
             external_id=txn.get("transaction_id"),
             is_manual=False,
             archived=False,
-            raw_json=txn,
+            raw_json=_clean_raw(txn),
         )
         db.add(new_txn)
         synced += 1

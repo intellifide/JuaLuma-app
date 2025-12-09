@@ -1,4 +1,4 @@
-// Updated 2025-12-08 20:31 CST by ChatGPT
+// Updated 2025-12-09 14:15 CST by ChatGPT - login submit bypasses native validation
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -18,9 +18,18 @@ export const Login = () => {
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    const trimmedEmail = email.trim()
+    const trimmedPassword = password.trim()
+
+    if (!trimmedEmail || !trimmedPassword) {
+      setError('Email and password are required.')
+      return
+    }
+
     setSubmitting(true)
     try {
-      await login(email, password)
+      await login(trimmedEmail, trimmedPassword)
       navigate(returnUrl, { replace: true })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to log in. Try again.'
@@ -48,12 +57,12 @@ export const Login = () => {
         </div>
 
         <div className="bg-white/80 border border-slate-200 rounded-2xl shadow-xl p-8 backdrop-blur">
-          <form className="space-y-4" onSubmit={onSubmit}>
+          <form className="space-y-4" onSubmit={onSubmit} noValidate>
             <div>
               <label className="block text-sm font-medium text-slate-700">Email</label>
               <input
-                type="email"
-                required
+                type="text"
+                inputMode="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-royal-purple"
@@ -66,7 +75,6 @@ export const Login = () => {
               <label className="block text-sm font-medium text-slate-700">Password</label>
               <input
                 type="password"
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-royal-purple"

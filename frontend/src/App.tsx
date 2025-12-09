@@ -1,4 +1,4 @@
-// Updated 2025-12-08 20:31 CST by ChatGPT
+// Updated 2025-12-08 21:49 CST by ChatGPT
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import { Navigation } from './components/Navigation'
@@ -10,6 +10,8 @@ import { ResetPassword } from './pages/ResetPassword'
 import { Dashboard } from './pages/Dashboard'
 import { Settings } from './pages/Settings'
 import { AIAssistant } from './pages/AIAssistant'
+import { ConnectAccounts } from './pages/ConnectAccounts'
+import { Transactions } from './pages/Transactions'
 
 const Placeholder = ({ title }: { title: string }) => (
   <div className="max-w-4xl mx-auto px-6 py-10">
@@ -35,6 +37,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/connect-accounts"
+            element={
+              <ProtectedRoute>
+                <ConnectAccounts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <ProtectedRoute>
+                <Transactions />
               </ProtectedRoute>
             }
           />

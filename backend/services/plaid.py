@@ -1,4 +1,4 @@
-# Updated 2025-12-08 21:10 CST by ChatGPT
+# Updated 2025-12-09 14:45 CST by ChatGPT - fix Plaid env mapping for dev/sandbox
 """
 Lightweight Plaid helper functions for local development.
 
@@ -15,29 +15,34 @@ from typing import Dict, Iterable, List, Tuple
 
 from plaid import ApiClient, Configuration, Environment
 from plaid.api import plaid_api
-from plaid.model import (
-    AccountsGetRequest,
-    CountryCode,
-    InvestmentsHoldingsGetRequest,
-    InvestmentsTransactionsGetRequest,
+from plaid.model.accounts_get_request import AccountsGetRequest
+from plaid.model.country_code import CountryCode
+from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
+from plaid.model.investments_transactions_get_request import InvestmentsTransactionsGetRequest
+from plaid.model.investments_transactions_get_request_options import (
     InvestmentsTransactionsGetRequestOptions,
-    ItemPublicTokenExchangeRequest,
-    LinkTokenCreateRequest,
-    LinkTokenCreateRequestUser,
-    Products,
-    TransactionsGetRequest,
-    TransactionsGetRequestOptions,
 )
+from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.link_token_create_request import LinkTokenCreateRequest
+from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
+from plaid.model.products import Products
+from plaid.model.transactions_get_request import TransactionsGetRequest
+from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.exceptions import ApiException
 
 
 def _get_environment() -> Environment:
+    """
+    Map PLAID_ENV to a supported Plaid environment.
+
+    The plaid-python client does not expose Environment.Development; for local/dev
+    we should use sandbox. Production remains available for actual deployments.
+    """
     env_name = os.getenv("PLAID_ENV", "sandbox").lower()
-    return {
-        "sandbox": Environment.Sandbox,
-        "development": Environment.Development,
-        "production": Environment.Production,
-    }.get(env_name, Environment.Sandbox)
+    if env_name in {"production", "prod"}:
+        return Environment.Production
+    # Treat development/dev the same as sandbox for local testing.
+    return Environment.Sandbox
 
 
 def _get_credentials() -> Tuple[str, str]:
@@ -200,13 +205,19 @@ def fetch_transactions(
                 getattr(txn, "iso_currency_code", None),
                 getattr(txn, "unofficial_currency_code", None),
             )
+            # Plaid may return date as string or datetime.date; normalize to date.
+            txn_date = txn.date
+            if isinstance(txn_date, str):
+                txn_date = datetime.strptime(txn_date, "%Y-%m-%d").date()
+            elif isinstance(txn_date, datetime):
+                txn_date = txn_date.date()
             all_transactions.append(
                 {
                     "transaction_id": txn.transaction_id,
                     "account_id": txn.account_id,
                     "name": txn.name,
                     "amount": Decimal(str(txn.amount)),
-                    "date": datetime.strptime(txn.date, "%Y-%m-%d").date(),
+                    "date": txn_date,
                     "category": (txn.category or [None])[0] if txn.category else None,
                     "merchant_name": txn.merchant_name,
                     "currency": currency,

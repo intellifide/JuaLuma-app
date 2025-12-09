@@ -61,7 +61,8 @@ def create_link_token_endpoint(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
         ) from exc
 
-    return LinkTokenResponse(link_token=link_token, expiration=expiration)
+    # Plaid SDK may return expiration as datetime; response model expects string.
+    return LinkTokenResponse(link_token=link_token, expiration=str(expiration))
 
 
 @router.post(
