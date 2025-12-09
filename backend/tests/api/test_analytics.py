@@ -1,0 +1,165 @@
+
+import pytest
+import pytest_asyncio
+from unittest.mock import MagicMock, patch
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+
+from httpx import AsyncClient, ASGITransport
+from backend.main import app
+from backend.models import User, Account, Transaction
+from backend.middleware.auth import get_current_user
+from backend.utils import get_db
+
+# Mock User
+mock_user = User(
+    uid="test_user_123",
+    email="test@example.com",
+    role="user"
+)
+
+# Mock Dependencies
+def override_get_current_user():
+    return mock_user
+
+@pytest_asyncio.fixture
+async def client():
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+@pytest.fixture
+def mock_db_session():
+    return MagicMock()
+
+@pytest.fixture
+def mock_get_db(mock_db_session):
+    def _mock_db():
+        yield mock_db_session
+    return _mock_db
+
+@pytest.fixture
+def override_dependencies(mock_get_db):
+    app.dependency_overrides[get_db] = mock_get_db
+    yield
+    app.dependency_overrides = {}
+
+# Tests
+
+@pytest.mark.asyncio
+@patch("backend.api.analytics.get_firestore_client")
+async def test_net_worth_endpoint(mock_fs, client, mock_db_session, override_dependencies):
+    # Setup Mock Firestore (empty cache)
+    mock_doc = MagicMock()
+    mock_doc.exists = False
+    mock_col = MagicMock()
+    mock_col.document.return_value.get.return_value = mock_doc
+    mock_fs.return_value.collection.return_value = mock_col
+    
+    # Setup Mock DB Data
+    # Accounts
+    acc1 = Account(uid="test_user_123", balance=Decimal("5000.00"))
+    acc2 = Account(uid="test_user_123", balance=Decimal("1000.00"))
+    
+    # Transactions (newest first)
+    # Today is effectively "End Date" for the query usually
+    t1 = Transaction(uid="test_user_123", amount=Decimal("-100.00"), ts=datetime.now(timezone.utc) - timedelta(days=1))
+    t2 = Transaction(uid="test_user_123", amount=Decimal("2000.00"), ts=datetime.now(timezone.utc) - timedelta(days=5))
+    
+    def query_side_effect(model):
+        m = MagicMock()
+        if model == Account:
+            m.filter.return_value.all.return_value = [acc1, acc2] # Total 6000
+        elif model == Transaction:
+            m.filter.return_value.order_by.return_value.all.return_value = [t1, t2]
+            m.filter.return_value.all.return_value = [] # For the "recent_txns" query (future txns)
+        return m
+
+    mock_db_session.query.side_effect = query_side_effect
+
+    # Make Request
+    response = await client.get(
+        "/api/analytics/net-worth", 
+        params={
+            "start_date": (date.today() - timedelta(days=7)).isoformat(),
+            "end_date": date.today().isoformat(),
+            "interval": "daily"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert len(data["data"]) > 0
+    # Current balance should be 6000
+    # Latest point
+    assert data["data"][-1]["value"] == 6000.0
+
+
+@pytest.mark.asyncio
+async def test_cash_flow_endpoint(client, mock_db_session, override_dependencies):
+    # Mock ResultProxy
+    row_income = MagicMock()
+    row_income.month = datetime(2023, 1, 1)
+    row_income.total = Decimal("5000")
+    
+    row_expense = MagicMock()
+    row_expense.month = datetime(2023, 1, 1)
+    row_expense.total = Decimal("-2000")
+
+    mock_result_income = MagicMock()
+    mock_result_income.all.return_value = [row_income]
+    
+    mock_result_expense = MagicMock()
+    mock_result_expense.all.return_value = [row_expense]
+    
+    mock_db_session.execute.side_effect = [mock_result_income, mock_result_expense]
+
+    response = await client.get(
+        "/api/analytics/cash-flow",
+        params={
+            "start_date": "2023-01-01",
+            "end_date": "2023-01-31"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["income"]) == 1
+    assert data["income"][0]["value"] == 5000.0
+    assert len(data["expenses"]) == 1
+    assert data["expenses"][0]["value"] == -2000.0
+
+
+@pytest.mark.asyncio
+async def test_spending_by_category_endpoint(client, mock_db_session, override_dependencies):
+    # Mock row
+    row1 = MagicMock()
+    row1.category = "Food"
+    row1.total = Decimal("-500") 
+    
+    row2 = MagicMock()
+    row2.category = "Rent"
+    row2.total = Decimal("-1500")
+
+    mock_res = MagicMock()
+    mock_res.all.return_value = [row1, row2]
+    mock_db_session.execute.return_value = mock_res
+
+    response = await client.get(
+        "/api/analytics/spending-by-category",
+        params={
+            "start_date": "2023-01-01",
+            "end_date": "2023-01-31"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert len(data["data"]) == 2
+    # Should be positive and sorted desc
+    assert data["data"][0]["category"] == "Rent"
+    assert data["data"][0]["amount"] == 1500.0
+

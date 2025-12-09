@@ -40,7 +40,8 @@ trigger: always_on
 ## Development Toolchain
 - **Primary IDE**: Cursor IDE for daily development and AI-assisted coding
 - **Secondary IDE**: JetBrains (PyCharm/WebStorm/DataGrip) for deep debugging, heavy refactoring, and database work
-- **Version Control**: GitHub Pro (TCoder920x account) - private repository at `github.com/TCoder920x/finity-app`
+- **Version Control**: GitKraken (Primary Interface) - All git commands must be executed via GitKraken MCP tools.
+- **Repository**: `github.com/TCoder920x/finity-app` (private, GitHub Pro)
 - **CI/CD**: GitHub Actions for automated lint, test, typecheck, and deployment workflows
 - **API Testing**: Postman collections with Newman CLI for headless execution in CI/CD
 - **Payment Processing**: Stripe CLI for webhook forwarding (`stripe listen --forward-to localhost:4242/webhook`), Stripe MCP server for AI-assisted operations
@@ -49,6 +50,7 @@ trigger: always_on
 - All external tools are CLI/API-driven to minimize GUI interface overhead
 
 ## Source Control & Safety
+- **Primary Tool**: GitKraken is the standardized and sole method for all Git interactions. Do not use CLI git commands unless debugging tool issues.
 - Repository: `github.com/TCoder920x/finity-app` (private, GitHub Pro)
 - Branches: `main` (production), `Dev` (development)
 - Never run global searches; scope searches narrowly.
