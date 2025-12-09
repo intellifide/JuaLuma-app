@@ -27,6 +27,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
     createToken()
   }, [onError])
 
+
   const { open, ready } = usePlaidLink({
     token: linkToken ?? '',
     onSuccess: async (publicToken, metadata) => {

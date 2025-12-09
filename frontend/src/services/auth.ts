@@ -39,10 +39,21 @@ const mapFirebaseError = (error: unknown): string => {
 
 export const signup = async (email: string, password: string): Promise<User> => {
   try {
-    const credential = await createUserWithEmailAndPassword(auth, email, password)
+    // 1. Create user in Backend (seeds Postgres)
+    await apiFetch('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      skipAuth: true,
+    })
+
+    // 2. Sign in with Client SDK to establish session
+    const credential = await signInWithEmailAndPassword(auth, email, password)
     clearCachedToken()
     return credential.user
   } catch (error) {
+    if (error instanceof Error && !(error instanceof FirebaseError)) {
+      throw error // Re-throw backend errors as-is
+    }
     throw new Error(mapFirebaseError(error))
   }
 }

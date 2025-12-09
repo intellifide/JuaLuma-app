@@ -36,7 +36,6 @@ api.interceptors.response.use(
         window.location.href = '/login'
       }
     } else if (status === 403) {
-      // Surface authorization issues to the user for quick troubleshooting
       window.alert('You do not have permission to perform this action.')
     } else if (status && status >= 500) {
       window.alert('A server error occurred. Please try again shortly.')
