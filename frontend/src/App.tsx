@@ -16,6 +16,7 @@ import { Transactions } from './pages/Transactions'
 import { Features } from './pages/Features'
 import { Pricing } from './pages/Pricing'
 import { Support } from './pages/Support'
+import { TicketDetail } from './pages/TicketDetail'
 import { FeatureRequest } from './pages/FeatureRequest'
 import { About } from './pages/About'
 import { Privacy } from './pages/legal/Privacy'
@@ -91,6 +92,14 @@ function App() {
             <Route path="/features" element={<Features />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/support" element={<Support />} />
+            <Route
+              path="/support/tickets/:ticketId"
+              element={
+                <ProtectedRoute>
+                  <TicketDetail />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/feature-request" element={<FeatureRequest />} />
             <Route path="/about" element={<About />} />
             <Route path="/marketplace" element={<Marketplace />} />

@@ -1,6 +1,61 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supportService } from '../services/support';
+import { Button } from '../components/ui/Button';
+import { useToast } from '../components/ui/Toast';
 
 export const FeatureRequest = () => {
+    const navigate = useNavigate();
+    const { show } = useToast();
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+
+        const formData = new FormData(e.currentTarget);
+        const summary = formData.get('summary') as string;
+        const problem = formData.get('problem') as string;
+        const priorityStr = formData.get('priority') as string;
+
+        // Map UI priority to API priority
+        let priority: 'low' | 'normal' | 'high' | 'urgent' = 'normal';
+        if (priorityStr === 'Low') priority = 'low';
+        else if (priorityStr === 'High') priority = 'high';
+        else if (priorityStr === 'Critical') priority = 'urgent';
+
+        // Construct detailed description
+        const name = formData.get('name');
+        const email = formData.get('email');
+        const plan = formData.get('tier');
+        const link = formData.get('link');
+
+        const description = `Feature Request Details:
+Name: ${name}
+Email: ${email}
+Plan: ${plan}
+Reference URL: ${link}
+
+Problem / Use Case:
+${problem}`;
+
+        try {
+            await supportService.createTicket({
+                subject: `[Feature Request] ${summary}`,
+                description: description,
+                category: 'feature_request',
+                priority: priority,
+            });
+            show('Feature request submitted successfully', 'success');
+            navigate('/support');
+        } catch (error) {
+            console.error(error);
+            show('Failed to submit feature request', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div>
             <section className="container max-w-[800px] py-12">
@@ -10,7 +65,7 @@ export const FeatureRequest = () => {
                         Tell us what you need. We use this to prioritize our roadmap.
                     </p>
 
-                    <form onSubmit={(e) => { e.preventDefault(); alert('Feature request submitted (mock).'); }}>
+                    <form onSubmit={handleSubmit}>
                         <div className="mb-4">
                             <label htmlFor="fr-name" className="form-label mb-1 block">Name</label>
                             <input type="text" id="fr-name" name="name" className="form-input w-full" required />
@@ -30,11 +85,10 @@ export const FeatureRequest = () => {
                         <div className="mb-4">
                             <label htmlFor="fr-priority" className="form-label mb-1 block">Priority</label>
                             <select id="fr-priority" name="priority" className="form-select w-full" required>
-                                <option value="">Select...</option>
-                                <option>Critical</option>
-                                <option>High</option>
-                                <option>Medium</option>
-                                <option>Low</option>
+                                <option value="Normal">Normal</option>
+                                <option value="Critical">Critical</option>
+                                <option value="High">High</option>
+                                <option value="Low">Low</option>
                             </select>
                         </div>
                         <div className="mb-4">
@@ -57,7 +111,9 @@ export const FeatureRequest = () => {
                                 <span>I consent to being contacted about this request.</span>
                             </label>
                         </div>
-                        <button type="submit" className="btn btn-primary w-full">Submit Request</button>
+                        <Button variant="primary" type="submit" className="w-full" disabled={loading}>
+                            {loading ? 'Submitting...' : 'Submit Request'}
+                        </Button>
                     </form>
                 </div>
             </section>

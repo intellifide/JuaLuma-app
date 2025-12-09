@@ -12,6 +12,7 @@ from backend.api.analytics import router as analytics_router
 from backend.api.ai import router as ai_router
 from backend.api.widgets import router as widgets_router
 from backend.api.developers import router as developers_router
+from backend.api.support import router as support_router
 from backend.utils import get_db  # noqa: F401 - imported for dependency wiring
 
 # Load environment variables early
@@ -40,6 +41,7 @@ app.include_router(analytics_router)
 app.include_router(ai_router)
 app.include_router(widgets_router)
 app.include_router(developers_router)
+app.include_router(support_router)
 
 
 

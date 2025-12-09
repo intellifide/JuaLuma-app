@@ -1,118 +1,132 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supportService, Ticket } from '../services/support';
+import { CreateTicketModal } from '../components/support/CreateTicketModal';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 
 export const Support = () => {
+    const navigate = useNavigate();
+    const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const fetchTickets = async () => {
+        try {
+            const data = await supportService.getTickets();
+            setTickets(data);
+        } catch (error) {
+            console.error('Failed to fetch tickets', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTickets();
+    }, []);
+
+    const handleTicketClick = (ticketId: string) => {
+        navigate(`/support/tickets/${ticketId}`);
+    };
+
+    const StatusBadge = ({ status }: { status: string }) => {
+        const variant = status === 'open' ? 'success' : status === 'resolved' ? 'warning' : 'secondary';
+        return <Badge variant={variant}>{status.toUpperCase()}</Badge>;
+    }
+
     return (
         <div>
             <section className="container py-12">
                 <h1 className="text-center mb-4 text-3xl font-bold">Support & Contact</h1>
                 <p className="text-center text-lg text-text-secondary mb-12 max-w-[700px] mx-auto">
-                    We're here to help. Get in touch with our support team or find answers to common questions.
+                    We're here to help. Manage your support tickets or find answers to common questions.
                 </p>
 
                 <div className="grid md:grid-cols-2 gap-8 mb-12">
-                    {/* Contact Form */}
-                    <div className="glass-panel h-fit">
-                        <h2 className="mb-6">Send Us a Message</h2>
-                        <form id="contact-form" onSubmit={(e) => e.preventDefault()}>
-                            <div className="mb-4">
-                                <label htmlFor="contact-name" className="block text-sm font-medium text-text-secondary mb-1">Name</label>
-                                <input type="text" id="contact-name" name="name" className="form-input w-full" required />
-                            </div>
-                            <div className="mb-4">
-                                <label htmlFor="contact-email" className="block text-sm font-medium text-text-secondary mb-1">Email Address</label>
-                                <input type="email" id="contact-email" name="email" className="form-input w-full" required />
-                            </div>
-                            <div className="mb-4">
-                                <label htmlFor="contact-subject" className="block text-sm font-medium text-text-secondary mb-1">Subject</label>
-                                <select id="contact-subject" name="subject" className="form-select w-full" required>
-                                    <option value="">Select a topic...</option>
-                                    <option value="technical">Technical Support</option>
-                                    <option value="billing">Billing Question</option>
-                                    <option value="feature">Feature Request</option>
-                                    <option value="bug">Report a Bug</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div className="mb-4">
-                                <label htmlFor="contact-message" className="block text-sm font-medium text-text-secondary mb-1">Message</label>
-                                <textarea id="contact-message" name="message" className="form-textarea w-full h-32" required></textarea>
-                            </div>
-                            <button type="submit" className="btn btn-primary w-full">Send Message</button>
-                        </form>
-                    </div>
-
-                    <div className="flex flex-col gap-8">
-                        {/* My Support Tickets */}
-                        <div className="glass-panel">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="m-0">My Support Tickets</h2>
-                                <button className="btn btn-primary" onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}>Create Ticket</button>
-                            </div>
-                            <div className="card mb-4">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="m-0 mb-1 text-lg font-semibold">Ticket #1234</h3>
-                                        <p className="text-text-secondary text-sm m-0">
-                                            Account linking issue - Unable to connect Chase account
-                                        </p>
-                                        <p className="text-text-muted text-xs mt-1">
-                                            Created: 2 hours ago | Status: <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">Open</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-center p-6 text-text-muted">
-                                <p className="m-0">No other active tickets</p>
-                                <p className="mt-2 text-sm">
-                                    Support tickets are managed by our team. You'll receive email updates when your ticket status changes.
-                                </p>
-                            </div>
+                    {/* My Support Tickets */}
+                    <div className="glass-panel flex flex-col h-full min-h-[500px]">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="m-0 text-xl font-bold">My Support Tickets</h2>
+                            <Button variant="primary" onClick={() => setIsModalOpen(true)}>Create Ticket</Button>
                         </div>
 
-                        {/* Contact Information */}
-                        <div className="glass-panel">
-                            <h2 className="mb-6">Contact Information</h2>
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold mb-2">Email Support</h3>
-                                <p className="mb-2">
-                                    <strong>General Inquiries:</strong><br />
-                                    <a href="mailto:support@finity.com" className="text-royal-purple hover:underline">support@finity.com</a>
-                                </p>
-                                <p className="mb-2">
-                                    <strong>Privacy & Legal:</strong><br />
-                                    <a href="mailto:privacy@finity.com" className="text-royal-purple hover:underline">privacy@finity.com</a>
-                                </p>
-                                <p>
-                                    <strong>Business Inquiries:</strong><br />
-                                    <a href="mailto:business@finity.com" className="text-royal-purple hover:underline">business@finity.com</a>
-                                </p>
-                            </div>
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                            {loading ? (
+                                <p className="text-center text-text-secondary py-8">Loading tickets...</p>
+                            ) : tickets.length === 0 ? (
+                                <div className="text-center p-8 text-text-secondary border border-dashed border-white/10 rounded-lg">
+                                    <p className="mb-2">No tickets yet</p>
+                                    <p className="text-sm">Create a ticket if you need assistance.</p>
+                                </div>
+                            ) : (
+                                tickets.map(ticket => (
+                                    <div
+                                        key={ticket.id}
+                                        onClick={() => handleTicketClick(ticket.id)}
+                                        className="card p-4 hover:border-primary/50 cursor-pointer transition-colors"
+                                    >
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h3 className="m-0 text-lg font-semibold truncate pr-4">{ticket.subject}</h3>
+                                            <StatusBadge status={ticket.status} />
+                                        </div>
+                                        <p className="text-text-secondary text-sm mb-2 line-clamp-1">
+                                            {ticket.description}
+                                        </p>
+                                        <div className="flex justify-between items-center text-xs text-text-muted">
+                                            {/* Note: ticket.id is UUID, slice it */}
+                                            <span>#{ticket.id.slice(0, 8)}</span>
+                                            <span>Updated: {new Date(ticket.updated_at).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
 
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold mb-2">Phone Support</h3>
-                                <p>
-                                    <strong>Phone:</strong> <a href="tel:+15551234567" className="text-royal-purple hover:underline">+1 (555) 123-4567</a><br />
-                                    <strong>Hours:</strong> Monday - Friday, 9:00 AM - 6:00 PM CT
-                                </p>
-                            </div>
+                    {/* Contact Information */}
+                    <div className="glass-panel h-full">
+                        <h2 className="mb-6 text-xl font-bold">Contact Information</h2>
+                        <div className="mb-6">
+                            <h3 className="text-lg font-semibold mb-2">Email Support</h3>
+                            <p className="mb-2">
+                                <strong>General Inquiries:</strong><br />
+                                <a href="mailto:support@finity.com" className="text-royal-purple hover:underline">support@finity.com</a>
+                            </p>
+                            <p className="mb-2">
+                                <strong>Privacy & Legal:</strong><br />
+                                <a href="mailto:privacy@finity.com" className="text-royal-purple hover:underline">privacy@finity.com</a>
+                            </p>
+                            <p>
+                                <strong>Business Inquiries:</strong><br />
+                                <a href="mailto:business@finity.com" className="text-royal-purple hover:underline">business@finity.com</a>
+                            </p>
+                        </div>
 
-                            <div>
-                                <h3 className="text-lg font-semibold mb-2">Mailing Address</h3>
-                                <p className="mb-0">
-                                    Intellifide, LLC<br />
-                                    1234 Innovation Drive<br />
-                                    Suite 500<br />
-                                    Austin, TX 78701<br />
-                                    United States
-                                </p>
-                            </div>
+                        <div className="mb-6">
+                            <h3 className="text-lg font-semibold mb-2">Phone Support</h3>
+                            <p>
+                                <strong>Phone:</strong> <a href="tel:+15551234567" className="text-royal-purple hover:underline">+1 (555) 123-4567</a><br />
+                                <strong>Hours:</strong> Monday - Friday, 9:00 AM - 6:00 PM CT
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Mailing Address</h3>
+                            <p className="mb-0">
+                                Intellifide, LLC<br />
+                                1234 Innovation Drive<br />
+                                Suite 500<br />
+                                Austin, TX 78701<br />
+                                United States
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 {/* FAQ Section */}
                 <div id="faq" className="glass-panel mb-12">
-                    <h2 className="text-center mb-12">Frequently Asked Questions</h2>
+                    <h2 className="text-center mb-12 font-bold text-2xl">Frequently Asked Questions</h2>
 
                     <div className="max-w-[800px] mx-auto space-y-8">
                         <div>
@@ -157,20 +171,11 @@ export const Support = () => {
                     </div>
                 </div>
 
-                {/* Community Links */}
-                <div className="glass-panel">
-                    <h2 className="text-center mb-6">Join Our Community</h2>
-                    <div className="text-center">
-                        <p className="mb-6 text-text-secondary">
-                            Connect with other Finity users, get tips, and share feedback.
-                        </p>
-                        <div className="flex gap-4 justify-center flex-wrap">
-                            <a href="https://discord.gg/finity" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">Join Discord</a>
-                            <a href="https://twitter.com/finity" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">Follow on X</a>
-                            <a href="https://youtube.com/@finity" className="btn btn-secondary" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
-                        </div>
-                    </div>
-                </div>
+                <CreateTicketModal
+                    open={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSuccess={fetchTickets}
+                />
             </section>
         </div>
     );
