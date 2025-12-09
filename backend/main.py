@@ -9,6 +9,7 @@ from backend.api.accounts import router as accounts_router
 from backend.api.plaid import router as plaid_router
 from backend.api.transactions import router as transactions_router
 from backend.api.analytics import router as analytics_router
+from backend.api.ai import router as ai_router
 from backend.utils import get_db  # noqa: F401 - imported for dependency wiring
 
 # Load environment variables early
@@ -34,6 +35,7 @@ app.include_router(accounts_router)
 app.include_router(plaid_router)
 app.include_router(transactions_router)
 app.include_router(analytics_router)
+app.include_router(ai_router)
 
 
 
