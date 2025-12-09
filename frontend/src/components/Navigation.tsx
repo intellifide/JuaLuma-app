@@ -1,15 +1,15 @@
-// Updated 2025-12-08 20:31 CST by ChatGPT
+// Updated 2025-12-09 16:45 CST by ChatGPT
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 
-const linkClass =
-  'text-slate-800 hover:text-royal-purple font-medium transition-colors duration-150'
-
-const activeClass = 'text-royal-purple font-semibold'
+const linkClass = 'nav-link'
+const activeClass = 'nav-link active'
 
 export const Navigation = () => {
   const { user, logout } = useAuth()
+  const { theme, toggle } = useTheme()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -25,16 +25,25 @@ export const Navigation = () => {
       <NavLink to="/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Dashboard
       </NavLink>
+      <NavLink to="/connect-accounts" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+        Connect Accounts
+      </NavLink>
+      <NavLink to="/marketplace" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+        Marketplace
+      </NavLink>
       <NavLink to="/ai-assistant" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         AI Assistant
       </NavLink>
       <NavLink to="/settings" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Settings
       </NavLink>
+      <NavLink to="/support" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+        Support
+      </NavLink>
       <button
         type="button"
         onClick={handleLogout}
-        className="px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo transition-colors duration-150"
+        className="btn btn-secondary"
       >
         Logout
       </button>
@@ -49,117 +58,124 @@ export const Navigation = () => {
       <NavLink to="/pricing" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Pricing
       </NavLink>
+      <NavLink to="/about" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+        About
+      </NavLink>
+      <NavLink to="/developer-marketplace" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+        Developer Marketplace
+      </NavLink>
       <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Login
       </NavLink>
-      <Link
-        to="/signup"
-        className="px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo transition-colors duration-150"
-      >
+      <Link to="/signup" className="btn">
         Sign Up
       </Link>
     </div>
   )
 
   return (
-    <nav className="bg-white/80 border-b border-slate-200 backdrop-blur-md sticky top-0 z-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold text-deep-indigo">
-          Finity
+    <header className="header">
+      <div className="header-container">
+        <Link to="/" className="logo" aria-label="Finity home">
+          <img src="/assets/finity-logo.png" alt="Finity logo" className="logo-img" />
+          <span className="sr-only">Finity</span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-6">
+        <nav className="nav" aria-label="Main navigation">
           <NavLink to="/" className={({ isActive }) => (isActive ? activeClass : linkClass)} end>
             Home
           </NavLink>
           {user ? <AuthLinks /> : <GuestLinks />}
-        </div>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggle}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </nav>
 
         <button
           type="button"
-          className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-700 hover:bg-slate-100"
+          className="nav-mobile-toggle"
           onClick={toggleMenu}
           aria-label="Toggle navigation menu"
+          aria-expanded={open}
         >
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          ☰
         </button>
       </div>
 
-      {open && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-3">
-          <NavLink to="/" className={({ isActive }) => (isActive ? activeClass : linkClass)} end onClick={toggleMenu}>
-            Home
-          </NavLink>
-          {user ? (
-            <>
-              <NavLink
-                to="/dashboard"
-                className={({ isActive }) => (isActive ? activeClass : linkClass)}
-                onClick={toggleMenu}
-              >
-                Dashboard
-              </NavLink>
-              <NavLink
-                to="/ai-assistant"
-                className={({ isActive }) => (isActive ? activeClass : linkClass)}
-                onClick={toggleMenu}
-              >
-                AI Assistant
-              </NavLink>
-              <NavLink
-                to="/settings"
-                className={({ isActive }) => (isActive ? activeClass : linkClass)}
-                onClick={toggleMenu}
-              >
-                Settings
-              </NavLink>
-              <button
-                type="button"
-                onClick={() => {
-                  handleLogout()
-                  toggleMenu()
-                }}
-                className="block w-full text-left px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <NavLink
-                to="/features"
-                className={({ isActive }) => (isActive ? activeClass : linkClass)}
-                onClick={toggleMenu}
-              >
-                Features
-              </NavLink>
-              <NavLink
-                to="/pricing"
-                className={({ isActive }) => (isActive ? activeClass : linkClass)}
-                onClick={toggleMenu}
-              >
-                Pricing
-              </NavLink>
-              <NavLink
-                to="/login"
-                className={({ isActive }) => (isActive ? activeClass : linkClass)}
-                onClick={toggleMenu}
-              >
-                Login
-              </NavLink>
-              <Link
-                to="/signup"
-                onClick={toggleMenu}
-                className="block text-center px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo"
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
-      )}
-    </nav>
+      <nav className={`nav-mobile ${open ? 'open' : ''}`} aria-label="Mobile navigation">
+        <NavLink to="/" className={({ isActive }) => (isActive ? activeClass : linkClass)} end onClick={toggleMenu}>
+          Home
+        </NavLink>
+        {user ? (
+          <>
+            <NavLink to="/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Dashboard
+            </NavLink>
+            <NavLink to="/connect-accounts" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Connect Accounts
+            </NavLink>
+            <NavLink to="/marketplace" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Marketplace
+            </NavLink>
+            <NavLink to="/ai-assistant" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              AI Assistant
+            </NavLink>
+            <NavLink to="/settings" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Settings
+            </NavLink>
+            <NavLink to="/support" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Support
+            </NavLink>
+            <button
+              type="button"
+              onClick={() => {
+                handleLogout()
+                toggleMenu()
+              }}
+              className="btn"
+            >
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <NavLink to="/features" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Features
+            </NavLink>
+            <NavLink to="/pricing" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Pricing
+            </NavLink>
+            <NavLink to="/about" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              About
+            </NavLink>
+            <NavLink to="/developer-marketplace" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Developer Marketplace
+            </NavLink>
+            <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              Login
+            </NavLink>
+            <Link to="/signup" onClick={toggleMenu} className="btn">
+              Sign Up
+            </Link>
+          </>
+        )}
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={() => {
+            toggle()
+            toggleMenu()
+          }}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </nav>
+    </header>
   )
 }

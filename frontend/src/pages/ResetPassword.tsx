@@ -1,4 +1,4 @@
-// Updated 2025-12-08 20:31 CST by ChatGPT
+// Updated 2025-12-09 16:45 CST by ChatGPT
 import { FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -29,51 +29,53 @@ export const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-royal-purple/10 via-white to-aqua/10 flex items-center">
-      <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 px-6 py-12">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold text-deep-indigo">Reset your password</h1>
-          <p className="text-slate-700">
-            Enter the email tied to your Finity account. We&apos;ll send a password reset link to help you get back in.
-          </p>
-          <p className="text-sm text-slate-700">
-            Make sure the Firebase Auth emulator is running locally so the reset flow works in development.
-          </p>
-        </div>
+    <div className="min-h-[calc(100vh-120px)] bg-bg-primary">
+      <div className="container py-16">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-4">Reset your password</h1>
+            <p className="mb-4">
+              Enter the email tied to your Finity account. We&apos;ll send a password reset link to help you get back in.
+            </p>
+            <p className="text-sm text-slate-700">
+              Make sure the Firebase Auth emulator is running locally so the reset flow works in development.
+            </p>
+          </div>
 
-        <div className="bg-white/80 border border-slate-200 rounded-2xl shadow-xl p-8 backdrop-blur">
-          <form className="space-y-4" onSubmit={onSubmit}>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-royal-purple"
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </div>
+          <div className="glass-panel">
+            <form className="space-y-4" onSubmit={onSubmit}>
+              <div>
+                <label className="form-label">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="form-input"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </div>
 
-            {message && <p className="text-sm text-green-600">{message}</p>}
-            {error && <p className="text-sm text-red-600">{error}</p>}
+              {message && <p className="text-sm text-green-600">{message}</p>}
+              {error && <p className="text-sm text-red-600">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 rounded-lg bg-royal-purple text-white font-semibold hover:bg-deep-indigo transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? 'Sending reset link...' : 'Send reset link'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn w-full justify-center"
+              >
+                {submitting ? 'Sending reset link...' : 'Send reset link'}
+              </button>
+            </form>
 
-          <p className="text-center text-sm text-slate-700 mt-4">
-            Remember your password?{' '}
-            <Link to="/login" className="text-royal-purple font-semibold hover:text-deep-indigo">
-              Back to login
-            </Link>
-          </p>
+            <p className="text-center text-sm text-slate-700 mt-4">
+              Remember your password?{' '}
+              <Link to="/login" className="text-royal-purple font-semibold hover:text-deep-indigo">
+                Back to login
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

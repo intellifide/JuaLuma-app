@@ -1,5 +1,5 @@
 // Updated 2025-12-08 21:49 CST by ChatGPT
-import axios, { AxiosError } from 'axios'
+import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken } from './auth'
 
 const api = axios.create({
@@ -10,8 +10,10 @@ api.interceptors.request.use(
   async (config) => {
     const token = await getIdToken()
     if (token) {
-      config.headers = config.headers ?? {}
-      config.headers.Authorization = `Bearer ${token}`
+      if (!config.headers) {
+        config.headers = new AxiosHeaders();
+      }
+      (config.headers as AxiosHeaders).set('Authorization', `Bearer ${token}`);
     }
     return config
   },

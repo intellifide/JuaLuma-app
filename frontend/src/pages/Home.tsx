@@ -1,46 +1,95 @@
-// Updated 2025-12-08 20:31 CST by ChatGPT
+// Updated 2025-12-09 16:45 CST by ChatGPT
 import { Link } from 'react-router-dom'
 
+const features = [
+  { title: 'Unified Dashboard', copy: 'Aggregate bank, card, investment, and crypto accounts in one glass dashboard.' },
+  { title: 'Smart Categorization', copy: 'AI-powered rules that learn your preferences and keep thousands of transactions organized.' },
+  { title: 'Budget Tracking', copy: 'Track budgets vs. actuals with alerts before you overspend.' },
+  { title: 'Financial Health', copy: 'Net worth, cash flow summaries, and 30–90 day forecasts at a glance.' },
+  { title: 'Recurring Detection', copy: 'Auto-detect bills, income, and subscriptions so nothing slips through.' },
+  { title: 'AI-Powered Insights', copy: 'Vertex AI Gemini insights on spending patterns and financial trends.' },
+]
+
 export const Home = () => (
-  <div className="bg-gradient-to-br from-royal-purple/10 via-white to-aqua/10 min-h-screen">
-    <div className="max-w-5xl mx-auto px-6 py-16">
-      <div className="bg-white/80 border border-slate-200 rounded-2xl shadow-xl p-10 backdrop-blur">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-4">
-            <p className="text-sm uppercase tracking-wide text-royal-purple">Customer Support Portal</p>
-            <h1 className="text-4xl font-bold text-deep-indigo">
-              Build AI-powered support with secure financial workflows.
-            </h1>
-            <p className="text-slate-700">
-              Finity helps support teams answer faster, automate routine requests, and keep account changes safe. Use
-              the dashboard to manage tickets, verify customers, and launch guided flows with your AI assistant.
-            </p>
-            <div className="flex gap-3">
-              <Link
-                to="/signup"
-                className="px-5 py-3 rounded-xl bg-royal-purple text-white font-semibold hover:bg-deep-indigo transition-colors"
-              >
-                Get started
-              </Link>
-              <Link
-                to="/login"
-                className="px-5 py-3 rounded-xl border border-royal-purple text-royal-purple font-semibold hover:bg-royal-purple hover:text-white transition-colors"
-              >
-                Sign in
-              </Link>
+  <div>
+    <section className="hero py-16 bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-[var(--text-inverse)]">
+      <div className="container text-center">
+        <h1 className="text-[var(--text-inverse)] mb-8">
+          See All Your Finances in One Place
+        </h1>
+        <p className="text-xl text-white/90 mb-12 max-w-[600px] mx-auto">
+          Automatically categorize your transactions, track spending, and get a clear view of your financial health.
+        </p>
+        <div className="flex gap-4 justify-center flex-wrap">
+          <Link to="/signup" className="btn btn-accent btn-lg">
+            Get Started Free
+          </Link>
+          <Link
+            to="/features"
+            className="btn btn-outline btn-lg bg-white/10 border-white/30 text-[var(--text-inverse)] hover:bg-white/20"
+          >
+            Learn More
+          </Link>
+          <Link to="/login" className="btn btn-lg">
+            Use Demo Account
+          </Link>
+        </div>
+      </div>
+    </section>
+
+    <section className="container py-16">
+      <h2 className="text-center mb-12">
+        Everything You Need to Manage Your Finances
+      </h2>
+      <div className="grid gap-8 grid-cols-[repeat(auto-fit,minmax(250px,1fr))]">
+        {features.map((feature) => (
+          <div key={feature.title} className="card">
+            <div className="card-header">
+              <h3>{feature.title}</h3>
+            </div>
+            <div className="card-body">
+              <p>{feature.copy}</p>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-royal-purple/10 to-aqua/20 rounded-2xl p-6 border border-slate-200 w-full md:w-80">
-            <h3 className="text-lg font-semibold text-deep-indigo mb-2">Local Dev Notes</h3>
-            <ul className="text-sm text-slate-700 space-y-2">
-              <li>Frontend Vite dev server runs on 5175.</li>
-              <li>FastAPI backend runs on 8001.</li>
-              <li>Firebase Auth emulator expected at 9099.</li>
-              <li>Use Testmail for email flows in development.</li>
-            </ul>
+        ))}
+      </div>
+    </section>
+
+    <section className="glass-panel my-16 mx-auto max-w-[1200px] p-16">
+      <div className="container">
+        <h2 className="text-center mb-8">
+          Bank-Level Security
+        </h2>
+        <div className="grid gap-8 grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+          <div>
+            <h3>Read-Only Access</h3>
+            <p>
+              <strong>We never move your money.</strong> All account connections are strictly read-only. We can view your financial data but cannot initiate transactions, transfer funds, or modify account settings.
+            </p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              All integrations maintain non-custodial status. The platform never executes write-access transfers or withdrawals.
+            </p>
+          </div>
+          <div>
+            <h3>Encryption &amp; Compliance</h3>
+            <p>Your data is encrypted at rest and in transit. We comply with GLBA and GDPR requirements. Bank-level security and encryption protect your information.</p>
           </div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <section className="container text-center py-16">
+      <h2 className="mb-8">Ready to Get Started?</h2>
+      <p className="text-lg mb-12 text-[var(--text-secondary)]">
+        Join thousands of users who are taking control of their finances with Finity.
+      </p>
+      <Link to="/signup" className="btn btn-lg">
+        Create Your Free Account
+      </Link>
+      <p className="mt-4 text-sm text-[var(--text-muted)]">
+        No credit card required. Free tier includes basic account aggregation.
+      </p>
+    </section>
   </div>
 )
+
