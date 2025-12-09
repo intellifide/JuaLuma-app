@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ChatMessage } from '../components/ChatMessage';
+import { ChatInput } from '../components/ChatInput';
+import { QuotaDisplay } from '../components/QuotaDisplay';
+import { aiService, QuotaStatus } from '../services/aiService';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -41,26 +45,65 @@ export default function AIAssistant() {
   const [canAcceptPrivacy, setCanAcceptPrivacy] = useState(false);
   const policyScrollRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
-      time: '10:15 AM' // Mock time for initial message
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
 
   useEffect(() => {
     const accepted = localStorage.getItem('finity_privacy_accepted');
     if (accepted === 'true') {
       setPrivacyAccepted(true);
     } else {
-      // Show modal on load if not accepted (simulated delay)
       setTimeout(() => setShowPrivacyModal(true), 500);
     }
   }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user || !privacyAccepted || hasFetchedHistory) return;
+
+      try {
+        const token = await user.getIdToken();
+        const [history, quotaData] = await Promise.all([
+          aiService.getHistory(token),
+          aiService.getQuota(token)
+        ]);
+
+        const formattedMessages: Message[] = history.flatMap(item => [
+          {
+            role: 'user' as const,
+            text: item.prompt,
+            time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          },
+          {
+            role: 'assistant' as const,
+            text: item.response,
+            time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]).filter(m => m.text);
+
+        if (formattedMessages.length === 0) {
+          setMessages([{
+            role: 'assistant',
+            text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }]);
+        } else {
+          setMessages(formattedMessages);
+        }
+
+        setQuota(quotaData);
+        setHasFetchedHistory(true);
+      } catch (err) {
+        console.error("Error fetching AI data:", err);
+        // Fallback or error state?
+      }
+    };
+
+    fetchData();
+  }, [user, privacyAccepted, hasFetchedHistory]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const element = e.currentTarget;
@@ -76,37 +119,49 @@ export default function AIAssistant() {
     setShowPrivacyModal(false);
   };
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async (text: string) => {
+    if (!user) return;
 
     const newMessage: Message = {
       role: 'user',
-      text: inputValue,
+      text: text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages(prev => [...prev, newMessage]);
-    setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      setIsTyping(false);
-      const responses = [
-        "I can help you understand your spending patterns. Based on your recent transactions, I notice you've been spending more on dining out this month.",
-        "Your net worth has increased by 3.2% this month. Would you like me to break down the contributing factors?",
-        "I can see you have several recurring subscriptions. Would you like a summary of your monthly recurring expenses?",
-        "Based on your budget categories, you're on track for most categories but approaching your limit for entertainment spending."
-      ];
-      const responseText = responses[Math.floor(Math.random() * responses.length)];
+    try {
+      const token = await user.getIdToken();
+      const response = await aiService.sendMessage(text, token);
 
       const assistantMessage: Message = {
         role: 'assistant',
-        text: responseText,
+        text: response.response,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, assistantMessage]);
-    }, 1500);
+
+      if (response.quota_remaining !== undefined && quota) {
+        setQuota({
+          ...quota,
+          used: quota.limit - response.quota_remaining
+        });
+      } else {
+        const q = await aiService.getQuota(token);
+        setQuota(q);
+      }
+
+    } catch (error: any) {
+      const errorMessage: Message = {
+        role: 'assistant',
+        text: `Error: ${error.message || 'Something went wrong.'}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const loadSampleThread = (threadId: string) => {
@@ -120,10 +175,11 @@ export default function AIAssistant() {
     }
   };
 
-  // Auto-scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  const quotaExceeded = quota ? quota.used >= quota.limit : false;
 
   return (
     <section className="container container-narrow py-12">
@@ -136,7 +192,6 @@ export default function AIAssistant() {
         </p>
       </div>
 
-      {/* Privacy Modal */}
       <div className={`modal ${showPrivacyModal ? 'open' : ''}`} aria-hidden={!showPrivacyModal} role="dialog" aria-labelledby="privacy-modal-title">
         <div className="modal-content">
           <div className="modal-header">
@@ -209,18 +264,17 @@ export default function AIAssistant() {
         </div>
       </div>
 
-      {/* Chat Interface */}
       <div className="glass-panel mb-8" id="ai-chat-wrapper">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-start mb-4">
           <div>
             <h2 className="m-0">Chat with your AI Assistant</h2>
           </div>
-          <div>
-            <span className="badge" id="quota-badge">Quota: 0/20 queries today</span>
-            <p className="text-xs text-text-muted mt-2 text-right">
-              Resets at midnight CT
-            </p>
-          </div>
+          <QuotaDisplay
+            used={quota?.used ?? 0}
+            limit={quota?.limit ?? 20}
+            tier={quota?.tier ?? 'free'}
+            loading={!quota}
+          />
         </div>
 
         <div className="mb-4">
@@ -250,12 +304,7 @@ export default function AIAssistant() {
 
           <div id="ai-chat-messages" className="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
             {messages.map((msg, idx) => (
-              <div key={idx} className={`chat-message chat-message-${msg.role}`}>
-                <div className="chat-message-content whitespace-pre-wrap">
-                  <p>{msg.text}</p>
-                </div>
-                <div className="chat-message-time">{msg.time}</div>
-              </div>
+              <ChatMessage key={idx} role={msg.role} text={msg.text} time={msg.time} />
             ))}
 
             {isTyping && (
@@ -270,27 +319,12 @@ export default function AIAssistant() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="chat-input-container">
-            <input
-              type="text"
-              id="chat-input"
-              className="chat-input"
-              placeholder="Ask me anything about your finances..."
-              aria-label="Chat input"
-              disabled={!privacyAccepted}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            />
-            <button
-              id="chat-send"
-              className="btn btn-primary chat-send"
-              disabled={!privacyAccepted}
-              onClick={handleSendMessage}
-            >
-              Send
-            </button>
-          </div>
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            isLoading={isTyping}
+            disabled={!privacyAccepted}
+            quotaExceeded={quotaExceeded}
+          />
         </div>
       </div>
 
@@ -319,8 +353,6 @@ export default function AIAssistant() {
       <div className="alert alert-info mt-12">
         <strong>Usage Limits:</strong> Free Tier: 20 queries/day (Gemini 2.5 Flash). Essential/Pro: 75 queries/day (Gemini 3 Pro). Ultimate: 200 queries/day (Gemini 3 Pro). Queries reset daily at midnight CT.
       </div>
-
-
     </section>
   );
 }
