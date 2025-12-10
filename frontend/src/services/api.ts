@@ -4,6 +4,7 @@ import { clearCachedToken, getIdToken } from './auth'
 
 const api = axios.create({
   baseURL: '/api',
+  timeout: 10000, // 10 second timeout
 })
 
 api.interceptors.request.use(

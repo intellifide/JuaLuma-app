@@ -25,6 +25,9 @@ import { SupportPortal } from './pages/SupportPortal'
 import { Marketplace } from './pages/Marketplace'
 import { DeveloperMarketplace } from './pages/DeveloperMarketplace'
 import { DeveloperSDK } from './pages/DeveloperSDK'
+import AIDisclaimer from './pages/legal/AIDisclaimer'
+import NotFound from './pages/NotFound'
+import Maintenance from './pages/Maintenance'
 
 const Placeholder = ({ title }: { title: string }) => (
   <div className="container py-12">
@@ -36,6 +39,12 @@ const Placeholder = ({ title }: { title: string }) => (
 )
 
 function App() {
+  const MAINTENANCE_MODE = import.meta.env.VITE_MAINTENANCE_MODE === 'true'
+
+  if (MAINTENANCE_MODE) {
+    return <Maintenance />
+  }
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
@@ -107,8 +116,9 @@ function App() {
             <Route path="/developer-sdk" element={<DeveloperSDK />} />
             <Route path="/legal/privacy" element={<Privacy />} />
             <Route path="/legal/terms" element={<Terms />} />
+            <Route path="/legal/ai-disclaimer" element={<AIDisclaimer />} />
             <Route path="/support-portal" element={<SupportPortal />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
         <Footer />

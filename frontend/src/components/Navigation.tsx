@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
+import { ThemeToggle } from './ThemeToggle'
 
 const linkClass = 'nav-link'
 const activeClass = 'nav-link active'
@@ -74,7 +75,7 @@ export const Navigation = () => {
   )
 
   return (
-    <header className="header">
+    <header className="header backdrop-blur-glass bg-white/70 dark:bg-gray-900/75 border-b border-white/60 dark:border-white/10 shadow-glass sticky top-0 z-50 transition-all duration-300">
       <div className="header-container">
         <Link to="/" className="logo" aria-label="Finity home">
           <img src="/assets/finity-logo.png" alt="Finity logo" className="logo-img" />
@@ -86,14 +87,7 @@ export const Navigation = () => {
             Home
           </NavLink>
           {user ? <AuthLinks /> : <GuestLinks />}
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggle}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggle />
         </nav>
 
         <button
@@ -164,17 +158,10 @@ export const Navigation = () => {
             </Link>
           </>
         )}
-        <button
-          type="button"
-          className="theme-toggle"
-          onClick={() => {
-            toggle()
-            toggleMenu()
-          }}
-          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
+
+        <div className="px-6 py-4">
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   )

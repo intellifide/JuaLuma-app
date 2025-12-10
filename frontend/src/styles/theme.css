@@ -1,0 +1,49 @@
+:root {
+    /* Light Theme - Engineered Liquid Glass */
+    --color-primary: #6B46C1;
+    /* Royal Purple */
+    --color-primary-dark: #553C9A;
+    --color-secondary: #4338CA;
+    /* Deep Indigo */
+    --color-accent: #06B6D4;
+    /* Aqua */
+
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-blur: 12px;
+    --glass-saturate: 180%;
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+
+    --text-primary: #1E293B;
+    --text-secondary: #475569;
+    --text-inverse: #FFFFFF;
+
+    --bg-primary: #F8FAFC;
+    --bg-secondary: #EFF6FF;
+}
+
+[data-theme='dark'] {
+    /* Dark Theme - Midnight Glass */
+    --color-primary: #8B5CF6;
+    /* Lighter Purple for dark mode */
+    --color-primary-dark: #7C3AED;
+    --color-secondary: #6366F1;
+    --color-accent: #22D3EE;
+
+    --glass-bg: rgba(17, 24, 39, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-inverse: #0F172A;
+
+    --bg-primary: #0F172A;
+    --bg-secondary: #1E293B;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}

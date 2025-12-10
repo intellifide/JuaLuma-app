@@ -104,7 +104,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null)
 
       if (nextUser) {
-        await refetchProfile()
+        // Prevent infinite loading if backend is unreachable
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000))
+        await Promise.race([refetchProfile(), timeoutPromise])
       } else {
         clearCachedToken()
         setProfile(null)

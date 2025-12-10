@@ -34,7 +34,7 @@ export const AccountCard = ({ account, onSync, onEdit, onDelete }: AccountCardPr
   const isPlaid = account.provider === 'plaid'
 
   return (
-    <div className="bg-white/80 backdrop-blur rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
+    <div className="backdrop-blur-glass bg-white/70 dark:bg-gray-900/75 rounded-2xl border border-white/60 dark:border-white/10 shadow-glass p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-2xl" aria-hidden>
