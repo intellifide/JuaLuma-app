@@ -156,7 +156,14 @@ def list_accounts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[AccountResponse]:
-    """List the current user's accounts with optional filtering."""
+    """
+    Retrieve all accounts owned by the authenticated user.
+
+    - **account_type**: Optional filter (e.g., 'traditional', 'web3').
+    - **include_balance**: If true, returns current balance (sensitive).
+
+    Returns a list of account summaries.
+    """
     query = db.query(Account).filter(Account.uid == current_user.uid)
 
     if account_type:
@@ -181,7 +188,13 @@ def get_account_details(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AccountResponse:
-    """Return a single account with its recent transactions."""
+    """
+    Get detailed information for a specific account.
+
+    - **account_id**: UUID of the account.
+
+    Returns account details including the 10 most recent transactions.
+    """
     account = (
         db.query(Account)
         .filter(Account.id == account_id, Account.uid == current_user.uid)
@@ -222,7 +235,13 @@ def sync_account_transactions(
     db: Session = Depends(get_db),
 ) -> AccountSyncResponse:
     """
-    Sync transactions for a Plaid-linked account and upsert into the ledger.
+    Trigger a manual sync of transactions for a linked account (e.g., via Plaid).
+
+    - **start_date**: Start of sync window (default: 30 days ago).
+    - **end_date**: End of sync window (default: today).
+
+    Rate limited for free tier users.
+    Returns sync statistics.
     """
     account = (
         db.query(Account)

@@ -121,7 +121,14 @@ def _rate_limit(request: Request) -> None:
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
-    """Create a Firebase user and seed local records."""
+    """
+    Register a new user in Firebase and the local database.
+
+    - **email**: Valid email address.
+    - **password**: Password (min 8 chars).
+
+    Returns the new user's UID and email.
+    """
     from firebase_admin import auth
     from firebase_admin import exceptions as firebase_exceptions
 
@@ -162,7 +169,13 @@ def login(
     request: Request,
     db: Session = Depends(get_db),
 ) -> dict:
-    """Validate an ID token server-side and return the user profile."""
+    """
+    Exchange a valid Firebase ID token for a user session profile.
+
+    - **token**: The JWT ID token from the client SDK.
+
+    Returns the full user profile including subscription status.
+    """
     # Rate limit manually to avoid new dependencies
     _rate_limit(request)
 

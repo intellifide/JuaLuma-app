@@ -115,7 +115,16 @@ def list_transactions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TransactionListResponse:
-    """List current user's transactions with filters and pagination."""
+    """
+    List current user's transactions with filters and pagination.
+
+    - **account_id**: Filter by account.
+    - **category**: Filter by category.
+    - **search**: Search merchant or description.
+    - **page / page_size**: Pagination control.
+
+    Returns paginated list of transactions.
+    """
     query = db.query(Transaction).filter(
         Transaction.uid == current_user.uid,
         Transaction.archived.is_(False),
@@ -143,7 +152,11 @@ def get_transaction(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TransactionResponse:
-    """Return a single transaction with raw data."""
+    """
+    Return a single transaction with raw data.
+
+    - **transaction_id**: UUID of the transaction.
+    """
     txn = (
         db.query(Transaction)
         .filter(Transaction.id == transaction_id, Transaction.uid == current_user.uid)
@@ -162,7 +175,14 @@ def bulk_update_transactions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Bulk update transactions in a single DB transaction."""
+    """
+    Bulk update transactions in a single DB transaction.
+
+    - **transaction_ids**: List of IDs to update.
+    - **updates**: Fields to update (category, description).
+
+    Restricted to user's own transactions.
+    """
     txn_ids = set(payload.transaction_ids)
     txns = (
         db.query(Transaction)

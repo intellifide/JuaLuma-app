@@ -43,6 +43,11 @@ async def chat_endpoint(
 ):
     """
     Process a chat message from the user.
+
+    - **message**: The user's input prompt.
+
+    Checks rate limits based on user tier, retrieves RAG context (if non-free),
+    generates response via Gemini, logs encrypted interaction, and returns response.
     """
     user_id = current_user.uid
     message = payload.message
@@ -107,6 +112,9 @@ def get_chat_history(
 ):
     """
     Retrieve chat history.
+
+    Returns the 10 most recent encrypted chat logs, decrypted for display.
+    Free tier limited to 10 items.
     """
     user_id = current_user.uid
     
@@ -150,6 +158,12 @@ async def get_quota_status(
 ):
     """
     Get current AI usage quota for the user.
+
+    Returns:
+    - **used**: Requests made today.
+    - **limit**: Daily limit based on tier.
+    - **resets_at**: Time of next reset (UTC midnight).
+    - **tier**: Current subscription plan.
     """
     user_id = current_user.uid
     

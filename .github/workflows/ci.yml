@@ -1,70 +1,90 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches: [main, Dev]
+    branches: [ main, Dev ]
   pull_request:
-    branches: [main, Dev]
+    branches: [ main, Dev ]
 
 jobs:
-  lint-and-test:
+  backend-quality:
     runs-on: ubuntu-latest
-    
+    defaults:
+      run:
+        working-directory: ./backend
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      
+          pip install -r requirements.txt
+          pip install ruff mypy pytest httpx
       - name: Lint with Ruff
-        run: |
-          pip install ruff
-          if [ -d backend ] || [ -n "$(find . -maxdepth 1 -name '*.py' -print -quit)" ]; then ruff check . --output-format=github || true; fi
-        continue-on-error: true
-      
+        run: ruff check .
       - name: Type check with mypy
-        run: |
-          pip install mypy
-          if [ -d backend ] || [ -n "$(find . -maxdepth 1 -name '*.py' -print -quit)" ]; then mypy . --ignore-missing-imports || true; fi
-        continue-on-error: true
-      
-      - name: Run tests
-        run: |
-          if [ -f requirements.txt ]; then pip install pytest pytest-asyncio; fi
-          if [ -d tests ] || [ -d backend/tests ]; then pytest -v || true; fi
-        continue-on-error: true
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test
-          APP_ENV: test
-      
-      - name: Install Newman
-        run: |
-          npm install -g newman newman-reporter-html
-        continue-on-error: true
-      
-      - name: Run Postman collections
-        if: hashFiles('postman/collections/*.json') != ''
-        run: |
-          if [ -n "$(find postman/collections -maxdepth 1 -name '*.json' -print -quit 2>/dev/null)" ]; then
-            newman run postman/collections/*.json \
-              --environment postman/environments/local.json \
-              --api-key ${{ secrets.POSTMAN_API_KEY }} \
-              --reporter-html-export newman-report.html || true
-          fi
-        continue-on-error: true
-      
-      - name: Upload Postman report
-        if: always()
-        uses: actions/upload-artifact@v4
+        run: mypy .
+
+  backend-test:
+    needs: backend-quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          name: postman-report
-          path: newman-report.html
-          if-no-files-found: ignore
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+      - name: Run tests
+        # Assuming .env.test or similar isn't strictly needed for unit tests if mocks are used
+        run: pytest
+
+  frontend-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint with ESLint
+        run: npm run lint
+      - name: Type check
+        run: npx tsc --noEmit
+
+  frontend-test:
+    needs: frontend-quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm run test
+

@@ -125,3 +125,6 @@ ui-debug.log
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+*storybook.log
+storybook-static
