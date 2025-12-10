@@ -16,13 +16,7 @@ export const FeatureRequest = () => {
         const formData = new FormData(e.currentTarget);
         const summary = formData.get('summary') as string;
         const problem = formData.get('problem') as string;
-        const priorityStr = formData.get('priority') as string;
 
-        // Map UI priority to API priority
-        let priority: 'low' | 'normal' | 'high' | 'urgent' = 'normal';
-        if (priorityStr === 'Low') priority = 'low';
-        else if (priorityStr === 'High') priority = 'high';
-        else if (priorityStr === 'Critical') priority = 'urgent';
 
         // Construct detailed description
         const name = formData.get('name');
@@ -44,7 +38,6 @@ ${problem}`;
                 subject: `[Feature Request] ${summary}`,
                 description: description,
                 category: 'feature_request',
-                priority: priority,
             });
             show('Feature request submitted successfully', 'success');
             navigate('/support');
@@ -82,15 +75,7 @@ ${problem}`;
                             <label htmlFor="fr-problem" className="form-label mb-1 block">Problem / Use Case</label>
                             <textarea id="fr-problem" name="problem" className="form-textarea w-full h-32" required></textarea>
                         </div>
-                        <div className="mb-4">
-                            <label htmlFor="fr-priority" className="form-label mb-1 block">Priority</label>
-                            <select id="fr-priority" name="priority" className="form-select w-full" required>
-                                <option value="Normal">Normal</option>
-                                <option value="Critical">Critical</option>
-                                <option value="High">High</option>
-                                <option value="Low">Low</option>
-                            </select>
-                        </div>
+
                         <div className="mb-4">
                             <label htmlFor="fr-tier" className="form-label mb-1 block">Your Plan</label>
                             <select id="fr-tier" name="tier" className="form-select w-full">

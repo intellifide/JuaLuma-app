@@ -51,7 +51,7 @@ from .payment import Payment
 from .ai_settings import AISettings
 from .notification import NotificationPreference
 from .audit import AuditLog, FeaturePreview, LLMLog, SupportPortalAction
-from .support import SupportAgent, SupportTicketRating
+from .support import SupportAgent, SupportTicketRating, SupportTicket, SupportTicketMessage
 from .payout import DeveloperPayout
 from .manual_asset import ManualAsset
 from .ledger import LedgerHotEssential, LedgerHotFree
@@ -79,6 +79,8 @@ __all__ = [
     "SupportPortalAction",
     "SupportAgent",
     "SupportTicketRating",
+    "SupportTicket",
+    "SupportTicketMessage",
     "DeveloperPayout",
     "ManualAsset",
     "LedgerHotFree",

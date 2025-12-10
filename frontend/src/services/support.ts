@@ -16,7 +16,6 @@ export interface Ticket {
     description: string;
     category: string;
     status: 'open' | 'resolved' | 'closed';
-    priority: 'low' | 'normal' | 'high' | 'urgent';
     created_at: string;
     updated_at: string;
     messages: TicketMessage[];
@@ -26,7 +25,6 @@ export interface TicketCreate {
     subject: string;
     description: string;
     category: string;
-    priority?: 'low' | 'normal' | 'high' | 'urgent';
 }
 
 export interface TicketMessageCreate {

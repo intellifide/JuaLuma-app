@@ -17,7 +17,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ open, onCl
         subject: '',
         description: '',
         category: 'technical', // default
-        priority: 'normal',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -82,24 +81,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ open, onCl
                     </select>
                 </div>
 
-                <div>
-                    <label htmlFor="priority" className="block text-sm font-bold mb-1">
-                        Priority
-                    </label>
-                    <select
-                        id="priority"
-                        name="priority"
-                        className="form-select w-full"
-                        value={formData.priority}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="low">Low</option>
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                    </select>
-                </div>
+
 
                 <div>
                     <label htmlFor="description" className="block text-sm font-bold mb-1">

@@ -23,12 +23,10 @@ class TicketCreate(BaseModel):
     subject: str = Field(..., min_length=5, max_length=256)
     description: str = Field(..., min_length=10)
     category: Literal["account", "billing", "technical", "feature_request"]
-    priority: Literal["low", "normal", "high", "urgent"] = "normal"
 
 
 class TicketUpdate(BaseModel):
     status: Optional[Literal["open", "resolved", "closed"]] = None
-    priority: Optional[Literal["low", "normal", "high", "urgent"]] = None
 
 
 class TicketMessageCreate(BaseModel):
@@ -54,7 +52,6 @@ class TicketResponse(BaseModel):
     description: str
     category: str
     status: str
-    priority: str
     created_at: datetime
     updated_at: datetime
     messages: List[TicketMessageResponse] = []
@@ -83,7 +80,6 @@ def create_ticket(
         subject=payload.subject,
         description=payload.description,
         category=payload.category,
-        priority=payload.priority,
         status="open",
     )
     db.add(ticket)

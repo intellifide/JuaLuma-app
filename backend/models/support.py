@@ -106,9 +106,6 @@ class SupportTicket(Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="open"
     )  # open, resolved, closed
-    priority: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="normal"
-    )  # low, normal, high
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
