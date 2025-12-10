@@ -1,15 +1,18 @@
 # backend/api/widgets.py
 import logging
+import time
+from collections import defaultdict, deque
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Deque
+from threading import Lock
+from typing import Any, Deque, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from backend.utils import get_db
 from backend.middleware.auth import get_current_user
-from backend.models import User, AuditLog, Widget, WidgetRating
+from backend.models import AuditLog, User, Widget, WidgetRating
+from backend.utils import get_db
 
 router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 logger = logging.getLogger(__name__)
@@ -60,12 +63,6 @@ class WidgetRatingCreate(BaseModel):
     review: Optional[str] = Field(None, max_length=2000)
 
 # --- Endpoints ---
-
-
-
-from collections import defaultdict, deque
-from threading import Lock
-import time
 
 # Simple in-memory rate limiter for submissions
 _submit_attempts: Dict[str, Deque[float]] = defaultdict(deque)

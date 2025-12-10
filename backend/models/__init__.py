@@ -1,47 +1,11 @@
-"""
-SQLAlchemy base configuration for Finity backend.
+"""Aggregate exports for Finity backend models.
 
-Sets up the declarative Base, engine, and session factory for the rest of the
-models. Uses DATABASE_URL from the environment.
+2025-12-10 13:50 CST - restored __init__ to expose Base/SessionLocal/models
 """
 
-# Updated 2025-12-09 by AI
+from .base import Base, SessionLocal, engine, get_session
 
-import os
-from typing import Generator
-
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
-
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL is not set in the environment.")
-
-engine = create_engine(
-    DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
-    future=True,
-)
-
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-    future=True,
-)
-
-Base = declarative_base()
-
-
-
-
-
-from .account import Account  # noqa: E402
+from .account import Account
 from .developer import Developer
 from .transaction import Transaction
 from .payment import Payment
