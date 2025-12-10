@@ -107,7 +107,8 @@ def get_net_worth(
         Transaction.archived.is_(False)
     ).all()
     
-    balance_at_end = current_total - sum(t.amount for t in recent_txns)
+    # Roll back post-period transactions to derive balance at end_date.
+    balance_at_end = current_total + sum(t.amount for t in recent_txns)
     
     # 4. Filter transactions for the range and sort desc
     txns_in_range = [t for t in all_txns if t.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)]
@@ -142,8 +143,8 @@ def get_net_worth(
                 else:
                     break
             
-            # Move balance backwards: Bal(prev) = Bal(curr) - Delta
-            running_balance -= period_delta
+            # Move balance backwards: Bal(prev) = Bal(curr) + Delta
+            running_balance += period_delta
 
     res_list.reverse()
     

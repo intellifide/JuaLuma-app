@@ -2,7 +2,7 @@
 import logging
 import time
 from collections import defaultdict, deque
-from datetime import datetime
+from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Deque, Dict, List, Optional
 
@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, User, Widget, WidgetRating
 from backend.utils import get_db
+
+# Updated 2025-12-10 15:10 CST by ChatGPT
 
 router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 logger = logging.getLogger(__name__)
@@ -295,8 +297,7 @@ def delete_widget(
         metadata_json=metadata
     )
     db.add(log_entry)
-    
-    db.commit()
+
     db.commit()
     return {"message": "Widget removed"}
 
@@ -357,7 +358,7 @@ def download_widget(
         "category": widget.category,
         "scopes": widget.scopes,
         "developer_id": widget.developer_uid,
-        "generated_at": datetime.utcnow().isoformat()
+        "generated_at": datetime.now(timezone.utc).isoformat()
     }
     
     return manifest

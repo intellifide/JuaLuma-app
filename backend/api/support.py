@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
@@ -159,7 +159,7 @@ def add_message(
         message=payload.message,
     )
     db.add(message)
-    ticket.updated_at = datetime.utcnow()  # Force update updated_at
+    ticket.updated_at = datetime.now(timezone.utc)  # Force update updated_at
     db.commit()
     db.refresh(message)
 
