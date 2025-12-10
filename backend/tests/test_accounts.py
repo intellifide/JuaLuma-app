@@ -71,7 +71,7 @@ def test_update_account(test_client: TestClient, test_db, mock_auth):
     assert response.status_code == 200
     data = response.json()
     assert data["account_name"] == "New Name"
-    assert data["balance"] == "150.5" # JSON serialization might default to float/string representation
+    assert float(data["balance"]) == 150.5 # JSON serialization might default to float/string representation
     
     test_db.refresh(acct)
     assert acct.account_name == "New Name"

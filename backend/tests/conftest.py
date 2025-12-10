@@ -1,10 +1,18 @@
-
 import pytest
 from typing import Generator
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+import httpx
+
+# Monkeypatch httpx.Client to ignore 'app' argument passed by older starlette versions
+_orig_client_init = httpx.Client.__init__
+def _new_client_init(self, *args, **kwargs):
+    if "app" in kwargs:
+        kwargs.pop("app")
+    _orig_client_init(self, *args, **kwargs)
+httpx.Client.__init__ = _new_client_init
 
 from backend.main import app
 from backend.utils import get_db
@@ -13,6 +21,38 @@ from backend.middleware.auth import get_current_user
 from backend.models import User
 
 # Use in-memory SQLite for testing to avoid touching real DB
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import UUID, JSONB, BYTEA
+
+@compiles(UUID, "sqlite")
+def compile_uuid(type_, compiler, **kw):
+    return "CHAR(36)"
+
+# Monkeypatch UUID bind_processor to handle strings in SQLite
+from sqlalchemy.dialects.postgresql.base import PGDialect
+original_bind_processor = UUID.bind_processor
+
+def safe_bind_processor(self, dialect):
+    if dialect.name == "sqlite":
+        def process(value):
+            if value is None:
+                return None
+            if isinstance(value, str):
+                return value
+            return str(value)
+        return process
+    return original_bind_processor(self, dialect)
+
+UUID.bind_processor = safe_bind_processor
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb(type_, compiler, **kw):
+    return "TEXT"
+
+@compiles(BYTEA, "sqlite")
+def compile_bytea(type_, compiler, **kw):
+    return "BLOB"
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -20,6 +60,14 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+from sqlalchemy import event
+@event.listens_for(engine, "connect")
+def do_connect(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("ATTACH DATABASE ':memory:' AS audit")
+    cursor.close()
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="function")
@@ -62,8 +110,6 @@ def mock_auth(test_db):
         uid="test_user_123",
         email="test@example.com",
         role="user",
-        full_name="Test User",
-        is_active=True,
         # Default empty preferences
         theme_pref="light",
         currency_pref="USD"

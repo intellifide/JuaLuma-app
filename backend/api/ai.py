@@ -76,21 +76,20 @@ async def chat_endpoint(
     # Task 3.4 says "For Essential/Pro/Ultimate tiers, encrypt prompts before logging."
     # We'll encrypt for everyone or just paid? The note specifies keys.
     # We'll default to encrypting if not specifically excluded.
+    # Encrypt response as well (since model requires encrypted_response)
     encrypted_prompt = encrypt_prompt(message, user_dek_ref=user_id)
+    encrypted_response = encrypt_prompt(ai_response, user_dek_ref=user_id)
     
     log_entry = LLMLog(
         uid=user_id,
-        tier=tier,
-        # prompt=message, # storing encrypted only? LLMLog model fields check?
-        # Assuming LLMLog has prompt_encrypted field or generic prompt field.
-        # If 'prompt' column exists, use it. If 'encrypted_prompt' exists, use it.
-        # I'll check LLMLog model or just use 'prompt' and store encrypted content there if that's the design.
-        # For now, I'll assume 'prompt' stores the content (encrypted or not).
-        prompt=encrypted_prompt,
-        response=ai_response,
-        context_used=bool(context),
-        tokens_used=0, # Need to count tokens?
-        status="success"
+        # tier not in model
+        model="gemini-pro", # Hardcoded or from config? distinct from 'tier'
+        encrypted_prompt=encrypted_prompt,
+        encrypted_response=encrypted_response,
+        # context_used not in model
+        tokens=0, # tokens_used -> tokens
+        user_dek_ref=user_id,
+        archived=False
     )
     db.add(log_entry)
     db.commit()
@@ -115,7 +114,7 @@ def get_chat_history(
     subscription = db.query(Subscription).filter(Subscription.uid == user_id).first()
     tier = subscription.plan.lower() if subscription else "free"
     
-    query = db.query(LLMLog).filter(LLMLog.uid == user_id).order_by(desc(LLMLog.created_at))
+    query = db.query(LLMLog).filter(LLMLog.uid == user_id).order_by(desc(LLMLog.ts))
     
     if tier == "free":
         query = query.limit(10)
@@ -126,14 +125,20 @@ def get_chat_history(
     for log in logs:
         # Decrypt prompt
         try:
-            prompt_text = decrypt_prompt(log.prompt, user_dek_ref=user_id)
+            prompt_text = decrypt_prompt(log.encrypted_prompt, user_dek_ref=user_id)
         except Exception:
             prompt_text = "[Encrypted/Unreadable]"
             
+        # Decrypt response
+        try:
+            response_text = decrypt_prompt(log.encrypted_response, user_dek_ref=user_id)
+        except Exception:
+            response_text = "[Encrypted/Unreadable]"
+            
         messages.append(HistoryItem(
             prompt=prompt_text,
-            response=log.response or "",
-            timestamp=log.created_at.isoformat() if log.created_at else ""
+            response=response_text,
+            timestamp=log.ts.isoformat() if log.ts else ""
         ))
         
     return HistoryResponse(messages=messages)

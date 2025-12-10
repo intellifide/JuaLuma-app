@@ -156,6 +156,51 @@ def get_transaction(
     return txn
 
 
+@router.patch("/bulk")
+def bulk_update_transactions(
+    payload: BulkUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Bulk update transactions in a single DB transaction."""
+    txn_ids = set(payload.transaction_ids)
+    txns = (
+        db.query(Transaction)
+        .filter(
+            Transaction.id.in_(txn_ids),
+            Transaction.uid == current_user.uid,
+        )
+        .all()
+    )
+
+    if len(txns) != len(txn_ids):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="One or more transactions are missing or not owned by the user.",
+        )
+
+    for txn in txns:
+        if payload.updates.category is not None:
+            txn.category = payload.updates.category
+        if payload.updates.description is not None:
+            txn.description = payload.updates.description
+        db.add(txn)
+
+    audit = AuditLog(
+        actor_uid=current_user.uid,
+        target_uid=current_user.uid,
+        action="transaction_bulk_edit",
+        source="backend",
+        metadata_json={
+            "transaction_ids": [str(t.id) for t in txns],
+            "updates": payload.updates.model_dump(exclude_none=True),
+        },
+    )
+    db.add(audit)
+    db.commit()
+    return {"updated_count": len(txns)}
+
+
 @router.patch("/{transaction_id}", response_model=TransactionResponse)
 def update_transaction(
     transaction_id: uuid.UUID,
@@ -200,51 +245,6 @@ def update_transaction(
     db.commit()
     db.refresh(txn)
     return txn
-
-
-@router.patch("/bulk")
-def bulk_update_transactions(
-    payload: BulkUpdateRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> dict:
-    """Bulk update transactions in a single DB transaction."""
-    txn_ids = set(payload.transaction_ids)
-    txns = (
-        db.query(Transaction)
-        .filter(
-            Transaction.id.in_(txn_ids),
-            Transaction.uid == current_user.uid,
-        )
-        .all()
-    )
-
-    if len(txns) != len(txn_ids):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="One or more transactions are missing or not owned by the user.",
-        )
-
-    for txn in txns:
-        if payload.updates.category is not None:
-            txn.category = payload.updates.category
-        if payload.updates.description is not None:
-            txn.description = payload.updates.description
-        db.add(txn)
-
-    audit = AuditLog(
-        actor_uid=current_user.uid,
-        target_uid=current_user.uid,
-        action="transaction_bulk_edit",
-        source="backend",
-        metadata_json={
-            "transaction_ids": [str(t.id) for t in txns],
-            "updates": payload.updates.model_dump(exclude_none=True),
-        },
-    )
-    db.add(audit)
-    db.commit()
-    return {"updated_count": len(txns)}
 
 
 @router.delete("/{transaction_id}")

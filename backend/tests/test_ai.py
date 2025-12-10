@@ -18,7 +18,7 @@ def mock_ai_services():
         mock_limit.return_value = 5 # 5 used today
         mock_gen.return_value = {"response": "This is AI response"}
         mock_rag.return_value = "Retrieved Context"
-        mock_encrypt.return_value = "encrypted_prompt"
+        mock_encrypt.return_value = b"encrypted_prompt"
         mock_decrypt.return_value = "Decrypted Prompt"
         
         yield {
@@ -46,14 +46,17 @@ def test_chat_success(test_client: TestClient, test_db, mock_auth, mock_ai_servi
     mock_ai_services["check_rate_limit"].assert_called_once_with(mock_auth.uid)
     mock_ai_services["get_rag_context"].assert_called_once_with(mock_auth.uid, "Hello AI")
     mock_ai_services["generate_chat_response"].assert_called_once()
-    mock_ai_services["encrypt_prompt"].assert_called_once_with("Hello AI", user_dek_ref=mock_auth.uid)
+    mock_ai_services["encrypt_prompt"].assert_called() # Called twice (prompt + response)
     
     # Verify DB logging
     log = test_db.query(LLMLog).order_by(LLMLog.id.desc()).first()
     assert log is not None
-    assert log.response == "This is AI response"
-    assert log.prompt == "encrypted_prompt"
-    assert log.context_used is True
+    # log.encrypted_response should range match what mock returned if encrypted?
+    # mock_encrypt returns b"encrypted_prompt".
+    assert log.encrypted_response == b"encrypted_prompt" # Mock encrypt returns this bytes
+    assert log.encrypted_prompt == b"encrypted_prompt"
+    # context_used not in model
+    # assert log.context_used is True
 
 def test_chat_quota_exceeded(test_client: TestClient, test_db, mock_auth):
     # Needs explicit mock for this test to raise exception
@@ -91,8 +94,24 @@ def test_chat_free_tier_no_rag(test_client: TestClient, test_db, mock_auth, mock
 
 def test_chat_history(test_client: TestClient, test_db, mock_auth, mock_ai_services):
     # Setup log entries
-    log1 = LLMLog(uid=mock_auth.uid, prompt="enc1", response="resp1", context_used=False)
-    log2 = LLMLog(uid=mock_auth.uid, prompt="enc2", response="resp2", context_used=True)
+    log1 = LLMLog(
+        uid=mock_auth.uid, 
+        encrypted_prompt=b"enc1", 
+        encrypted_response=b"resp1",
+        model="gemini-pro",
+        tokens=0,
+        user_dek_ref=mock_auth.uid,
+        archived=False
+    )
+    log2 = LLMLog(
+        uid=mock_auth.uid, 
+        encrypted_prompt=b"enc2", 
+        encrypted_response=b"resp2", 
+        model="gemini-pro",
+        tokens=0,
+        user_dek_ref=mock_auth.uid,
+        archived=False
+    )
     test_db.add_all([log1, log2])
     test_db.commit()
     
@@ -101,9 +120,11 @@ def test_chat_history(test_client: TestClient, test_db, mock_auth, mock_ai_servi
     assert response.status_code == 200
     data = response.json()
     assert len(data["messages"]) == 2
-    resps = {m["response"] for m in data["messages"]}
-    assert "resp1" in resps
-    assert "resp2" in resps
     
-    # Verify decryption
-    assert mock_ai_services["decrypt_prompt"].call_count == 2
+    # Decryption mock returns "Decrypted Prompt" for everything
+    # So both prompts and responses will be "Decrypted Prompt"
+    prompts = {m["prompt"] for m in data["messages"]}
+    assert "Decrypted Prompt" in prompts
+    
+    # Verify decryption called 4 times (2 logs * (prompt + response))
+    assert mock_ai_services["decrypt_prompt"].call_count == 4
