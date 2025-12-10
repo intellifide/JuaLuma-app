@@ -59,8 +59,9 @@ export const Login = () => {
           <div className="glass-panel">
             <form className="space-y-4" onSubmit={onSubmit} noValidate>
               <div>
-                <label className="form-label">Email</label>
+                <label htmlFor="email" className="form-label">Email</label>
                 <input
+                  id="email"
                   type="text"
                   inputMode="email"
                   value={email}
@@ -72,8 +73,9 @@ export const Login = () => {
               </div>
 
               <div>
-                <label className="form-label">Password</label>
+                <label htmlFor="password" className="form-label">Password</label>
                 <input
+                  id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

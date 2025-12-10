@@ -84,10 +84,10 @@ export const Signup = () => {
           <div className="glass-panel">
             <form className="space-y-4" onSubmit={onSubmit}>
               <div>
-                <label className="form-label">Email</label>
+                <label htmlFor="signup-email" className="form-label">Email</label>
                 <input
+                  id="signup-email"
                   type="email"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="form-input"
@@ -97,21 +97,22 @@ export const Signup = () => {
               </div>
 
               <div>
-                <label className="form-label">Password</label>
+                <label htmlFor="signup-password" className="form-label">Password</label>
                 <input
+                  id="signup-password"
                   type="password"
-                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input"
-                  placeholder="Strong password"
+                  placeholder="••••••••"
                   autoComplete="new-password"
                 />
               </div>
 
               <div>
-                <label className="form-label">Confirm Password</label>
+                <label htmlFor="confirm-password" className="form-label">Confirm Password</label>
                 <input
+                  id="confirm-password"
                   type="password"
                   required
                   value={confirmPassword}
