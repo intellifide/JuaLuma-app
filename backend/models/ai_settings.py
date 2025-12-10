@@ -10,7 +10,7 @@ from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from . import Base
+from .base import Base
 
 if TYPE_CHECKING:
     from .user import User

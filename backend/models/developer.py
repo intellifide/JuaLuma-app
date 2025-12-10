@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from . import Base
+from .base import Base
 
 if TYPE_CHECKING:
     from .user import User

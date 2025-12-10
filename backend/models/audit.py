@@ -9,7 +9,7 @@ from sqlalchemy import Boolean, CheckConstraint, DateTime, String, func
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from . import Base
+from .base import Base
 
 
 class AuditLog(Base):

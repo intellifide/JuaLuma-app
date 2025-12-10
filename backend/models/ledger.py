@@ -11,7 +11,7 @@ from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, desc, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from . import Base
+from .base import Base
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
