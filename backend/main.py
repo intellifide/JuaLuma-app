@@ -1,4 +1,4 @@
-# Updated 2025-12-08 21:27 CST by ChatGPT
+# Updated 2025-12-10 14:58 CST by ChatGPT
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -48,6 +48,7 @@ app.include_router(support_router)
 @app.get("/")
 @app.get("/api")
 async def root():
+    """Lightweight service descriptor for uptime checks and metadata."""
     return {
         "message": "Finity API",
         "environment": os.getenv("APP_ENV", "unknown"),
@@ -58,7 +59,11 @@ async def root():
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    # TODO: wire real health checks for Postgres, Firestore, Pub/Sub
+    """
+    Basic health probe for orchestrators and local dev tooling.
+
+    TODO: replace static statuses with real checks (Postgres, Firestore, Pub/Sub).
+    """
     return {
         "status": "healthy",
         "database": "connected",

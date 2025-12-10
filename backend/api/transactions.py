@@ -1,6 +1,6 @@
 """Transaction API endpoints."""
 
-# Updated 2025-12-08 21:27 CST by ChatGPT
+# Updated 2025-12-10 14:58 CST by ChatGPT
 
 import uuid
 from datetime import date, datetime, timezone
@@ -35,7 +35,27 @@ class TransactionResponse(BaseModel):
     archived: bool
     raw_json: Optional[dict] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "0c50b2ec-4c41-4ad0-8e01-2e0c9dc15642",
+                    "ts": "2025-12-08T10:00:00Z",
+                    "amount": 120.5,
+                    "currency": "USD",
+                    "category": "shopping",
+                    "merchant_name": "Amazon",
+                    "description": "Holiday gifts",
+                    "account_id": "a41d9d49-7b20-4c30-a949-4a4b0b0302ea",
+                    "external_id": "txn_123",
+                    "is_manual": False,
+                    "archived": False,
+                    "raw_json": {"source": "plaid"},
+                }
+            ]
+        },
+    )
 
 
 class TransactionUpdate(BaseModel):
@@ -48,6 +68,16 @@ class TransactionUpdate(BaseModel):
             raise ValueError("Provide at least one field to update.")
         return self
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"category": "transport"},
+                {"description": "Updated memo"},
+                {"category": "groceries", "description": "Weekly groceries"},
+            ]
+        }
+    )
+
 
 class TransactionListResponse(BaseModel):
     transactions: list[TransactionResponse]
@@ -55,12 +85,39 @@ class TransactionListResponse(BaseModel):
     page: int
     page_size: int
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "transactions": [],
+                    "total": 0,
+                    "page": 1,
+                    "page_size": 50,
+                }
+            ]
+        }
+    )
+
 
 class BulkUpdateRequest(BaseModel):
     transaction_ids: list[uuid.UUID] = Field(
         min_length=1, description="List of transaction IDs to update."
     )
     updates: TransactionUpdate
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "transaction_ids": [
+                        "0c50b2ec-4c41-4ad0-8e01-2e0c9dc15642",
+                        "e5b96b66-7822-4b79-a98e-857a3ef91c2e",
+                    ],
+                    "updates": {"category": "travel", "description": "Vacation booking"},
+                }
+            ]
+        }
+    )
 
 
 def _paginate(query, page: int, page_size: int):

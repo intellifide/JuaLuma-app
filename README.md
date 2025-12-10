@@ -1,47 +1,36 @@
+<!-- Updated 2025-12-10 14:58 CST by ChatGPT -->
 # Finity App
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-85%25-green)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-Finity is a modern financial management application that integrates with Plaid for transaction syncing, provides AI-powered insights, and offers a comprehensive dashboard for asset tracking.
+Finity is a modern financial management app that syncs bank data, tracks manual assets, surfaces AI-powered insights, and offers a marketplace for extensible widgets.
 
 ## Overview
-
-Finity is built to provide users with a clear view of their financial health. It supports:
-- **Bank Integration**: Sync transactions via Plaid.
-- **Asset Tracking**: Manual tracking for non-bank assets (reals estate, crypto, etc.).
-- **AI Assistant**: Conversational AI for financial querying and advice.
-- **Marketplace**: Extensible widgets and developer tools.
+- **Bank integration**: Plaid-powered sync for accounts and transactions.
+- **Manual assets**: Track real estate, vehicles, crypto, and other holdings.
+- **AI assistant**: Conversational guidance with spending summaries and budgeting tips.
+- **Marketplace**: Developer-published widgets with ratings and payouts.
+- **Support portal**: Ticketing and notifications for customers and support staff.
 
 ## Technology Stack
-
-- **Frontend**: React, Vite, TypeScript, Tailwind CSS
+- **Frontend**: React, Vite, TypeScript, Tailwind CSS, Storybook
 - **Backend**: FastAPI, Python 3.11, SQLAlchemy, Pydantic
-- **Database**: PostgreSQL (Cloud SQL), Firestore
+- **Data**: PostgreSQL (Cloud SQL) plus Firestore
 - **Auth**: Firebase Authentication
-- **Infrastructure**: Terraform, Google Cloud Platform
+- **Infra**: Terraform on Google Cloud Platform
 
-## Getting Started
-
-To set up the project locally, please refer to the [Local Development Setup](docs/local-development-setup.md) guide.
+## Local Setup
+See the detailed [Local Development Setup](docs/local-development-setup.md) for emulator configuration and environment variables.
 
 ### Quick Start
-
-1. **Clone the repository**:
+1. **Clone**
    ```bash
    git clone https://github.com/TCoder920x/finity-app.git
    cd finity-app
    ```
-
-2. **Frontend Setup**:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-3. **Backend Setup**:
+2. **Backend**
    ```bash
    cd backend
    python -m venv venv
@@ -49,17 +38,24 @@ To set up the project locally, please refer to the [Local Development Setup](doc
    pip install -r requirements.txt
    uvicorn main:app --reload
    ```
+3. **Frontend**
+   ```bash
+   cd frontend
+   pnpm install        # or npm install
+   pnpm dev            # runs Vite on 5175
+   ```
+
+## Useful Scripts
+- Frontend lint: `pnpm lint`
+- Frontend tests: `pnpm test`
+- Storybook (docs): `pnpm storybook` / `pnpm build-storybook`
+- Backend tests: `pytest` (from `backend`)
 
 ## Contribution Guidelines
-
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit your changes (`git commit -m 'Add amazing feature'`).
-4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request.
-
-Please ensure all tests pass and pre-commit hooks are clean before submitting.
+- Create a feature branch from `Dev`.
+- Keep changes small; add tests and docs as needed.
+- Run lint/tests before opening a PR (`pnpm lint && pnpm test` in frontend, `pytest` in backend).
+- Use clear commit messages; avoid committing secrets or `.env`.
 
 ## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT licensed — see [LICENSE](LICENSE) for details.

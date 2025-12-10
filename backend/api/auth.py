@@ -1,11 +1,11 @@
-# Updated 2025-12-08 20:16 CST by ChatGPT
+# Updated 2025-12-10 14:58 CST by ChatGPT
 import logging
 from collections import defaultdict, deque
 from threading import Lock
 from typing import Deque, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy.orm import Session, selectinload
 
 from backend.middleware.auth import get_current_user
@@ -23,27 +23,56 @@ logger = logging.getLogger(__name__)
 
 
 class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    email: EmailStr = Field(example="user@example.com")
+    password: str = Field(min_length=8, max_length=128, example="Str0ngPass!")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"email": "fin.user@example.com", "password": "MyS3curePass!"},
+            ]
+        }
+    )
 
 
 class TokenRequest(BaseModel):
-    token: str = Field(min_length=10)
+    token: str = Field(min_length=10, example="eyJhbGciOiJSUzI1NiIsImtpZCI6...")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"token": "eyJhbGciOiJSUzI1NiIsImtpZCI6...sample"}]
+        }
+    )
 
 
 class ResetPasswordRequest(BaseModel):
-    email: EmailStr
+    email: EmailStr = Field(example="user@example.com")
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"email": "forgot@example.com"}]}
+    )
 
 
 class ProfileUpdateRequest(BaseModel):
-    theme_pref: Optional[str] = Field(default=None, max_length=32)
-    currency_pref: Optional[str] = Field(default=None, min_length=3, max_length=3)
+    theme_pref: Optional[str] = Field(default=None, max_length=32, example="dark")
+    currency_pref: Optional[str] = Field(
+        default=None, min_length=3, max_length=3, example="USD"
+    )
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "ProfileUpdateRequest":
         if not self.theme_pref and not self.currency_pref:
             raise ValueError("Provide at least one field to update.")
         return self
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"theme_pref": "dark", "currency_pref": "USD"},
+                {"currency_pref": "EUR"},
+            ]
+        }
+    )
 
 
 # Structured helpers ---------------------------------------------------------

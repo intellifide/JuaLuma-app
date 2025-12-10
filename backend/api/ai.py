@@ -1,9 +1,10 @@
-
+ 
+# Updated 2025-12-10 14:58 CST by ChatGPT
 import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
@@ -20,20 +21,68 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(example="Give me a spending summary for this week.")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"message": "How much did I spend on dining last month?"}
+            ]
+        }
+    )
 
 class ChatResponse(BaseModel):
     response: str
     tokens: int = 0
     quota_remaining: Optional[int] = None
     
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "response": "You spent $320 on dining and $120 on transport.",
+                    "tokens": 850,
+                    "quota_remaining": 12,
+                }
+            ]
+        }
+    )
+    
 class HistoryItem(BaseModel):
     prompt: str
     response: str
     timestamp: str
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "prompt": "Summarize my expenses",
+                    "response": "You spent $1,240 last month.",
+                    "timestamp": "2025-12-08T12:00:00Z",
+                }
+            ]
+        }
+    )
 
 class HistoryResponse(BaseModel):
     messages: List[HistoryItem]
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "messages": [
+                        {
+                            "prompt": "How is my budget?",
+                            "response": "You are under budget by $200.",
+                            "timestamp": "2025-12-07T10:00:00Z",
+                        }
+                    ]
+                }
+            ]
+        }
+    )
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(

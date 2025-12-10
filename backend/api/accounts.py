@@ -1,4 +1,4 @@
-# Updated 2025-12-08 21:27 CST by ChatGPT
+# Updated 2025-12-10 14:58 CST by ChatGPT
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -27,6 +27,18 @@ class AccountCreate(BaseModel):
     provider: Optional[str] = Field(default=None, max_length=64)
     account_name: str = Field(max_length=256, description="Human-friendly name.")
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "account_type": "traditional",
+                    "provider": "plaid",
+                    "account_name": "Chase Checking",
+                }
+            ]
+        }
+    )
+
     @field_validator("account_type")
     @classmethod
     def validate_account_type(cls, value: str) -> str:
@@ -48,6 +60,15 @@ class AccountUpdate(BaseModel):
             raise ValueError("Provide at least one field to update.")
         return self
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"account_name": "New Nickname"},
+                {"balance": "12500.50"},
+            ]
+        }
+    )
+
 
 class TransactionSummary(BaseModel):
     id: uuid.UUID
@@ -58,7 +79,22 @@ class TransactionSummary(BaseModel):
     merchant_name: Optional[str] = None
     description: Optional[str] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "c8f6d764-d5bb-4b5c-b410-b5da7a0bc7b4",
+                    "ts": "2025-12-08T10:00:00Z",
+                    "amount": 120.5,
+                    "currency": "USD",
+                    "category": "shopping",
+                    "merchant_name": "Amazon",
+                    "description": "Holiday gifts",
+                }
+            ]
+        },
+    )
 
 
 class AccountResponse(BaseModel):
@@ -75,7 +111,27 @@ class AccountResponse(BaseModel):
     updated_at: datetime
     transactions: list[TransactionSummary] = Field(default_factory=list)
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "a41d9d49-7b20-4c30-a949-4a4b0b0302ea",
+                    "uid": "user_123",
+                    "account_type": "traditional",
+                    "provider": "plaid",
+                    "account_name": "Chase Checking",
+                    "account_number_masked": "1234",
+                    "balance": 15420.5,
+                    "currency": "USD",
+                    "secret_ref": "plaid-item-xyz",
+                    "created_at": "2025-12-01T12:00:00Z",
+                    "updated_at": "2025-12-05T09:15:00Z",
+                    "transactions": [],
+                }
+            ]
+        },
+    )
 
 
 class AccountSyncResponse(BaseModel):
@@ -84,6 +140,20 @@ class AccountSyncResponse(BaseModel):
     start_date: date
     end_date: date
     plan: str
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "synced_count": 15,
+                    "new_transactions": 5,
+                    "start_date": "2025-11-10",
+                    "end_date": "2025-12-10",
+                    "plan": "free",
+                }
+            ]
+        }
+    )
 
 
 def _get_subscription_plan(db: Session, uid: str) -> str:
