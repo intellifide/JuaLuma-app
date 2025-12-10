@@ -14,22 +14,21 @@ def _new_client_init(self, *args, **kwargs):
     _orig_client_init(self, *args, **kwargs)
 httpx.Client.__init__ = _new_client_init
 
-from backend.main import app
-from backend.utils import get_db
-from backend.models import Base
-from backend.middleware.auth import get_current_user
-from backend.models import User
+from backend.main import app # noqa: E402
+from backend.utils import get_db # noqa: E402
+from backend.models import Base # noqa: E402
+from backend.middleware.auth import get_current_user # noqa: E402
+from backend.models import User # noqa: E402
 
 # Use in-memory SQLite for testing to avoid touching real DB
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.dialects.postgresql import UUID, JSONB, BYTEA
+from sqlalchemy.ext.compiler import compiles # noqa: E402
+from sqlalchemy.dialects.postgresql import UUID, JSONB, BYTEA # noqa: E402
 
 @compiles(UUID, "sqlite")
 def compile_uuid(type_, compiler, **kw):
     return "CHAR(36)"
 
 # Monkeypatch UUID bind_processor to handle strings in SQLite
-from sqlalchemy.dialects.postgresql.base import PGDialect
 original_bind_processor = UUID.bind_processor
 
 def safe_bind_processor(self, dialect):
@@ -61,7 +60,7 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 
-from sqlalchemy import event
+from sqlalchemy import event # noqa: E402
 @event.listens_for(engine, "connect")
 def do_connect(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()

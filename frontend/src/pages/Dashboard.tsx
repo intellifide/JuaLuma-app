@@ -1,12 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { Account, Transaction } from '../types';
 
+interface DashboardDataset {
+  netWorth: string;
+  netWorthChange: string;
+  cashFlow: string;
+  cashFlowBreakdown: string;
+  budgetPercent: string;
+  budgetAmount: string;
+  accounts: string;
+  cashflowLabels: string[];
+  networthChart: {
+    startLabel: string;
+    endLabel: string;
+    subtitle: string;
+    points: string;
+  };
+}
+
 // Mock Data Sets from template for Charts (Visuals only)
-const DATASETS: any = {
+const DATASETS: Record<string, DashboardDataset> = {
   '1w': {
     netWorth: '$247,890', netWorthChange: '↑ 0.4% this week',
     cashFlow: '+$920', cashFlowBreakdown: 'Income: $2,300 | Expenses: $1,380',
@@ -54,12 +71,12 @@ const DATASETS: any = {
 export default function Dashboard() {
   const { user } = useAuth();
   const { accounts, refetch: refetchAccounts } = useAccounts();
-  const { transactions, loading: txnLoading } = useTransactions();
+  const { transactions } = useTransactions();
 
   const [timeframe, setTimeframe] = useState('1m');
   const [activeTab, setActiveTab] = useState('all-accounts');
 
-  const currentData = DATASETS[timeframe] || DATASETS['1m'];
+  const currentData: DashboardDataset = DATASETS[timeframe] || DATASETS['1m'];
 
   // Calculate Real Total Balance
   const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
@@ -177,7 +194,7 @@ export default function Dashboard() {
               <polyline fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={currentData.networthChart.points} />
             </g>
             <g id="networth-dots" fill="var(--color-primary)">
-              {netWorthDots.map((d: any, i: number) => (
+              {netWorthDots.map((d: { cx: string; cy: string }, i: number) => (
                 <circle key={i} cx={d.cx} cy={d.cy} r="4" />
               ))}
             </g>

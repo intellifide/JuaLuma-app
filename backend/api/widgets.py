@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from backend.utils import get_db
+from backend.middleware.auth import get_current_user
+from backend.models import User, AuditLog, Widget, WidgetRating
 
 router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 logger = logging.getLogger(__name__)
@@ -59,14 +61,11 @@ class WidgetRatingCreate(BaseModel):
 
 # --- Endpoints ---
 
-from backend.models import Widget, WidgetRating
+
 
 from collections import defaultdict, deque
 from threading import Lock
 import time
-
-from backend.middleware.auth import get_current_user
-from backend.models import User, AuditLog
 
 # Simple in-memory rate limiter for submissions
 _submit_attempts: Dict[str, Deque[float]] = defaultdict(deque)

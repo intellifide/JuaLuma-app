@@ -38,13 +38,10 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-def get_session() -> Generator:
-    """Provide a transactional session scope."""
-    with SessionLocal() as session:
-        yield session
 
 
-from .account import Account
+
+from .account import Account  # noqa: E402
 from .developer import Developer
 from .transaction import Transaction
 from .payment import Payment

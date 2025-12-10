@@ -4,13 +4,16 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import Base
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class AISettings(Base):

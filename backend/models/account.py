@@ -13,6 +13,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .user import User
+    from .transaction import Transaction
+    from .ledger import LedgerHotFree, LedgerHotEssential
 
 
 class Account(Base):
@@ -47,22 +53,14 @@ class Account(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="accounts", lazy="selectin")
     transactions: Mapped[list["Transaction"]] = relationship(
-        "Transaction",
-        back_populates="account",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        "Transaction", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
     )
+
     ledger_hot_free: Mapped[list["LedgerHotFree"]] = relationship(
-        "LedgerHotFree",
-        back_populates="account",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        "LedgerHotFree", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
     )
     ledger_hot_essential: Mapped[list["LedgerHotEssential"]] = relationship(
-        "LedgerHotEssential",
-        back_populates="account",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        "LedgerHotEssential", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
     )
 
     def __repr__(self) -> str:

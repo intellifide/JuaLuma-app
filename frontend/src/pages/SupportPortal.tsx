@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 export const SupportPortal = () => {
     const [selectedTicket, setSelectedTicket] = useState<string>('1234');
@@ -254,7 +253,7 @@ export const SupportPortal = () => {
                                                 <strong>Customer</strong>
                                                 <span className="text-xs text-text-muted">2 hours ago</span>
                                             </div>
-                                            <p className="m-0">I'm unable to connect my Chase checking account. The Plaid link keeps failing with an error message. I've tried multiple times but it's not working.</p>
+                                            <p className="m-0">I&apos;m unable to connect my Chase checking account. The Plaid link keeps failing with an error message. I&apos;ve tried multiple times but it&apos;s not working.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -267,7 +266,7 @@ export const SupportPortal = () => {
                                             <strong>System</strong>
                                             <span className="text-xs text-text-muted">2 hours ago</span>
                                         </div>
-                                        <p className="m-0 text-sm text-text-muted">Ticket automatically categorized as "Technical Support"</p>
+                                        <p className="m-0 text-sm text-text-muted">Ticket automatically categorized as &quot;Technical Support&quot;</p>
                                     </div>
                                     <textarea className="form-textarea mb-2" placeholder="Add internal note..." disabled></textarea>
                                     <button className="btn btn-outline" disabled>Add Note</button>

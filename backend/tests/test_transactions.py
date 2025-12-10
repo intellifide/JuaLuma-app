@@ -2,7 +2,6 @@
 import pytest
 from datetime import datetime
 from decimal import Decimal
-import uuid
 from fastapi.testclient import TestClient
 from backend.models import Transaction, Account
 

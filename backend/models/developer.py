@@ -3,7 +3,7 @@
 # Updated 2025-12-08 17:37 CST by ChatGPT
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy import func
@@ -11,6 +11,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import Base
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class Developer(Base):

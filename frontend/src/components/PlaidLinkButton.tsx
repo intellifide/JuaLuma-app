@@ -22,7 +22,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
         const response = await Promise.race([
           api.post('/plaid/link-token'),
           timeoutPromise
-        ]) as { data: any }
+        ]) as { data: { link_token?: string; linkToken?: string } }
 
         setLinkToken(response.data.link_token ?? response.data.linkToken)
       } catch (error) {

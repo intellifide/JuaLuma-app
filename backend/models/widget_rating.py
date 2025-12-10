@@ -9,6 +9,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .widget import Widget
+    from .user import User
 
 
 class WidgetRating(Base):

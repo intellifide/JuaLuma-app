@@ -103,7 +103,7 @@ export const Features = () => {
                                         🍔
                                     </div>
                                     <div className="preview-tx-details">
-                                        <span className="preview-tx-name">McDonald's</span>
+                                        <span className="preview-tx-name">McDonald&apos;s</span>
                                         <span className="preview-tx-amount">-$12.50</span>
                                     </div>
                                     <span className="preview-category-badge">Food & Dining</span>
@@ -165,7 +165,7 @@ export const Features = () => {
                             <ul className="mt-4 pl-8">
                                 <li>Set monthly budget limits per category</li>
                                 <li>Rollover logic (unused budget moves to next month)</li>
-                                <li>Threshold alerts (e.g., "You've hit 80% of Dining")</li>
+                                <li>Threshold alerts (e.g., &quot;You&apos;ve hit 80% of Dining&quot;)</li>
                                 <li>Budget vs. Actual visualization</li>
                                 <li>Spending trend analysis</li>
                             </ul>
@@ -299,7 +299,7 @@ export const Features = () => {
                                 <li>Income pattern recognition</li>
                                 <li>Subscription tracking and flagging</li>
                                 <li>Upcoming bill notifications</li>
-                                <li>Flagging workflow for "forgotten" subscriptions</li>
+                                <li>Flagging workflow for &quot;forgotten&quot; subscriptions</li>
                             </ul>
                         </div>
                         <div className="feature-preview">
@@ -357,7 +357,7 @@ export const Features = () => {
                                     <div className="preview-chat-msg user">How much did I spend on food this month?</div>
                                     <div className="preview-chat-msg assistant">
                                         <span className="preview-chat-typing">●●●</span>
-                                        Based on your transactions, you've spent <strong>$680</strong> on Food & Dining this month. That's
+                                        Based on your transactions, you&apos;ve spent <strong>$680</strong> on Food &amp; Dining this month. That&apos;s
                                         85% of your $800 budget. You have $120 remaining.
                                     </div>
                                 </div>

@@ -2,7 +2,7 @@
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -59,7 +59,7 @@ async def chat_endpoint(
     # 2. Check Rate Limit
     # check_rate_limit handles the check and increments usage.
     # It raises HTTPException(429) if exceeded.
-    usage_today = await check_rate_limit(user_id) # This call actually increments
+    await check_rate_limit(user_id) # This call actually increments
     
     # 3. RAG Context (Essential+ only)
     context = ""
@@ -176,7 +176,7 @@ async def get_quota_status(
     # check_rate_limit in ai.py doesn't export TIER_LIMITS. 
     # I'll re-declare or import it if I can.
     # TIER_LIMITS in backend/services/ai.py is a module-level variable.
-    from backend.services.ai import TIER_LIMITS, check_rate_limit
+    from backend.services.ai import TIER_LIMITS
     
     limit = TIER_LIMITS.get(tier, 20)
     

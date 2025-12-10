@@ -9,7 +9,7 @@ export const DeveloperSDK = () => {
     const hasPro = profile?.subscriptions?.some(s =>
         s.status === 'active' && ['pro', 'ultimate'].includes(s.plan || '')
     );
-    const isDeveloper = (profile as any)?.is_developer;
+    const isDeveloper = (profile as unknown as Record<string, unknown>)?.is_developer;
 
     // Playground State
     const [manifest, setManifest] = useState({
@@ -82,7 +82,7 @@ export const DeveloperSDK = () => {
             {activeTab === 'playground' && (
                 <div className="glass-panel">
                     <h2 className="text-2xl font-bold mb-6">Widget Manifest Editor</h2>
-                    <p className="mb-8 text-text-muted">Define your widget's manifest, scopes, and preview data. All fields are validated before submission.</p>
+                    <p className="mb-8 text-text-muted">Define your widget&apos;s manifest, scopes, and preview data. All fields are validated before submission.</p>
 
                     <div className="grid gap-6 max-w-3xl">
                         <div>
@@ -157,8 +157,8 @@ export const DeveloperSDK = () => {
                             <button className="btn btn-primary" onClick={validateManifest}>Validate Manifest</button>
                             {validationResult && (
                                 <div className={`mt-4 p-4 rounded border ${validationResult.status === 'success' ? 'bg-green-500/10 border-green-500/40 text-green-400' :
-                                        validationResult.status === 'error' ? 'bg-red-500/10 border-red-500/40 text-red-400' :
-                                            'bg-yellow-500/10 border-yellow-500/40 text-yellow-400'
+                                    validationResult.status === 'error' ? 'bg-red-500/10 border-red-500/40 text-red-400' :
+                                        'bg-yellow-500/10 border-yellow-500/40 text-yellow-400'
                                     }`}>
                                     {validationResult.message}
                                 </div>

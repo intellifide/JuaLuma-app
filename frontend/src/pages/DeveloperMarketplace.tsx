@@ -25,7 +25,7 @@ export const DeveloperMarketplace = () => {
         scopes: [] as string[]
     });
 
-    const isDeveloper = (profile as any)?.is_developer;
+    const isDeveloper = (profile as unknown as Record<string, unknown>)?.is_developer;
     const hasPro = profile?.subscriptions?.some(s =>
         s.status === 'active' && ['pro', 'ultimate'].includes(s.plan || '')
     );
@@ -63,8 +63,9 @@ export const DeveloperMarketplace = () => {
             await developerService.register({ type: 'bank_transfer', account: 'mock_account' });
             await refetchProfile();
             window.alert("Welcome to the Developer Program!");
-        } catch (e: any) {
-            window.alert("Registration failed: " + e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error';
+            window.alert("Registration failed: " + message);
         } finally {
             setRegistering(false);
         }
@@ -81,8 +82,9 @@ export const DeveloperMarketplace = () => {
             setSubmitForm({ name: '', description: '', category: 'general', scopes: [] });
             loadDashboard();
             window.alert("Widget submitted for review!");
-        } catch (e: any) {
-            window.alert("Submission failed: " + e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error';
+            window.alert("Submission failed: " + message);
         }
     };
 
@@ -184,8 +186,8 @@ export const DeveloperMarketplace = () => {
                                 {myWidgets.map(w => (
                                     <div key={w.id} className="card relative">
                                         <div className={`absolute top-4 right-4 badge ${w.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                                                w.status === 'pending_review' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                    'bg-red-500/20 text-red-400'
+                                            w.status === 'pending_review' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                'bg-red-500/20 text-red-400'
                                             }`}>
                                             {w.status.replace('_', ' ')}
                                         </div>
@@ -200,7 +202,7 @@ export const DeveloperMarketplace = () => {
                                 ))}
                                 {myWidgets.length === 0 && (
                                     <div className="col-span-full text-center py-12 glass-panel border border-dashed border-white/10">
-                                        <p className="text-text-muted">You haven't submitted any widgets yet.</p>
+                                        <p className="text-text-muted">You haven&apos;t submitted any widgets yet.</p>
                                     </div>
                                 )}
                             </div>

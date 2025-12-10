@@ -13,10 +13,10 @@ export default function Maintenance() {
                         className="h-12 mx-auto mb-8"
                     />
 
-                    <h1 className="text-3xl font-bold mb-4 text-slate-900 dark:text-white">We'll be right back</h1>
+                    <h1 className="text-3xl font-bold mb-4 text-slate-900 dark:text-white">We&apos;ll be right back</h1>
 
                     <p className="text-slate-600 dark:text-slate-400 mb-2">
-                        We're performing scheduled maintenance to improve the service.
+                        We&apos;re performing scheduled maintenance to improve the service.
                     </p>
 
                     <p className="text-slate-500 dark:text-slate-500 text-sm">

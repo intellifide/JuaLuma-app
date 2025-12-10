@@ -28,6 +28,7 @@ const handleError = (error: unknown) => {
   throw error
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapAccount = (data: any): Account => ({
   id: data.id,
   uid: data.uid,

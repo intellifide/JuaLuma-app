@@ -33,9 +33,9 @@ describe('AI Assistant Integration', () => {
         vi.clearAllMocks()
         localStorage.clear()
         localStorage.setItem('finity_privacy_accepted', 'true') // Bypass privacy modal for main tests
-            ; (useAuth as any).mockReturnValue({ user: mockUser })
-            ; (aiService.getHistory as any).mockResolvedValue([])
-            ; (aiService.getQuota as any).mockResolvedValue({ used: 5, limit: 20, resets_at: '', tier: 'free' })
+            ; vi.mocked(useAuth).mockReturnValue({ user: mockUser })
+            ; vi.mocked(aiService.getHistory).mockResolvedValue([])
+            ; vi.mocked(aiService.getQuota).mockResolvedValue({ used: 5, limit: 20, resets_at: '', tier: 'free' })
     })
 
     it('loads and displays initial state', async () => {
@@ -55,7 +55,7 @@ describe('AI Assistant Integration', () => {
     })
 
     it('sends a message and displays response', async () => {
-        ; (aiService.sendMessage as any).mockResolvedValue({
+        vi.mocked(aiService.sendMessage).mockResolvedValue({
             response: 'This is the AI response',
             tokens: 10,
             quota_remaining: 14

@@ -73,20 +73,6 @@ def _serialize_profile(user: User) -> dict:
             "updated_at": user.ai_settings.updated_at,
         }
 
-    notification_preferences = [
-        {
-            "id": str(pref.id),
-            "event_key": pref.event_key,
-            "channel_email": pref.channel_email,
-            "channel_sms": pref.channel_sms,
-            "quiet_hours_start": pref.quiet_hours_start,
-            "quiet_hours_end": pref.quiet_hours_end,
-            "created_at": pref.created_at,
-            "updated_at": pref.updated_at,
-        }
-        for pref in (user.notification_preferences or [])
-    ]
-
     profile = user.to_dict()
     profile["subscriptions"] = subscriptions
     profile["ai_settings"] = ai_settings

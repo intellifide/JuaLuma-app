@@ -119,7 +119,7 @@ export interface Widget {
   downloads: number
   rating_avg: number
   rating_count: number
-  preview_data?: any
+  preview_data?: Record<string, unknown>
   created_at: string
   updated_at: string
 }

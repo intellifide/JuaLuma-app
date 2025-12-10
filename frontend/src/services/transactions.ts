@@ -19,39 +19,71 @@ const handleError = (error: unknown) => {
   throw error
 }
 
-const mapTransaction = (data: any): Transaction => ({
-  id: data.id,
-  uid: data.uid,
-  accountId: data.account_id ?? data.accountId,
-  ts: data.ts,
-  amount:
-    typeof data.amount === 'number'
-      ? data.amount
-      : data.amount
-        ? Number(data.amount)
-        : 0,
-  currency: data.currency,
-  category: data.category ?? null,
-  merchantName: data.merchant_name ?? data.merchantName ?? null,
-  description: data.description ?? null,
-  externalId: data.external_id ?? data.externalId ?? null,
-  isManual: Boolean(data.is_manual ?? data.isManual),
-  archived: Boolean(data.archived),
-  rawJson: data.raw_json ?? data.rawJson ?? null,
-  createdAt: data.created_at ?? data.createdAt,
-  updatedAt: data.updated_at ?? data.updatedAt,
-})
+interface RawTransaction {
+  id: string
+  uid: string
+  account_id?: string
+  accountId?: string
+  ts: string
+  amount: number | string
+  currency: string
+  category?: string | null
+  merchant_name?: string | null
+  merchantName?: string | null
+  description?: string | null
+  external_id?: string | null
+  externalId?: string | null
+  is_manual?: boolean
+  isManual?: boolean
+  archived?: boolean
+  raw_json?: Record<string, unknown> | null
+  rawJson?: Record<string, unknown> | null
+  created_at?: string
+  createdAt?: string
+  updated_at?: string
+  updatedAt?: string
+  [key: string]: unknown
+}
 
-const mapListResponse = (data: any): PaginatedResponse<Transaction> => ({
-  data: Array.isArray(data.transactions)
-    ? data.transactions.map(mapTransaction)
-    : Array.isArray(data.data)
-      ? data.data.map(mapTransaction)
-      : [],
-  total: data.total ?? 0,
-  page: data.page ?? 1,
-  pageSize: data.page_size ?? data.pageSize ?? 50,
-})
+const mapTransaction = (data: unknown): Transaction => {
+  const d = data as RawTransaction
+  return {
+    id: d.id,
+    uid: d.uid,
+    accountId: d.account_id ?? d.accountId ?? '',
+    ts: d.ts,
+    amount:
+      typeof d.amount === 'number'
+        ? d.amount
+        : d.amount
+          ? Number(d.amount)
+          : 0,
+    currency: d.currency,
+    category: d.category ?? null,
+    merchantName: d.merchant_name ?? d.merchantName ?? null,
+    description: d.description ?? null,
+    externalId: d.external_id ?? d.externalId ?? null,
+    isManual: Boolean(d.is_manual ?? d.isManual),
+    archived: Boolean(d.archived),
+    rawJson: d.raw_json ?? d.rawJson ?? null,
+    createdAt: d.created_at ?? d.createdAt,
+    updatedAt: d.updated_at ?? d.updatedAt,
+  }
+}
+
+const mapListResponse = (data: unknown): PaginatedResponse<Transaction> => {
+  const d = data as { transactions?: RawTransaction[]; data?: RawTransaction[]; total?: number; page?: number; page_size?: number; pageSize?: number }
+  return {
+    data: Array.isArray(d.transactions)
+      ? d.transactions.map(mapTransaction)
+      : Array.isArray(d.data)
+        ? d.data.map(mapTransaction)
+        : [],
+    total: d.total ?? 0,
+    page: d.page ?? 1,
+    pageSize: d.page_size ?? d.pageSize ?? 50,
+  }
+}
 
 const buildQueryParams = (filters?: TransactionFilters) => {
   const params = new URLSearchParams()

@@ -52,8 +52,9 @@ export const Marketplace = () => {
             await widgetService.download(id);
             setWidgets(prev => prev.map(w => w.id === id ? { ...w, downloads: w.downloads + 1 } : w));
             window.alert("Widget downloaded successfully!");
-        } catch (e: any) {
-            window.alert("Download failed: " + e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error';
+            window.alert("Download failed: " + message);
         }
     };
 
@@ -77,8 +78,8 @@ export const Marketplace = () => {
                             key={cat}
                             onClick={() => setSelectedCategory(cat)}
                             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${selectedCategory === cat
-                                    ? 'bg-primary text-white'
-                                    : 'bg-white/5 hover:bg-white/10 text-text-secondary'
+                                ? 'bg-primary text-white'
+                                : 'bg-white/5 hover:bg-white/10 text-text-secondary'
                                 }`}
                         >
                             {cat}
@@ -171,13 +172,13 @@ export const Marketplace = () => {
                 <h2 className="text-center mb-8">For Developers</h2>
                 <div className="max-w-[800px] mx-auto">
                     <p className="mb-4">
-                        Interested in developing widgets for the Finity Marketplace? We're building a developer program that will allow you to create and distribute widgets that integrate with the Finity platform.
+                        Interested in developing widgets for the Finity Marketplace? We&apos;re building a developer program that will allow you to create and distribute widgets that integrate with the Finity platform.
                     </p>
                     <p className="mb-4">
                         Developers earn revenue based on user engagement (downloads) and verified ratings. All widgets must comply with our Developer Agreement and platform guidelines.
                     </p>
                     <p className="mb-4">
-                        The Marketplace is currently in development. If you're interested in becoming a developer partner, please contact us for more information.
+                        The Marketplace is currently in development. If you&apos;re interested in becoming a developer partner, please contact us for more information.
                     </p>
                     <div className="text-center mt-12">
                         <Link to="/developer-marketplace" className="btn btn-primary">Go to Developer Marketplace</Link>

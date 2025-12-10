@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
-from backend.models import User, DeveloperPayout, Widget
+from backend.models import User, DeveloperPayout
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/developers", tags=["developers"])

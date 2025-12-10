@@ -20,7 +20,7 @@ describe('Navigation', () => {
     })
 
     it('renders guest links when not logged in', () => {
-        (useAuth as any).mockReturnValue({ user: null, logout: vi.fn() })
+        vi.mocked(useAuth).mockReturnValue({ user: null, logout: vi.fn() })
 
         render(
             <BrowserRouter>
@@ -35,7 +35,7 @@ describe('Navigation', () => {
     })
 
     it('renders auth links when logged in', () => {
-        (useAuth as any).mockReturnValue({
+        vi.mocked(useAuth).mockReturnValue({
             user: { id: '1', email: 'test@example.com' },
             logout: vi.fn()
         })
@@ -53,7 +53,7 @@ describe('Navigation', () => {
 
     it('calls logout when logout button is clicked', () => {
         const logoutMock = vi.fn();
-        (useAuth as any).mockReturnValue({
+        vi.mocked(useAuth).mockReturnValue({
             user: { id: '1' },
             logout: logoutMock
         })

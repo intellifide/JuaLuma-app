@@ -15,13 +15,13 @@ export const About = () => {
                     <h2 className="text-center mb-8">Our Mission</h2>
                     <div className="max-w-[800px] mx-auto space-y-4">
                         <p className="text-lg">
-                            At Finity, we believe that managing your finances shouldn't be complicated. Our mission is to abstract financial complexity and provide a simple, automated, and visual platform for the mass-market consumer.
+                            At Finity, we believe that managing your finances shouldn&apos;t be complicated. Our mission is to abstract financial complexity and provide a simple, automated, and visual platform for the mass-market consumer.
                         </p>
                         <p>
                             The product goal is to abstract financial complexity and provide a simple, automated, and visual platform for the mass-market consumer. The engineering focus is on simplicity, automation, and immediate value to serve a broad audience, not just financial experts.
                         </p>
                         <p>
-                            Our primary value is the automation of financial tracking to save users time and provide a clear, holistic view of their financial health. Whether you're just starting out with one or two accounts, or managing a complex portfolio across multiple institutions, Finity brings everything together in one place.
+                            Our primary value is the automation of financial tracking to save users time and provide a clear, holistic view of their financial health. Whether you&apos;re just starting out with one or two accounts, or managing a complex portfolio across multiple institutions, Finity brings everything together in one place.
                         </p>
                     </div>
                 </div>
@@ -32,7 +32,7 @@ export const About = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">Privacy by Design</h3>
-                            <p className="text-text-secondary">Data minimization is enforced at the schema level. PII is never collected unless critical. "Right to be Forgotten" is handled via cryptographic erasure and scheduled physical purging.</p>
+                            <p className="text-text-secondary">Data minimization is enforced at the schema level. PII is never collected unless critical. &quot;Right to be Forgotten&quot; is handled via cryptographic erasure and scheduled physical purging.</p>
                         </div>
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">Security First</h3>
@@ -48,7 +48,7 @@ export const About = () => {
                         </div>
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">Accessibility</h3>
-                            <p className="text-text-secondary">Our platform utilizes an "Engineered Liquid Glass" framework ensuring all text and interactive elements maintain WCAG 2.1 AA (4.5:1) contrast dynamically.</p>
+                            <p className="text-text-secondary">Our platform utilizes an &quot;Engineered Liquid Glass&quot; framework ensuring all text and interactive elements maintain WCAG 2.1 AA (4.5:1) contrast dynamically.</p>
                         </div>
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">No Financial Advice</h3>
@@ -80,7 +80,7 @@ export const About = () => {
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">The Beginner (Free Tier)</h3>
                             <p className="text-text-secondary mb-2">
-                                If you're just starting out with 1-2 bank accounts, Finity provides an immediate "Aha!" moment. Our priority is on flawless automated categorization, budget visualization, and recurring subscription detection. The system provides value within minutes of linking one account.
+                                If you&apos;re just starting out with 1-2 bank accounts, Finity provides an immediate &quot;Aha!&quot; moment. Our priority is on flawless automated categorization, budget visualization, and recurring subscription detection. The system provides value within minutes of linking one account.
                             </p>
                         </div>
                         <div className="card">
@@ -96,7 +96,7 @@ export const About = () => {
                 <div className="text-center mt-12">
                     <h2 className="mb-4">Get in Touch</h2>
                     <p className="mb-8 text-text-secondary">
-                        Have questions? Want to learn more? We'd love to hear from you.
+                        Have questions? Want to learn more? We&apos;d love to hear from you.
                     </p>
                     <Link to="/support" className="btn btn-primary btn-lg">Contact Us</Link>
                 </div>

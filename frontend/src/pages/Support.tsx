@@ -40,7 +40,7 @@ export const Support = () => {
             <section className="container py-12">
                 <h1 className="text-center mb-4 text-3xl font-bold">Support & Contact</h1>
                 <p className="text-center text-lg text-text-secondary mb-12 max-w-[700px] mx-auto">
-                    We're here to help. Manage your support tickets or find answers to common questions.
+                    We&apos;re here to help. Manage your support tickets or find answers to common questions.
                 </p>
 
                 <div className="grid md:grid-cols-2 gap-8 mb-12">
@@ -131,7 +131,7 @@ export const Support = () => {
                     <div className="max-w-[800px] mx-auto space-y-8">
                         <div>
                             <h3 className="text-xl font-semibold mb-2">How do I link my bank accounts?</h3>
-                            <p>You can link your bank accounts through our secure integration with Plaid. Go to your Dashboard, click "Add Account," and follow the prompts to connect your bank. All connections are read-only, so we can view your data but cannot move your money.</p>
+                            <p>You can link your bank accounts through our secure integration with Plaid. Go to your Dashboard, click &quot;Add Account,&quot; and follow the prompts to connect your bank. All connections are read-only, so we can view your data but cannot move your money.</p>
                         </div>
 
                         <div>
@@ -141,7 +141,7 @@ export const Support = () => {
 
                         <div>
                             <h3 className="text-xl font-semibold mb-2">What happens if I cancel my subscription?</h3>
-                            <p>You can cancel your subscription at any time through your account settings. After cancellation, you'll retain access until the end of your billing period. Your data will be retained according to your tier's retention policy, then securely deleted per our Privacy Policy.</p>
+                            <p>You can cancel your subscription at any time through your account settings. After cancellation, you&apos;ll retain access until the end of your billing period. Your data will be retained according to your tier&apos;s retention policy, then securely deleted per our Privacy Policy.</p>
                         </div>
 
                         <div>

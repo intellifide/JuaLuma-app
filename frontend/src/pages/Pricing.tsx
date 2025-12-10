@@ -300,7 +300,7 @@ export const Pricing = () => {
                         <div className="mb-8">
                             <h3>What happens to my data if I cancel?</h3>
                             <p>
-                                You can export your data at any time. After cancellation, your data is retained according to your tier's
+                                You can export your data at any time. After cancellation, your data is retained according to your tier&apos;s
                                 retention policy, then securely deleted per our Privacy Policy.
                             </p>
                         </div>
@@ -321,7 +321,7 @@ export const Pricing = () => {
                         Create Your Free Account
                     </Link>
                     <p className="mt-4 text-sm text-[var(--text-muted)]">
-                        No credit card required. Start with the Free tier and upgrade when you're ready.
+                        No credit card required. Start with the Free tier and upgrade when you&apos;re ready.
                     </p>
                 </div>
             </section >

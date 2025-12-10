@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import Dashboard from '../../pages/Dashboard'
@@ -47,10 +47,10 @@ const mockTransactions: Transaction[] = [
 
 describe('Dashboard Integration', () => {
     beforeEach(() => {
-        vi.clearAllMocks()
-            ; (useAuth as any).mockReturnValue({ user: mockUser })
-            ; (useAccounts as any).mockReturnValue({ accounts: mockAccounts, refetch: vi.fn() })
-            ; (useTransactions as any).mockReturnValue({ transactions: mockTransactions, loading: false })
+        vi.clearAllMocks();
+        vi.mocked(useAuth).mockReturnValue({ user: mockUser });
+        vi.mocked(useAccounts).mockReturnValue({ accounts: mockAccounts, refetch: vi.fn() });
+        vi.mocked(useTransactions).mockReturnValue({ transactions: mockTransactions, loading: false })
     })
 
     it('renders user info, accounts and transactions', async () => {
@@ -68,8 +68,8 @@ describe('Dashboard Integration', () => {
     })
 
     it('handles empty state', () => {
-        ; (useAccounts as any).mockReturnValue({ accounts: [], refetch: vi.fn() })
-            ; (useTransactions as any).mockReturnValue({ transactions: [], loading: false })
+        vi.mocked(useAccounts).mockReturnValue({ accounts: [], refetch: vi.fn() });
+        vi.mocked(useTransactions).mockReturnValue({ transactions: [], loading: false })
 
         render(
             <BrowserRouter>

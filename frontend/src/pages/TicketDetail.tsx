@@ -15,7 +15,7 @@ export const TicketDetail = () => {
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const fetchTicket = async () => {
+    const fetchTicket = React.useCallback(async () => {
         if (!ticketId) return;
         try {
             const data = await supportService.getTicketDetail(ticketId);
@@ -27,11 +27,11 @@ export const TicketDetail = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [ticketId, navigate, show]);
 
     useEffect(() => {
         fetchTicket();
-    }, [ticketId]);
+    }, [fetchTicket, ticketId]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

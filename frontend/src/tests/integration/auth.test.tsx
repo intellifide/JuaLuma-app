@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import { Login } from '../../pages/Login'
@@ -25,13 +25,13 @@ vi.mock('react-router-dom', async () => {
 
 describe('Auth Integration', () => {
     beforeEach(() => {
-        vi.clearAllMocks()
-            ; (useAuth as any).mockReturnValue({
-                login: mockLogin,
-                signup: mockSignup,
-                user: null,
-                loading: false
-            })
+        vi.clearAllMocks();
+        vi.mocked(useAuth).mockReturnValue({
+            login: mockLogin,
+            signup: mockSignup,
+            user: null,
+            loading: false
+        })
     })
 
     describe('Login Flow', () => {

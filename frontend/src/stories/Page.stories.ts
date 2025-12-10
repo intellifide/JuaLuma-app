@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+/* eslint-disable storybook/use-storybook-expect */
 
 import { expect, userEvent, within } from 'storybook/test';
 

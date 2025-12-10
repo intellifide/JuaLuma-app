@@ -135,7 +135,7 @@ export const ConnectAccounts = () => {
               <h3 className="text-lg font-bold mb-2">Pro & Ultimate Tiers</h3>
               <p className="font-semibold mb-1">Full transaction retention</p>
               <p className="text-sm text-text-secondary">
-                Complete transaction history retained. Data is only removed per "Right to be Forgotten" requests. AI chat history has no retention limits; all transactions remain fully visible.
+                Complete transaction history retained. Data is only removed per &quot;Right to be Forgotten&quot; requests. AI chat history has no retention limits; all transactions remain fully visible.
               </p>
             </div>
           </div>

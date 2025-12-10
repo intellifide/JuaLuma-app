@@ -10,7 +10,7 @@ except ImportError:
 try:
     from google.cloud import aiplatform
     import vertexai
-    from vertexai.generative_models import GenerativeModel, SafetySetting, HarmCategory, HarmBlockThreshold
+    from vertexai.generative_models import GenerativeModel
 except ImportError:
     aiplatform = None
     vertexai = None
@@ -129,13 +129,12 @@ def get_ai_client() -> AIClient:
              raise ImportError("google.cloud.aiplatform package is missing.")
 
 # Check for safety settings format compatibility when calling
-
-import datetime
-from fastapi import HTTPException
-from firebase_admin import firestore
-from backend.utils.firestore import get_firestore_client
-from backend.services.prompts import RAG_PROMPT
-from backend.models import get_session, Subscription
+import datetime # noqa: E402
+from fastapi import HTTPException # noqa: E402
+from firebase_admin import firestore # noqa: E402
+from backend.utils.firestore import get_firestore_client # noqa: E402
+from backend.services.prompts import RAG_PROMPT # noqa: E402
+from backend.models import get_session, Subscription # noqa: E402
 
 TIER_LIMITS = {
     "free": 20,
@@ -228,7 +227,7 @@ async def generate_chat_response(prompt: str, context: Optional[str], user_id: s
              # But let's be safe
              try:
                  response_text = response.text
-             except:
+             except Exception:
                  parts = [part.text for part in response.candidates[0].content.parts]
                  response_text = "".join(parts)
         

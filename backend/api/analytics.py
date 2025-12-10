@@ -2,10 +2,9 @@
 import logging
 from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal
-from typing import Optional, List
-import json
+from typing import List
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -129,7 +128,7 @@ def get_net_worth(
         if i + 1 < len(dates_desc):
             prev_date = dates_desc[i+1]
             
-            d_end_dt = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
+            # d_end_dt = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
             prev_d_end_dt = datetime.combine(prev_date, datetime.max.time(), tzinfo=timezone.utc)
             
             # Consume transactions in window (prev_d_end_dt, d_end_dt]

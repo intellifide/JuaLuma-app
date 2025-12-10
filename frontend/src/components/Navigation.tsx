@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { useTheme } from '../hooks/useTheme'
 import { ThemeToggle } from './ThemeToggle'
 
 const linkClass = 'nav-link'
@@ -10,7 +9,7 @@ const activeClass = 'nav-link active'
 
 export const Navigation = () => {
   const { user, logout } = useAuth()
-  const { theme, toggle } = useTheme()
+
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
 

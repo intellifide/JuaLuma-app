@@ -147,10 +147,10 @@ export default function AIAssistant() {
         setQuota(q);
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMessage: Message = {
         role: 'assistant',
-        text: `Error: ${error.message || 'Something went wrong.'}`,
+        text: `Error: ${error instanceof Error ? error.message : 'Something went wrong.'}`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -262,11 +262,11 @@ export default function AIAssistant() {
         <div className="grid grid-2">
           <div className="card">
             <h3>Budget Analysis</h3>
-            <p>Get insights about your spending patterns and budget performance. Ask questions like "How am I doing with my budget this month?"</p>
+            <p>Get insights about your spending patterns and budget performance. Ask questions like &quot;How am I doing with my budget this month?&quot;</p>
           </div>
           <div className="card">
             <h3>Net Worth Tracking</h3>
-            <p>Understand your net worth trends and see what's driving changes in your financial position over time.</p>
+            <p>Understand your net worth trends and see what&apos;s driving changes in your financial position over time.</p>
           </div>
           <div className="card">
             <h3>Subscription Review</h3>

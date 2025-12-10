@@ -383,7 +383,7 @@ export const Settings = () => {
               <form onSubmit={(e) => { e.preventDefault(); /* Handle delete */ }}>
                 <div className="mb-6">
                   <label htmlFor="delete-confirm" className="block text-sm font-medium mb-1">
-                    Type "DELETE" to confirm:
+                    Type &quot;DELETE&quot; to confirm:
                   </label>
                   <input
                     type="text"

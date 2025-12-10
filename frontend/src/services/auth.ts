@@ -2,7 +2,7 @@
 import { FirebaseError } from 'firebase/app'
 import {
   User,
-  createUserWithEmailAndPassword,
+
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,

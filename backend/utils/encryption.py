@@ -2,15 +2,16 @@
 import os
 import base64
 import logging
-from typing import Optional
 
 # Check if cryptography is available
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    HAS_CRYPTO = True
 except ImportError:
     Fernet = None # type: ignore
+    HAS_CRYPTO = False
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ def encrypt_prompt(text: str, user_dek_ref: str) -> str:
         logger.warning("Cloud KMS not fully implemented in this logic, using local simulation.")
         pass
 
-    if not Fernet:
+    if not HAS_CRYPTO:
         raise ImportError("Cryptography package is required for encryption.")
 
     key = _get_local_key(user_dek_ref)
@@ -68,9 +69,9 @@ def decrypt_prompt(encrypted_text: str, user_dek_ref: str) -> str:
     """
     Decrypts the prompt text.
     """
-    env = os.getenv("App_Env", "local").lower()
+    _ = os.getenv("App_Env", "local").lower()
     
-    if not Fernet:
+    if not HAS_CRYPTO:
         raise ImportError("Cryptography package is required for encryption.")
 
     try:

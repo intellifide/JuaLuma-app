@@ -1,7 +1,5 @@
 
-import pytest
-from unittest.mock import MagicMock, patch
-import uuid
+from unittest.mock import patch
 from decimal import Decimal
 from datetime import date
 from fastapi.testclient import TestClient

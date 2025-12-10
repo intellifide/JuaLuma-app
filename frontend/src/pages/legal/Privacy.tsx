@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+
 
 export const Privacy = () => {
     return (
@@ -14,9 +14,9 @@ export const Privacy = () => {
 
                     <div className="max-w-[800px] mx-auto space-y-6">
                         <h2>Introduction</h2>
-                        <p>Intellifide, LLC ("Company," "we," "us," or "our") operates the Finity financial aggregation and analysis platform ("Service"). We are committed to protecting your privacy and handling your personal information responsibly.</p>
+                        <p>Intellifide, LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you access or use the Finity platform (the &quot;Service&quot;). We are committed to protecting your privacy and handling your personal information responsibly.</p>
                         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 my-4">
-                            <strong>Important:</strong> As a financial data aggregator, we are classified as a "financial institution" under the Gramm-Leach-Bliley Act (GLBA). This Privacy Policy describes how we collect, use, share, and protect your information in compliance with GLBA and other applicable privacy laws.
+                            <strong>Important:</strong> As a financial data aggregator, we are classified as a &quot;financial institution&quot; under the Gramm-Leach-Bliley Act (GLBA). This Privacy Policy describes how we collect, use, share, and protect your information in compliance with GLBA and other applicable privacy laws.
                         </div>
 
                         <h2>1. Information We Collect</h2>
@@ -123,8 +123,7 @@ export const Privacy = () => {
 
                         <h2>3. Information Sharing and Disclosure</h2>
 
-                        <h3>3.1 We Do NOT Sell Your Information</h3>
-                        <p>We do not sell, rent, or trade your personal information to third parties for their marketing purposes.</p>
+                        <p>By accessing or using the Service, you signify that you have read, understood, and agree to our collection, storage, use, and disclosure of your personal information as described in this Privacy Policy and our Terms of Service.</p>
 
                         <h3>3.2 Service Providers</h3>
                         <p>We share information with service providers who help us operate the Service:</p>
@@ -164,6 +163,7 @@ export const Privacy = () => {
 
                         <h3>3.4 Business Transfers</h3>
                         <p>In the event of a merger, acquisition, or sale of assets, your information may be transferred to the acquiring entity, subject to the same privacy protections.</p>
+                        <p>Residents of Canada have the right to access and correct their personal information. We transfer data to the United States for processing, where it may be subject to access by U.S. authorities.</p>
 
                         <h3>3.5 With Your Consent</h3>
                         <p>We may share your information with your explicit consent or at your direction.</p>
@@ -311,7 +311,7 @@ export const Privacy = () => {
                             <li>Information in anonymized or aggregated form</li>
                         </ul>
 
-                        <h2>7. Children's Privacy</h2>
+                        <h2>7. Children&apos;s Privacy</h2>
                         <p>The Service is not intended for children under 18 years of age. We do not knowingly collect personal information from children under 18. If we become aware that we have collected information from a child under 18, we will delete that information immediately.</p>
 
                         <h2>8. International Data Transfers</h2>
@@ -409,13 +409,14 @@ export const Privacy = () => {
                         </ul>
                         <p><strong>Protections:</strong></p>
                         <ul className="list-disc pl-6 space-y-1">
-                            <li>Stricter "opt-in" or "limit use" requirements</li>
+                            <li>Stricter &quot;opt-in&quot; or &quot;limit use&quot; requirements</li>
                             <li>Higher standard of care</li>
                             <li>Additional security measures</li>
                         </ul>
 
                         <h2>12. Changes to This Privacy Policy</h2>
-                        <p>We may update this Privacy Policy from time to time. We will notify you of material changes by:</p>
+                        <p>We may update this Privacy Policy from time to time. The updated version will be indicated by an updated &quot;Last Updated&quot; date and the updated version will be effective as soon as it is accessible.</p>
+                        <p>We will notify you of material changes by:</p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Posting the updated policy on the Service</li>
                             <li>Sending you an email notification</li>
@@ -464,7 +465,7 @@ export const Privacy = () => {
                         </ul>
 
                         <h3>14.2 Do Not Track Signals</h3>
-                        <p>Some browsers have "Do Not Track" features. We do not currently respond to Do Not Track signals, but we respect your privacy choices through cookie settings and account preferences.</p>
+                        <p>Some browsers have &quot;Do Not Track&quot; features. We do not currently respond to Do Not Track signals, but we respect your privacy choices through cookie settings and account preferences.</p>
 
                         <h3>14.3 Data Processing Agreement</h3>
                         <p>If you are a business customer or use our services in a business capacity, we may enter into a separate Data Processing Agreement (DPA) that governs data processing.</p>

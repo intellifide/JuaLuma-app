@@ -25,7 +25,7 @@ const AIDisclaimer = () => {
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">1. Nature of AI Services</h2>
                             <p>
-                                Finity's AI Assistant ("The Assistant") utilizes advanced large language models to provide financial insights, categorization, and analysis. While we strive for accuracy, AI models can occasionally produce incorrect, misleading, or hallucinations (false information). The Assistant's outputs should be used as a reference only and not as the sole basis for financial decisions.
+                                Finity&apos;s AI Assistant (&quot;The Assistant&quot;) utilizes advanced large language models to provide financial insights, categorization, and analysis. While we strive for accuracy, AI models can occasionally produce incorrect, misleading, or hallucinations (false information). The Assistant&apos;s outputs should be used as a reference only and not as the sole basis for financial decisions.
                             </p>
                         </section>
 
@@ -46,7 +46,7 @@ const AIDisclaimer = () => {
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">4. Limitations of Liability</h2>
                             <p>
-                                Finity is not liable for any losses or damages resulting from actions taken based on the Assistant's recommendations or analysis. You agree to independently verify all information provided by the AI.
+                                Finity is not liable for any losses or damages resulting from actions taken based on the Assistant&apos;s recommendations or analysis. You agree to independently verify all information provided by the AI.
                             </p>
                         </section>
 

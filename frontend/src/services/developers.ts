@@ -7,7 +7,7 @@ export interface DeveloperPayout {
 }
 
 export const developerService = {
-    register: async (payoutMethod: any) => {
+    register: async (payoutMethod: unknown) => {
         const response = await api.post('/developers', {
             payout_method: payoutMethod,
             payout_frequency: 'monthly'

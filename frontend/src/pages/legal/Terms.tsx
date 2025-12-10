@@ -15,10 +15,10 @@ export const Terms = () => {
                         <h2>1. Acceptance of Terms</h2>
 
                         <h3>1.1 Agreement to Terms</h3>
-                        <p>By accessing or using the Finity platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service.</p>
+                        <p>By accessing or using the Finity platform (&quot;Service&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, you may not access or use the Service.</p>
 
                         <h3>1.2 Click-Wrap Agreement</h3>
-                        <p>These Terms constitute a legal contract between you and Intellifide, LLC ("Company," "we," "us," or "our"). By clicking "I Agree" or similar acceptance mechanism, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
+                        <p>These Terms constitute a legal contract between you and Intellifide, LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). By clicking &quot;I Agree&quot; or similar acceptance mechanism, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
 
                         <h3>1.3 Modifications to Terms</h3>
                         <p>We reserve the right to modify these Terms at any time. We will notify you of material changes by posting the updated Terms on the Service or by email. Your continued use of the Service after such modifications constitutes your acceptance of the modified Terms.</p>
@@ -73,7 +73,6 @@ export const Terms = () => {
 
                         <h3>4.1 Account Linking</h3>
                         <p>The Service allows you to link financial accounts through read-only API connections and OAuth protocols. By linking accounts, you authorize us to access account information on your behalf.</p>
-
                         <h3>4.2 Read-Only Access</h3>
                         <p>All account connections are <strong>read-only</strong>. We do not have the ability to:</p>
                         <ul className="list-disc pl-6 space-y-1">
@@ -87,20 +86,8 @@ export const Terms = () => {
                         <h3>4.3 Third-Party Services</h3>
                         <p>Account linking is provided through third-party services (e.g., Plaid, CEX APIs). Your use of these services is subject to their respective terms of service and privacy policies.</p>
 
-                        <h3>4.4 Account Authority</h3>
-                        <p>You represent and warrant that:</p>
-                        <ul className="list-disc pl-6 space-y-1">
-                            <li>You have the legal authority to link the financial accounts you connect</li>
-                            <li>You own or have legal access to all accounts you link</li>
-                            <li>You will not link accounts that you do not have authority to access</li>
-                            <li>You will not use the Service for any illegal purpose</li>
-                        </ul>
-
-                        <h3>4.5 Account Information Accuracy</h3>
-                        <p>We rely on information provided by third-party financial institutions. We do not guarantee the accuracy, completeness, or timeliness of account information displayed in the Service.</p>
-
                         <h3>4.6 Feature Preview Content</h3>
-                        <p>Certain areas of the Service may display <strong>"Preview Mode"</strong> interfaces that showcase premium workflows, dashboards, automations, or AI transcripts. Preview content:</p>
+                        <p>Certain areas of the Service may display <strong>&quot;Preview Mode&quot;</strong> interfaces that showcase premium workflows, dashboards, automations, or AI transcripts. Preview content:</p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Uses synthetic, illustrative data that is not derived from your linked accounts;</li>
                             <li>Is presented for marketing and educational purposes only;</li>
@@ -150,7 +137,7 @@ export const Terms = () => {
                         <p>You agree NOT to:</p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Use the Service for any illegal purpose or in violation of any laws</li>
-                            <li>Attempt to gain unauthorized access to the Service or other users' accounts</li>
+                            <li>Attempt to gain unauthorized access to the Service or other users&apos; accounts</li>
                             <li>Interfere with or disrupt the Service or servers</li>
                             <li>Use automated systems to access the Service without authorization</li>
                             <li>Reverse engineer, decompile, or disassemble the Service</li>
@@ -180,7 +167,7 @@ export const Terms = () => {
                         <p>You retain ownership of any content you provide to the Service. By providing content, you grant us a license to use, store, and process that content to provide the Service.</p>
 
                         <h3>7.3 Trademarks</h3>
-                        <p>"Finity" and related logos and marks are trademarks of Intellifide, LLC. You may not use our trademarks without our prior written permission.</p>
+                        <p>&quot;Finity&quot; and related logos and marks are trademarks of Intellifide, LLC. You may not use our trademarks without our prior written permission.</p>
 
                         <h2>8. Privacy and Data Protection</h2>
 
@@ -202,7 +189,7 @@ export const Terms = () => {
                         <p>Pro Tier subscriptions are billed monthly ($20.00/month) or annually ($15.00/month, billed as $180.00/year). Ultimate Tier subscriptions are billed monthly ($60.00/month) or annually ($600.00/year).</p>
 
                         <h3>9.3 Payment Processing</h3>
-                        <p>Payments are processed through Stripe. By subscribing, you agree to Stripe's terms of service.</p>
+                        <p>Payments are processed through Stripe. By subscribing, you agree to Stripe&apos;s terms of service.</p>
 
                         <h3>9.4 Sales Tax</h3>
                         <p>For Texas-based customers, we collect and remit Texas sales tax on 80% of the subscription fee in accordance with Texas Tax Code §151.351 (data processing services exemption).</p>
@@ -214,12 +201,12 @@ export const Terms = () => {
                         <p>Subscription fees are non-refundable except as required by law or as otherwise specified in these Terms.</p>
 
                         <h3>9.7 Price Changes</h3>
-                        <p>We reserve the right to change subscription prices with 30 days' notice. Price changes will not affect your current subscription period but will apply to renewals.</p>
+                        <p>We reserve the right to change subscription prices with 30 days&apos; notice. Price changes will not affect your current subscription period but will apply to renewals.</p>
 
                         <h2>10. Limitation of Liability</h2>
 
                         <h3>10.1 Disclaimer of Warranties</h3>
-                        <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.</p>
+                        <p>THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.</p>
 
                         <h3>10.2 No Guarantees</h3>
                         <p>We do not guarantee that:</p>
@@ -242,7 +229,7 @@ export const Terms = () => {
                         <h2>11. Indemnification</h2>
 
                         <h3>11.1 Indemnification Obligation</h3>
-                        <p>You agree to indemnify, defend, and hold harmless Intellifide, LLC, its officers, directors, employees, and agents from and against all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising from or related to:</p>
+                        <p>You agree to indemnify, defend, and hold harmless Intellifide, LLC, its officers, directors, employees, and agents from and against all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys&apos; fees) arising from or related to:</p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Your use of the Service</li>
                             <li>Your violation of these Terms</li>

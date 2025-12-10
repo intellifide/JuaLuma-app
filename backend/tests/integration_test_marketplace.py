@@ -1,12 +1,11 @@
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 import uuid
 
 from backend.main import app
-from backend.models import Base, User, Developer, Subscription, Widget, WidgetRating
+from backend.models import Base, User, Subscription, Widget
 from backend.utils import get_db
 
 # Setup in-memory DB for testing
@@ -26,28 +25,28 @@ def override_get_db():
     finally:
         db.close()
 
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.compiler import compiles # noqa: E402
+from sqlalchemy.dialects.postgresql import UUID # noqa: E402
 
 @compiles(UUID, 'sqlite')
 def visit_uuid(element, compiler, **kw):
     return "CHAR(32)"
 
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB # noqa: E402
 @compiles(JSONB, 'sqlite')
 def visit_jsonb(element, compiler, **kw):
     return "JSON"
 
-from sqlalchemy.dialects.postgresql import BYTEA
+from sqlalchemy.dialects.postgresql import BYTEA # noqa: E402
 @compiles(BYTEA, 'sqlite')
 def visit_bytea(element, compiler, **kw):
     return "BLOB"
 
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient, ASGITransport # noqa: E402
 
 app.dependency_overrides[get_db] = override_get_db
 
-from sqlalchemy import text
+from sqlalchemy import text # noqa: E402
 
 @pytest.fixture(scope="module")
 def db():

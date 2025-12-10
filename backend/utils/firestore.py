@@ -1,6 +1,4 @@
 
-import os
-import firebase_admin
 from firebase_admin import firestore
 from backend.services.auth import _get_firebase_app
 

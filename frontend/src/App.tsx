@@ -1,5 +1,5 @@
 // Updated 2025-12-09 16:45 CST by ChatGPT
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import { Navigation } from './components/Navigation'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -29,14 +29,7 @@ import AIDisclaimer from './pages/legal/AIDisclaimer'
 import NotFound from './pages/NotFound'
 import Maintenance from './pages/Maintenance'
 
-const Placeholder = ({ title }: { title: string }) => (
-  <div className="container py-12">
-    <div className="glass-panel">
-      <h1 className="text-3xl font-bold mb-4">{title}</h1>
-      <p className="text-slate-700">Content coming soon.</p>
-    </div>
-  </div>
-)
+
 
 function App() {
   const MAINTENANCE_MODE = import.meta.env.VITE_MAINTENANCE_MODE === 'true'

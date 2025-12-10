@@ -7,9 +7,8 @@ from datetime import date
 from decimal import Decimal
 from collections import defaultdict
 
-from sqlalchemy.exc import IntegrityError
 
-from backend.models import Widget, DeveloperPayout, User, AuditLog
+from backend.models import Widget, DeveloperPayout, AuditLog
 from backend.models import SessionLocal
 
 logging.basicConfig(level=logging.INFO)

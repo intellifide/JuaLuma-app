@@ -43,6 +43,7 @@ export const AIPrivacyModal: React.FC<AIPrivacyModalProps> = ({ onAccept, isOpen
                     >
                         <h2 className="text-xl font-bold mb-4">AI Assistant Disclaimer and User Acknowledgment</h2>
                         <p className="mb-4">Before using the Finity AI Assistant, you must read and acknowledge the following:</p>
+                        <p className="text-xs text-text-secondary mt-4">By interacting with the AI, you agree to the storing of conversation history associated with your account. You can delete this history at any time in <a href="/settings" className="text-primary hover:underline">Settings</a>. Please review our <a href="/terms" className="text-primary hover:underline">Terms of Service</a> and <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>.</p>
 
                         <h3 className="text-lg font-semibold mt-4 mb-2">1. Nature of the AI Assistant</h3>
                         <p className="mb-2">The Finity AI Assistant provides direct, unrestricted access to Large Language Models (LLMs) via cloud LLMs provided exclusively by Google Vertex AI Gemini (e.g., Gemini 2.5 Flash, Gemini 2.5 Pro for Ultimate tier).</p>
@@ -96,14 +97,14 @@ export const AIPrivacyModal: React.FC<AIPrivacyModalProps> = ({ onAccept, isOpen
 
                         <h3 className="text-lg font-semibold mt-4 mb-2">7. Third-Party Services</h3>
                         <p className="mb-2">The AI Assistant uses third-party LLM services. Your use of these services is subject to:</p>
-                        <ul className="list-disc pl-5 mb-4 space-y-1">
-                            <li>The terms of service of the respective LLM providers</li>
-                            <li>The privacy policies of the respective LLM providers</li>
+                        <label htmlFor="ai-consent" className="text-sm text-gray-400">
+                            I understand that my data will be processed by third-party AI providers (Google Gemini) and agree to the &quot;AI Terms of Service&quot; and &quot;Privacy Policy&quot;.
+                        </label>            <ul className="list-disc pl-5 mb-4 space-y-1">
                             <li>Intellifide, LLC is not responsible for third-party LLM provider actions or policies</li>
                         </ul>
 
                         <h3 className="text-lg font-semibold mt-4 mb-2">8. Acknowledgment and Acceptance</h3>
-                        <p className="mb-2">By clicking "I Agree" or "Accept" below, you acknowledge that:</p>
+                        <p className="mb-2">By clicking &quot;I Agree&quot; or &quot;Accept&quot; below, you acknowledge that:</p>
                         <ul className="list-disc pl-5 mb-4 space-y-1">
                             <li>You have read and understood this disclaimer</li>
                             <li>You understand the limitations and risks of using the AI Assistant</li>

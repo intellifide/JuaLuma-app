@@ -12,6 +12,18 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .account import Account
+    from .transaction import Transaction
+    from .subscription import Subscription
+    from .payment import Payment
+    from .ai_settings import AISettings
+    from .notification import NotificationPreference
+    from .manual_asset import ManualAsset
+    from .payout import DeveloperPayout
+    from .developer import Developer
 
 
 class User(Base):

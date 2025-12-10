@@ -14,18 +14,18 @@ export const widgetService = {
         try {
             const response = await api.get<Widget[]>('/widgets/mine');
             return response.data;
-        } catch (e: any) {
+        } catch (e: unknown) {
             // Fallback if endpoint 404s during transition
             return [];
         }
     },
 
-    submit: async (data: any) => {
+    submit: async (data: Omit<Widget, 'id' | 'developer_uid' | 'created_at' | 'updated_at' | 'downloads' | 'rating_avg' | 'rating_count' | 'status'>) => {
         const response = await api.post<Widget>('/widgets', data);
         return response.data;
     },
 
-    update: async (id: string, data: any) => {
+    update: async (id: string, data: Partial<Widget>) => {
         const response = await api.patch<Widget>(`/widgets/${id}`, data);
         return response.data;
     },
