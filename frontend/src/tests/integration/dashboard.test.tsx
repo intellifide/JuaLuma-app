@@ -2,9 +2,10 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import Dashboard from '../../pages/Dashboard'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { useAccounts } from '../../hooks/useAccounts'
 import { useTransactions } from '../../hooks/useTransactions'
+import { User } from 'firebase/auth'
 import { Account, Transaction } from '../../types'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: vi.fn() }))
@@ -15,7 +16,30 @@ vi.mock('../../components/PlaidLinkButton', () => ({
     PlaidLinkButton: () => <button>Connect a bank account</button>
 }))
 
-const mockUser = { uid: 'u1', email: 'user@example.com', displayName: 'Test User' }
+const mockUser = {
+    uid: 'u1',
+    email: 'user@example.com',
+    emailVerified: true,
+    isAnonymous: false,
+    metadata: {},
+    providerData: [],
+    refreshToken: '',
+    tenantId: null,
+    delete: vi.fn(),
+    getIdToken: vi.fn(),
+    getIdTokenResult: vi.fn(),
+    reload: vi.fn(),
+    toJSON: vi.fn(),
+    displayName: 'Test User',
+    phoneNumber: null,
+    photoURL: null,
+} as unknown as User;
+
+const mockProfile = {
+    uid: 'u1',
+    email: 'user@example.com',
+    role: 'user',
+};
 
 const mockAccounts: Account[] = [
     {
@@ -48,9 +72,41 @@ const mockTransactions: Transaction[] = [
 describe('Dashboard Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(useAuth).mockReturnValue({ user: mockUser });
-        vi.mocked(useAccounts).mockReturnValue({ accounts: mockAccounts, refetch: vi.fn() });
-        vi.mocked(useTransactions).mockReturnValue({ transactions: mockTransactions, loading: false })
+        vi.mocked(useAuth).mockReturnValue({
+            user: mockUser,
+            logout: vi.fn(),
+            login: vi.fn(),
+            signup: vi.fn(),
+            loading: false,
+            profileLoading: false,
+            error: null,
+            refetchProfile: vi.fn(),
+            profile: mockProfile as UserProfile,
+            resetPassword: vi.fn()
+        });
+        vi.mocked(useAccounts).mockReturnValue({
+            accounts: mockAccounts,
+            loading: false,
+            error: '',
+            refetch: vi.fn(),
+            create: vi.fn(),
+            update: vi.fn(),
+            remove: vi.fn(),
+            sync: vi.fn(),
+            fetchOne: vi.fn()
+        });
+        vi.mocked(useTransactions).mockReturnValue({
+            transactions: mockTransactions,
+            loading: false,
+            total: 1,
+            page: 1,
+            pageSize: 50,
+            error: null,
+            refetch: vi.fn(),
+            updateOne: vi.fn(),
+            bulkUpdate: vi.fn(),
+            remove: vi.fn()
+        })
     })
 
     it('renders user info, accounts and transactions', async () => {
@@ -68,8 +124,29 @@ describe('Dashboard Integration', () => {
     })
 
     it('handles empty state', () => {
-        vi.mocked(useAccounts).mockReturnValue({ accounts: [], refetch: vi.fn() });
-        vi.mocked(useTransactions).mockReturnValue({ transactions: [], loading: false })
+        vi.mocked(useAccounts).mockReturnValue({
+            accounts: [],
+            loading: false,
+            error: '',
+            refetch: vi.fn(),
+            create: vi.fn(),
+            update: vi.fn(),
+            remove: vi.fn(),
+            sync: vi.fn(),
+            fetchOne: vi.fn()
+        });
+        vi.mocked(useTransactions).mockReturnValue({
+            transactions: [],
+            loading: false,
+            total: 0,
+            page: 1,
+            pageSize: 50,
+            error: null,
+            refetch: vi.fn(),
+            updateOne: vi.fn(),
+            bulkUpdate: vi.fn(),
+            remove: vi.fn()
+        })
 
         render(
             <BrowserRouter>

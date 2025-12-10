@@ -30,7 +30,13 @@ describe('Auth Integration', () => {
             login: mockLogin,
             signup: mockSignup,
             user: null,
-            loading: false
+            loading: false,
+            error: null,
+            logout: vi.fn(),
+            refetchProfile: vi.fn(),
+            profile: null,
+            profileLoading: false,
+            resetPassword: vi.fn()
         })
     })
 

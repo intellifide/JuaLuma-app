@@ -25,8 +25,8 @@ export const Traditional: Story = {
             balance: 15420.50,
             currency: 'USD',
             provider: 'plaid',
-            created_at: '2025-01-01',
-            updated_at: '2025-01-01',
+            createdAt: '2025-01-01',
+            updatedAt: '2025-01-01',
             uid: 'user1'
         },
     },
@@ -42,8 +42,8 @@ export const Investment: Story = {
             balance: 102400.00,
             currency: 'USD',
             provider: 'plaid',
-            created_at: '2025-01-01',
-            updated_at: '2025-01-01',
+            createdAt: '2025-01-01',
+            updatedAt: '2025-01-01',
             uid: 'user1'
         },
     },
@@ -59,8 +59,8 @@ export const Crypto: Story = {
             balance: 2.54,
             currency: 'ETH',
             provider: 'manual',
-            created_at: '2025-01-01',
-            updated_at: '2025-01-01',
+            createdAt: '2025-01-01',
+            updatedAt: '2025-01-01',
             uid: 'user1'
         },
     },

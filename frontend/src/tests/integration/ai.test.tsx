@@ -2,8 +2,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import AIAssistant from '../../pages/AIAssistant'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { aiService } from '../../services/aiService'
+import { User } from 'firebase/auth'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('../../services/aiService', () => ({
@@ -23,17 +24,28 @@ vi.mock('../../services/aiService', () => ({
 window.HTMLElement.prototype.scrollIntoView = vi.fn()
 
 const mockUser = {
-    id: 'u1',
+    uid: 'u1',
     email: 'user@example.com',
     getIdToken: vi.fn().mockResolvedValue('fake-token')
-}
+} as unknown as User
 
 describe('AI Assistant Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         localStorage.clear()
         localStorage.setItem('finity_privacy_accepted', 'true') // Bypass privacy modal for main tests
-            ; vi.mocked(useAuth).mockReturnValue({ user: mockUser })
+            ; vi.mocked(useAuth).mockReturnValue({
+                user: mockUser,
+                logout: vi.fn(),
+                login: vi.fn(),
+                signup: vi.fn(),
+                loading: false,
+                error: null,
+                refetchProfile: vi.fn(),
+                profile: { role: 'user' } as UserProfile,
+                profileLoading: false,
+                resetPassword: vi.fn()
+            })
             ; vi.mocked(aiService.getHistory).mockResolvedValue([])
             ; vi.mocked(aiService.getQuota).mockResolvedValue({ used: 5, limit: 20, resets_at: '', tier: 'free' })
     })

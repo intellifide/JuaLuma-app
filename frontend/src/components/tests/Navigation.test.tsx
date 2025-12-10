@@ -2,7 +2,8 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Navigation } from '../Navigation'
 import { BrowserRouter } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth, UserProfile } from '../../hooks/useAuth'
+import { User } from 'firebase/auth'
 
 // Mock the useAuth hook
 vi.mock('../../hooks/useAuth', () => ({
@@ -20,7 +21,18 @@ describe('Navigation', () => {
     })
 
     it('renders guest links when not logged in', () => {
-        vi.mocked(useAuth).mockReturnValue({ user: null, logout: vi.fn() })
+        vi.mocked(useAuth).mockReturnValue({
+            user: null,
+            logout: vi.fn(),
+            login: vi.fn(),
+            signup: vi.fn(),
+            loading: false,
+            profileLoading: false,
+            error: null,
+            refetchProfile: vi.fn(),
+            profile: null,
+            resetPassword: vi.fn()
+        })
 
         render(
             <BrowserRouter>
@@ -36,8 +48,16 @@ describe('Navigation', () => {
 
     it('renders auth links when logged in', () => {
         vi.mocked(useAuth).mockReturnValue({
-            user: { id: '1', email: 'test@example.com' },
-            logout: vi.fn()
+            user: { uid: '1', email: 'test@example.com' } as unknown as User,
+            logout: vi.fn(),
+            login: vi.fn(),
+            signup: vi.fn(),
+            loading: false,
+            profileLoading: false,
+            error: null,
+            refetchProfile: vi.fn(),
+            profile: { role: 'user' } as UserProfile,
+            resetPassword: vi.fn()
         })
 
         render(
@@ -54,8 +74,16 @@ describe('Navigation', () => {
     it('calls logout when logout button is clicked', () => {
         const logoutMock = vi.fn();
         vi.mocked(useAuth).mockReturnValue({
-            user: { id: '1' },
-            logout: logoutMock
+            user: { uid: '1', email: 'test@example.com' } as unknown as User,
+            logout: logoutMock,
+            login: vi.fn(),
+            signup: vi.fn(),
+            loading: false,
+            profileLoading: false,
+            error: null,
+            refetchProfile: vi.fn(),
+            profile: { role: 'user' } as UserProfile,
+            resetPassword: vi.fn()
         })
 
         render(

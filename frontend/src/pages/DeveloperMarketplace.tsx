@@ -22,6 +22,7 @@ export const DeveloperMarketplace = () => {
         name: '',
         description: '',
         category: 'general',
+        version: '1.0.0',
         scopes: [] as string[]
     });
 
@@ -79,7 +80,7 @@ export const DeveloperMarketplace = () => {
                 preview_data: { demo: true } // Default mock data
             });
             setShowSubmitModal(false);
-            setSubmitForm({ name: '', description: '', category: 'general', scopes: [] });
+            setSubmitForm({ name: '', description: '', category: 'general', version: '1.0.0', scopes: [] });
             loadDashboard();
             window.alert("Widget submitted for review!");
         } catch (e: unknown) {
@@ -278,6 +279,16 @@ export const DeveloperMarketplace = () => {
                                     <option value="analysis">Analysis</option>
                                     <option value="utility">Utility</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-text-secondary mb-1">Version</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="input w-full"
+                                    value={submitForm.version}
+                                    onChange={e => setSubmitForm({ ...submitForm, version: e.target.value })}
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm text-text-secondary mb-1">Description</label>

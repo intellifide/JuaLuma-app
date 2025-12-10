@@ -28,7 +28,7 @@ describe('AccountCard', () => {
     })
 
     it('renders correctly for manual accounts (non-plaid)', () => {
-        const manualAccount = { ...mockAccount, provider: 'manual', accountType: 'manual' }
+        const manualAccount: Account = { ...mockAccount, provider: 'manual', accountType: 'manual' }
         render(<AccountCard account={manualAccount} />)
 
         expect(screen.getByText('manual')).toBeInTheDocument()
