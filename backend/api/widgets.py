@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
+from backend.core.dependencies import require_developer, require_pro_or_ultimate, get_current_active_subscription
+from backend.core.constants import SubscriptionPlans
 from backend.models import AuditLog, User, Widget, WidgetRating
 from backend.utils import get_db
 
@@ -116,15 +118,11 @@ def list_my_widgets(
 @router.post("/submit", response_model=WidgetResponse, status_code=status.HTTP_201_CREATED)
 def submit_widget(
     payload: WidgetCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_developer),
     db: Session = Depends(get_db),
 ):
     """Submit a new widget for review. Developer only. (Legacy/Simple)"""
-    if not current_user.developer:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Developer account required to submit widgets."
-        )
+    # Developer check handled by dependency
         
     _check_submit_rate_limit(current_user.uid)
     
@@ -148,29 +146,13 @@ def submit_widget(
 def create_widget(
     payload: WidgetCreate,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_developer),
+    _=Depends(require_pro_or_ultimate),
     db: Session = Depends(get_db),
 ):
     """Create a new widget. Requires Pro/Ultimate and Developer Agreement."""
-    # 1. Verify Developer
-    if not current_user.developer:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Developer account/agreement required."
-        )
-
-    # 2. Verify Pro/Ultimate Tier
-    active_subs = [s for s in current_user.subscriptions if s.status == "active"]
-    has_pro = any(s.plan in ["pro", "ultimate"] for s in active_subs)
+    # Dependencies handle auth checks
     
-    # Allow if simple developer record exists? Task says "Require Pro/Ultimate".
-    # Assuming explicit check is needed.
-    if not has_pro:
-         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Pro or Ultimate subscription required to publish widgets."
-        )
-
     _check_submit_rate_limit(current_user.uid)
 
     # 3. Create Widget
@@ -319,8 +301,8 @@ def download_widget(
          raise HTTPException(status_code=404, detail="Widget not found or not available")
 
     # Enforce Pro/Ultimate Subscription for downloading
-    active_subs = [s for s in current_user.subscriptions if s.status == "active"]
-    has_pro = any(s.plan in ["pro", "ultimate"] for s in active_subs)
+    sub = get_current_active_subscription(current_user)
+    has_pro = sub and sub.plan in SubscriptionPlans.DEVELOPER_ELIGIBLE
     
     if not has_pro and widget.developer_uid != current_user.uid:
         raise HTTPException(

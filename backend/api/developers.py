@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from backend.middleware.auth import get_current_user
+from backend.core.dependencies import require_developer, require_pro_or_ultimate
 from backend.models import User, DeveloperPayout
 from backend.utils import get_db
 
@@ -24,15 +24,10 @@ class PayoutResponse(BaseModel):
 
 @router.get("/payouts", response_model=List[PayoutResponse])
 def get_payout_history(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_developer),
     db: Session = Depends(get_db)
 ):
     """Get payout history for the authenticated developer."""
-    if not current_user.developer:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Developer access required"
-        )
         
     payouts = (
         db.query(DeveloperPayout)
@@ -49,17 +44,12 @@ class DeveloperCreate(BaseModel):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def register_developer(
     payload: DeveloperCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_or_ultimate),
     db: Session = Depends(get_db)
 ):
     """Register as a developer. Requires Pro/Ultimate."""
     if current_user.developer:
         raise HTTPException(status_code=400, detail="Already a developer")
-        
-    active_subs = [s for s in current_user.subscriptions if s.status == "active"]
-    has_pro = any(s.plan in ["pro", "ultimate"] for s in active_subs)
-    if not has_pro:
-         raise HTTPException(status_code=403, detail="Pro/Ultimate required")
          
     from backend.models.developer import Developer
     dev = Developer(

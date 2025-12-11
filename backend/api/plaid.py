@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from backend.middleware.auth import get_current_user
+from backend.core.dependencies import check_account_limit
 from backend.models import Account, AuditLog, User
 from backend.services.plaid import (
     create_link_token,
@@ -49,7 +49,7 @@ class ExchangeTokenResponse(BaseModel):
 
 @router.post("/link-token", response_model=LinkTokenResponse)
 def create_link_token_endpoint(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_account_limit),
 ) -> LinkTokenResponse:
     """Create a link_token for the authenticated user."""
     try:
@@ -72,7 +72,7 @@ def create_link_token_endpoint(
 )
 def exchange_token_endpoint(
     payload: ExchangeTokenRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_account_limit),
     db: Session = Depends(get_db),
 ) -> ExchangeTokenResponse:
     """Exchange a public_token, persist linked accounts, and log the action."""
