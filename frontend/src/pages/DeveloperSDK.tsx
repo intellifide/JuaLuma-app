@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { HelloWorldWidget } from '../sdk/examples/HelloWorldWidget';
+import { DataFetcherWidget } from '../sdk/examples/DataFetcherWidget';
+import { mockClient } from '../sdk/mockClient';
 
 export const DeveloperSDK = () => {
     const { profile } = useAuth();
@@ -67,7 +70,7 @@ export const DeveloperSDK = () => {
 
             {/* Tab Navigation */}
             <div className="flex gap-1 border-b border-white/10 mb-8 overflow-x-auto">
-                {['playground', 'scopes', 'cli', 'checklist', 'test-harness'].map(tab => (
+                {['playground', 'scopes', 'cli', 'checklist', 'test-harness', 'examples'].map(tab => (
                     <button
                         key={tab}
                         className={`px-6 py-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab ? 'border-primary text-primary font-bold' : 'border-transparent text-text-secondary hover:text-text-primary'}`}
@@ -255,6 +258,46 @@ finity dev sandbox`}
                     <div className="mt-8 p-6 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
                         <p className="text-xl font-bold text-green-400 mb-4">✓ All checks passed! Ready to submit.</p>
                         <Link to="/developer-marketplace" className="btn btn-primary">Go to Submission Portal</Link>
+                    </div>
+                </div>
+            )}
+
+            {/* Examples Tab */}
+            {activeTab === 'examples' && (
+                <div className="glass-panel">
+                    <h2 className="text-2xl font-bold mb-6">Live SDK Examples</h2>
+                    <p className="mb-8 text-text-muted">
+                        Live rendering of test widgets using the <code>FinityClient</code> and <code>WidgetContext</code>.
+                    </p>
+
+                    <div className="grid md:grid-cols-2 gap-8">
+                        <div className="card border border-white/10">
+                            <h3 className="text-xl font-bold mb-4">Hello World Widget</h3>
+                            <div className="bg-bg-secondary p-4 rounded min-h-[150px]">
+                                <HelloWorldWidget
+                                    context={{
+                                        theme: 'dark',
+                                        currency: 'USD',
+                                        locale: 'en-US'
+                                    }}
+                                    client={mockClient}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="card border border-white/10">
+                            <h3 className="text-xl font-bold mb-4">Data Fetcher Widget</h3>
+                            <div className="bg-bg-secondary p-4 rounded min-h-[150px]">
+                                <DataFetcherWidget
+                                    context={{
+                                        theme: 'dark',
+                                        currency: 'USD',
+                                        locale: 'en-US'
+                                    }}
+                                    client={mockClient}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
