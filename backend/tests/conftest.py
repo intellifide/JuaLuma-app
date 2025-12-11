@@ -14,6 +14,8 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("PLAID_CLIENT_ID", "test-client")
 os.environ.setdefault("PLAID_SECRET", "test-secret")
 os.environ.setdefault("FRONTEND_URL", "http://localhost:5175")
+os.environ.setdefault("RATE_LIMIT_MAX_REQUESTS", "10")
+os.environ.setdefault("RATE_LIMIT_WINDOW_SECONDS", "60")
 
 # Monkeypatch httpx.Client to ignore 'app' argument passed by older starlette versions
 _orig_client_init = httpx.Client.__init__

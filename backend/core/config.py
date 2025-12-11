@@ -24,6 +24,9 @@ class AppSettings(BaseSettings):
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
     api_port: int = Field(default=8001, alias="API_PORT")
     frontend_url: str = Field(default="http://localhost:5175", alias="FRONTEND_URL")
+    cors_origins_raw: str | None = Field(default=None, alias="BACKEND_CORS_ORIGINS")
+    rate_limit_max_requests: int = Field(default=100, alias="RATE_LIMIT_MAX_REQUESTS")
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
 
     database_url: str = Field(..., alias="DATABASE_URL")
 
@@ -71,6 +74,21 @@ class AppSettings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
+        """
+        Comma-separated CORS origins from BACKEND_CORS_ORIGINS.
+        Falls back to the single configured frontend URL.
+        Rejects wildcards to fail safe by default.
+        """
+        if self.cors_origins_raw:
+            candidates = [
+                origin.strip()
+                for origin in self.cors_origins_raw.split(",")
+                if origin.strip()
+            ]
+            if any(origin == "*" for origin in candidates):
+                raise ValueError("BACKEND_CORS_ORIGINS cannot contain '*'.")
+            return candidates
+
         return [self.frontend_url]
 
     @property

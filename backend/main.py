@@ -1,10 +1,13 @@
 # Updated 2025-12-11 01:35 CST by ChatGPT
 import asyncio
 import logging
+import typing as _t
 
-from fastapi import FastAPI, status
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
 
 from backend.core import configure_logging, settings
@@ -18,6 +21,11 @@ from backend.api.widgets import router as widgets_router
 from backend.api.developers import router as developers_router
 from backend.api.support import router as support_router
 from backend.api.users import router as users_router
+from backend.middleware import (
+    RateLimitMiddleware,
+    RequestContextMiddleware,
+    SecurityHeadersMiddleware,
+)
 from backend.models.base import engine
 from backend.utils import get_db  # noqa: F401 - imported for dependency wiring
 
@@ -30,7 +38,17 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS configuration for local development
+# Observability and protection middleware
+app.add_middleware(RequestContextMiddleware)
+app.add_middleware(
+    RateLimitMiddleware,
+    max_requests=settings.rate_limit_max_requests,
+    window_seconds=settings.rate_limit_window_seconds,
+    path_prefixes=("/api/auth", "/", "/health", "/api/health"),
+)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# CORS configuration (fail-safe: no wildcard)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -49,6 +67,87 @@ app.include_router(widgets_router)
 app.include_router(developers_router)
 app.include_router(support_router)
 app.include_router(users_router)
+
+# Structured error handlers ----------------------------------------------------
+def _build_error_response(
+    *,
+    status_code: int,
+    error: str,
+    message: str,
+    request: Request,
+) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None)
+    payload: dict[str, _t.Any] = {
+        "error": error,
+        "message": message,
+        "request_id": request_id,
+    }
+    return JSONResponse(status_code=status_code, content=payload)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    code_map = {
+        status.HTTP_400_BAD_REQUEST: "bad_request",
+        status.HTTP_401_UNAUTHORIZED: "unauthorized",
+        status.HTTP_403_FORBIDDEN: "forbidden",
+        status.HTTP_404_NOT_FOUND: "not_found",
+        status.HTTP_429_TOO_MANY_REQUESTS: "too_many_requests",
+    }
+    error_code = code_map.get(exc.status_code, "http_error")
+    message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+    return _build_error_response(
+        status_code=exc.status_code,
+        error=error_code,
+        message=message,
+        request=request,
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def starlette_exception_handler(
+    request: Request, exc: StarletteHTTPException
+) -> JSONResponse:
+    code_map = {
+        status.HTTP_400_BAD_REQUEST: "bad_request",
+        status.HTTP_401_UNAUTHORIZED: "unauthorized",
+        status.HTTP_403_FORBIDDEN: "forbidden",
+        status.HTTP_404_NOT_FOUND: "not_found",
+        status.HTTP_429_TOO_MANY_REQUESTS: "too_many_requests",
+    }
+    error_code = code_map.get(exc.status_code, "http_error")
+    message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+    return _build_error_response(
+        status_code=exc.status_code,
+        error=error_code,
+        message=message,
+        request=request,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    return _build_error_response(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        error="bad_request",
+        message="Invalid request payload.",
+        request=request,
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:  # pragma: no cover - defensive fallback
+    logger.exception("Unhandled exception")
+    return _build_error_response(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        error="internal_error",
+        message="An unexpected error occurred.",
+        request=request,
+    )
 
 
 
