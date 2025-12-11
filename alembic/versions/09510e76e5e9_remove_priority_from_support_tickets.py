@@ -5,11 +5,11 @@ Revises: eb8b37b8b170
 Create Date: 2025-12-09 21:42:14.724560
 
 """
+# Updated 2025-12-10 22:20 CST by ChatGPT - remove unused import
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '09510e76e5e9'

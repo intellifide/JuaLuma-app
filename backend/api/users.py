@@ -1,7 +1,6 @@
 import logging
-import json
+# Updated 2025-12-10 21:27 CST (Central Time) - removed unused imports
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
@@ -12,7 +11,6 @@ from backend.models import (
     AuditLog,
     User,
     Subscription,
-    Transaction,
     Account,
     SupportTicket,
     AISettings,

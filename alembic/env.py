@@ -1,4 +1,4 @@
-# Updated 2025-12-08 17:53 CST by ChatGPT
+# Updated 2025-12-10 22:20 CST by ChatGPT
 import os
 import sys
 from logging.config import fileConfig
@@ -13,6 +13,8 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 load_dotenv()
+from backend import models  # noqa: E402,F401 - ensures models are imported
+from backend.models import Base  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -31,9 +33,6 @@ if not configured_url or configured_url.startswith("${"):
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-from backend import models  # noqa: F401 - ensures models are imported
-from backend.models import Base
 
 target_metadata = Base.metadata
 

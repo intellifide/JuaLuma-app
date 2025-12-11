@@ -1,19 +1,22 @@
-import requests
 import sys
-import json
+
+import requests
 
 # Configuration
 API_BASE = "http://localhost:8001"
-# You need a valid Firebase ID token here. 
+LINK_TOKEN_PATH = "/api/plaid/link-token"
+EXCHANGE_TOKEN_PATH = "/api/plaid/exchange-token"
+# You need a valid Firebase ID token here.
 # For manual testing, log in to the frontend, inspect network requests, and copy the Bearer token.
 # Or use a script to generate one if you have service account creds (complex for simple script).
 # We will prompt for it or take it as arg.
 
 def run_verify(token):
+    # Updated 2025-12-10 23:05 CST by ChatGPT - clean up instrumentation
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     print("1. Creating Link Token...")
-    resp = requests.post(f"{API_BASE}/api/plaid/create_link_token", headers=headers)
+    resp = requests.post(f"{API_BASE}{LINK_TOKEN_PATH}", headers=headers)
     if resp.status_code != 200:
         print(f"FAILED: {resp.text}")
         return
@@ -26,7 +29,7 @@ def run_verify(token):
     # But usually backend doesn't expose that.
     
     print("\n[MANUAL STEP REQUIRED]")
-    print(f"Use the Link Token in the frontend to connect a Sandbox account.")
+    print("Use the Link Token in the frontend to connect a Sandbox account.")
     print("Or, if you have a valid 'public_token' from a previous sandbox link, enter it below.")
     print("NOTE: Public tokens expire quickly (30m).")
     
@@ -34,15 +37,20 @@ def run_verify(token):
     if public_token.lower() == 'skip':
         return
 
+    institution_name = input("Enter institution name (default 'Sandbox'): ").strip() or "Sandbox"
+
     print(f"\n2. Exchanging Public Token for {public_token}...")
-    # Assume /api/plaid/exchange_public_token endpoint exists and takes {public_token: ...}
-    resp = requests.post(f"{API_BASE}/api/plaid/exchange_public_token", 
-                         headers=headers, 
-                         json={"public_token": public_token})
-                         
-    if resp.status_code != 200:
+    resp = requests.post(
+        f"{API_BASE}{EXCHANGE_TOKEN_PATH}",
+        headers=headers,
+        json={"public_token": public_token, "institution_name": institution_name},
+    )
+
+    if resp.status_code not in (200, 201):
         print(f"FAILED: {resp.text}")
         return
+
+    exchange_payload = resp.json()
     
     print("   Success! Account linked.")
     # Presumably returns account or item ID?
@@ -66,12 +74,12 @@ def run_verify(token):
     print(f"\n4. Syncing Transactions for {account_id}...")
     resp = requests.post(f"{API_BASE}/api/accounts/{account_id}/sync", headers=headers)
     if resp.status_code != 200:
-         # It might be 202 Accepted?
-         if resp.status_code == 202:
-             print("   Sync started (Async).")
-         else:
-             print(f"FAILED: {resp.text}")
-             return
+        # It might be 202 Accepted?
+        if resp.status_code == 202:
+            print("   Sync started (Async).")
+        else:
+            print(f"FAILED: {resp.text}")
+            return
     else:
         print("   Sync triggered successfully.")
         

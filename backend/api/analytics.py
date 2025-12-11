@@ -108,7 +108,8 @@ def get_net_worth(
     ).all()
     
     # 2025-12-10 21:21 CST - roll back post-period transactions correctly.
-    future_delta = sum((t.amount or Decimal(0)) for t in recent_txns, Decimal(0))
+    # Updated 2025-12-10 22:45 CST - parenthesize generator for Decimal sum
+    future_delta = sum(((t.amount or Decimal(0)) for t in recent_txns), Decimal(0))
     balance_at_end = current_total - future_delta
     
     # 4. Filter transactions for the range and sort desc
