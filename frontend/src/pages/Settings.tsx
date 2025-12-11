@@ -105,7 +105,7 @@ export const Settings = () => {
                 <div className="card-footer mt-6 flex gap-2">
                   <button onClick={async () => {
                     try {
-                      const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://backend:8001';
+                      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
                       if (!user) {
                         alert('You must be signed in to manage billing.');
                         return;
@@ -279,7 +279,7 @@ export const Settings = () => {
                       className="btn btn-outline"
                       onClick={async () => {
                         try {
-                          const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://backend:8001';
+                          const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
                           const token = await user?.getIdToken();
                           const response = await fetch(`${apiBase}/api/users/export`, {
                             method: 'POST',
@@ -444,7 +444,7 @@ export const Settings = () => {
                 e.preventDefault();
                 if (deleteConfirm === 'DELETE') {
                   try {
-                    const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://backend:8001';
+                    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
                     const token = await user?.getIdToken();
                     const response = await fetch(`${apiBase}/api/users/me`, {
                       method: 'DELETE',

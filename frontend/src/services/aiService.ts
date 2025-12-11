@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://backend:8001';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const API_URL = `${API_BASE}/api/ai`;
 
 export interface AIResponse {
