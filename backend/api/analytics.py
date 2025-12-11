@@ -1,5 +1,6 @@
 
 import logging
+from calendar import monthrange
 from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal
 from typing import List
@@ -47,11 +48,12 @@ def _get_date_range(start_date: date, end_date: date, interval: str) -> List[dat
         elif interval == 'weekly':
             current += timedelta(weeks=1)
         elif interval == 'monthly':
-            # naive monthly increment
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
+            # 2025-12-11 01:35 CST - clamp day to target month to avoid ValueError
+            target_year = current.year + 1 if current.month == 12 else current.year
+            target_month = 1 if current.month == 12 else current.month + 1
+            max_day = monthrange(target_year, target_month)[1]
+            safe_day = min(current.day, max_day)
+            current = date(target_year, target_month, safe_day)
         else:
              current += timedelta(days=1)
     return dates
