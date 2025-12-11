@@ -1,4 +1,4 @@
-# Updated 2025-12-10 14:58 CST by ChatGPT
+# Updated 2025-12-10 16:46 CST by ChatGPT
 import logging
 from collections import defaultdict, deque
 from threading import Lock
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, Subscription, User
 from backend.services.auth import (
+    _get_firebase_app,
     create_user_record,
     generate_password_reset_link,
     revoke_refresh_tokens,
@@ -148,6 +149,8 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
     from firebase_admin import exceptions as firebase_exceptions
 
     try:
+        # 2025-12-10 16:46 CST - ensure emulator/SDK is initialized before create_user
+        _get_firebase_app()
         record = auth.create_user(
             email=payload.email, password=payload.password
         )
