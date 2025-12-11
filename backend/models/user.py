@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .manual_asset import ManualAsset
     from .payout import DeveloperPayout
     from .developer import Developer
+    from .support import SupportTicket
 
 
 class User(Base):
@@ -79,6 +80,13 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
+        lazy="selectin",
+    )
+    # 2025-12-11 14:20 CST - expose support tickets for export usage
+    support_tickets: Mapped[list["SupportTicket"]] = relationship(
+        "SupportTicket",
+        back_populates="user",
+        cascade="all, delete-orphan",
         lazy="selectin",
     )
     notification_preferences: Mapped[list["NotificationPreference"]] = relationship(

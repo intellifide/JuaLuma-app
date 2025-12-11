@@ -142,11 +142,11 @@ TIER_LIMITS = {
     "ultimate": 200
 }
 
-# 2025-12-11 02:12 CST - offload sync rate limit work to thread
-def _check_rate_limit_sync(user_id: str) -> int:
+# 2025-12-11 14:15 CST - split rate-limit check from usage increment
+def _check_rate_limit_sync(user_id: str) -> tuple[str, int, int]:
     """
-    Checks if the user has exceeded their daily AI request limit.
-    Uses Firestore to track daily usage.
+    Reads the user's tier and current usage without incrementing.
+    Returns (tier, limit, current_usage). Raises HTTP 429 if already over limit.
     """
     # 1. Get User Tier from Postgres
     tier = "free" # Default
@@ -165,54 +165,66 @@ def _check_rate_limit_sync(user_id: str) -> int:
     
     limit = TIER_LIMITS.get(tier, 20)
     
-    # 2. Check Firestore for daily usage
+    # 2. Check Firestore for daily usage (read-only)
     db_fs = get_firestore_client()
     today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
     doc_ref = db_fs.collection("ai_quota").document(user_id).collection("daily_stats").document(today)
     
-    # Transactional update
-    @firestore.transactional
-    def CheckAndIncrement(transaction, doc_ref):
-        snapshot = doc_ref.get(transaction=transaction)
-        current_usage = 0
-        if snapshot.exists:
-            current_usage = snapshot.get("request_count") or 0
-            
-        if current_usage >= limit:
-            return False, current_usage
-            
-        # Increment
-        if not snapshot.exists:
-             transaction.set(doc_ref, {"request_count": 1, "tier": tier, "date": today})
-        else:
-             transaction.update(doc_ref, {"request_count": firestore.Increment(1)})
-        
-        return True, current_usage + 1
+    snapshot = doc_ref.get()
+    current_usage = (snapshot.get("request_count") or 0) if snapshot.exists else 0
 
-    transaction = db_fs.transaction()
-    allowed, usage = CheckAndIncrement(transaction, doc_ref)
-    
-    if not allowed:
+    if current_usage >= limit:
         raise HTTPException(status_code=429, detail=f"Daily AI limit reached for {tier} tier ({limit} requests).")
         
-    return usage
+    return tier, limit, current_usage
 
 
-async def check_rate_limit(user_id: str) -> int:
+def _increment_usage_sync(user_id: str, tier: str, limit: int) -> int:
+    """
+    Increment usage atomically, ensuring we stay within limit at commit time.
+    """
+    db_fs = get_firestore_client()
+    today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    doc_ref = db_fs.collection("ai_quota").document(user_id).collection("daily_stats").document(today)
+
+    @firestore.transactional
+    def Increment(transaction, doc_ref):
+        snapshot = doc_ref.get(transaction=transaction)
+        current_usage = (snapshot.get("request_count") or 0) if snapshot.exists else 0
+
+        if current_usage >= limit:
+            raise HTTPException(status_code=429, detail=f"Daily AI limit reached for {tier} tier ({limit} requests).")
+
+        if not snapshot.exists:
+            transaction.set(doc_ref, {"request_count": 1, "tier": tier, "date": today})
+            return 1
+
+        transaction.update(doc_ref, {"request_count": firestore.Increment(1)})
+        return current_usage + 1
+
+    transaction = db_fs.transaction()
+    return Increment(transaction, doc_ref)
+
+
+async def check_rate_limit(user_id: str) -> tuple[str, int, int]:
     """
     Async wrapper that offloads the blocking Firestore/postgres work to a thread.
     """
     return await asyncio.to_thread(_check_rate_limit_sync, user_id)
 
+
+async def record_rate_limit_usage(user_id: str, tier: str, limit: int) -> int:
+    """
+    Async wrapper to increment usage only after a successful AI call.
+    """
+    return await asyncio.to_thread(_increment_usage_sync, user_id, tier, limit)
+
 async def generate_chat_response(prompt: str, context: Optional[str], user_id: str) -> dict:
     """
     Generates a response using the AI model, enforcing rate limits.
     """
-    # 1. Rate Check
-    # This invokes the increment. Ideally we only increment on success, but for rate limiting preventing flood, checking first is key.
-    # The implementation above increments on check. If generation fails, we might want to decrement or just count it. 
-    # For now, counting attempts is safer for abuse.
-    daily_usage = await check_rate_limit(user_id)
+    # 1. Rate Check (read-only) to avoid counting failed requests
+    tier, limit, current_usage = await check_rate_limit(user_id)
     
     client = get_ai_client()
     
@@ -238,10 +250,13 @@ async def generate_chat_response(prompt: str, context: Optional[str], user_id: s
                  parts = [part.text for part in response.candidates[0].content.parts]
                  response_text = "".join(parts)
         
-        # 5. Return
+        # 5. Persist usage only after success to avoid charging failures
+        usage_after = await record_rate_limit_usage(user_id, tier, limit)
+
+        # 6. Return
         return {
             "response": response_text,
-            "usage_today": daily_usage
+            "usage_today": usage_after
         }
     except Exception as e:
         logger.error(f"AI Generation failed: {e}")

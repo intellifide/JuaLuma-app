@@ -238,6 +238,10 @@ def get_spending_by_category(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # 2025-12-11 14:05 CST - align date filtering with tz-aware datetimes
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+    end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+
     query = (
         select(
             Transaction.category,
@@ -245,8 +249,8 @@ def get_spending_by_category(
         )
         .where(
             Transaction.uid == current_user.uid,
-            Transaction.ts >= start_date,
-            Transaction.ts <= end_date,
+            Transaction.ts >= start_dt,
+            Transaction.ts <= end_dt,
             Transaction.amount < 0,
             Transaction.archived.is_(False)
         )

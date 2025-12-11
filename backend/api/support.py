@@ -230,10 +230,13 @@ def rate_ticket(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
         )
 
+    # 2025-12-11 14:08 CST - normalize ticket_id handling for legacy string column
+    ticket_id_str = str(ticket.id)
+
     # Check if already rated
     existing_rating = (
         db.query(SupportTicketRating)
-        .filter(SupportTicketRating.ticket_id == str(ticket.id))  # Legacy string ID
+        .filter(SupportTicketRating.ticket_id == ticket_id_str)  # Legacy string ID
         .first()
     )
     if existing_rating:
@@ -262,7 +265,7 @@ def rate_ticket(
         db.refresh(agent)
 
     rating_record = SupportTicketRating(
-        ticket_id=str(ticket.id),
+        ticket_id=ticket_id_str,
         agent_id=agent.id,
         customer_uid=current_user.uid,
         rating=payload.rating,

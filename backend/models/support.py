@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -20,6 +20,9 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class SupportAgent(Base):
@@ -122,6 +125,12 @@ class SupportTicket(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
         order_by="SupportTicketMessage.created_at",
+    )
+    # 2025-12-11 14:20 CST - wire back-populates for user exports
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="support_tickets",
+        lazy="selectin",
     )
 
     def __repr__(self) -> str:
