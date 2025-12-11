@@ -37,7 +37,7 @@ def _get_local_key(user_dek_ref: str) -> bytes:
     key_material = f"{master_key}:{user_dek_ref}".encode()
     return base64.urlsafe_b64encode(kdf.derive(key_material))
 
-def encrypt_prompt(text: str, user_dek_ref: str) -> str:
+def encrypt_prompt(text: str, user_dek_ref: str) -> bytes:
     """
     Encrypts the prompt text.
     
@@ -46,7 +46,7 @@ def encrypt_prompt(text: str, user_dek_ref: str) -> str:
         user_dek_ref: A reference ID for the user's key (e.g., user_id or a KMS key resource ID).
         
     Returns:
-        The encrypted text as a string (base64 encoded).
+        The encrypted text as raw Fernet bytes (safe for BYTEA).
     """
     env = os.getenv("App_Env", "local").lower()
     
@@ -63,9 +63,9 @@ def encrypt_prompt(text: str, user_dek_ref: str) -> str:
 
     key = _get_local_key(user_dek_ref)
     f = Fernet(key)
-    return f.encrypt(text.encode()).decode()
+    return f.encrypt(text.encode())
 
-def decrypt_prompt(encrypted_text: str, user_dek_ref: str) -> str:
+def decrypt_prompt(encrypted_text: bytes | str, user_dek_ref: str) -> str:
     """
     Decrypts the prompt text.
     """
@@ -77,7 +77,8 @@ def decrypt_prompt(encrypted_text: str, user_dek_ref: str) -> str:
     try:
         key = _get_local_key(user_dek_ref)
         f = Fernet(key)
-        return f.decrypt(encrypted_text.encode()).decode()
+        ciphertext = encrypted_text.encode() if isinstance(encrypted_text, str) else encrypted_text
+        return f.decrypt(ciphertext).decode()
     except Exception as e:
         logger.error(f"Decryption failed: {e}")
         raise ValueError("Failed to decrypt prompt.") from e

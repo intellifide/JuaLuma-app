@@ -132,8 +132,8 @@ async def chat_endpoint(
     # We'll default to encrypting if not specifically excluded.
     # Encrypt response as well (since model requires encrypted_response)
     # 2025-12-10 16:46 CST - store ciphertext as bytes to satisfy BYTEA columns
-    encrypted_prompt = encrypt_prompt(message, user_dek_ref=user_id).encode()
-    encrypted_response = encrypt_prompt(ai_response, user_dek_ref=user_id).encode()
+    encrypted_prompt = encrypt_prompt(message, user_dek_ref=user_id)
+    encrypted_response = encrypt_prompt(ai_response, user_dek_ref=user_id)
     
     log_entry = LLMLog(
         uid=user_id,
@@ -183,13 +183,13 @@ def get_chat_history(
     for log in logs:
         # Decrypt prompt
         try:
-            prompt_text = decrypt_prompt(log.encrypted_prompt.decode(), user_dek_ref=user_id)
+            prompt_text = decrypt_prompt(log.encrypted_prompt, user_dek_ref=user_id)
         except Exception:
             prompt_text = "[Encrypted/Unreadable]"
             
         # Decrypt response
         try:
-            response_text = decrypt_prompt(log.encrypted_response.decode(), user_dek_ref=user_id)
+            response_text = decrypt_prompt(log.encrypted_response, user_dek_ref=user_id)
         except Exception:
             response_text = "[Encrypted/Unreadable]"
             

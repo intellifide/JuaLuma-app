@@ -191,6 +191,7 @@ def create_widget(
     
     metadata = {
         "ip": request.client.host if request.client else None,
+        "widget_id": widget.id,
         "widget_name": widget.name,
         "user_agent": request.headers.get("user-agent"),
     }
@@ -202,7 +203,7 @@ def create_widget(
     
     log_entry = AuditLog(
         actor_uid=current_user.uid,
-        target_uid=widget.id, # Target is the widget
+        target_uid=widget.developer_uid,
         action="create_widget",
         source="backend",
         metadata_json=metadata,
@@ -256,7 +257,7 @@ def update_widget(
         }
         log_entry = AuditLog(
             actor_uid=current_user.uid,
-            target_uid=widget.id,
+            target_uid=widget.developer_uid,
             action="update_widget",
             source="backend",
             metadata_json=metadata
@@ -291,7 +292,7 @@ def delete_widget(
     }
     log_entry = AuditLog(
         actor_uid=current_user.uid,
-        target_uid=widget.id,
+        target_uid=widget.developer_uid,
         action="delete_widget",
         source="backend",
         metadata_json=metadata
@@ -337,7 +338,7 @@ def download_widget(
     }
     log_entry = AuditLog(
         actor_uid=current_user.uid,
-        target_uid=widget.id,
+        target_uid=widget.developer_uid,
         action="download_widget",
         source="backend",
         metadata_json=metadata
@@ -409,7 +410,7 @@ def rate_widget(
     }
     log_entry = AuditLog(
         actor_uid=current_user.uid,
-        target_uid=widget.id,
+        target_uid=widget.developer_uid,
         action="rate_widget",
         source="backend",
         metadata_json=metadata
