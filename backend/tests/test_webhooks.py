@@ -3,7 +3,6 @@ import time
 import json
 import hmac
 import hashlib
-import pytest
 from backend.core import settings
 from backend.models import Subscription, User
 from sqlalchemy.orm import Session

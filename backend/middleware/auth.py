@@ -43,6 +43,23 @@ async def get_current_user(
 
     user = db.query(User).filter(User.uid == uid).first()
     if not user:
+        # JIT Healing: Check if user exists by email (common in dev/reset scenarios)
+        email = decoded.get("email")
+        if email:
+            user_by_email = db.query(User).filter(User.email == email).first()
+            if user_by_email:
+                # User exists but UID mismatched. Trust the fresh Firebase token.
+                # Attempt to update the DB record to match the new UID.
+                try:
+                    user_by_email.uid = uid
+                    db.commit()
+                    db.refresh(user_by_email)
+                    return user_by_email
+                except Exception:
+                    # If PK update fails (e.g. FK constraints without cascade), rollback
+                    db.rollback()
+                    pass
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found.",

@@ -3,7 +3,6 @@ import stripe
 import logging
 from fastapi import APIRouter, Header, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 from backend.core import settings
 from backend.utils import get_db
@@ -82,7 +81,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None),
             invoice = event['data']['object']
             # Subscription renewal successful
             # Ensure tier is pro
-            customer_id = invoice.get('customer')
+            # Ensure tier is pro
             email = invoice.get('customer_email')
             
             # Map email/customer to User

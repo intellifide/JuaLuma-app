@@ -1,5 +1,4 @@
-# Updated 2025-12-11 02:50 CST
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
