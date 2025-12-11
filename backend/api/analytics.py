@@ -39,23 +39,35 @@ class SpendingByCategoryResponse(BaseModel):
 
 # Helper to generate date range
 def _get_date_range(start_date: date, end_date: date, interval: str) -> List[date]:
-    dates = []
+    if start_date > end_date:
+        return []
+
+    dates = [start_date]
     current = start_date
-    while current <= end_date:
-        dates.append(current)
-        if interval == 'daily':
-            current += timedelta(days=1)
-        elif interval == 'weekly':
-            current += timedelta(weeks=1)
-        elif interval == 'monthly':
-            # 2025-12-11 01:35 CST - clamp day to target month to avoid ValueError
+
+    while current < end_date:
+        if interval == "daily":
+            next_date = current + timedelta(days=1)
+        elif interval == "weekly":
+            next_date = current + timedelta(weeks=1)
+        elif interval == "monthly":
+            # 2025-12-11 01:40 CST - ensure monthly buckets include the end date across year rollover
             target_year = current.year + 1 if current.month == 12 else current.year
             target_month = 1 if current.month == 12 else current.month + 1
             max_day = monthrange(target_year, target_month)[1]
             safe_day = min(current.day, max_day)
-            current = date(target_year, target_month, safe_day)
+            next_date = date(target_year, target_month, safe_day)
         else:
-             current += timedelta(days=1)
+            next_date = current + timedelta(days=1)
+
+        if next_date >= end_date:
+            if dates[-1] != end_date:
+                dates.append(end_date)
+            break
+
+        dates.append(next_date)
+        current = next_date
+
     return dates
 
 @router.get("/net-worth", response_model=NetWorthResponse)

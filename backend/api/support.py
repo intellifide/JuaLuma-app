@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from backend.middleware.auth import get_current_user
 from backend.models import User
-from backend.models.support import SupportTicket, SupportTicketMessage, SupportTicketRating
+from backend.models.support import (
+    SupportAgent,
+    SupportTicket,
+    SupportTicketMessage,
+    SupportTicketRating,
+)
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/support", tags=["support"])
@@ -63,6 +68,19 @@ class TicketResponse(BaseModel):
 class TicketRatingCreate(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     feedback_text: Optional[str] = None
+
+
+class TicketRatingResponse(BaseModel):
+    id: uuid.UUID
+    ticket_id: str
+    agent_id: uuid.UUID
+    customer_uid: str
+    rating: int
+    feedback_text: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # --- Endpoints ---
@@ -193,7 +211,7 @@ def close_ticket(
     return ticket
 
 
-@router.post("/tickets/{ticket_id}/rate")
+@router.post("/tickets/{ticket_id}/rate", response_model=TicketRatingResponse)
 def rate_ticket(
     payload: TicketRatingCreate,
     ticket_id: uuid.UUID = Path(...),
@@ -223,32 +241,35 @@ def rate_ticket(
             status_code=status.HTTP_409_CONFLICT, detail="Ticket already rated"
         )
 
-    # Find an agent to attribute to? 
-    # Current SupportTicketRating requires agent_id.
-    # If no agent handled it yet, this might fail.
-    # Getting an arbitrary agent or null? Schema says agent_id is nullable?
-    # Let's check SupportTicketRating model again.
-    # agent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("support_agents.id"), nullable=False)
-    # This is a problem. If we have automated support or no agent assigned yet, we can't rate?
-    # For now, I'll attempt to find *any* agent or the "system" agent if exists.
-    # Or I should make agent_id nullable in the model.
-    # Given I can't easily change the model constraint without migration locally (safely), 
-    # I will assign to the first available agent for now or skip rating if no agent.
+    # 2025-12-11 01:40 CST - persist rating with a fallback system agent
+    agent = (
+        db.query(SupportAgent)
+        .filter(SupportAgent.active.is_(True))
+        .order_by(SupportAgent.created_at.asc())
+        .first()
+    )
 
-    # Actually, let's check if we have any agents.
-    # For this task, maybe I shouldn't implement rating if it blocks?
-    # But TIER 5.5 says "Close/Rate Ticket".
-    # I'll modify the endpoint to handle this gracefully: try to find an assigned agent (if we tracked it).
-    # We do NOT track assigned agent in SupportTicket yet (I defined it).
-    # I should add `assigned_agent_id` to `SupportTicket`. 
-    # But I missed that in the model update.
-    # I will skip the Rating implementation details that depend on Agent for now, or just not create the record if no agent.
-    # Wait, the `SupportTicketRating` model was pre-existing. It expects `agent_id`.
-    # I will assume there's a default agent or I'll implement it to just return success but not save if no agent.
-    # OR, better: I will NOT implement the DB write for Rating if it violates constraints, just log it. 
-    # "Rate ticket (1-5 stars)" - maybe just store it on the ticket itself?
-    # No, `SupportTicketRating` table exists.
-    # I will create a Dummy Agent if needed, or just leave it for now.
-    
-    # Let's just return a mock success for now to satisfy the API check.
-    return {"message": "Rating submitted (mock)"}
+    if not agent:
+        agent = SupportAgent(
+            company_id="system",
+            name="System Agent",
+            email="system@finity.support",
+            role="support_agent",
+            active=True,
+        )
+        db.add(agent)
+        db.commit()
+        db.refresh(agent)
+
+    rating_record = SupportTicketRating(
+        ticket_id=str(ticket.id),
+        agent_id=agent.id,
+        customer_uid=current_user.uid,
+        rating=payload.rating,
+        feedback_text=payload.feedback_text,
+    )
+    db.add(rating_record)
+    db.commit()
+    db.refresh(rating_record)
+
+    return rating_record
