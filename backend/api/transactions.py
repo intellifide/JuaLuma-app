@@ -214,9 +214,14 @@ def get_transaction(
 
     - **transaction_id**: UUID of the transaction.
     """
+    # 2025-12-10 21:21 CST - exclude archived soft-deleted transactions.
     txn = (
         db.query(Transaction)
-        .filter(Transaction.id == transaction_id, Transaction.uid == current_user.uid)
+        .filter(
+            Transaction.id == transaction_id,
+            Transaction.uid == current_user.uid,
+            Transaction.archived.is_(False),
+        )
         .first()
     )
     if not txn:

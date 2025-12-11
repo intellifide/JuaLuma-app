@@ -107,8 +107,9 @@ def get_net_worth(
         Transaction.archived.is_(False)
     ).all()
     
-    # Roll back post-period transactions to derive balance at end_date.
-    balance_at_end = current_total + sum(t.amount for t in recent_txns)
+    # 2025-12-10 21:21 CST - roll back post-period transactions correctly.
+    future_delta = sum((t.amount or Decimal(0)) for t in recent_txns, Decimal(0))
+    balance_at_end = current_total - future_delta
     
     # 4. Filter transactions for the range and sort desc
     txns_in_range = [t for t in all_txns if t.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)]
