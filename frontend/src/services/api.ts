@@ -2,8 +2,12 @@
 import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken } from './auth'
 
+// Prevent using Docker hostname in browser
+const envBase = import.meta.env.VITE_API_BASE_URL;
+const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL,
   timeout: 10000, // 10 second timeout
 })
 
