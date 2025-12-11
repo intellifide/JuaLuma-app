@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
-from backend.core.dependencies import check_account_limit
+from backend.core.dependencies import enforce_account_limit
 from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.plaid import fetch_accounts, fetch_transactions
 from backend.utils import get_db
@@ -484,12 +484,14 @@ def sync_account_transactions(
 @router.post("/manual", response_model=AccountResponse, status_code=status.HTTP_201_CREATED)
 def create_manual_account(
     payload: AccountCreate,
-    current_user: User = Depends(check_account_limit),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AccountResponse:
     """
     Create a manual account for asset tracking (house, car, collectibles).
     """
+    enforce_account_limit(current_user, db, "manual")
+
     account = Account(
         uid=current_user.uid,
         account_type="manual",

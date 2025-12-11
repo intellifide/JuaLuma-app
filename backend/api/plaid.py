@@ -1,3 +1,4 @@
+
 # Updated 2025-12-08 21:10 CST by ChatGPT
 from decimal import Decimal
 import uuid
@@ -6,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from backend.core.dependencies import check_account_limit
+from backend.middleware.auth import get_current_user
+from backend.core.dependencies import enforce_account_limit
 from backend.models import Account, AuditLog, User
 from backend.services.plaid import (
     create_link_token,
@@ -49,7 +51,7 @@ class ExchangeTokenResponse(BaseModel):
 
 @router.post("/link-token", response_model=LinkTokenResponse)
 def create_link_token_endpoint(
-    current_user: User = Depends(check_account_limit),
+    current_user: User = Depends(get_current_user),
 ) -> LinkTokenResponse:
     """Create a link_token for the authenticated user."""
     try:
@@ -72,10 +74,12 @@ def create_link_token_endpoint(
 )
 def exchange_token_endpoint(
     payload: ExchangeTokenRequest,
-    current_user: User = Depends(check_account_limit),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ExchangeTokenResponse:
     """Exchange a public_token, persist linked accounts, and log the action."""
+    # Enforce limit before exchange (assuming traditional for now as per current logic)
+    enforce_account_limit(current_user, db, "traditional")
     try:
         access_token, item_id = exchange_public_token(payload.public_token)
     except RuntimeError as exc:

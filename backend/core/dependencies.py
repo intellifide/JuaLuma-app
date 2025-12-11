@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from backend.middleware.auth import get_current_user
-from backend.utils import get_db
 from backend.models import User, Account, Subscription
 from backend.core.constants import TierLimits, SubscriptionPlans
 
@@ -41,25 +40,31 @@ def require_pro_or_ultimate(current_user: User = Depends(get_current_user)) -> U
         )
     return current_user
 
-def check_account_limit(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+def enforce_account_limit(
+    user: User,
+    db: Session,
+    account_type: str
 ):
     """
-    Dependency that checks if the user has reached their account limit based on tier.
+    Enforces account limits based on user tier and account type.
     Raises 403 if limit exceeded.
     """
-    sub = get_current_active_subscription(current_user)
+    sub = get_current_active_subscription(user)
     plan = sub.plan if sub else SubscriptionPlans.FREE
     
     if plan == SubscriptionPlans.FREE:
-        # Count existing accounts
-        count = db.query(func.count(Account.id)).filter(Account.uid == current_user.uid).scalar()
-        if count >= TierLimits.FREE_ACCOUNTS:
+        limit = TierLimits.FREE_LIMITS_BY_TYPE.get(account_type, 3) # Default to 3 if unknown
+        
+        # Count existing accounts of this type
+        # Note: manual accounts are treated separately or aggregated? 
+        # For simplicity, we filter by account_type.
+        count = db.query(func.count(Account.id)).filter(
+            Account.uid == user.uid,
+            Account.account_type == account_type
+        ).scalar()
+        
+        if count >= limit:
              raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Free tier is restricted to {TierLimits.FREE_ACCOUNTS} connected accounts. Please upgrade to add more."
+                detail=f"Free tier is restricted to {limit} {account_type} accounts. Please upgrade to add more."
             )
-    
-    # Other tiers are currently unlimited or high enough to not check here
-    return current_user

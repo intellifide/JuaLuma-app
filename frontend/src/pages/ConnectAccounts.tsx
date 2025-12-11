@@ -1,9 +1,20 @@
 import React from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
+import { useToast } from '../components/ui/Toast';
 
 export const ConnectAccounts = () => {
-  const { accounts, loading, remove, sync } = useAccounts();
+  const { accounts, loading, remove, sync, refetch } = useAccounts();
+  const toast = useToast();
+
+  const handlePlaidSuccess = () => {
+    toast.show('Account connected successfully', 'success');
+    refetch();
+  };
+
+  const handlePlaidError = (msg: string) => {
+    toast.show(msg, 'error');
+  };
 
   return (
     <div>
@@ -26,7 +37,7 @@ export const ConnectAccounts = () => {
                 <li>Supports up to 5 traditional accounts (Pro/Essential)</li>
               </ul>
               <div className="mt-4">
-                <PlaidLinkButton />
+                <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
               </div>
             </div>
           </div>
@@ -39,7 +50,7 @@ export const ConnectAccounts = () => {
               <ul className="list-disc pl-6 mb-4 space-y-1">
                 <li>Supports up to 5 wallets (Pro/Essential)</li>
               </ul>
-              <button className="btn btn-secondary w-full md:w-auto" type="button" onClick={() => window.alert('Web3 Wallet connection coming soon.')}>Connect Wallet</button>
+              <button className="btn btn-secondary w-full md:w-auto" type="button" onClick={() => toast.show('Web3 Wallet connection coming soon.', 'error')}>Connect Wallet</button>
             </div>
           </div>
           <div className="card">
@@ -52,7 +63,7 @@ export const ConnectAccounts = () => {
                 <li>Supports up to 5 CEX accounts (Pro/Essential)</li>
                 <li>API keys stored in Secret Manager (never in DB)</li>
               </ul>
-              <button className="btn btn-outline w-full md:w-auto" type="button" onClick={() => window.alert('CEX connection coming soon.')}>Connect Exchange</button>
+              <button className="btn btn-outline w-full md:w-auto" type="button" onClick={() => toast.show('CEX connection coming soon.', 'error')}>Connect Exchange</button>
             </div>
           </div>
         </div>
