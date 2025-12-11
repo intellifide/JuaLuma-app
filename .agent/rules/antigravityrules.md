@@ -67,7 +67,7 @@ trigger: always_on
 
 ## Documentation
 - Master App Dev Guide (`docs/Master App Dev Guide.md`) is the product source of truth for role taxonomy, marketplace rules, support portal, and single-phase scope.
-- Local Development Setup (`docs/local-development-setup.md`) is the primary guide for emulator/mocks and local workflows.
+- Local development is docker-only via the compose stack (`docker-compose.yml`); the legacy `docs/local-development-setup.md` has been retired.
 - GCP Deployment Setup (`docs/gcp-deployment-setup.md`) replaces the legacy "getting started gcp" guide.
 - All documentation created needs to go into the /docs directory.
 

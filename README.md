@@ -21,8 +21,8 @@ Finity is a modern financial management app that syncs bank data, tracks manual 
 - **Auth**: Firebase Authentication
 - **Infra**: Terraform on Google Cloud Platform
 
-## Local Setup
-See the detailed [Local Development Setup](docs/local-development-setup.md) for emulator configuration and environment variables.
+## Local Runtime (Docker-only)
+All app services run via `docker-compose.yml`; the legacy local development doc has been removed.
 
 ### Quick Start
 1. **Clone**
@@ -30,19 +30,27 @@ See the detailed [Local Development Setup](docs/local-development-setup.md) for 
    git clone https://github.com/TCoder920x/finity-app.git
    cd finity-app
    ```
-2. **Backend**
+2. **Environment**
+   - Create `.env` at the repo root with values for `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, and any API keys (see `docker-compose.yml` for expected variables).
+3. **Start stack**
    ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   uvicorn main:app --reload
+   docker compose up -d --build
    ```
-3. **Frontend**
+   Services:
+   - Backend API: http://localhost:8001
+   - Frontend: http://localhost:5175
+   - Postgres: localhost:5433
+   - Firebase emulators: Firestore 8080, Auth 9099, UI 4000
+   - Pub/Sub emulator: 8085
+4. **Run tests (host)**
    ```bash
-   cd frontend
-   pnpm install        # or npm install
-   pnpm dev            # runs Vite on 5175
+   # Backend
+   pip install -r requirements.txt
+   pytest
+
+   # Frontend
+   npm install
+   npm test
    ```
 
 ## Useful Scripts

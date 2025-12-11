@@ -855,7 +855,7 @@ gcloud run services list --project=finity-dev
 - **Master App Dev Guide:** `docs/Master App Dev Guide.md`
 - **Security Architecture:** `docs/Security-Architecture.md`
 - **Infrastructure README:** `infra/README.md`
-- **Local Development Setup:** `docs/local-development-setup.md`
+- **Local runtime (docker-compose):** `docker-compose.yml`
 
 ---
 

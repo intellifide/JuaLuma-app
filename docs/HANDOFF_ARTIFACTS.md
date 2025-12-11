@@ -213,7 +213,7 @@ Endpoints to document:
 
 **Primary Guides:**
 - `docs/Master App Dev Guide.md` - Complete technical specification
-- `docs/local-development-setup.md` - Local development setup
+- `docker-compose.yml` - Local runtime stack (docker-only)
 - `docs/gcp-deployment-setup.md` - GCP deployment setup
 
 **Legal Documents:**
