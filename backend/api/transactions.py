@@ -203,6 +203,46 @@ def list_transactions(
     )
 
 
+@router.get("/search", response_model=TransactionListResponse)
+def search_transactions(
+    q: str = Query(min_length=1, description="Search term"),
+    account_id: Optional[uuid.UUID] = Query(default=None),
+    category: Optional[str] = Query(default=None),
+    start_date: Optional[date] = Query(default=None),
+    end_date: Optional[date] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TransactionListResponse:
+    # 2025-12-10 21:55 CST - ensure search route precedes /{transaction_id}
+    """Search transactions using PostgreSQL full-text search."""
+    query = db.query(Transaction).filter(
+        Transaction.uid == current_user.uid,
+        Transaction.archived.is_(False),
+    )
+    query = _apply_filters(query, account_id=account_id, category=category, start_date=start_date, end_date=end_date)
+
+    ts_vector = func.to_tsvector(
+        "english",
+        func.concat_ws(
+            " ",
+            func.coalesce(Transaction.merchant_name, ""),
+            func.coalesce(Transaction.description, ""),
+        ),
+    )
+    ts_query = func.plainto_tsquery("english", q)
+    query = query.filter(ts_vector.op("@@")(ts_query))
+
+    total, items = _paginate(query, page, page_size)
+    return TransactionListResponse(
+        transactions=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/{transaction_id}", response_model=TransactionResponse)
 def get_transaction(
     transaction_id: uuid.UUID,
@@ -365,45 +405,6 @@ def delete_transaction(
     db.commit()
 
     return {"message": "Transaction deleted"}
-
-
-@router.get("/search", response_model=TransactionListResponse)
-def search_transactions(
-    q: str = Query(min_length=1, description="Search term"),
-    account_id: Optional[uuid.UUID] = Query(default=None),
-    category: Optional[str] = Query(default=None),
-    start_date: Optional[date] = Query(default=None),
-    end_date: Optional[date] = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=200),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> TransactionListResponse:
-    """Search transactions using PostgreSQL full-text search."""
-    query = db.query(Transaction).filter(
-        Transaction.uid == current_user.uid,
-        Transaction.archived.is_(False),
-    )
-    query = _apply_filters(query, account_id=account_id, category=category, start_date=start_date, end_date=end_date)
-
-    ts_vector = func.to_tsvector(
-        "english",
-        func.concat_ws(
-            " ",
-            func.coalesce(Transaction.merchant_name, ""),
-            func.coalesce(Transaction.description, ""),
-        ),
-    )
-    ts_query = func.plainto_tsquery("english", q)
-    query = query.filter(ts_vector.op("@@")(ts_query))
-
-    total, items = _paginate(query, page, page_size)
-    return TransactionListResponse(
-        transactions=items,
-        total=total,
-        page=page,
-        page_size=page_size,
-    )
 
 
 __all__ = ["router"]
