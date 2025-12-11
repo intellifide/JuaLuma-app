@@ -45,6 +45,10 @@ class AppSettings(BaseSettings):
         default=False, alias="FIRESTORE_HEALTHCHECK_ENABLED"
     )
 
+    stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
+    stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
+    stripe_publishable_key: str | None = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
+
     ai_studio_api_key: str | None = Field(default=None, alias="AI_STUDIO_API_KEY")
     gcp_project_id: str | None = Field(default=None, alias="GCP_PROJECT_ID")
     gcp_location: str = Field(default="us-central1", alias="GCP_LOCATION")

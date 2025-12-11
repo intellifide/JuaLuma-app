@@ -103,8 +103,35 @@ export const Settings = () => {
                   </p>
                 </div>
                 <div className="card-footer mt-6 flex gap-2">
-                  <a href="/pricing" className="btn btn-secondary">Change Plan</a>
-                  <button className="btn btn-outline ml-2">Cancel Subscription</button>
+                  <button onClick={async () => {
+                    try {
+                      const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://backend:8001';
+                      if (!user) {
+                        alert('You must be signed in to manage billing.');
+                        return;
+                      }
+
+                      const token = await user.getIdToken();
+                      const response = await fetch(`${apiBase}/api/billing/portal`, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ return_url: window.location.href })
+                      });
+
+                      if (response.ok) {
+                        const data = await response.json();
+                        window.location.href = data.url;
+                      } else {
+                        alert('Failed to redirect to billing portal.');
+                      }
+                    } catch (e) {
+                      console.error("Billing portal error:", e);
+                      alert('An error occurred opening the billing portal.');
+                    }
+                  }} className="btn btn-secondary">Manage Subscription</button>
                 </div>
               </div>
 

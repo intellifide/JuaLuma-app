@@ -1,6 +1,6 @@
 // Updated 2025-12-11 02:45 CST by ChatGPT
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { usePlaidLink } from 'react-plaid-link'
+import { usePlaidLink, type PlaidLinkOnSuccessMetadata, type PlaidLinkError } from 'react-plaid-link'
 import { api } from '../services/api'
 
 type PlaidLinkButtonProps = {
@@ -38,13 +38,13 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
     }
     // Fetch the token once per mount to avoid repeated Plaid.init
     if (!linkToken) createToken()
-  }, [onError])
+  }, [linkToken, onError])
 
   const linkConfig = useMemo(() => {
     if (!linkToken) return null
     return {
       token: linkToken,
-      onSuccess: async (publicToken: string, metadata: any) => {
+      onSuccess: async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
         try {
           await api.post('/plaid/exchange-token', {
             public_token: publicToken,
@@ -56,7 +56,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
           onError?.(message)
         }
       },
-      onExit: (err: any) => {
+      onExit: (err: PlaidLinkError | null) => {
         if (err) onError?.(err.display_message || 'Plaid Link closed.')
       }
     }

@@ -219,12 +219,20 @@ async def record_rate_limit_usage(user_id: str, tier: str, limit: int) -> int:
     """
     return await asyncio.to_thread(_increment_usage_sync, user_id, tier, limit)
 
-async def generate_chat_response(prompt: str, context: Optional[str], user_id: str) -> dict:
+async def generate_chat_response(
+    prompt: str,
+    context: Optional[str],
+    user_id: str,
+    prechecked_limit: Optional[tuple[str, int, int]] = None,
+) -> dict:
     """
     Generates a response using the AI model, enforcing rate limits.
     """
     # 1. Rate Check (read-only) to avoid counting failed requests
-    tier, limit, current_usage = await check_rate_limit(user_id)
+    if prechecked_limit:
+        tier, limit, current_usage = prechecked_limit
+    else:
+        tier, limit, current_usage = await check_rate_limit(user_id)
     
     client = get_ai_client()
     

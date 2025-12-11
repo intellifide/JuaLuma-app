@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
 from backend.models import LLMLog, Subscription, User
-from backend.services.ai import generate_chat_response
+from backend.services.ai import generate_chat_response, check_rate_limit, TIER_LIMITS
 from backend.services.rag import get_rag_context
 from backend.utils import get_db
 # Import encryption utils (TIER 3.4)
@@ -105,7 +105,15 @@ async def chat_endpoint(
     subscription = db.query(Subscription).filter(Subscription.uid == user_id).first()
     tier = subscription.plan.lower() if subscription else "free"
     
-    # 2. RAG Context (Essential+ only)
+    # 2. Check rate limit before doing extra work (RAG/model)
+    precheck = await check_rate_limit(user_id)
+    limit = TIER_LIMITS.get(tier, 20)
+    if isinstance(precheck, tuple):
+        prechecked_limit = precheck
+    else:
+        prechecked_limit = (tier, limit, int(precheck) if precheck is not None else 0)
+    
+    # 3. RAG Context (Essential+ only)
     context = ""
     if tier not in ["free"]:
         # TIER 3.5: RAG Context Injection
@@ -115,12 +123,17 @@ async def chat_endpoint(
             logger.warning(f"RAG context retrieval failed: {e}")
             # Continue without context
     
-    # 3. Generate Response (TIER 3.2/3.6)
-    # 2025-12-11 10:30 CST - rate limit now enforced only inside generate_chat_response to avoid double counting.
-    result = await generate_chat_response(prompt=message, context=context, user_id=user_id)
+    # 4. Generate Response (TIER 3.2/3.6)
+    # Pass prechecked_limit to avoid duplicate lookups in generate_chat_response.
+    result = await generate_chat_response(
+        prompt=message,
+        context=context,
+        user_id=user_id,
+        prechecked_limit=prechecked_limit,
+    )
     ai_response = result.get("response", "")
     
-    # 4. Log to Audit (LLMLog)
+    # 5. Log to Audit (LLMLog)
     # TIER 3.4: Encryption
     # Encrypt prompt if needed (Essential+). Free tier: maybe don't encrypt or don't store PII?
     # Task 3.4 says "For Essential/Pro/Ultimate tiers, encrypt prompts before logging."

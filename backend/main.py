@@ -21,6 +21,8 @@ from backend.api.widgets import router as widgets_router
 from backend.api.developers import router as developers_router
 from backend.api.support import router as support_router
 from backend.api.users import router as users_router
+from backend.api.billing import router as billing_router
+from backend.api.webhooks import router as webhooks_router
 from backend.middleware import (
     RateLimitMiddleware,
     RequestContextMiddleware,
@@ -71,6 +73,8 @@ app.include_router(widgets_router)
 app.include_router(developers_router)
 app.include_router(support_router)
 app.include_router(users_router)
+app.include_router(billing_router)
+app.include_router(webhooks_router)
 
 # Structured error handlers ----------------------------------------------------
 def _build_error_response(

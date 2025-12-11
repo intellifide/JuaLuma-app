@@ -19,6 +19,7 @@ google-cloud-aiplatform
 pgvector==0.4.2
 plaid-python==17.0.0
 httpx==0.28.1
+stripe>=7.0.0
 pytest==7.4.4
 pytest-asyncio==0.23.3
 ruff==0.1.14
