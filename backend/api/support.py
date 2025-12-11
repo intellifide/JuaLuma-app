@@ -16,6 +16,7 @@ from backend.models.support import (
     SupportTicketMessage,
     SupportTicketRating,
 )
+from backend.core.events import publish_event
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/support", tags=["support"])
@@ -104,7 +105,23 @@ def create_ticket(
     db.commit()
     db.refresh(ticket)
 
-    # TODO: Publish 'ticket_created' event to Pub/Sub
+    # Publish 'ticket_created' event to Pub/Sub
+    try:
+        publish_event(
+            topic_id="ticket_events",
+            data={
+                "event_type": "ticket_created",
+                "ticket_id": str(ticket.id),
+                "user_id": current_user.uid,
+                "subject": ticket.subject,
+                "category": ticket.category,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            attributes={"event_type": "ticket_created"},
+        )
+    except Exception as e:
+        logger.error(f"Failed to publish ticket_created event: {e}")
+
     logger.info(f"Ticket created: {ticket.id} by user {current_user.uid}")
 
     return ticket
@@ -181,7 +198,22 @@ def add_message(
     db.commit()
     db.refresh(message)
 
-    # TODO: Publish 'ticket_updated' event
+    # Publish 'ticket_updated' event
+    try:
+        publish_event(
+            topic_id="ticket_events",
+            data={
+                "event_type": "ticket_updated",
+                "ticket_id": str(ticket.id),
+                "user_id": current_user.uid,
+                "message_id": str(message.id),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            attributes={"event_type": "ticket_updated"},
+        )
+    except Exception as e:
+        logger.error(f"Failed to publish ticket_updated event: {e}")
+
     logger.info(f"Message added to ticket {ticket.id} by user {current_user.uid}")
 
     return message
@@ -208,6 +240,22 @@ def close_ticket(
     ticket.status = "closed"
     db.commit()
     db.refresh(ticket)
+    
+    # Publish 'ticket_closed' event
+    try:
+        publish_event(
+            topic_id="ticket_events",
+            data={
+                "event_type": "ticket_closed",
+                "ticket_id": str(ticket.id),
+                "user_id": current_user.uid,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            attributes={"event_type": "ticket_closed"},
+        )
+    except Exception as e:
+        logger.error(f"Failed to publish ticket_closed event: {e}")
+
     return ticket
 
 

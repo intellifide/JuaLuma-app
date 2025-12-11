@@ -44,6 +44,7 @@ class AppSettings(BaseSettings):
     firestore_healthcheck_enabled: bool = Field(
         default=False, alias="FIRESTORE_HEALTHCHECK_ENABLED"
     )
+    pubsub_emulator_host: str | None = Field(default=None, alias="PUBSUB_EMULATOR_HOST")
 
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")

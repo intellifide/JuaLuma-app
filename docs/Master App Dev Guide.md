@@ -884,13 +884,16 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 **Emulator Map:**
 
-- Cloud SQL → Local Postgres \(port 5433\)
-- Firestore → Firestore Emulator \(port 8080\)
-- Pub/Sub → Pub/Sub Emulator \(port 8085\)
+- Cloud SQL → Local Postgres (port 5433)
+- Firestore → Firestore Emulator (port 8080)
+- Pub/Sub → Pub/Sub Emulator (port 8085)
+  - **Critical Implementation Requirement:** The Pub/Sub Emulator runs in-memory and starts "empty" on every restart.
+  - The backend `Lifespan` (startup event) **MUST** detect if `PUBSUB_EMULATOR_HOST` is set.
+  - If detected, the application **MUST** automatically create required topics (e.g., `ticket_events`) and default subscriptions to ensure the application works immediately without manual CLI setup.
 - Secret Manager → Local `.env` file
-- Cloud Run → FastAPI server \(port 8001\)
-- Frontend PWA → Vite dev server \(port 5175\)
-- AI Models → Google AI Studio \(local dev\), Vertex AI \(cloud\)
+- Cloud Run → FastAPI server (port 8001)
+- Frontend PWA → Vite dev server (port 5175)
+- AI Models → Google AI Studio (local dev), Vertex AI (cloud)\)
 
 **Observability Baseline:**
 

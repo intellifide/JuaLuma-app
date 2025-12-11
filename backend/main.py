@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import typing as _t
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
 
 from backend.core import configure_logging, settings
+from backend.core.events import initialize_events
 from backend.api.auth import router as auth_router
 from backend.api.accounts import router as accounts_router
 from backend.api.plaid import router as plaid_router
@@ -34,10 +36,26 @@ from backend.utils import get_db  # noqa: F401 - imported for dependency wiring
 configure_logging(service_name=settings.service_name)
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifecycle manager for the FastAPI app.
+    Handles startup (Pub/Sub init) and shutdown tasks.
+    """
+    try:
+        # Initialize Pub/Sub topics if running with emulator
+        await asyncio.to_thread(initialize_events)
+    except Exception as e:
+        logger.error(f"Failed to initialize event bus: {e}")
+    
+    yield
+
 app = FastAPI(
     title="Finity API",
     description="Financial aggregation and AI-powered planning platform",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Observability and protection middleware
