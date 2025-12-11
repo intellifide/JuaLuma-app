@@ -1,5 +1,14 @@
+import datetime
 import logging
 from typing import Any, Optional
+
+from fastapi import HTTPException
+from firebase_admin import firestore
+
+from backend.core import settings
+from backend.models import Subscription, get_session
+from backend.services.prompts import RAG_PROMPT
+from backend.utils.firestore import get_firestore_client
 
 try:
     import google.generativeai as genai
@@ -13,33 +22,31 @@ try:
 except ImportError:
     aiplatform = None
     vertexai = None
-    GenerativeModel = None # type: ignore
+    GenerativeModel = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-from backend.core import settings
-
 # Constants
-AI_MODEL_LOCAL = "gemini-2.0-flash-exp" # Or gemini-1.5-flash if 2.5 not available
+AI_MODEL_LOCAL = "gemini-2.0-flash-exp"  # Or gemini-1.5-flash if 2.5 not available
 AI_MODEL_PROD = "gemini-1.5-pro"
 
 # Safety settings
 SAFETY_SETTINGS_LOCAL = [
     {
         "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
     },
     {
         "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
     },
     {
         "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
     },
     {
         "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
     },
 ]
 
@@ -126,14 +133,6 @@ def get_ai_client() -> AIClient:
             return AIClient("vertex", model)
         else:
             raise ImportError("google.cloud.aiplatform package is missing.")
-
-# Check for safety settings format compatibility when calling
-import datetime # noqa: E402
-from fastapi import HTTPException # noqa: E402
-from firebase_admin import firestore # noqa: E402
-from backend.utils.firestore import get_firestore_client # noqa: E402
-from backend.services.prompts import RAG_PROMPT # noqa: E402
-from backend.models import get_session, Subscription # noqa: E402
 
 TIER_LIMITS = {
     "free": 20,

@@ -2,6 +2,7 @@ import sys
 
 import requests
 
+# Updated 2025-12-11 01:24 CST by ChatGPT - remove unused variable
 # Configuration
 API_BASE = "http://localhost:8001"
 LINK_TOKEN_PATH = "/api/plaid/link-token"
@@ -50,8 +51,6 @@ def run_verify(token):
         print(f"FAILED: {resp.text}")
         return
 
-    exchange_payload = resp.json()
-    
     print("   Success! Account linked.")
     # Presumably returns account or item ID?
     # Let's list accounts to find the new one

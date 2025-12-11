@@ -40,12 +40,16 @@ app = FastAPI(
 
 # Observability and protection middleware
 app.add_middleware(RequestContextMiddleware)
-app.add_middleware(
-    RateLimitMiddleware,
-    max_requests=settings.rate_limit_max_requests,
-    window_seconds=settings.rate_limit_window_seconds,
-    path_prefixes=("/api/auth", "/", "/health", "/api/health"),
-)
+
+# Disable rate limiting for automated tests to avoid spurious 429s.
+if settings.app_env.lower() != "test":
+    app.add_middleware(
+        RateLimitMiddleware,
+        max_requests=settings.rate_limit_max_requests,
+        window_seconds=settings.rate_limit_window_seconds,
+        path_prefixes=("/api/auth", "/", "/health", "/api/health"),
+    )
+
 app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS configuration (fail-safe: no wildcard)
@@ -80,6 +84,7 @@ def _build_error_response(
     payload: dict[str, _t.Any] = {
         "error": error,
         "message": message,
+        "detail": message,
         "request_id": request_id,
     }
     return JSONResponse(status_code=status_code, content=payload)

@@ -202,7 +202,7 @@ def get_chat_history(
     return HistoryResponse(messages=messages)
 
 @router.get("/quota")
-async def get_quota_status(
+def get_quota_status(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
