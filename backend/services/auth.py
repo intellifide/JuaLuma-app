@@ -1,4 +1,4 @@
-# Updated 2025-12-08 20:16 CST by ChatGPT
+# Updated 2025-12-11 01:38 CST by ChatGPT
 import os
 from typing import Any, Dict
 
@@ -14,6 +14,7 @@ from firebase_admin.exceptions import FirebaseError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.core import settings
 from backend.models import AISettings, Subscription, User
 
 _firebase_app: firebase_admin.App | None = None
@@ -26,23 +27,31 @@ def _get_firebase_app() -> firebase_admin.App:
     if _firebase_app:
         return _firebase_app
 
-    # 2025-12-10: Force Emulator in Local Dev if vars are missing (prevents split-brain w/ Frontend)
-    env = os.getenv("APP_ENV", "local").lower()
-    if env == "local":
-        if not os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
-            os.environ["FIREBASE_AUTH_EMULATOR_HOST"] = "localhost:9099"
-        if not os.getenv("FIRESTORE_EMULATOR_HOST"):
-             os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
-        if not os.getenv("FIREBASE_PROJECT_ID"):
-             os.environ["FIREBASE_PROJECT_ID"] = "finity-local"
+    if settings.is_local:
+        if settings.resolved_auth_emulator_host:
+            os.environ.setdefault(
+                "FIREBASE_AUTH_EMULATOR_HOST", settings.resolved_auth_emulator_host
+            )
+        if settings.resolved_firestore_host:
+            os.environ.setdefault(
+                "FIRESTORE_EMULATOR_HOST", settings.resolved_firestore_host
+            )
+        os.environ.setdefault("FIREBASE_PROJECT_ID", settings.firebase_project_id)
 
     import logging
+
     logger = logging.getLogger(__name__)
 
     if os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
-        logger.info(f"Initializing Firebase Auth with Emulator: {os.getenv('FIREBASE_AUTH_EMULATOR_HOST')} (Project: {os.getenv('FIREBASE_PROJECT_ID')})")
+        logger.info(
+            "Initializing Firebase Auth with Emulator",
+            extra={
+                "auth_host": settings.resolved_auth_emulator_host,
+                "project": settings.firebase_project_id,
+            },
+        )
         _firebase_app = firebase_admin.initialize_app(
-            options={"projectId": os.getenv("FIREBASE_PROJECT_ID", "finity-local")}
+            options={"projectId": settings.firebase_project_id}
         )
     else:
         logger.info("Initializing Firebase Auth with Production/ADC Credentials")

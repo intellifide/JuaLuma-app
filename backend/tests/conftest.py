@@ -1,3 +1,4 @@
+import os
 import pytest
 from typing import Generator
 from fastapi.testclient import TestClient
@@ -5,6 +6,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 import httpx
+
+# Updated 2025-12-11 01:45 CST by ChatGPT
+# Provide safe defaults so settings validation passes during tests.
+os.environ.setdefault("APP_ENV", "test")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("PLAID_CLIENT_ID", "test-client")
+os.environ.setdefault("PLAID_SECRET", "test-secret")
+os.environ.setdefault("FRONTEND_URL", "http://localhost:5175")
 
 # Monkeypatch httpx.Client to ignore 'app' argument passed by older starlette versions
 _orig_client_init = httpx.Client.__init__

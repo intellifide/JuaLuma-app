@@ -1,4 +1,4 @@
-# Updated 2025-12-09 14:45 CST by ChatGPT - fix Plaid env mapping for dev/sandbox
+# Updated 2025-12-11 01:40 CST by ChatGPT - use centralized settings
 """
 Lightweight Plaid helper functions for local development.
 
@@ -9,7 +9,6 @@ when credentials are missing so local developers can diagnose setup issues.
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from functools import lru_cache
-import os
 import time
 from typing import Dict, Iterable, List, Tuple
 
@@ -30,6 +29,8 @@ from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.exceptions import ApiException
 
+from backend.core import settings
+
 
 def _get_environment() -> Environment:
     """
@@ -38,7 +39,7 @@ def _get_environment() -> Environment:
     The plaid-python client does not expose Environment.Development; for local/dev
     we should use sandbox. Production remains available for actual deployments.
     """
-    env_name = os.getenv("PLAID_ENV", "sandbox").lower()
+    env_name = settings.plaid_env.lower()
     if env_name in {"production", "prod"}:
         return Environment.Production
     # Treat development/dev the same as sandbox for local testing.
@@ -46,13 +47,7 @@ def _get_environment() -> Environment:
 
 
 def _get_credentials() -> Tuple[str, str]:
-    client_id = os.getenv("PLAID_CLIENT_ID")
-    secret = os.getenv("PLAID_SECRET")
-    if not client_id or not secret:
-        raise RuntimeError(
-            "PLAID_CLIENT_ID and PLAID_SECRET must be set in the environment."
-        )
-    return client_id, secret
+    return settings.plaid_client_id, settings.plaid_secret
 
 
 @lru_cache(maxsize=1)

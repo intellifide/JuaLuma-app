@@ -1,4 +1,3 @@
-import os
 import logging
 from typing import Any, Optional
 
@@ -16,8 +15,9 @@ except ImportError:
     vertexai = None
     GenerativeModel = None # type: ignore
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+from backend.core import settings
 
 # Constants
 AI_MODEL_LOCAL = "gemini-2.0-flash-exp" # Or gemini-1.5-flash if 2.5 not available
@@ -85,21 +85,21 @@ class AIClient:
                 embeddings = model.get_embeddings([text])
                 return embeddings[0].values
         except Exception as e:
-             logger.error(f"Error embedding text: {e}")
-             # Return empty list or raise
-             return []
+            logger.error(f"Error embedding text: {e}")
+            # Return empty list or raise
+            return []
 
 def get_ai_client() -> AIClient:
     """
     Initializes and returns an AI client based on the environment.
     """
-    env = os.getenv("APP_ENV", "local").lower()
-    
+    env = settings.app_env.lower()
+
     if env == "local":
-        api_key = os.getenv("AI_STUDIO_API_KEY")
+        api_key = settings.ai_studio_api_key
         if not api_key:
             logger.warning("AI_STUDIO_API_KEY not found for local environment.")
-        
+
         if genai:
             if api_key:
                 genai.configure(api_key=api_key)
@@ -107,16 +107,16 @@ def get_ai_client() -> AIClient:
             logger.info(f"Initialized local AI client with model {AI_MODEL_LOCAL}")
             return AIClient("local", model)
         else:
-             raise ImportError("google.generativeai package is missing.")
+            raise ImportError("google.generativeai package is missing.")
 
     else:
         # Production / Cloud
-        project_id = os.getenv("GCP_PROJECT_ID")
-        location = os.getenv("GCP_LOCATION", "us-central1")
-        
+        project_id = settings.gcp_project_id
+        location = settings.gcp_location
+
         if not project_id:
-             logger.warning("GCP_PROJECT_ID not found for production environment.")
-        
+            logger.warning("GCP_PROJECT_ID not found for production environment.")
+
         if vertexai:
             vertexai.init(project=project_id, location=location)
             # Use appropriate model for Vertex
@@ -125,7 +125,7 @@ def get_ai_client() -> AIClient:
             # Safety settings format might differ for Vertex, handling generally in generation or init
             return AIClient("vertex", model)
         else:
-             raise ImportError("google.cloud.aiplatform package is missing.")
+            raise ImportError("google.cloud.aiplatform package is missing.")
 
 # Check for safety settings format compatibility when calling
 import datetime # noqa: E402
