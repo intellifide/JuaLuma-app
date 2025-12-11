@@ -32,7 +32,7 @@ services:
       bash -c "
         apt-get update && apt-get install -y openjdk-17-jre-headless &&
         npm install -g firebase-tools@13 &&
-        firebase emulators:start --only firestore,auth --project finity-local --import=/workspace/.firebase --export-on-exit
+        firebase emulators:start --only firestore,auth --project finity-local --import=/workspace/.firebase --export-on-exit --config=/workspace/firebase.json
       "
     ports:
       - "8080:8080"  # Firestore

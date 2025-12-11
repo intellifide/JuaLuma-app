@@ -154,11 +154,35 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
         record = auth.create_user(
             email=payload.email, password=payload.password
         )
-    except firebase_exceptions.AlreadyExistsError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists.",
-        ) from exc
+    except firebase_exceptions.AlreadyExistsError:
+        # 2025-12-10: Handle "Zombie" users (exist in Auth, missing in DB)
+        try:
+            # 1. Fetch existing Auth record
+            existing_user = auth.get_user_by_email(payload.email)
+            
+            # 2. Check DB
+            db_user = db.query(User).filter(User.uid == existing_user.uid).first()
+            if db_user:
+                 # Truly a duplicate
+                 raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already exists.",
+                 )
+            
+            # 3. Heal (Create DB record for existing Auth user)
+            logger.info(f"Healing zombie user account for {payload.email} ({existing_user.uid})")
+            record = existing_user # Use existing record for next step
+            
+        except Exception as e:
+            # If we can't fetch or heal, fall back to original error
+            if isinstance(e, HTTPException):
+                raise e
+            logger.error(f"Error healing user: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists.",
+            )
+
     except firebase_exceptions.InvalidArgumentError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -171,8 +195,17 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
         ) from exc
 
     try:
+        # Check if we already have the user (optimization if we strictly flowed from healing)
+        # But create_user_record handles integrity error checks too.
+        # However, we need to be careful not to re-create if we just found it in DB (handled above).
+        
+        # If we are here, 'record' is set (either new or fetched).
+        
+        # Double check if we need to query DB again? 
+        # create_user_record does an insert.
         user = create_user_record(db, uid=record.uid, email=record.email)
     except ValueError as exc:
+        # This catches expected IntegrityError wrapped as ValueError
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User already exists.",

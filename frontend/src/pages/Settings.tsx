@@ -247,7 +247,39 @@ export const Settings = () => {
                     <p className="mb-4 text-text-secondary">
                       Download a copy of all your account data in JSON format.
                     </p>
-                    <button type="button" className="btn btn-outline">Export Data</button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={async () => {
+                        try {
+                          const token = await user?.getIdToken();
+                          const response = await fetch('http://localhost:8001/api/users/export', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`
+                            }
+                          });
+
+                          if (response.ok) {
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `finity-export-${new Date().toISOString().split('T')[0]}.json`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                          } else {
+                            alert('Failed to export data.');
+                          }
+                        } catch (err) {
+                          console.error('Export error:', err);
+                          alert('An error occurred during export.');
+                        }
+                      }}
+                    >
+                      Export Data
+                    </button>
                   </div>
                 </div>
 
@@ -380,7 +412,29 @@ export const Settings = () => {
                 <li>AI chat history</li>
                 <li>All preferences and settings</li>
               </ul>
-              <form onSubmit={(e) => { e.preventDefault(); /* Handle delete */ }}>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (deleteConfirm === 'DELETE') {
+                  try {
+                    const token = await user?.getIdToken();
+                    const response = await fetch('http://localhost:8001/api/users/me', {
+                      method: 'DELETE',
+                      headers: {
+                        'Authorization': `Bearer ${token}`
+                      }
+                    });
+
+                    if (response.ok) {
+                      window.location.href = '/login';
+                    } else {
+                      alert('Failed to delete account. Please try again.');
+                    }
+                  } catch (err) {
+                    console.error('Delete account error:', err);
+                    alert('An error occurred. Please try again.');
+                  }
+                }
+              }}>
                 <div className="mb-6">
                   <label htmlFor="delete-confirm" className="block text-sm font-medium mb-1">
                     Type &quot;DELETE&quot; to confirm:
@@ -418,3 +472,4 @@ export const Settings = () => {
     </div>
   );
 };
+

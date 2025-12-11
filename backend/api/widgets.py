@@ -345,7 +345,31 @@ def download_widget(
     )
     db.add(log_entry)
     
-    # TODO: Insert into widget_engagement Firestore collection as per TIER 4.7
+    # Firestore: Widget Engagement
+    try:
+        from backend.utils.firestore import get_firestore_client
+        from firebase_admin import firestore
+        
+        db_fs = get_firestore_client()
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        
+        # Structure: widget_engagement/{widget_id}/daily/{date}
+        doc_ref = (
+            db_fs.collection("widget_engagement")
+            .document(widget.id)
+            .collection("daily")
+            .document(today)
+        )
+        
+        # Atomic Increment
+        if not doc_ref.get().exists:
+             doc_ref.set({"downloads": 1, "date": today})
+        else:
+             doc_ref.update({"downloads": firestore.Increment(1)})
+             
+    except Exception as e:
+        # Don't fail the download if metrics fail, just log it
+        logger.error(f"Failed to record widget engagement stats: {e}")
     
     db.commit()
     db.refresh(widget)

@@ -28,13 +28,66 @@ def test_signup_success(test_client: TestClient, test_db):
 def test_signup_duplicate_email(test_client: TestClient, test_db):
     from firebase_admin import exceptions
     
-    # Mock create_user to raise AlreadyExistsError
+    # 1. Mock create_user to raise AlreadyExistsError
+    # 2. Mock get_user_by_email to return a user
+    # 3. Ensure User is in DB so it raises 400
+    
+    mock_existing = MagicMock()
+    mock_existing.uid = "existing_uid"
+    mock_existing.email = "existing@example.com"
+    
+    # Create the user in DB first so it is a "True Duplicate"
+    from backend.models import User
+    db_user = User(uid="existing_uid", email="existing@example.com", role="user")
+    test_db.add(db_user)
+    test_db.commit()
+
     with patch("firebase_admin.auth.create_user", side_effect=exceptions.AlreadyExistsError("Email exists", "Email exists")):
-        payload = {"email": "existing@example.com", "password": "password123"}
-        response = test_client.post("/api/auth/signup", json=payload)
+        with patch("firebase_admin.auth.get_user_by_email", return_value=mock_existing):
+            payload = {"email": "existing@example.com", "password": "password123"}
+            response = test_client.post("/api/auth/signup", json=payload)
 
     assert response.status_code == 400
     assert "Email already exists" in response.json()["detail"]
+
+def test_signup_zombie_healing(test_client: TestClient, test_db):
+    from firebase_admin import exceptions
+    from backend.models import User, Subscription
+    
+    # 1. Mock create_user to raise AlreadyExistsError
+    # 2. Mock get_user_by_email to return a user (Zombie)
+    # 3. Ensure User is NOT in DB
+    
+    mock_zombie = MagicMock()
+    mock_zombie.uid = "zombie_uid"
+    mock_zombie.email = "zombie@example.com"
+    
+    # Ensure DB is empty for this user
+    existing = test_db.query(User).filter_by(uid="zombie_uid").first()
+    assert existing is None
+    # End implicit transaction started by query to allow create_user_record to use db.begin()
+    test_db.rollback()
+
+    with patch("firebase_admin.auth.create_user", side_effect=exceptions.AlreadyExistsError("Email exists", "Email exists")):
+        with patch("firebase_admin.auth.get_user_by_email", return_value=mock_zombie):
+            payload = {"email": "zombie@example.com", "password": "password123"}
+            response = test_client.post("/api/auth/signup", json=payload)
+    
+    # Needs to be successful
+    assert response.status_code == 201
+    data = response.json()
+    assert data["uid"] == "zombie_uid"
+    assert data["email"] == "zombie@example.com"
+    
+    # Verify DB record was created (Healed)
+    user = test_db.query(User).filter_by(uid="zombie_uid").first()
+    assert user is not None
+    assert user.email == "zombie@example.com"
+    
+    # Verify subscription was created
+    sub = test_db.query(Subscription).filter_by(uid="zombie_uid").first()
+    assert sub is not None
+
 
 def test_login_success(test_client: TestClient, test_db, mock_auth):
     # mock_auth fixture creates the user in DB. 

@@ -26,11 +26,26 @@ def _get_firebase_app() -> firebase_admin.App:
     if _firebase_app:
         return _firebase_app
 
+    # 2025-12-10: Force Emulator in Local Dev if vars are missing (prevents split-brain w/ Frontend)
+    env = os.getenv("APP_ENV", "local").lower()
+    if env == "local":
+        if not os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
+            os.environ["FIREBASE_AUTH_EMULATOR_HOST"] = "localhost:9099"
+        if not os.getenv("FIRESTORE_EMULATOR_HOST"):
+             os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
+        if not os.getenv("FIREBASE_PROJECT_ID"):
+             os.environ["FIREBASE_PROJECT_ID"] = "finity-local"
+
+    import logging
+    logger = logging.getLogger(__name__)
+
     if os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
+        logger.info(f"Initializing Firebase Auth with Emulator: {os.getenv('FIREBASE_AUTH_EMULATOR_HOST')} (Project: {os.getenv('FIREBASE_PROJECT_ID')})")
         _firebase_app = firebase_admin.initialize_app(
             options={"projectId": os.getenv("FIREBASE_PROJECT_ID", "finity-local")}
         )
     else:
+        logger.info("Initializing Firebase Auth with Production/ADC Credentials")
         _firebase_app = firebase_admin.initialize_app()
 
     return _firebase_app
@@ -68,10 +83,15 @@ def create_user_record(db: Session, *, uid: str, email: str) -> User:
     ai_settings = AISettings(uid=uid)
 
     try:
-        with db.begin():
-            db.add_all([user, subscription, ai_settings])
+        db.add_all([user, subscription, ai_settings])
+        db.commit()
+        db.refresh(user)
     except IntegrityError as exc:
+        db.rollback()
         raise ValueError("User already exists.") from exc
+    except Exception as exc:
+        db.rollback()
+        raise exc
 
     return user
 

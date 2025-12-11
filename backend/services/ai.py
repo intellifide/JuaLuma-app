@@ -93,17 +93,16 @@ def get_ai_client() -> AIClient:
     """
     Initializes and returns an AI client based on the environment.
     """
-    env = os.getenv("App_Env", "local").lower() # Assuming 'App_Env' or similar
+    env = os.getenv("APP_ENV", "local").lower()
     
     if env == "local":
         api_key = os.getenv("AI_STUDIO_API_KEY")
         if not api_key:
             logger.warning("AI_STUDIO_API_KEY not found for local environment.")
-            # Depending on strictness, we might raise error or return None
-            # raise ValueError("AI_STUDIO_API_KEY is required for local development.")
         
         if genai:
-            genai.configure(api_key=api_key)
+            if api_key:
+                genai.configure(api_key=api_key)
             model = genai.GenerativeModel(AI_MODEL_LOCAL)
             logger.info(f"Initialized local AI client with model {AI_MODEL_LOCAL}")
             return AIClient("local", model)
