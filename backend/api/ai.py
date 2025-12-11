@@ -3,7 +3,7 @@
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -99,7 +99,10 @@ async def chat_endpoint(
     generates response via Gemini, logs encrypted interaction, and returns response.
     """
     user_id = current_user.uid
-    message = payload.message
+    message = payload.message.strip()
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
     
     # 1. Get User Subscription/Tier
     subscription = db.query(Subscription).filter(Subscription.uid == user_id).first()

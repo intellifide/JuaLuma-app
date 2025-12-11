@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from fastapi import HTTPException
 from firebase_admin import firestore
+from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.core import settings
 from backend.models import Subscription, get_session
@@ -28,8 +29,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Constants
-AI_MODEL_LOCAL = "gemini-2.0-flash-exp"  # Or gemini-1.5-flash if 2.5 not available
-AI_MODEL_PROD = "gemini-1.5-pro"
+# AI Models are now loaded from settings
 
 # Safety settings
 SAFETY_SETTINGS_LOCAL = [
@@ -69,6 +69,12 @@ class AIClient:
                 # vertexai
                 response = await self.model.generate_content_async(prompt, safety_settings=safety_settings)
                 return response
+        except ResourceExhausted as e:
+            logger.warning(f"AI Provider Quota Exceeded: {e}")
+            raise HTTPException(status_code=429, detail="AI Provider Quota Exceeded. Please try again later.")
+        except ServiceUnavailable as e:
+            logger.warning(f"AI Provider Unavailable: {e}")
+            raise HTTPException(status_code=503, detail="AI Service is temporarily unavailable.")
         except Exception as e:
             logger.error(f"Error generating content: {e}")
             raise e
@@ -111,8 +117,8 @@ def get_ai_client() -> AIClient:
         if genai:
             if api_key:
                 genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(AI_MODEL_LOCAL)
-            logger.info(f"Initialized local AI client with model {AI_MODEL_LOCAL}")
+            model = genai.GenerativeModel(settings.ai_model_local)
+            logger.info(f"Initialized local AI client with model {settings.ai_model_local}")
             return AIClient("local", model)
         else:
             raise ImportError("google.generativeai package is missing.")
@@ -128,8 +134,8 @@ def get_ai_client() -> AIClient:
         if vertexai:
             vertexai.init(project=project_id, location=location)
             # Use appropriate model for Vertex
-            model = GenerativeModel(AI_MODEL_PROD)
-            logger.info(f"Initialized Vertex AI client with model {AI_MODEL_PROD}")
+            model = GenerativeModel(settings.ai_model_prod)
+            logger.info(f"Initialized Vertex AI client with model {settings.ai_model_prod}")
             # Safety settings format might differ for Vertex, handling generally in generation or init
             return AIClient("vertex", model)
         else:
@@ -263,9 +269,11 @@ async def generate_chat_response(
 
         # 6. Return
         return {
-            "response": response_text,
             "usage_today": usage_after
         }
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 429/503 from generate_content)
+        raise
     except Exception as e:
         logger.error(f"AI Generation failed: {e}")
         raise HTTPException(status_code=500, detail="AI service unavailable or error processing request.")

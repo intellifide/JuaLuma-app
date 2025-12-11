@@ -51,6 +51,9 @@ class AppSettings(BaseSettings):
     stripe_publishable_key: str | None = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
 
     ai_studio_api_key: str | None = Field(default=None, alias="AI_STUDIO_API_KEY")
+    ai_model_local: str = Field(default="gemini-2.0-flash-exp", alias="AI_MODEL_LOCAL")
+    ai_model_prod: str = Field(default="gemini-1.5-pro", alias="AI_MODEL_PROD")
+
     gcp_project_id: str | None = Field(default=None, alias="GCP_PROJECT_ID")
     gcp_location: str = Field(default="us-central1", alias="GCP_LOCATION")
     service_name: str = Field(default="finity-backend", alias="SERVICE_NAME")
