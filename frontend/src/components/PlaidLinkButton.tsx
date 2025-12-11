@@ -64,9 +64,9 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
 
   const { open, ready } = usePlaidLink(
     linkConfig ?? {
-      token: '',
-      onSuccess: () => {},
-      onExit: () => {}
+      token: null,
+      onSuccess: () => { },
+      onExit: () => { }
     }
   )
 

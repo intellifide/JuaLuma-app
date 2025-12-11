@@ -98,7 +98,7 @@ describe('AI Assistant Integration', () => {
 
         // Wait for response
         await waitFor(() => {
-            expect(aiService.sendMessage).toHaveBeenCalledWith('Hello AI', 'fake-token')
+            expect(aiService.sendMessage).toHaveBeenCalledWith('Hello AI')
             expect(screen.getByText('This is the AI response')).toBeInTheDocument()
         })
 

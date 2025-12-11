@@ -9,13 +9,15 @@ services:
     container_name: finity-backend
     env_file: .env
     environment:
-      APP_ENV: docker
+      APP_ENV: local
       API_PORT: 8001
       DATABASE_URL: postgresql://finity_user:finity_password@postgres:5432/finity_db
       FIRESTORE_EMULATOR_HOST: firebase-emulator:8080
       FIREBASE_AUTH_EMULATOR_HOST: firebase-emulator:9099
       FIREBASE_PROJECT_ID: finity-local
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      ENABLE_AI_GATEWAY: "false"
+    
     depends_on:
       - postgres
       - firebase-emulator

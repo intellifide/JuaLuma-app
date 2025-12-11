@@ -9,13 +9,14 @@ export const widgetService = {
         params.append('page', page.toString());
         params.append('page_size', pageSize.toString());
 
-        const response = await api.get<PaginatedResponse<Widget>>(`/widgets?${params.toString()}`);
+        // Use trailing slash to avoid backend redirect (307) that breaks in-browser fetch.
+        const response = await api.get<PaginatedResponse<Widget>>(`/widgets/?${params.toString()}`);
         return response.data;
     },
 
     listMine: async () => {
         try {
-            const response = await api.get<Widget[]>('/widgets/mine');
+            const response = await api.get<Widget[]>('/widgets/mine/');
             return response.data;
         } catch (e: unknown) {
             // Fallback if endpoint 404s during transition
@@ -24,27 +25,27 @@ export const widgetService = {
     },
 
     submit: async (data: Omit<Widget, 'id' | 'developer_uid' | 'created_at' | 'updated_at' | 'downloads' | 'rating_avg' | 'rating_count' | 'status'>) => {
-        const response = await api.post<Widget>('/widgets', data);
+        const response = await api.post<Widget>('/widgets/', data);
         return response.data;
     },
 
     update: async (id: string, data: Partial<Widget>) => {
-        const response = await api.patch<Widget>(`/widgets/${id}`, data);
+        const response = await api.patch<Widget>(`/widgets/${id}/`, data);
         return response.data;
     },
 
     delete: async (id: string) => {
-        const response = await api.delete(`/widgets/${id}`);
+        const response = await api.delete(`/widgets/${id}/`);
         return response.data;
     },
 
     download: async (id: string) => {
-        const response = await api.post(`/widgets/${id}/download`);
+        const response = await api.post(`/widgets/${id}/download/`);
         return response.data;
     },
 
     rate: async (id: string, rating: number, review?: string) => {
-        const response = await api.post(`/widgets/${id}/rate`, { rating, review });
+        const response = await api.post(`/widgets/${id}/rate/`, { rating, review });
         return response.data;
     }
 };

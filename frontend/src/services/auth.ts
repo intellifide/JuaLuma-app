@@ -134,16 +134,15 @@ export const apiFetch = async (
     }
   }
 
-  const response = await fetch(buildUrl(path), {
+  const url = buildUrl(path)
+
+  const response = await fetch(url, {
     ...init,
     headers,
   })
 
   if (!response.ok) {
-    const maybeJson = await response
-      .clone()
-      .json()
-      .catch(() => null)
+    const maybeJson = await response.clone().json().catch(() => null)
     const message =
       (maybeJson && (maybeJson.detail || maybeJson.message)) ||
       `Request failed with status ${response.status}`

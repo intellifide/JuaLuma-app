@@ -51,4 +51,6 @@ api.interceptors.response.use(
   },
 )
 
+api.interceptors.request.use((config) => config)
+
 export { api }

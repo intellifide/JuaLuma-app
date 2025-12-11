@@ -1,7 +1,4 @@
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-const API_URL = `${API_BASE}/api/ai`;
+import { api } from './api';
 
 export interface AIResponse {
     response: string;
@@ -27,37 +24,14 @@ export interface QuotaStatus {
 }
 
 export const aiService = {
-    sendMessage: async (message: string, token: string): Promise<AIResponse> => {
-        try {
-            const response = await axios.post(
-                `${API_URL}/chat`,
-                { message },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-            return response.data;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                throw new Error(error.response?.data?.detail || 'Failed to send message');
-            }
-            throw error;
-        }
+    sendMessage: async (message: string): Promise<AIResponse> => {
+        const response = await api.post<AIResponse>('/ai/chat', { message });
+        return response.data;
     },
 
-    getHistory: async (token: string): Promise<HistoryItem[]> => {
+    getHistory: async (): Promise<HistoryItem[]> => {
         try {
-            const response = await axios.get<HistoryResponse>(
-                `${API_URL}/history`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
+            const response = await api.get<HistoryResponse>('/ai/history');
             return response.data.messages;
         } catch (error) {
             console.error("Failed to fetch history:", error);
@@ -65,12 +39,9 @@ export const aiService = {
         }
     },
 
-    getQuota: async (token: string): Promise<QuotaStatus | null> => {
+    getQuota: async (): Promise<QuotaStatus | null> => {
         try {
-            const response = await axios.get<QuotaStatus>(
-                `${API_URL}/quota`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await api.get<QuotaStatus>('/ai/quota');
             return response.data;
         } catch (error) {
             return null;

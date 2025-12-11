@@ -28,8 +28,11 @@ export const Marketplace = () => {
                 const searchFilter = searchTerm.length > 0 ? searchTerm : undefined;
 
                 const data = await widgetService.list(categoryFilter, searchFilter, page, pageSize);
-                setWidgets(data.data);
-                setTotalPages(Math.ceil(data.total / pageSize));
+                // Normalize response in case backend returns array instead of paginated object.
+                const items = Array.isArray((data as any)?.data) ? (data as any).data : Array.isArray(data) ? data : [];
+                const total = typeof (data as any)?.total === 'number' ? (data as any).total : items.length;
+                setWidgets(items);
+                setTotalPages(Math.max(1, Math.ceil(total / pageSize)));
             } catch (error) {
                 console.error("Failed to load widgets", error);
             } finally {

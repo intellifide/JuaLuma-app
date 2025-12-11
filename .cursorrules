@@ -27,7 +27,8 @@
 - Keep GCP IAM role names as-is for cloud permissions (e.g., `roles/storage.admin`, `roles/iam.securityAdmin`); do not mirror them into app user roles.
 
 ## Development & Environments
-- Local dev uses emulators/mocks (Postgres for Cloud SQL, Firestore emulator, Pub/Sub emulator, FastAPI on 8001, Vite on 5175). AI Studio for local AI calls.
+- Local dev uses docker-compose: backend (FastAPI) on 8001, frontend (Vite) on 5175 with `/api` proxy. Set `VITE_API_TARGET=http://backend:8001` so the proxy resolves inside the Docker network.
+- Backend runs with `APP_ENV=local` and `ENABLE_AI_GATEWAY=false` in docker-compose for local runs; this keeps AI calls on the local AI Studio path and avoids Vertex AI credentials. Emulators: Postgres (Cloud SQL mirror), Firestore emulator, Auth emulator, Pub/Sub emulator.
 - No MVP/Phase/OFAC flows; scope is single-phase, support-portal-only.
 - Support surface: Customer Support Portal only; no admin dashboard.
 - Secrets locally via `.env`; Secret Manager is cloud-only.

@@ -14,6 +14,14 @@ All engineering decisions must strictly adhere to these six non\-negotiable pill
 - __Operational Resilience \(Circuit Breakers\):__ The system must fail safely and cheaply\. Automated kill switches and hard budget caps are architected into the codebase to prevent "runaway" API costs or infinite loops\.
 - __Developer Payout Integrity:__ Mandate the tracking of __Downloads__ and __Ratings__ must be __immutable__ \(written to the Cloud SQL log ledger plus Firestore `widget_engagement`\) to ensure accurate and auditable developer payouts\.
 
+### 1\.1 Local Docker Layout (GCP-Portability)
+- Orchestration: `docker-compose` runs backend (FastAPI) on 8001 and frontend (Vite) on 5175; all services join the `finity-network` bridge.
+- Frontend proxy: `/api` is proxied to `VITE_API_TARGET`. Inside Docker set `VITE_API_TARGET=http://backend:8001`; leave `VITE_API_BASE_URL` empty for browser builds.
+- Backend env: use `APP_ENV=local` with `ENABLE_AI_GATEWAY=false` in compose for local runs so AI uses the local AI Studio path (no Vertex credentials required).
+- Emulators: Postgres (Cloud SQL mirror), Firestore emulator (8080), Auth emulator (9099), Pub/Sub emulator (8085) are provided via compose envs.
+- Ports: expose backend `8001:8001`, frontend `5175:5175`; emulator ports are mapped for browser access.
+- API quirk: widget endpoints require trailing slashes (`/widgets/…`) to avoid 307 redirects in-browser.
+
 ### 2\.0 Product Definition & Detailed Scope
 
 #### 2\.0\.0 Unified Product Scope

@@ -64,10 +64,9 @@ export default function AIAssistant() {
       if (!user || !privacyAccepted || hasFetchedHistory) return;
 
       try {
-        const token = await user.getIdToken();
         const [history, quotaData] = await Promise.all([
-          aiService.getHistory(token),
-          aiService.getQuota(token)
+          aiService.getHistory(),
+          aiService.getQuota()
         ]);
 
         const formattedMessages: Message[] = history.flatMap(item => [
@@ -127,8 +126,7 @@ export default function AIAssistant() {
     setIsTyping(true);
 
     try {
-      const token = await user.getIdToken();
-      const response = await aiService.sendMessage(text, token);
+      const response = await aiService.sendMessage(text);
 
       const assistantMessage: Message = {
         role: 'assistant',
@@ -143,7 +141,7 @@ export default function AIAssistant() {
           used: quota.limit - response.quota_remaining
         });
       } else {
-        const q = await aiService.getQuota(token);
+        const q = await aiService.getQuota();
         setQuota(q);
       }
 
