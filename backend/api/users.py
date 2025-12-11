@@ -111,12 +111,12 @@ def delete_account(
     # Delete related records
     db.query(Subscription).filter(Subscription.uid == uid).delete()
     db.query(AISettings).filter(AISettings.uid == uid).delete()
-    db.query(SupportTicket).filter(SupportTicket.user_uid == uid).delete()
+    db.query(SupportTicket).filter(SupportTicket.user_id == uid).delete()
     # Note: Accounts/Transactions usually have cascade, but just in case:
     # We rely on DB cascade for deeper nested items like transactions linked to accounts
     
     # Delete Account records
-    db.query(Account).filter(Account.user_uid == uid).delete()
+    db.query(Account).filter(Account.uid == uid).delete()
     
     # Widget Ratings
     db.query(WidgetRating).filter(WidgetRating.user_uid == uid).delete()
