@@ -102,7 +102,8 @@ def get_net_worth(
     # Calculate
     # 1. Get current balance of all accounts
     accounts = db.query(Account).filter(Account.uid == current_user.uid).all()
-    current_total = sum(acc.balance or Decimal(0) for acc in accounts)
+    # 2025-12-11 02:23 CST - keep Decimal accumulator neutral
+    current_total = sum(((acc.balance or Decimal(0)) for acc in accounts), Decimal(0))
 
     # 2. Get all transactions > start_date
     all_txns = db.query(Transaction).filter(
@@ -187,6 +188,7 @@ def get_cash_flow(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # 2025-12-11 02:23 CST - align date bounds with datetime combine for tz safety
     # Income
     income_query = (
         select(
@@ -195,8 +197,8 @@ def get_cash_flow(
         )
         .where(
             Transaction.uid == current_user.uid,
-            Transaction.ts >= start_date,
-            Transaction.ts <= end_date,
+            Transaction.ts >= datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
+            Transaction.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc),
             Transaction.amount > 0,
             Transaction.archived.is_(False)
         )
@@ -212,8 +214,8 @@ def get_cash_flow(
         )
         .where(
             Transaction.uid == current_user.uid,
-            Transaction.ts >= start_date,
-            Transaction.ts <= end_date,
+            Transaction.ts >= datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
+            Transaction.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc),
             Transaction.amount < 0,
             Transaction.archived.is_(False)
         )
