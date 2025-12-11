@@ -12,6 +12,9 @@ export const Marketplace = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("All");
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const pageSize = 9;
 
     const hasPro = profile?.subscriptions?.some(s =>
         s.status === 'active' && ['pro', 'ultimate'].includes(s.plan || '')
@@ -24,8 +27,9 @@ export const Marketplace = () => {
                 const categoryFilter = selectedCategory === "All" ? undefined : selectedCategory.toLowerCase();
                 const searchFilter = searchTerm.length > 0 ? searchTerm : undefined;
 
-                const data = await widgetService.list(categoryFilter, searchFilter);
-                setWidgets(data);
+                const data = await widgetService.list(categoryFilter, searchFilter, page, pageSize);
+                setWidgets(data.data);
+                setTotalPages(Math.ceil(data.total / pageSize));
             } catch (error) {
                 console.error("Failed to load widgets", error);
             } finally {
@@ -39,7 +43,24 @@ export const Marketplace = () => {
         }, 300);
 
         return () => clearTimeout(timeoutId);
-    }, [selectedCategory, searchTerm]);
+    }, [selectedCategory, searchTerm, page]); // Added 'page' to dependencies
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setPage(newPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(e.target.value);
+        setPage(1); // Reset to page 1 on search
+    };
+
+    const handleCategoryChange = (cat: string) => {
+        setSelectedCategory(cat);
+        setPage(1); // Reset to page 1 on category change
+    };
 
     const handleDownload = async (id: string, isOwner: boolean) => {
         if (!hasPro && !isOwner) {
@@ -76,7 +97,7 @@ export const Marketplace = () => {
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat}
-                            onClick={() => setSelectedCategory(cat)}
+                            onClick={() => handleCategoryChange(cat)}
                             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${selectedCategory === cat
                                 ? 'bg-primary text-white'
                                 : 'bg-white/5 hover:bg-white/10 text-text-secondary'
@@ -93,7 +114,7 @@ export const Marketplace = () => {
                         placeholder="Search widgets..."
                         className="input pl-10 w-full md:w-64"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={handleSearchChange}
                     />
                 </div>
             </div>
@@ -164,6 +185,29 @@ export const Marketplace = () => {
                             <p className="text-text-muted">Try a different category or search term.</p>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!loading && totalPages > 1 && (
+                <div className="flex justify-center gap-2 mb-16">
+                    <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </button>
+                    <span className="flex items-center px-4 text-sm text-text-secondary">
+                        Page {page} of {totalPages}
+                    </span>
+                    <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={page === totalPages}
+                    >
+                        Next
+                    </button>
                 </div>
             )}
 

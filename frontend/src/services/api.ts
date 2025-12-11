@@ -3,7 +3,7 @@ import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken } from './auth'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000, // 10 second timeout
 })
 

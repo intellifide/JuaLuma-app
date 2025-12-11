@@ -1,4 +1,5 @@
 import { api } from './api';
+import { PaginatedResponse } from '../types';
 
 export interface DeveloperPayout {
     month: string;
@@ -17,6 +18,11 @@ export const developerService = {
 
     getPayoutHistory: async () => {
         const response = await api.get<DeveloperPayout[]>('/developers/payouts');
+        return response.data;
+    },
+
+    getTransactions: async (page: number = 1, pageSize: number = 10) => {
+        const response = await api.get<PaginatedResponse<DeveloperPayout>>(`/developers/transactions?page=${page}&page_size=${pageSize}`);
         return response.data;
     }
 };

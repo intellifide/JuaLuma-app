@@ -30,9 +30,6 @@ export const Home = () => (
           >
             Learn More
           </Link>
-          <Link to="/login" className="btn btn-lg">
-            Use Demo Account
-          </Link>
         </div>
       </div>
     </section>

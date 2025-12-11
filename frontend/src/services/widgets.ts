@@ -1,12 +1,15 @@
 import { api } from './api';
-import { Widget } from '../types';
+import { Widget, PaginatedResponse } from '../types';
 
 export const widgetService = {
-    list: async (category?: string, search?: string) => {
+    list: async (category?: string, search?: string, page: number = 1, pageSize: number = 10) => {
         const params = new URLSearchParams();
         if (category) params.append('category', category);
         if (search) params.append('search', search);
-        const response = await api.get<Widget[]>(`/widgets?${params.toString()}`);
+        params.append('page', page.toString());
+        params.append('page_size', pageSize.toString());
+
+        const response = await api.get<PaginatedResponse<Widget>>(`/widgets?${params.toString()}`);
         return response.data;
     },
 

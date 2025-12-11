@@ -3,8 +3,8 @@ from datetime import date
 from decimal import Decimal
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from backend.core.dependencies import require_developer, require_pro_or_ultimate
@@ -22,6 +22,14 @@ class PayoutResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PaginatedPayoutResponse(BaseModel):
+    data: List[PayoutResponse]
+    total: int
+    page: int
+    page_size: int
+
+    model_config = ConfigDict(from_attributes=True)
+
 @router.get("/payouts", response_model=List[PayoutResponse])
 def get_payout_history(
     current_user: User = Depends(require_developer),
@@ -36,6 +44,30 @@ def get_payout_history(
         .all()
     )
     return payouts
+
+@router.get("/transactions", response_model=PaginatedPayoutResponse)
+def get_developer_transactions(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    current_user: User = Depends(require_developer),
+    db: Session = Depends(get_db)
+):
+    """Get paginated developer transactions (payouts)."""
+    query = (
+        db.query(DeveloperPayout)
+        .filter(DeveloperPayout.dev_uid == current_user.uid)
+        .order_by(DeveloperPayout.month.desc())
+    )
+    
+    total = query.count()
+    payouts = query.offset((page - 1) * page_size).limit(page_size).all()
+    
+    return {
+        "data": payouts,
+        "total": total,
+        "page": page,
+        "page_size": page_size
+    }
 
 class DeveloperCreate(BaseModel):
     payout_method: dict

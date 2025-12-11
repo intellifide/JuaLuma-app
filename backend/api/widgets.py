@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Deque, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
@@ -66,6 +66,14 @@ class WidgetRatingCreate(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     review: Optional[str] = Field(None, max_length=2000)
 
+class PaginatedWidgetResponse(BaseModel):
+    data: List[WidgetResponse]
+    total: int
+    page: int
+    page_size: int
+
+    model_config = ConfigDict(from_attributes=True)
+
 # --- Endpoints ---
 
 # Simple in-memory rate limiter for submissions
@@ -89,13 +97,15 @@ def _check_submit_rate_limit(uid: str):
             )
         attempts.append(now)
 
-@router.get("/", response_model=List[WidgetResponse])
+@router.get("/", response_model=PaginatedWidgetResponse)
 def list_widgets(
     category: Optional[str] = None,
     search: Optional[str] = None,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
 ):
-    """List available widgets with optional filtering."""
+    """List available widgets with optional filtering and pagination."""
     query = db.query(Widget).filter(Widget.status == "approved")
     
     if category:
@@ -104,7 +114,15 @@ def list_widgets(
         # Simple case-insensitive search on name
         query = query.filter(Widget.name.ilike(f"%{search}%"))
         
-    return query.all()
+    total = query.count()
+    widgets = query.offset((page - 1) * page_size).limit(page_size).all()
+    
+    return {
+        "data": widgets,
+        "total": total,
+        "page": page,
+        "page_size": page_size
+    }
 
 @router.get("/mine", response_model=List[WidgetResponse])
 def list_my_widgets(
@@ -119,6 +137,7 @@ def list_my_widgets(
 def submit_widget(
     payload: WidgetCreate,
     current_user: User = Depends(require_developer),
+    _=Depends(require_pro_or_ultimate), # Enforce Pro/Ultimate
     db: Session = Depends(get_db),
 ):
     """Submit a new widget for review. Developer only. (Legacy/Simple)"""

@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { widgetService } from '../services/widgets';
 import { developerService, DeveloperPayout } from '../services/developers';
-import { Widget } from '../types';
+import { Widget, PaginatedResponse } from '../types';
 
 export const DeveloperMarketplace = () => {
     const { profile, refetchProfile } = useAuth();
@@ -11,6 +11,9 @@ export const DeveloperMarketplace = () => {
     const [payouts, setPayouts] = useState<DeveloperPayout[]>([]);
     const [activeTab, setActiveTab] = useState<'dashboard' | 'payouts'>('dashboard');
     const [loading, setLoading] = useState(false);
+    const [payoutPage, setPayoutPage] = useState(1);
+    const [totalPayoutPages, setTotalPayoutPages] = useState(1);
+    const pageSize = 10;
 
     // Registration State
     const [registering, setRegistering] = useState(false);
@@ -31,27 +34,30 @@ export const DeveloperMarketplace = () => {
         s.status === 'active' && ['pro', 'ultimate'].includes(s.plan || '')
     );
 
-    useEffect(() => {
-        if (isDeveloper && profile) {
-            loadDashboard();
-        }
-    }, [isDeveloper, profile]);
-
-    const loadDashboard = async () => {
+    const loadDashboard = useCallback(async () => {
         setLoading(true);
         try {
-            const [w, p] = await Promise.all([
+            const [w, pData] = await Promise.all([
                 widgetService.listMine(),
-                developerService.getPayoutHistory().catch(() => [])
+                developerService.getTransactions(payoutPage, pageSize).catch(() => ({ data: [], total: 0, page: 1, pageSize } as PaginatedResponse<DeveloperPayout>))
             ]);
             setMyWidgets(w);
-            setPayouts(p);
+            if (pData.data) {
+                setPayouts(pData.data);
+                setTotalPayoutPages(Math.ceil(pData.total / pageSize));
+            }
         } catch (e) {
             console.error("Failed to load developer dashboard", e);
         } finally {
             setLoading(false);
         }
-    };
+    }, [payoutPage]);
+
+    useEffect(() => {
+        if (isDeveloper && profile) {
+            loadDashboard();
+        }
+    }, [isDeveloper, profile, loadDashboard]);
 
     const handleRegister = async () => {
         if (!agreed) {
@@ -239,6 +245,28 @@ export const DeveloperMarketplace = () => {
                                     )}
                                 </tbody>
                             </table>
+                            {/* Payout Pagination */}
+                            {totalPayoutPages > 1 && (
+                                <div className="flex justify-center gap-2 py-4 border-t border-white/5">
+                                    <button
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => setPayoutPage(p => Math.max(1, p - 1))}
+                                        disabled={payoutPage === 1}
+                                    >
+                                        &lt; Prev
+                                    </button>
+                                    <span className="flex items-center text-sm text-text-secondary">
+                                        Page {payoutPage} of {totalPayoutPages}
+                                    </span>
+                                    <button
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => setPayoutPage(p => Math.min(totalPayoutPages, p + 1))}
+                                        disabled={payoutPage === totalPayoutPages}
+                                    >
+                                        Next &gt;
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </>
