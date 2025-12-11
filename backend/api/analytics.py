@@ -82,6 +82,8 @@ def get_net_worth(
     # Simple formatting for cache key
     cache_key = f"net_worth:{current_user.uid}:{start_date.isoformat()}:{end_date.isoformat()}:{interval}"
     
+    # 2025-12-11 02:12 CST - guard cache reference when Firestore init fails
+    doc_ref = None
     try:
         db_fs = get_firestore_client()
         doc_ref = db_fs.collection("analytics_cache").document(cache_key)
@@ -167,7 +169,7 @@ def get_net_worth(
     resp = NetWorthResponse(data=res_list)
     
     # Cache write
-    if db_fs:
+    if db_fs and doc_ref:
         try:
             doc_ref.set({
                 "payload": resp.model_dump(mode='json'),

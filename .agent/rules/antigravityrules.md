@@ -79,6 +79,6 @@ trigger: always_on
 - Favor minimal, scoped changes; avoid broad refactors without approval.
 
 ## Scope
-- Never work outside of this workspace directory /finity-app unless instructed by the user. When utilizing the Notion MCP server you are only authorized to operate within https://www.notion.so/Finity-app-2c22c5428b0880a9b6c7d265d452f79e?v=f4f55b0e704346cb95ab4d0b2571f9e7&source=copy_link
+- Never work outside of this workspace directory /finity-app unless instructed by the user.
 
 - ignore all contents in notes.md

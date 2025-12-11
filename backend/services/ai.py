@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 from typing import Any, Optional
@@ -141,7 +142,8 @@ TIER_LIMITS = {
     "ultimate": 200
 }
 
-async def check_rate_limit(user_id: str):
+# 2025-12-11 02:12 CST - offload sync rate limit work to thread
+def _check_rate_limit_sync(user_id: str) -> int:
     """
     Checks if the user has exceeded their daily AI request limit.
     Uses Firestore to track daily usage.
@@ -194,6 +196,13 @@ async def check_rate_limit(user_id: str):
         raise HTTPException(status_code=429, detail=f"Daily AI limit reached for {tier} tier ({limit} requests).")
         
     return usage
+
+
+async def check_rate_limit(user_id: str) -> int:
+    """
+    Async wrapper that offloads the blocking Firestore/postgres work to a thread.
+    """
+    return await asyncio.to_thread(_check_rate_limit_sync, user_id)
 
 async def generate_chat_response(prompt: str, context: Optional[str], user_id: str) -> dict:
     """
