@@ -134,8 +134,4 @@ def downgrade() -> None:
     op.drop_table('widgets')
     op.drop_table('support_ticket_messages')
     op.drop_table('support_tickets')
-    op.drop_table('support_portal_actions', schema='audit')
-    op.drop_table('llm_logs', schema='audit')
-    op.drop_table('feature_preview', schema='audit')
-    op.drop_table('audit_log', schema='audit')
     # ### end Alembic commands ###

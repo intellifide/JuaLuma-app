@@ -173,6 +173,7 @@ def update_subscription(
         old_plan = active_sub.plan
         active_sub.plan = payload.plan.lower()
         active_sub.updated_at = datetime.now(timezone.utc)
+        db.add(active_sub)
     else:
         # Create new
         new_sub = Subscription(
