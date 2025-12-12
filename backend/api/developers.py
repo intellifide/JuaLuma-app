@@ -1,7 +1,7 @@
 import logging
 from datetime import date
 from decimal import Decimal
-from typing import List
+from typing import List, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, ConfigDict
@@ -34,7 +34,7 @@ class PaginatedPayoutResponse(BaseModel):
 def get_payout_history(
     current_user: User = Depends(require_developer),
     db: Session = Depends(get_db)
-):
+) -> List[DeveloperPayout]:
     """Get payout history for the authenticated developer."""
         
     payouts = (
@@ -51,7 +51,7 @@ def get_developer_transactions(
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(require_developer),
     db: Session = Depends(get_db)
-):
+) -> Dict[str, Any]:
     """Get paginated developer transactions (payouts)."""
     query = (
         db.query(DeveloperPayout)
@@ -70,7 +70,7 @@ def get_developer_transactions(
     }
 
 class DeveloperCreate(BaseModel):
-    payout_method: dict
+    payout_method: Dict[str, Any]
     payout_frequency: str = "monthly"
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -78,7 +78,7 @@ def register_developer(
     payload: DeveloperCreate,
     current_user: User = Depends(require_pro_or_ultimate),
     db: Session = Depends(get_db)
-):
+) -> Dict[str, str]:
     """Register as a developer. Requires Pro/Ultimate."""
     if current_user.developer:
         raise HTTPException(status_code=400, detail="Already a developer")

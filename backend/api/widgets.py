@@ -83,7 +83,7 @@ _submit_lock = Lock()
 _SUBMIT_WINDOW = 3600  # 1 hour
 _SUBMIT_LIMIT = 5
 
-def _check_submit_rate_limit(uid: str):
+def _check_submit_rate_limit(uid: str) -> None:
     now = time.time()
     with _submit_lock:
         attempts = _submit_attempts[uid]
@@ -105,7 +105,7 @@ def list_widgets(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
-):
+) -> Dict[str, Any]:
     """List available widgets with optional filtering and pagination."""
     query = db.query(Widget).filter(Widget.status == "approved")
     
@@ -129,7 +129,7 @@ def list_widgets(
 def list_my_widgets(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> List[Widget]:
     """List widgets owned by the current user."""
     return db.query(Widget).filter(Widget.developer_uid == current_user.uid).all()
 
@@ -138,9 +138,9 @@ def list_my_widgets(
 def submit_widget(
     payload: WidgetCreate,
     current_user: User = Depends(require_developer),
-    _=Depends(require_pro_or_ultimate), # Enforce Pro/Ultimate
+    _: Any = Depends(require_pro_or_ultimate), # Enforce Pro/Ultimate
     db: Session = Depends(get_db),
-):
+) -> Widget:
     """Submit a new widget for review. Developer only. (Legacy/Simple)"""
     # Developer check handled by dependency
         
@@ -167,9 +167,9 @@ def create_widget(
     payload: WidgetCreate,
     request: Request,
     current_user: User = Depends(require_developer),
-    _=Depends(require_pro_or_ultimate),
+    _: Any = Depends(require_pro_or_ultimate),
     db: Session = Depends(get_db),
-):
+) -> Widget:
     """Create a new widget. Requires Pro/Ultimate and Developer Agreement."""
     # Dependencies handle auth checks
     
@@ -225,7 +225,7 @@ def update_widget(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Widget:
     """Update a widget. Owner only."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
@@ -277,7 +277,7 @@ def delete_widget(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Dict[str, str]:
     """Soft delete a widget. Owner only."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
@@ -310,7 +310,7 @@ def download_widget(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Dict[str, Any]:
     """Download a widget. Increments download count."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
@@ -350,7 +350,7 @@ def download_widget(
     # Firestore: Widget Engagement
     try:
         from backend.utils.firestore import get_firestore_client
-        from firebase_admin import firestore
+        from firebase_admin import firestore # type: ignore
         
         db_fs = get_firestore_client()
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -397,7 +397,7 @@ def record_widget_run(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Dict[str, str]:
     """Log a widget execution to the audit log for payout calculations."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
@@ -434,7 +434,7 @@ def rate_widget(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Dict[str, str]:
     """Rate a widget. 1-5 stars."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
