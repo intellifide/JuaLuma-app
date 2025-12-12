@@ -252,14 +252,20 @@ INSERT INTO users (uid, email, role, theme_pref, currency_pref) VALUES
     ('test-user-1', 'test@example.com', 'user', 'glass', 'USD'),
     ('test-dev-1', 'developer@example.com', 'user', 'glass', 'USD'),
     ('test-agent-1', 'agent@example.com', 'support_agent', 'glass', 'USD'),
-    ('test-manager-1', 'manager@example.com', 'support_manager', 'glass', 'USD')
+    ('test-manager-1', 'manager@example.com', 'support_manager', 'glass', 'USD'),
+    ('user_regular', 'user_regular@example.com', 'user', 'glass', 'USD'),
+    ('agent_support_1', 'agent_support_1@example.com', 'support_agent', 'glass', 'USD'),
+    ('manager_support', 'manager_support@example.com', 'support_manager', 'glass', 'USD')
 ON CONFLICT (uid) DO NOTHING;
 
 INSERT INTO subscriptions (uid, plan, status) VALUES
     ('test-user-1', 'free', 'active'),
     ('test-dev-1', 'pro', 'active'),
     ('test-agent-1', 'free', 'active'),
-    ('test-manager-1', 'free', 'active')
+    ('test-manager-1', 'free', 'active'),
+    ('user_regular', 'free', 'active'),
+    ('agent_support_1', 'free', 'active'),
+    ('manager_support', 'free', 'active')
 ON CONFLICT (uid) DO NOTHING;
 
 INSERT INTO developers (uid, payout_frequency) VALUES
@@ -268,5 +274,7 @@ ON CONFLICT (uid) DO NOTHING;
 
 INSERT INTO support_agents (company_id, name, email, role) VALUES
     ('INT-AGENT-2025-001', 'Test Agent', 'agent@example.com', 'support_agent'),
-    ('INT-AGENT-2025-002', 'Test Manager', 'manager@example.com', 'support_manager')
+    ('INT-AGENT-2025-002', 'Test Manager', 'manager@example.com', 'support_manager'),
+    ('INT-AGENT-2025-003', 'Agent Support 1', 'agent_support_1@example.com', 'support_agent'),
+    ('INT-AGENT-2025-004', 'Manager Support', 'manager_support@example.com', 'support_manager')
 ON CONFLICT (company_id) DO NOTHING;

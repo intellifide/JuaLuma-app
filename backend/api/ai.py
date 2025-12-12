@@ -35,6 +35,8 @@ class ChatResponse(BaseModel):
     response: str
     tokens: int = 0
     quota_remaining: Optional[int] = None
+    quota_limit: Optional[int] = None
+    quota_used: Optional[int] = None
     
     model_config = ConfigDict(
         json_schema_extra={
@@ -135,6 +137,18 @@ async def chat_endpoint(
         prechecked_limit=prechecked_limit,
     )
     ai_response = result.get("response", "")
+    usage_today = result.get("usage_today")
+    # Compute quota remaining using the same limit used for the rate check
+    # Fall back gracefully if the generator did not return usage info
+    if usage_today is not None:
+        _, limit_from_precheck, _ = prechecked_limit
+        quota_remaining = max(limit_from_precheck - usage_today, 0)
+        quota_limit = limit_from_precheck
+        quota_used = usage_today
+    else:
+        quota_remaining = None
+        quota_limit = None
+        quota_used = None
     
     # 5. Log to Audit (LLMLog)
     # TIER 3.4: Encryption
@@ -164,7 +178,9 @@ async def chat_endpoint(
     return ChatResponse(
         response=ai_response,
         tokens=0, # Placeholder
-        quota_remaining=None # Could calculate from TIER_LIMITS - usage_today
+        quota_remaining=quota_remaining,
+        quota_limit=quota_limit,
+        quota_used=quota_used,
     )
 
 @router.get("/history", response_model=HistoryResponse)
@@ -210,7 +226,6 @@ def get_chat_history(
             response=response_text,
             timestamp=log.ts.isoformat() if log.ts else ""
         ))
-        
     return HistoryResponse(messages=messages)
 
 @router.get("/quota")

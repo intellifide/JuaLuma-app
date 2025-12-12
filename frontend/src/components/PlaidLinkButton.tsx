@@ -1,10 +1,11 @@
-// Updated 2025-12-11 02:45 CST by ChatGPT
+// Updated 2025-12-11 12:20 CST by ChatGPT - auto-sync new Plaid accounts
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata, type PlaidLinkError } from 'react-plaid-link'
 import { api } from '../services/api'
+import { syncAccount } from '../services/accounts'
 
 type PlaidLinkButtonProps = {
-  onSuccess?: () => void
+  onSuccess?: () => void | Promise<void>
   onError?: (message: string) => void
 }
 
@@ -13,6 +14,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
   const [loading, setLoading] = useState(true)
   const [opening, setOpening] = useState(false)
   const linkReadyOnce = useRef(false)
+  const fetchedTokenOnce = useRef(false)
 
   useEffect(() => {
     const createToken = async () => {
@@ -36,9 +38,12 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
         setLoading(false)
       }
     }
-    // Fetch the token once per mount to avoid repeated Plaid.init
-    if (!linkToken) createToken()
-  }, [linkToken, onError])
+    // Fetch the token only once per mount to avoid repeated Plaid.init
+    if (!fetchedTokenOnce.current) {
+      fetchedTokenOnce.current = true
+      createToken()
+    }
+  }, [onError])
 
   const linkConfig = useMemo(() => {
     if (!linkToken) return null
@@ -46,11 +51,26 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
       token: linkToken,
       onSuccess: async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
         try {
-          await api.post('/plaid/exchange-token', {
+          const response = await api.post('/plaid/exchange-token', {
             public_token: publicToken,
             institution_name: metadata.institution?.name ?? 'plaid',
           })
-          onSuccess?.()
+
+          // Try to hydrate transactions right after linking so the dashboard shows data immediately.
+          const linkedAccounts = (response as { data: { accounts?: Array<{ id?: string }> } }).data.accounts ?? []
+          const firstAccount = linkedAccounts.find((account) => account?.id)
+          if (firstAccount?.id) {
+            try {
+              await syncAccount(firstAccount.id)
+            } catch (syncErr) {
+              console.warn('Plaid account sync failed', syncErr)
+            }
+          }
+
+          const afterSync = onSuccess?.()
+          if (afterSync instanceof Promise) {
+            await afterSync
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unable to link account.'
           onError?.(message)

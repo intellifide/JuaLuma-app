@@ -48,7 +48,9 @@ export default function AIAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
+  const storageKey = user?.uid ? `finity_ai_thread_${user.uid}` : 'finity_ai_thread_anon';
 
   useEffect(() => {
     const accepted = localStorage.getItem('finity_privacy_accepted');
@@ -58,6 +60,13 @@ export default function AIAssistant() {
       setTimeout(() => setShowPrivacyModal(true), 500);
     }
   }, []);
+
+  // Reset per-user state when switching users
+  useEffect(() => {
+    setHasFetchedHistory(false);
+    setMessages([]);
+    setQuota(null);
+  }, [user?.uid]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,14 +91,38 @@ export default function AIAssistant() {
           }
         ]).filter(m => m.text);
 
-        if (formattedMessages.length === 0) {
-          setMessages([{
-            role: 'assistant',
-            text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }]);
-        } else {
+        // If backend has history, prefer it; otherwise fall back to local cache
+        if (formattedMessages.length > 0) {
           setMessages(formattedMessages);
+          localStorage.setItem(storageKey, JSON.stringify(formattedMessages));
+        } else {
+          const cached = localStorage.getItem(storageKey);
+          if (cached) {
+            try {
+              const parsed: Message[] = JSON.parse(cached);
+              if (parsed.length > 0) {
+                setMessages(parsed);
+              } else {
+                setMessages([{
+                  role: 'assistant',
+                  text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }]);
+              }
+            } catch {
+              setMessages([{
+                role: 'assistant',
+                text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }]);
+            }
+          } else {
+            setMessages([{
+              role: 'assistant',
+              text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }]);
+          }
         }
 
         setQuota(quotaData);
@@ -133,17 +166,32 @@ export default function AIAssistant() {
         text: response.response,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => {
+        const updated = [...prev, assistantMessage];
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+        return updated;
+      });
 
-      if (response.quota_remaining !== undefined && quota) {
+      if (
+        response.quota_limit !== undefined &&
+        response.quota_used !== undefined
+      ) {
+        setQuota({
+          used: response.quota_used,
+          limit: response.quota_limit,
+          tier: quota?.tier ?? 'free',
+          resets_at: quota?.resets_at ?? '',
+        });
+      } else if (response.quota_remaining !== undefined && quota) {
         setQuota({
           ...quota,
-          used: quota.limit - response.quota_remaining
+          used: Math.max(quota.limit - response.quota_remaining, 0),
         });
       } else {
-        const q = await aiService.getQuota();
-        setQuota(q);
+        const latestQuota = await aiService.getQuota();
+        setQuota(latestQuota);
       }
+     
 
     } catch (error: unknown) {
       const errorMessage: Message = {
@@ -151,7 +199,11 @@ export default function AIAssistant() {
         text: `Error: ${error instanceof Error ? error.message : 'Something went wrong.'}`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => {
+        const updated = [...prev, errorMessage];
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+        return updated;
+      });
     } finally {
       setIsTyping(false);
     }
@@ -169,7 +221,18 @@ export default function AIAssistant() {
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) {
+      // Constrain scroll to the chat container so the whole page doesn't jump
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      } else {
+        // JSDOM fallback
+        container.scrollTop = container.scrollHeight;
+      }
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, isTyping]);
 
   const quotaExceeded = quota ? quota.used >= quota.limit : false;
@@ -229,7 +292,14 @@ export default function AIAssistant() {
             </div>
           )}
 
-          <div id="ai-chat-messages" className="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
+          <div
+            id="ai-chat-messages"
+            className="chat-messages"
+            role="log"
+            aria-live="polite"
+            aria-label="Chat messages"
+            ref={messagesContainerRef}
+          >
             {messages.map((msg, idx) => (
               <ChatMessage key={idx} role={msg.role} text={msg.text} time={msg.time} />
             ))}

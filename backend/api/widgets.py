@@ -17,6 +17,7 @@ from backend.models import AuditLog, User, Widget, WidgetRating
 from backend.utils import get_db
 
 # Updated 2025-12-10 15:10 CST by ChatGPT
+# 2025-12-11 17:23 CST - add widget run event logging endpoint
 
 router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 logger = logging.getLogger(__name__)
@@ -388,6 +389,43 @@ def download_widget(
     }
     
     return manifest
+
+
+@router.post("/{widget_id}/run")
+def record_widget_run(
+    widget_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Log a widget execution to the audit log for payout calculations."""
+    widget = db.query(Widget).filter(Widget.id == widget_id).first()
+    if not widget:
+        raise HTTPException(status_code=404, detail="Widget not found")
+
+    if widget.status != "approved" and widget.developer_uid != current_user.uid:
+        raise HTTPException(status_code=404, detail="Widget not found or not available")
+
+    metadata = {
+        "widget_id": widget.id,
+        "developer_uid": widget.developer_uid,
+        "runner_uid": current_user.uid,
+        "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+    }
+
+    db.add(
+        AuditLog(
+            actor_uid=current_user.uid,
+            target_uid=widget.developer_uid,
+            action="widget_run",
+            source="backend",
+            metadata_json=metadata,
+        )
+    )
+    db.commit()
+
+    return {"message": "Widget run recorded"}
 
 @router.post("/{widget_id}/rate")
 def rate_widget(

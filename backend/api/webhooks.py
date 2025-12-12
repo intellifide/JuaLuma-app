@@ -81,7 +81,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None),
             invoice = event['data']['object']
             # Subscription renewal successful
             # Ensure tier is pro
-            # Ensure tier is pro
             email = invoice.get('customer_email')
             
             # Map email/customer to User

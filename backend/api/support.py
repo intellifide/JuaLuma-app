@@ -3,13 +3,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import desc
 from sqlalchemy.orm import Session, selectinload
 
-from backend.middleware.auth import get_current_user
-from backend.models import User
+from backend.middleware.auth import (
+    get_current_user,
+    require_support_agent,
+)
+from backend.models import LocalNotification, User
 from backend.models.support import (
     SupportAgent,
     SupportTicket,
@@ -60,7 +63,7 @@ class TicketResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
-    messages: List[TicketMessageResponse] = []
+    messages: List[TicketMessageResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -82,6 +85,52 @@ class TicketRatingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Helpers ---
+
+
+def _get_ticket_for_actor(
+    db: Session, ticket_id: uuid.UUID, current_user: User
+) -> Optional[SupportTicket]:
+    """Fetch a ticket scoped by role."""
+    query = (
+        db.query(SupportTicket)
+        .options(selectinload(SupportTicket.messages))
+        .filter(SupportTicket.id == ticket_id)
+    )
+
+    if current_user.role not in {"support_agent", "support_manager"}:
+        query = query.filter(SupportTicket.user_id == current_user.uid)
+
+    return query.first()
+
+
+def _create_resolution_notification_if_needed(
+    db: Session, ticket: SupportTicket
+) -> Optional[LocalNotification]:
+    """Idempotently record a local notification for ticket resolution."""
+    existing = (
+        db.query(LocalNotification)
+        .filter(
+            LocalNotification.uid == ticket.user_id,
+            LocalNotification.ticket_id == ticket.id,
+            LocalNotification.event_key == "ticket_resolved",
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    notification = LocalNotification(
+        uid=ticket.user_id,
+        ticket_id=ticket.id,
+        event_key="ticket_resolved",
+        message=f"Your ticket '{ticket.subject}' was resolved.",
+    )
+    db.add(notification)
+    db.flush()  # keep in the current transaction for atomicity
+    return notification
 
 
 # --- Endpoints ---
@@ -143,6 +192,30 @@ def get_tickets(
     return tickets
 
 
+@router.get(
+    "/agent/tickets",
+    response_model=List[TicketResponse],
+    dependencies=[Depends(require_support_agent)],
+)
+def get_tickets_for_support(
+    customer_uid: Optional[str] = Query(
+        None, description="Optional customer uid filter"
+    ),
+    db: Session = Depends(get_db),
+):
+    """List tickets for support agents/managers, optionally filtered by customer."""
+    query = (
+        db.query(SupportTicket)
+        .options(selectinload(SupportTicket.messages))
+        .order_by(desc(SupportTicket.updated_at))
+    )
+    if customer_uid:
+        query = query.filter(SupportTicket.user_id == customer_uid)
+
+    tickets = query.all()
+    return tickets
+
+
 @router.get("/tickets/{ticket_id}", response_model=TicketResponse)
 def get_ticket_detail(
     ticket_id: uuid.UUID = Path(...),
@@ -163,6 +236,46 @@ def get_ticket_detail(
     return ticket
 
 
+@router.patch("/tickets/{ticket_id}", response_model=TicketResponse)
+def update_ticket_status(
+    payload: TicketUpdate,
+    ticket_id: uuid.UUID = Path(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update ticket status (user scoped; agents/managers can update any ticket)."""
+    if payload.status is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="status is required"
+        )
+
+    ticket = _get_ticket_for_actor(db=db, ticket_id=ticket_id, current_user=current_user)
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
+        )
+
+    old_status = ticket.status
+    notification: Optional[LocalNotification] = None
+
+    if payload.status != ticket.status:
+        ticket.status = payload.status
+        ticket.updated_at = datetime.now(timezone.utc)
+
+        if old_status == "open" and payload.status == "resolved":
+            notification = _create_resolution_notification_if_needed(db, ticket)
+
+        db.commit()
+        db.refresh(ticket)
+
+        if notification:
+            db.refresh(notification)
+    else:
+        logger.info("No status change for ticket %s", ticket.id)
+
+    return ticket
+
+
 @router.post("/tickets/{ticket_id}/messages", response_model=TicketMessageResponse)
 def add_message(
     payload: TicketMessageCreate,
@@ -171,11 +284,7 @@ def add_message(
     db: Session = Depends(get_db),
 ):
     """Add a message to a ticket (reply)."""
-    ticket = (
-        db.query(SupportTicket)
-        .filter(SupportTicket.id == ticket_id, SupportTicket.user_id == current_user.uid)
-        .first()
-    )
+    ticket = _get_ticket_for_actor(db=db, ticket_id=ticket_id, current_user=current_user)
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
@@ -189,7 +298,9 @@ def add_message(
 
     message = SupportTicketMessage(
         ticket_id=ticket.id,
-        sender_type="user",
+        sender_type="support"
+        if current_user.role in {"support_agent", "support_manager"}
+        else "user",
         sender_id=current_user.uid,
         message=payload.message,
     )
@@ -226,12 +337,7 @@ def close_ticket(
     db: Session = Depends(get_db),
 ):
     """Close a ticket."""
-    ticket = (
-        db.query(SupportTicket)
-        .options(selectinload(SupportTicket.messages))
-        .filter(SupportTicket.id == ticket_id, SupportTicket.user_id == current_user.uid)
-        .first()
-    )
+    ticket = _get_ticket_for_actor(db=db, ticket_id=ticket_id, current_user=current_user)
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"

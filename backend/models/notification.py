@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     String,
+    Text,
     Time,
     UniqueConstraint,
     func,
@@ -61,4 +62,51 @@ class NotificationPreference(Base):
         )
 
 
-__all__ = ["NotificationPreference"]
+class LocalNotification(Base):
+    """Local in-app notification payloads.
+
+    2025-12-11 14:45 CST - Adds idempotent ticket resolution alerts to satisfy
+    TASK-10 without duplicating outbound channels.
+    """
+
+    __tablename__ = "local_notifications"
+    __table_args__ = (
+        UniqueConstraint(
+            "uid",
+            "ticket_id",
+            "event_key",
+            name="uq_local_notification_ticket_event",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    uid: Mapped[str] = mapped_column(
+        String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
+    )
+    ticket_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("support_tickets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"LocalNotification(id={self.id!r}, uid={self.uid!r}, "
+            f"ticket_id={self.ticket_id!r}, event_key={self.event_key!r})"
+        )
+
+
+__all__ = ["NotificationPreference", "LocalNotification"]

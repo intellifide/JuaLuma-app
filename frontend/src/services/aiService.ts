@@ -4,6 +4,8 @@ export interface AIResponse {
     response: string;
     tokens: number;
     quota_remaining?: number;
+    quota_limit?: number;
+    quota_used?: number;
 }
 
 export interface HistoryItem {

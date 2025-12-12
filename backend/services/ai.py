@@ -267,9 +267,10 @@ async def generate_chat_response(
         # 5. Persist usage only after success to avoid charging failures
         usage_after = await record_rate_limit_usage(user_id, tier, limit)
 
-        # 6. Return
+        # 6. Return both the model response and updated usage
         return {
-            "usage_today": usage_after
+            "response": response_text,
+            "usage_today": usage_after,
         }
     except HTTPException:
         # Re-raise HTTPExceptions (like 429/503 from generate_content)

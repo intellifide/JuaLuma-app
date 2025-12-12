@@ -10,7 +10,7 @@ from .developer import Developer
 from .transaction import Transaction
 from .payment import Payment
 from .ai_settings import AISettings
-from .notification import NotificationPreference
+from .notification import NotificationPreference, LocalNotification
 from .audit import AuditLog, FeaturePreview, LLMLog, SupportPortalAction
 from .support import SupportAgent, SupportTicketRating, SupportTicket, SupportTicketMessage
 from .payout import DeveloperPayout
@@ -34,6 +34,7 @@ __all__ = [
     "Payment",
     "AISettings",
     "NotificationPreference",
+    "LocalNotification",
     "AuditLog",
     "FeaturePreview",
     "LLMLog",

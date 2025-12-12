@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// Updated 2025-12-11 12:20 CST by ChatGPT - trigger Plaid sync + refetch transactions
+import React, { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
@@ -68,15 +69,148 @@ const DATASETS: Record<string, DashboardDataset> = {
   }
 };
 
+const CATEGORY_RULES: { label: string; keywords: RegExp }[] = [
+  { label: 'Food & Drink', keywords: /(starbucks|coffee|cafe|restaurant|grill|pizza|dunkin|chipotle|mcdonald|burger|kfc|taco bell)/i },
+  { label: 'Groceries', keywords: /(grocery|supermarket|whole foods|walmart|target|costco|aldi|kroger|trader joe)/i },
+  { label: 'Transport', keywords: /(uber|lyft|metro|gas|shell|exxon|chevron|parking|toll|transit|fuel)/i },
+  { label: 'Utilities', keywords: /(electric|water|utility|utilities|comcast|xfinity|spectrum|verizon|at&t|att|internet|wifi)/i },
+  { label: 'Entertainment', keywords: /(netflix|spotify|hulu|disney|youtube|game|cinema|theater|apple music)/i },
+  { label: 'Health', keywords: /(pharmacy|cvs|walgreens|clinic|hospital|dental|fitness|gym|workout)/i },
+  { label: 'Shopping', keywords: /(amazon|shop|mall|boutique|best buy|electronics|clothing|apparel)/i },
+  { label: 'Travel', keywords: /(airbnb|hotel|airline|delta|united|americanair|booking|expedia|travel)/i },
+  { label: 'Income', keywords: /(payroll|salary|paycheck|stripe|ach credit|deposit|reimbursement)/i },
+  { label: 'Transfers', keywords: /(transfer|venmo|cash app|zelle|paypal)/i },
+  { label: 'Subscriptions', keywords: /(subscription|recurring|membership|prime|plus plan|pro plan)/i },
+];
+
+const BUDGET_CAP = 3750; // simple static budget cap for budget card
+
+const timeframeStart = (timeframe: string) => {
+  const now = new Date();
+  if (timeframe === 'ytd') {
+    return new Date(now.getFullYear(), 0, 1);
+  }
+  const days = {
+    '1w': 7,
+    '1m': 30,
+    '3m': 90,
+    '6m': 180,
+    '1y': 365,
+  }[timeframe] ?? 30;
+  const start = new Date(now);
+  start.setDate(start.getDate() - days);
+  return start;
+};
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+const deriveCategory = (txn: Transaction): string => {
+  const text = `${txn.merchantName ?? ''} ${txn.description ?? ''}`.toLowerCase();
+  const match = CATEGORY_RULES.find((rule) => rule.keywords.test(text));
+  if (match) return match.label;
+  if (txn.amount > 0) return 'Income';
+  return 'Other';
+};
+
+const detectRecurring = (txns: Transaction[]): Set<string> => {
+  const recurringIds = new Set<string>();
+  const byMerchant: Record<string, Transaction[]> = {};
+
+  txns.forEach((txn) => {
+    const key = (txn.merchantName || txn.description || 'unknown').toLowerCase();
+    if (!byMerchant[key]) byMerchant[key] = [];
+    byMerchant[key].push(txn);
+  });
+
+  Object.values(byMerchant).forEach((group) => {
+    if (group.length < 3) return;
+    const sorted = [...group].sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+    for (let i = 2; i < sorted.length; i++) {
+      const a = sorted[i - 2];
+      const b = sorted[i - 1];
+      const c = sorted[i];
+      const amountSimilar =
+        Math.abs(Math.abs(a.amount) - Math.abs(b.amount)) < 1 &&
+        Math.abs(Math.abs(b.amount) - Math.abs(c.amount)) < 1;
+      const delta1 = Math.abs(new Date(b.ts).getTime() - new Date(a.ts).getTime());
+      const delta2 = Math.abs(new Date(c.ts).getTime() - new Date(b.ts).getTime());
+      const roughlyMonthly =
+        delta1 > 20 * 86400000 &&
+        delta1 < 40 * 86400000 &&
+        delta2 > 20 * 86400000 &&
+        delta2 < 40 * 86400000;
+      if (amountSimilar && roughlyMonthly) {
+        recurringIds.add(a.id);
+        recurringIds.add(b.id);
+        recurringIds.add(c.id);
+      }
+    }
+  });
+
+  return recurringIds;
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { accounts, refetch: refetchAccounts } = useAccounts();
-  const { transactions } = useTransactions();
+  const { transactions, refetch: refetchTransactions } = useTransactions();
 
   const [timeframe, setTimeframe] = useState('1m');
   const [activeTab, setActiveTab] = useState('all-accounts');
 
   const currentData: DashboardDataset = DATASETS[timeframe] || DATASETS['1m'];
+  const startDate = useMemo(() => timeframeStart(timeframe), [timeframe]);
+
+  const enrichedTransactions = useMemo(
+    () =>
+      transactions.map((txn) => ({
+        ...txn,
+        derivedCategory: txn.category || deriveCategory(txn),
+      })),
+    [transactions],
+  );
+
+  const windowedTransactions = useMemo(
+    () => enrichedTransactions.filter((txn) => new Date(txn.ts) >= startDate),
+    [enrichedTransactions, startDate],
+  );
+
+  const recurringIds = useMemo(() => detectRecurring(windowedTransactions), [windowedTransactions]);
+
+  const { incomeTotal, expenseTotal, categoryTotals } = useMemo(() => {
+    return windowedTransactions.reduce(
+      (acc, txn) => {
+        if (txn.amount > 0) acc.incomeTotal += txn.amount;
+        else acc.expenseTotal += txn.amount;
+
+        const key = txn.derivedCategory || 'Uncategorized';
+        if (!acc.categoryTotals[key]) acc.categoryTotals[key] = 0;
+        if (txn.amount < 0) acc.categoryTotals[key] += Math.abs(txn.amount);
+        return acc;
+      },
+      { incomeTotal: 0, expenseTotal: 0, categoryTotals: {} as Record<string, number> },
+    );
+  }, [windowedTransactions]);
+
+  const budgetSpent = Math.abs(expenseTotal);
+  const budgetPercent = BUDGET_CAP > 0 ? Math.min(100, (budgetSpent / BUDGET_CAP) * 100) : 0;
+  const hasTransactions = windowedTransactions.length > 0;
+  const netCashflow = incomeTotal + expenseTotal;
+
+  const topCategories = useMemo(() => {
+    const entries = Object.entries(categoryTotals);
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries.slice(0, 5);
+  }, [categoryTotals]);
+
+  const recentTransactions = useMemo(
+    () =>
+      [...windowedTransactions]
+        .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+        .slice(0, 10),
+    [windowedTransactions],
+  );
 
   // Calculate Real Total Balance
   const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
@@ -99,6 +233,10 @@ export default function Dashboard() {
     return { cx: x, cy: y };
   });
 
+  const handlePlaidSuccess = useCallback(async () => {
+    await Promise.all([refetchAccounts(), refetchTransactions()]);
+  }, [refetchAccounts, refetchTransactions]);
+
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
 
@@ -113,7 +251,7 @@ export default function Dashboard() {
             <span className="block text-sm text-slate-500">Total Balance</span>
             <span className="block text-2xl font-bold text-royal-purple">{formattedBalance}</span>
           </div>
-          <PlaidLinkButton onSuccess={refetchAccounts} />
+          <PlaidLinkButton onSuccess={handlePlaidSuccess} />
         </div>
       </div>
 
@@ -158,13 +296,35 @@ export default function Dashboard() {
         </div>
         <div className="card">
           <h3 className="text-sm text-slate-500 mb-2">Cash Flow (This Month)</h3>
-          <p id="cashflow-value" className="text-3xl font-bold text-royal-purple">{currentData.cashFlow}</p>
-          <p id="cashflow-breakdown" className="text-sm text-slate-500 mt-1">{currentData.cashFlowBreakdown}</p>
+          <p id="cashflow-value" className="text-3xl font-bold text-royal-purple">
+            {hasTransactions ? formatCurrency(netCashflow) : currentData.cashFlow}
+          </p>
+          <p id="cashflow-breakdown" className="text-sm text-slate-500 mt-1">
+            {hasTransactions
+              ? `Income: ${formatCurrency(incomeTotal)} | Expenses: ${formatCurrency(Math.abs(expenseTotal))}`
+              : currentData.cashFlowBreakdown}
+          </p>
         </div>
         <div className="card">
           <h3 className="text-sm text-slate-500 mb-2">Budget Status</h3>
-          <p id="budget-percent" className="text-3xl font-bold text-royal-purple">{currentData.budgetPercent}</p>
-          <p id="budget-amount" className="text-sm text-slate-500 mt-1">{currentData.budgetAmount}</p>
+          {hasTransactions ? (
+            <>
+              <p id="budget-percent" className="text-3xl font-bold text-royal-purple">
+                {budgetPercent.toFixed(0)}%
+              </p>
+              <p id="budget-amount" className="text-sm text-slate-500 mt-1">
+                {formatCurrency(budgetSpent)} of {formatCurrency(BUDGET_CAP)} spent
+              </p>
+              <div className="w-full bg-slate-100 rounded-full h-2 mt-2" aria-label="Budget usage">
+                <div className="h-2 rounded-full bg-royal-purple" style={{ width: `${budgetPercent}%` }} />
+              </div>
+            </>
+          ) : (
+            <>
+              <p id="budget-percent" className="text-3xl font-bold text-royal-purple">{currentData.budgetPercent}</p>
+              <p id="budget-amount" className="text-sm text-slate-500 mt-1">{currentData.budgetAmount}</p>
+            </>
+          )}
         </div>
         <div className="card">
           <h3 className="text-sm text-slate-500 mb-2">Linked Accounts</h3>
@@ -236,23 +396,32 @@ export default function Dashboard() {
           <div className="chart-title">Spending by Category</div>
           <div className="chart-subtitle">Month-to-date distribution</div>
           <p className="sr-only" id="spending-desc">Spending distribution.</p>
-          <svg className="chart-svg" viewBox="0 0 200 200" role="img" aria-label="Spending by category donut chart" aria-describedby="spending-desc">
-            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--border-color)" strokeWidth="24" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--color-primary)" strokeWidth="24" strokeDasharray="150 502" strokeDashoffset="0" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--color-accent)" strokeWidth="24" strokeDasharray="120 502" strokeDashoffset="-150" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#F59E0B" strokeWidth="24" strokeDasharray="90 502" strokeDashoffset="-270" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#10B981" strokeWidth="24" strokeDasharray="60 502" strokeDashoffset="-360" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#EF4444" strokeWidth="24" strokeDasharray="82 502" strokeDashoffset="-420" />
-            <text x="100" y="105" textAnchor="middle" fontSize="18" fill="var(--text-primary)" fontWeight="700">$2,550</text>
-            <text x="100" y="125" textAnchor="middle" fontSize="12" fill="var(--text-muted)">Spent / $3,750</text>
-          </svg>
-          <div className="chart-legend">
-            <span className="legend-item"><span className="legend-swatch bg-royal-purple"></span>Food</span>
-            <span className="legend-item"><span className="legend-swatch bg-cyan-400"></span>Fun</span>
-            <span className="legend-item"><span className="legend-swatch bg-amber-500"></span>Transport</span>
-            <span className="legend-item"><span className="legend-swatch bg-emerald-500"></span>Utils</span>
-            <span className="legend-item"><span className="legend-swatch bg-red-500"></span>Other</span>
-          </div>
+          {!hasTransactions ? (
+            <div className="flex flex-col items-center justify-center text-slate-500 gap-2 py-6">
+              <div className="text-4xl" aria-hidden="true">🧭</div>
+              <p className="font-medium">No spending data yet</p>
+              <p className="text-sm text-center max-w-sm">
+                Link an account and sync transactions to see your spending breakdown. We’ll auto-tag common merchants.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 mt-2" role="list" aria-describedby="spending-desc">
+              {topCategories.map(([cat, total]) => {
+                const percent = budgetSpent > 0 ? Math.min(100, (total / budgetSpent) * 100) : 0;
+                return (
+                  <div key={cat} role="listitem">
+                    <div className="flex justify-between text-sm text-slate-600 mb-1">
+                      <span className="font-medium text-slate-800">{cat}</span>
+                      <span>{formatCurrency(total)} · {percent.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2">
+                      <div className="h-2 rounded-full bg-royal-purple" style={{ width: `${percent}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -301,29 +470,41 @@ export default function Dashboard() {
                 <th className="pb-3">Date</th>
                 <th className="pb-3">Description</th>
                 <th className="pb-3">Category</th>
+                <th className="pb-3">Flags</th>
                 <th className="pb-3">Amount</th>
               </tr>
             </thead>
             <tbody>
-              {transactions.length === 0 ? (
+              {recentTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-6 text-slate-500 italic">No transactions found</td>
+                  <td colSpan={5} className="text-center py-6 text-slate-500 italic">No transactions found</td>
                 </tr>
               ) : (
-                transactions.slice(0, 10).map((txn: Transaction) => (
-                  <tr key={txn.id} className="border-b border-slate-100 last:border-0">
-                    <td className="py-3 text-slate-700">{new Date(txn.ts).toLocaleDateString()}</td>
-                    <td className="py-3 font-medium text-slate-900">{txn.merchantName || txn.description}</td>
-                    <td className="py-3">
-                      <span className="px-2 py-1 rounded-full bg-slate-100 text-xs text-slate-600">
-                        {txn.category || 'Uncategorized'}
-                      </span>
-                    </td>
-                    <td className={`py-3 text-right font-medium ${txn.amount > 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
-                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: txn.currency || 'USD' }).format(txn.amount)}
-                    </td>
-                  </tr>
-                ))
+                recentTransactions.map((txn) => {
+                  const derivedCategory = (txn as Transaction & { derivedCategory?: string }).derivedCategory || 'Uncategorized';
+                  const isRecurring = recurringIds.has(txn.id);
+                  return (
+                    <tr key={txn.id} className="border-b border-slate-100 last:border-0">
+                      <td className="py-3 text-slate-700">{new Date(txn.ts).toLocaleDateString()}</td>
+                      <td className="py-3 font-medium text-slate-900">{txn.merchantName || txn.description}</td>
+                      <td className="py-3">
+                        <span className="px-2 py-1 rounded-full bg-slate-100 text-xs text-slate-600">
+                          {derivedCategory}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        {isRecurring ? (
+                          <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs">Subscription</span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-xs">—</span>
+                        )}
+                      </td>
+                      <td className={`py-3 text-right font-medium ${txn.amount > 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: txn.currency || 'USD' }).format(txn.amount)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
