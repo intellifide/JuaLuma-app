@@ -162,8 +162,9 @@ def get_net_worth(
                 else:
                     break
             
-            # Move balance backwards: Bal(prev) = Bal(curr) + Delta
-            running_balance += period_delta
+            # 2025-12-11 15:20 CST - move backwards by subtracting forward-period deltas
+            # Move balance backwards: Bal(prev) = Bal(curr) - Delta
+            running_balance -= period_delta
 
     res_list.reverse()
     
