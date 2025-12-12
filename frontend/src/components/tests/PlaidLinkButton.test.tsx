@@ -30,7 +30,7 @@ describe('PlaidLinkButton', () => {
     })
     syncAccountMock.mockResolvedValue(undefined)
 
-    usePlaidLinkMock.mockImplementation((config: any) => {
+    usePlaidLinkMock.mockImplementation((config: { onSuccess?: (token: string, metadata: unknown) => void }) => {
       return {
         open: vi.fn(() => config?.onSuccess?.('public-token', { institution: { name: 'Bank' } })),
         ready: true,

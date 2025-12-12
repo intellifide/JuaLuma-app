@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { widgetService } from '../services/widgets';
-import { Widget } from '../types';
+import { Widget, PaginatedResponse } from '../types';
 import { useAuth } from '../hooks/useAuth';
 
 const CATEGORIES = ["All", "Financial", "Productivity", "Analysis", "Utility", "General"];
@@ -28,9 +28,9 @@ export const Marketplace = () => {
                 const searchFilter = searchTerm.length > 0 ? searchTerm : undefined;
 
                 const data = await widgetService.list(categoryFilter, searchFilter, page, pageSize);
-                // Normalize response in case backend returns array instead of paginated object.
-                const items = Array.isArray((data as any)?.data) ? (data as any).data : Array.isArray(data) ? data : [];
-                const total = typeof (data as any)?.total === 'number' ? (data as any).total : items.length;
+                const responseData = data as unknown as (PaginatedResponse<Widget> | Widget[]);
+                const items = Array.isArray(responseData) ? responseData : responseData.data || [];
+                const total = Array.isArray(responseData) ? responseData.length : (responseData.total || items.length);
                 setWidgets(items);
                 setTotalPages(Math.max(1, Math.ceil(total / pageSize)));
             } catch (error) {

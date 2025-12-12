@@ -244,11 +244,11 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-center bg-white/50 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-3xl font-bold text-deep-indigo">Dashboard</h1>
-          <p className="text-slate-600 mt-1">Welcome back, {user?.displayName || user?.email}</p>
+          <p className="text-text-secondary mt-1">Welcome back, {user?.displayName || user?.email}</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-4">
           <div className="text-right mr-4 hidden md:block">
-            <span className="block text-sm text-slate-500">Total Balance</span>
+            <span className="block text-sm text-text-muted">Total Balance</span>
             <span className="block text-2xl font-bold text-royal-purple">{formattedBalance}</span>
           </div>
           <PlaidLinkButton onSuccess={handlePlaidSuccess} />
@@ -289,30 +289,30 @@ export default function Dashboard() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <div className="card">
-          <h3 className="text-sm text-slate-500 mb-2">Total Net Worth</h3>
+          <h3 className="text-sm text-text-muted mb-2">Total Net Worth</h3>
           {/* Use Real Balance if > 0, else mock for display */}
           <p id="net-worth-value" className="text-3xl font-bold text-royal-purple">{totalBalance > 0 ? formattedBalance : currentData.netWorth}</p>
           <p id="net-worth-change" className="text-sm text-emerald-600 mt-1">{currentData.netWorthChange}</p>
         </div>
         <div className="card">
-          <h3 className="text-sm text-slate-500 mb-2">Cash Flow (This Month)</h3>
+          <h3 className="text-sm text-text-muted mb-2">Cash Flow (This Month)</h3>
           <p id="cashflow-value" className="text-3xl font-bold text-royal-purple">
             {hasTransactions ? formatCurrency(netCashflow) : currentData.cashFlow}
           </p>
-          <p id="cashflow-breakdown" className="text-sm text-slate-500 mt-1">
+          <p id="cashflow-breakdown" className="text-sm text-text-muted mt-1">
             {hasTransactions
               ? `Income: ${formatCurrency(incomeTotal)} | Expenses: ${formatCurrency(Math.abs(expenseTotal))}`
               : currentData.cashFlowBreakdown}
           </p>
         </div>
         <div className="card">
-          <h3 className="text-sm text-slate-500 mb-2">Budget Status</h3>
+          <h3 className="text-sm text-text-muted mb-2">Budget Status</h3>
           {hasTransactions ? (
             <>
               <p id="budget-percent" className="text-3xl font-bold text-royal-purple">
                 {budgetPercent.toFixed(0)}%
               </p>
-              <p id="budget-amount" className="text-sm text-slate-500 mt-1">
+              <p id="budget-amount" className="text-sm text-text-muted mt-1">
                 {formatCurrency(budgetSpent)} of {formatCurrency(BUDGET_CAP)} spent
               </p>
               <div className="w-full bg-slate-100 rounded-full h-2 mt-2" aria-label="Budget usage">
@@ -322,14 +322,14 @@ export default function Dashboard() {
           ) : (
             <>
               <p id="budget-percent" className="text-3xl font-bold text-royal-purple">{currentData.budgetPercent}</p>
-              <p id="budget-amount" className="text-sm text-slate-500 mt-1">{currentData.budgetAmount}</p>
+              <p id="budget-amount" className="text-sm text-text-muted mt-1">{currentData.budgetAmount}</p>
             </>
           )}
         </div>
         <div className="card">
-          <h3 className="text-sm text-slate-500 mb-2">Linked Accounts</h3>
+          <h3 className="text-sm text-text-muted mb-2">Linked Accounts</h3>
           <p id="accounts-count" className="text-3xl font-bold text-royal-purple">{accounts.length > 0 ? accounts.length : currentData.accounts}</p>
-          <p className="text-sm text-slate-500 mt-1">Real-time Data</p>
+          <p className="text-sm text-text-muted mt-1">Real-time Data</p>
         </div>
       </div>
 
@@ -397,7 +397,7 @@ export default function Dashboard() {
           <div className="chart-subtitle">Month-to-date distribution</div>
           <p className="sr-only" id="spending-desc">Spending distribution.</p>
           {!hasTransactions ? (
-            <div className="flex flex-col items-center justify-center text-slate-500 gap-2 py-6">
+            <div className="flex flex-col items-center justify-center text-text-muted gap-2 py-6">
               <div className="text-4xl" aria-hidden="true">🧭</div>
               <p className="font-medium">No spending data yet</p>
               <p className="text-sm text-center max-w-sm">
@@ -410,8 +410,8 @@ export default function Dashboard() {
                 const percent = budgetSpent > 0 ? Math.min(100, (total / budgetSpent) * 100) : 0;
                 return (
                   <div key={cat} role="listitem">
-                    <div className="flex justify-between text-sm text-slate-600 mb-1">
-                      <span className="font-medium text-slate-800">{cat}</span>
+                    <div className="flex justify-between text-sm text-text-secondary mb-1">
+                      <span className="font-medium text-text-primary">{cat}</span>
                       <span>{formatCurrency(total)} · {percent.toFixed(0)}%</span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-2">
@@ -430,15 +430,15 @@ export default function Dashboard() {
         <h2 className="mb-6 text-xl font-semibold">Account Overview</h2>
         <div className="tabs mb-6">
           <ul className="tab-list flex gap-4 border-b border-slate-200" role="tablist">
-            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-slate-500 hover:text-slate-700'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
-            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-slate-500 hover:text-slate-700'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
-            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-slate-500 hover:text-slate-700'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
+            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
+            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
+            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
           </ul>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {accounts.length === 0 ? (
-            <div className="col-span-full text-center py-10 text-slate-500 italic">
+            <div className="col-span-full text-center py-10 text-text-muted italic">
               No accounts connected. Use the button above to link an account.
             </div>
           ) : (
@@ -448,7 +448,7 @@ export default function Dashboard() {
                 <p className="text-2xl font-bold text-royal-purple my-2">
                   {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-text-muted">
                   {account.accountNumberMasked ? `Account ending in ${account.accountNumberMasked}` : account.accountType}
                 </p>
               </div>
@@ -466,7 +466,7 @@ export default function Dashboard() {
         <div className="overflow-x-auto">
           <table className="table w-full">
             <thead>
-              <tr className="text-left text-slate-500 border-b border-slate-200">
+              <tr className="text-left text-text-muted border-b border-slate-200">
                 <th className="pb-3">Date</th>
                 <th className="pb-3">Description</th>
                 <th className="pb-3">Category</th>
@@ -477,7 +477,7 @@ export default function Dashboard() {
             <tbody>
               {recentTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-slate-500 italic">No transactions found</td>
+                  <td colSpan={5} className="text-center py-6 text-text-muted italic">No transactions found</td>
                 </tr>
               ) : (
                 recentTransactions.map((txn) => {
@@ -485,10 +485,10 @@ export default function Dashboard() {
                   const isRecurring = recurringIds.has(txn.id);
                   return (
                     <tr key={txn.id} className="border-b border-slate-100 last:border-0">
-                      <td className="py-3 text-slate-700">{new Date(txn.ts).toLocaleDateString()}</td>
-                      <td className="py-3 font-medium text-slate-900">{txn.merchantName || txn.description}</td>
+                      <td className="py-3 text-text-secondary">{new Date(txn.ts).toLocaleDateString()}</td>
+                      <td className="py-3 font-medium text-text-primary">{txn.merchantName || txn.description}</td>
                       <td className="py-3">
-                        <span className="px-2 py-1 rounded-full bg-slate-100 text-xs text-slate-600">
+                        <span className="px-2 py-1 rounded-full bg-slate-100 text-xs text-text-secondary">
                           {derivedCategory}
                         </span>
                       </td>
@@ -496,10 +496,10 @@ export default function Dashboard() {
                         {isRecurring ? (
                           <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs">Subscription</span>
                         ) : (
-                          <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-xs">—</span>
+                          <span className="px-2 py-1 rounded-full bg-slate-100 text-text-muted text-xs">—</span>
                         )}
                       </td>
-                      <td className={`py-3 text-right font-medium ${txn.amount > 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                      <td className={`py-3 text-right font-medium ${txn.amount > 0 ? 'text-emerald-600' : 'text-text-primary'}`}>
                         {new Intl.NumberFormat('en-US', { style: 'currency', currency: txn.currency || 'USD' }).format(txn.amount)}
                       </td>
                     </tr>

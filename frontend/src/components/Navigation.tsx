@@ -1,4 +1,4 @@
-// Updated 2025-12-09 16:45 CST by ChatGPT
+// Updated 2025-12-11 17:55 CST by ChatGPT - match website template structure
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -21,7 +21,7 @@ export const Navigation = () => {
   const toggleMenu = () => setOpen((prev) => !prev)
 
   const AuthLinks = () => (
-    <div className="flex items-center gap-4">
+    <>
       <NavLink to="/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Dashboard
       </NavLink>
@@ -47,11 +47,11 @@ export const Navigation = () => {
       >
         Logout
       </button>
-    </div>
+    </>
   )
 
   const GuestLinks = () => (
-    <div className="flex items-center gap-4">
+    <>
       <NavLink to="/features" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Features
       </NavLink>
@@ -70,11 +70,11 @@ export const Navigation = () => {
       <Link to="/signup" className="btn">
         Sign Up
       </Link>
-    </div>
+    </>
   )
 
   return (
-    <header className="header backdrop-blur-glass bg-white/70 dark:bg-gray-900/75 border-b border-white/60 dark:border-white/10 shadow-glass sticky top-0 z-50 transition-all duration-300">
+    <header className="header">
       <div className="header-container">
         <Link to="/" className="logo" aria-label="Finity home">
           <img src="/assets/finity-logo.png" alt="Finity logo" className="logo-img" />
@@ -86,7 +86,6 @@ export const Navigation = () => {
             Home
           </NavLink>
           {user ? <AuthLinks /> : <GuestLinks />}
-          <ThemeToggle />
         </nav>
 
         <button
@@ -98,6 +97,8 @@ export const Navigation = () => {
         >
           ☰
         </button>
+
+        <ThemeToggle />
       </div>
 
       <nav className={`nav-mobile ${open ? 'open' : ''}`} aria-label="Mobile navigation">
@@ -130,7 +131,7 @@ export const Navigation = () => {
                 handleLogout()
                 toggleMenu()
               }}
-              className="btn"
+              className="btn btn-secondary"
             >
               Logout
             </button>
@@ -157,10 +158,6 @@ export const Navigation = () => {
             </Link>
           </>
         )}
-
-        <div className="px-6 py-4">
-          <ThemeToggle />
-        </div>
       </nav>
     </header>
   )

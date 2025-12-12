@@ -134,7 +134,7 @@ export default function AIAssistant() {
     };
 
     fetchData();
-  }, [user, privacyAccepted, hasFetchedHistory]);
+  }, [user, privacyAccepted, hasFetchedHistory, storageKey]);
 
   const handleAcceptPrivacy = () => {
     localStorage.setItem('finity_privacy_accepted', 'true');
@@ -168,7 +168,7 @@ export default function AIAssistant() {
       };
       setMessages(prev => {
         const updated = [...prev, assistantMessage];
-      localStorage.setItem(storageKey, JSON.stringify(updated));
+        localStorage.setItem(storageKey, JSON.stringify(updated));
         return updated;
       });
 
@@ -191,7 +191,7 @@ export default function AIAssistant() {
         const latestQuota = await aiService.getQuota();
         setQuota(latestQuota);
       }
-     
+
 
     } catch (error: unknown) {
       const errorMessage: Message = {

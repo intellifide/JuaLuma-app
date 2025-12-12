@@ -6,7 +6,7 @@ export const ThemeToggle = () => {
     return (
         <button
             onClick={toggle}
-            className="p-2 rounded-full transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300"
+            className="theme-toggle"
             aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
             title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
         >
