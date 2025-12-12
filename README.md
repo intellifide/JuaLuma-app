@@ -42,22 +42,17 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
    - Postgres: localhost:5433
    - Firebase emulators: Firestore 8080, Auth 9099, UI 4000
    - Pub/Sub emulator: 8085
-4. **Run tests (host)**
+4. **Agent Setup (MCP)**
+   - Configure Cursor to connect to the **Postgres MCP** (`localhost:5433`) and **Postman MCP** (see details in `docs/Master App Dev Guide.md`).
+
+## Developer Tools
+- **Agent Skills:** Use the AI Agent to perform database seeding, integration verification, and state resets via the `Finity Dev Tools` MCP (exposed at `/mcp-dev`).
+- **Tests (Host):**
    ```bash
    # Backend
-   pip install -r requirements.txt
-   pytest
-
-   # Frontend
-   npm install
-   npm test
+   pip install -r backend/requirements.txt
+   pytest backend/
    ```
-
-## Useful Scripts
-- Frontend lint: `pnpm lint`
-- Frontend tests: `pnpm test`
-- Storybook (docs): `pnpm storybook` / `pnpm build-storybook`
-- Backend tests: `pytest` (from `backend`)
 
 ## Contribution Guidelines
 - Create a feature branch from `Dev`.

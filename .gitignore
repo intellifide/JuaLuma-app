@@ -128,3 +128,9 @@ Desktop.ini
 
 *storybook.log
 storybook-static
+
+# Notes
+notes.md
+
+# Specs (Tracked)
+!specs/

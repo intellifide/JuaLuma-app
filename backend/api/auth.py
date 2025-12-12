@@ -155,29 +155,49 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
             email=payload.email, password=payload.password
         )
     except firebase_exceptions.AlreadyExistsError:
-        # 2025-12-10: Handle "Zombie" users (exist in Auth, missing in DB)
+        # 2025-12-12: Complete handling for "Zombie" users and "Desync" users
         try:
-            # 1. Fetch existing Auth record
+            # 1. Fetch existing Auth record to get the authoritative UID
             existing_user = auth.get_user_by_email(payload.email)
             
-            # 2. Check DB
-            db_user = db.query(User).filter(User.uid == existing_user.uid).first()
-            if db_user:
-                 # Truly a duplicate
+            # 2. Check DB by authoritative UID
+            db_user_by_uid = db.query(User).filter(User.uid == existing_user.uid).first()
+            if db_user_by_uid:
+                 # Truly a duplicate (User exists in both with same UID)
                  raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email already exists.",
                  )
             
-            # 3. Heal (Create DB record for existing Auth user)
+            # 3. Check DB by Email (Potential Desync)
+            db_user_by_email = db.query(User).filter(User.email == payload.email).first()
+            if db_user_by_email:
+                # User exists in DB but with different UID. Heal it.
+                logger.info(f"Healing desynced user {payload.email}. DB UID {db_user_by_email.uid} -> Auth UID {existing_user.uid}")
+                try:
+                    db_user_by_email.uid = existing_user.uid
+                    db.commit()
+                    db.refresh(db_user_by_email)
+                    return {"uid": db_user_by_email.uid, "email": db_user_by_email.email, "message": "Account synced successfully."}
+                except Exception as e:
+                    logger.error(f"Failed to heal user {payload.email}: {e}")
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Account sync failed.",
+                    )
+
+            # 4. Truly "Zombie" (Exists in Auth, missing in DB)
             logger.info(f"Healing zombie user account for {payload.email} ({existing_user.uid})")
-            record = existing_user # Use existing record for next step
+            # Proceed to create logic below using existing record
+            record = existing_user 
             
         except Exception as e:
-            # If we can't fetch or heal, fall back to original error
+            # If we returned above, we won't get here.
+            # If we raised HTTPException, it propagates.
             if isinstance(e, HTTPException):
                 raise e
-            logger.error(f"Error healing user: {e}")
+            logger.error(f"Error checking user state: {e}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already exists.",
@@ -195,14 +215,13 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
         ) from exc
 
     try:
-        # Check if we already have the user (optimization if we strictly flowed from healing)
-        # But create_user_record handles integrity error checks too.
-        # However, we need to be careful not to re-create if we just found it in DB (handled above).
-        
-        # If we are here, 'record' is set (either new or fetched).
-        
-        # Double check if we need to query DB again? 
-        # create_user_record does an insert.
+        # Create DB record if we didn't return early (Zombie case or New user)
+        # Note: If we fell through from Zombie case, 'record' is set. 
+        # If we came from normal flow, 'record' is set in try block.
+        if 'record' not in locals():
+             # Should not happen unless logic above is flawed, but safe fallback
+             raise RuntimeError("User record creation failed unexpectedly.")
+
         user = create_user_record(db, uid=record.uid, email=record.email)
     except ValueError as exc:
         # This catches expected IntegrityError wrapped as ValueError

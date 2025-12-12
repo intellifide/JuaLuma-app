@@ -18,7 +18,11 @@ async def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     """Validate bearer token and load the current user."""
+    import logging
+    logger = logging.getLogger("backend.middleware.auth")
+
     if not authorization or not authorization.lower().startswith("bearer "):
+        logger.warning("Auth Middleware: Missing or invalid authorization header.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid authorization header.",
@@ -29,6 +33,7 @@ async def get_current_user(
     try:
         decoded = verify_token(token)
     except Exception as exc:
+        logger.error(f"Auth Middleware: Token verification failed: {exc}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token.",
@@ -36,6 +41,7 @@ async def get_current_user(
 
     uid = decoded.get("uid") or decoded.get("sub")
     if not uid:
+        logger.error("Auth Middleware: Token missing uid.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token missing uid.",
@@ -43,23 +49,28 @@ async def get_current_user(
 
     user = db.query(User).filter(User.uid == uid).first()
     if not user:
+        logger.warning(f"Auth Middleware: User {uid} not found in DB. Checking for email match...")
         # JIT Healing: Check if user exists by email (common in dev/reset scenarios)
         email = decoded.get("email")
         if email:
+            logger.info(f"Auth Middleware: Checks for email {email}")
             user_by_email = db.query(User).filter(User.email == email).first()
             if user_by_email:
                 # User exists but UID mismatched. Trust the fresh Firebase token.
                 # Attempt to update the DB record to match the new UID.
                 try:
+                    logger.info(f"Auth Middleware: Healing user {email}. Updating UID {user_by_email.uid} -> {uid}")
                     user_by_email.uid = uid
                     db.commit()
                     db.refresh(user_by_email)
                     return user_by_email
-                except Exception:
+                except Exception as e:
+                    logger.error(f"Auth Middleware: Healing failed for {email}: {e}")
                     # If PK update fails (e.g. FK constraints without cascade), rollback
                     db.rollback()
                     pass
-
+        
+        logger.error(f"Auth Middleware: User {uid} not found in DB and healing failed.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found.",

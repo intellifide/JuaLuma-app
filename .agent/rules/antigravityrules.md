@@ -2,6 +2,23 @@
 trigger: always_on
 ---
 
+# Finity App Context Rules
+
+# 1. Documentation Priority
+- ALWAYS reference `docs/Master App Dev Guide.md` for Business Logic (Tiers, Tax, Compliance).
+- ALWAYS reference `specs/_TEMPLATE.md` or active specs in `specs/` for Task Implementation details.
+
+# 2. File Groupings
+- **Specs:** `specs/*.md` (Read these first for intent).
+- **Infrastructure:** `infra/` (Terraform) and `docker-compose.yml` (Local Stack).
+- **Backend:** `backend/` (FastAPI).
+    - `backend/dev_tools/` -> Contains Agent MCP Tools.
+    - `backend/core/` -> Contains Config & Constants.
+
+# 3. Agent Capabilities
+- You have access to "Finity Dev Tools" via MCP. Use them! 
+- If asked to "reset db", "seed data", or "check health", use the MCP tool triggers, do not suggest manual commands.
+
 # Cursor Rules for Finity App
 
 ## Developer Context
@@ -31,9 +48,8 @@ trigger: always_on
 - Keep GCP IAM role names as-is for cloud permissions (e.g., `roles/storage.admin`, `roles/iam.securityAdmin`); do not mirror them into app user roles.
 
 ## Development & Environments
-- Local dev is docker-compose: backend (FastAPI) on 8001, frontend (Vite) on 5175 with `/api` proxy. Set `VITE_API_TARGET=http://backend:8001` inside Docker; leave `VITE_API_BASE_URL` empty for browser builds.
-- Backend runs with `APP_ENV=local` and `ENABLE_AI_GATEWAY=false` in compose for local runs so AI stays on the local AI Studio path (no Vertex creds needed).
-- Emulators/mocks: Postgres (Cloud SQL mirror), Firestore emulator (8080), Auth emulator (9099), Pub/Sub emulator (8085) provided via compose.
+- Local dev uses docker-compose: backend (FastAPI) on 8001, frontend (Vite) on 5175 with `/api` proxy. Set `VITE_API_TARGET=http://backend:8001` so the proxy resolves inside the Docker network.
+- Backend runs with `APP_ENV=local` and `ENABLE_AI_GATEWAY=false` in docker-compose for local runs; this keeps AI calls on the local AI Studio path and avoids Vertex AI credentials. Emulators: Postgres (Cloud SQL mirror), Firestore emulator, Auth emulator, Pub/Sub emulator.
 - No MVP/Phase/OFAC flows; scope is single-phase, support-portal-only.
 - Support surface: Customer Support Portal only; no admin dashboard.
 - Secrets locally via `.env`; Secret Manager is cloud-only.
@@ -69,7 +85,7 @@ trigger: always_on
 
 ## Documentation
 - Master App Dev Guide (`docs/Master App Dev Guide.md`) is the product source of truth for role taxonomy, marketplace rules, support portal, and single-phase scope.
-- Local development is docker-only via the compose stack (`docker-compose.yml`); the legacy `docs/local-development-setup.md` has been retired.
+- Local development now runs entirely via docker-compose (see `docker-compose.yml`); the legacy `docs/local-development-setup.md` has been retired.
 - GCP Deployment Setup (`docs/gcp-deployment-setup.md`) replaces the legacy "getting started gcp" guide.
 - All documentation created needs to go into the /docs directory.
 
@@ -81,6 +97,6 @@ trigger: always_on
 - Favor minimal, scoped changes; avoid broad refactors without approval.
 
 ## Scope
-- Never work outside of this workspace directory /finity-app unless instructed by the user.
+- Never work outside of this workspace directory /finity-app unless instructed by the user. 
 
 - ignore all contents in notes.md

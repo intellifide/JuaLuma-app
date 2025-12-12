@@ -1,5 +1,4 @@
 # Updated 2025-12-07 21:02 CST by ChatGPT
-version: '3.9'
 
 services:
   backend:
@@ -17,12 +16,14 @@ services:
       FIREBASE_PROJECT_ID: finity-local
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       ENABLE_AI_GATEWAY: "false"
-    
+
     depends_on:
       - postgres
       - firebase-emulator
     ports:
       - "8001:8001"
+    volumes:
+      - ./backend:/app/backend
     networks:
       - finity-network
 
@@ -57,7 +58,7 @@ services:
     networks:
       - finity-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,9 +75,9 @@ services:
         firebase emulators:start --only firestore,auth --project finity-local --import=/workspace/.firebase --export-on-exit --config=/workspace/firebase.json
       "
     ports:
-      - "8080:8080"  # Firestore
-      - "9099:9099"  # Auth
-      - "4000:4000"  # Emulator UI
+      - "8080:8080" # Firestore
+      - "9099:9099" # Auth
+      - "4000:4000" # Emulator UI
     volumes:
       - ./firebase.json:/workspace/firebase.json
       - firebase_data:/workspace/.firebase
@@ -102,6 +103,7 @@ services:
 volumes:
   postgres_data:
   firebase_data:
+
 
 networks:
   finity-network:

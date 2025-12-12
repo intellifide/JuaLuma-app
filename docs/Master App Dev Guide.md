@@ -1,4 +1,3 @@
-
 ## App Development Guide v2\.4 \(Master Technical Specification\)
 
 ### 1\.0 Core Principles & Governance
@@ -19,8 +18,29 @@ All engineering decisions must strictly adhere to these six non\-negotiable pill
 - Frontend proxy: `/api` is proxied to `VITE_API_TARGET`. Inside Docker set `VITE_API_TARGET=http://backend:8001`; leave `VITE_API_BASE_URL` empty for browser builds.
 - Backend env: use `APP_ENV=local` with `ENABLE_AI_GATEWAY=false` in compose for local runs so AI uses the local AI Studio path (no Vertex credentials required).
 - Emulators: Postgres (Cloud SQL mirror), Firestore emulator (8080), Auth emulator (9099), Pub/Sub emulator (8085) are provided via compose envs.
+- **Agent Connectivity (MCP):**
+    - **Host Agent:** Connects to Postgres via `localhost:5433` (mapped to container 5432).
+    - **App Tools:** Backend exposes standardized Agent Tools at `http://localhost:8001/mcp` (Application Logic) and `/mcp-dev` (Maintenance Scripts).
 - Ports: expose backend `8001:8001`, frontend `5175:5175`; emulator ports are mapped for browser access.
 - API quirk: widget endpoints require trailing slashes (`/widgets/…`) to avoid 307 redirects in-browser.
+
+### 1\.2 Technology Standard: Spec-Driven Development
+All non-trivial features must follow a strict "Spec-First" workflow. Ad-hoc coding is prohibited for complex logic.
+- **Source of Truth:** `specs/_TEMPLATE.md` defines the structure.
+- **Workflow:**
+    1. Create `specs/active/FEATURE_NAME.md`.
+    2. Define User Story, Compliance Checks (FinCEN/Tax), and Schema Changes.
+    3. Implement code only after Spec approval.
+    4. Move to `specs/archive/` upon completion.
+
+### 1\.3 Operational Tooling (Finity Dev Tools)
+Maintenance tasks are handled via the **Finity Dev Tools MCP Server**, running inside the backend container.
+- **Access:** `http://localhost:8001/mcp-dev` (Local Environment Only).
+- **Standard Tools:**
+    - `seed_database(tier)`: Resets and populates DB with valid test data.
+    - `verify_integrations()`: Checks connections to Stripe, Plaid, and Emulators.
+    - `reset_local_state()`: Safe wrapper for Alembic migrations (Reset).
+- **Constraint:** Do not run manual Python scripts (e.g., `python scripts/verify.py`). Use the Agent Tools.
 
 ### 2\.0 Product Definition & Detailed Scope
 
@@ -175,17 +195,16 @@ This is a curated catalog where developers earn revenue based on user engagement
 - **Free & Essential Tiers**: Preview-only access to widgets (interactions blocked, upgrade CTA shown). Cannot publish widgets.
 - **Pro & Ultimate Tiers**: Full marketplace access including ability to publish and distribute widgets via the Developer Marketplace.
 
-The static website template (`website_template/`) includes mock Developer Marketplace and Developer SDK pages demonstrating the submission workflow, SDK tools, and tier-based access controls\.
+The static website template (`website_template/`) includes mock Developer Marketplace and Developer SDK pages demonstrating the submission workflow, SDK tools, and tier-based access controls.
 
-#### 2\.4\.1 MCP Server & Developer SDK
+#### 2.4.1 MCP Server & Developer SDK
 
-The Finity platform provides a Model Context Protocol \(MCP\) server as the single capability surface for marketplace widgets and the Developer SDK\. This architecture enhances security by preventing direct API access and provides a standardized, typed interface for all developer interactions\.
+The Finity platform provides a Model Context Protocol (MCP) server as the single capability surface for marketplace widgets and the Developer SDK. This architecture enhances security by preventing direct API access and provides a standardized, typed interface for all developer interactions.
+
+*Note: This "Public Widget MCP" is distinct from the "Internal Finity App MCP" used by the AI Agent for backend operations.*
 
 **MCP Server Architecture:**
 
-- __Single Capability Surface:__ All marketplace widgets and SDK interactions route through the MCP server\. Read-only tools expose ledger slices, accounts/holdings, budgets/recurring, preview datasets keyed by feature, AI chat proxy, and metadata\.
-- __Authentication & Access Control:__ Short-lived tokens scoped to widget/app ID + developer + tier\. Enforces feature/tier gating from `feature_requirements.yaml`, rate limits, and cost caps\. No secrets are exposed to client applications; the MCP server holds all provider credentials\.
-- __Environment Parity:__ Identical tool contract for local \(emulators + synthetic data\), dev/stage, and prod\. SDK configuration switches endpoints via environment variables\.
 - __Synthetic Test Datasets:__ Multiple deterministic customer profiles \(Beginner, Power User, Family, Crypto-heavy\) selectable via SDK for testing\. Each dataset includes realistic ledgers, holdings, budgets, and recurring transactions\. Preview datasets provided for every premium feature to enable comprehensive widget testing\.
 - __Observability:__ Per-widget usage metrics and audit logs \(tool called, scope, latency, result code\) drive payouts, abuse detection, and support\. Strict input/output schemas and tool versioning with deprecation windows ensure API stability\.
 - __Security Benefits:__ Developers cannot directly access internal APIs or provider credentials\. All access is authenticated, authorized, and logged\. Rate limiting and cost caps enforced at the MCP layer\. Non-custodial/read-only mandates enforced before requests reach core services\.
