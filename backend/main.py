@@ -96,15 +96,15 @@ app.include_router(billing_router)
 app.include_router(webhooks_router)
 
 # Initialize and Mount Main MCP Server (Phase 3)
-mcp = FastMCP("Finity App")
+from backend.mcp_server import mcp
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI
-app.mount("/mcp", mcp.http_app())
+app.mount("/mcp", mcp.sse_app)
 
 # Initialize and Mount Dev Tools MCP Server (Phase 4)
 # Only mount dangerous dev tools in LOCAL environment
 if settings.app_env.lower() == "local":
     from backend.dev_tools.mcp_server import dev_mcp
-    app.mount("/mcp-dev", dev_mcp.http_app())
+    app.mount("/mcp-dev", dev_mcp.sse_app)
 
 # Structured error handlers ----------------------------------------------------
 def _build_error_response(
