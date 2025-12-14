@@ -102,7 +102,7 @@ class SupportPortalAction(Base):
     ts: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    agent_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    agent_id: Mapped[str] = mapped_column(String(128), nullable=False)
     agent_company_id: Mapped[str] = mapped_column(String(32), nullable=False)
     agent_name: Mapped[str] = mapped_column(String(256), nullable=False)
     ticket_id: Mapped[str] = mapped_column(String(128), nullable=False)

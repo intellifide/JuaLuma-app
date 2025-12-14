@@ -145,6 +145,10 @@ class SupportTicket(Base):
         lazy="selectin",
     )
 
+    @property
+    def customer_uid(self) -> str:
+        return self.user_id
+
     def __repr__(self) -> str:
         return f"SupportTicket(id={self.id!r}, subject={self.subject!r}, status={self.status!r})"
 

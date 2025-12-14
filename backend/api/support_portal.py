@@ -1,6 +1,7 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from typing import List, Optional
 import uuid
 
@@ -49,9 +50,9 @@ def get_ticket_detail(
 
     # AUDIT LOGGING (Information Viewing)
     action = SupportPortalAction(
-        agent_id=agent.id,
+        agent_id=agent.uid, # Fixed: User uses uid string
         agent_company_id=getattr(agent, "auth_uid", "unknown"), # Using auth_uid as proxy for ID
-        agent_name=agent.full_name or "Agent",
+        agent_name=agent.email.split('@')[0] if agent.email else "Agent", # Fallback name
         ticket_id=str(ticket.id),
         customer_uid=ticket.customer_uid,
         action_type="VIEW_TICKET",
@@ -99,7 +100,7 @@ def reply_to_ticket(
     msg = SupportTicketMessage(
         ticket_id=ticket.id,
         sender_type="support", # Changed from 'sender' to 'sender_type' to match model
-        sender_id=str(agent.id), # Model expects sender_id
+        sender_id=str(agent.uid), # Fixed: User uses uid string
         message=payload.message
     )
     db.add(msg)
@@ -110,9 +111,9 @@ def reply_to_ticket(
     
     # AUDIT LOGGING
     action = SupportPortalAction(
-        agent_id=agent.id,
+        agent_id=agent.uid, # Fixed: User uses uid
         agent_company_id=getattr(agent, "auth_uid", "unknown"),
-        agent_name=agent.full_name or "Agent",
+        agent_name=agent.email.split('@')[0] if agent.email else "Agent",
         ticket_id=str(ticket.id),
         customer_uid=ticket.customer_uid,
         action_type="REPLY_TICKET",
@@ -141,9 +142,9 @@ def update_ticket_status(
     
     # AUDIT LOGGING
     action = SupportPortalAction(
-        agent_id=agent.id,
+        agent_id=agent.uid, # Fixed: User uses uid
         agent_company_id=getattr(agent, "auth_uid", "unknown"),
-        agent_name=agent.full_name or "Agent",
+        agent_name=agent.email.split('@')[0] if agent.email else "Agent",
         ticket_id=str(ticket.id),
         customer_uid=ticket.customer_uid,
         action_type="RESOLVE_TICKET" if payload.status == "Resolved" else "STATUS_CHANGE",
