@@ -106,10 +106,16 @@ def _get_ticket_for_actor(
     return query.first()
 
 
+from backend.services.notifications import NotificationService
+
 def _create_resolution_notification_if_needed(
     db: Session, ticket: SupportTicket
 ) -> Optional[LocalNotification]:
     """Idempotently record a local notification for ticket resolution."""
+    # Use the new service
+    service = NotificationService(db)
+    
+    # Check for existing idempotent key
     existing = (
         db.query(LocalNotification)
         .filter(
@@ -122,15 +128,19 @@ def _create_resolution_notification_if_needed(
     if existing:
         return existing
 
-    notification = LocalNotification(
-        uid=ticket.user_id,
-        ticket_id=ticket.id,
-        event_key="ticket_resolved",
-        message=f"Your ticket '{ticket.subject}' was resolved.",
+    # Create via service (handles email + DB)
+    user = db.query(User).filter(User.uid == ticket.user_id).first()
+    if not user:
+        return None
+        
+    return service.create_notification(
+        user=user,
+        title="Ticket Resolved",
+        message=f"Your ticket '{ticket.subject}' has been resolved.",
+        send_email=True
     )
-    db.add(notification)
-    db.flush()  # keep in the current transaction for atomicity
-    return notification
+
+
 
 
 # --- Endpoints ---
@@ -324,6 +334,20 @@ def add_message(
         )
     except Exception as e:
         logger.error(f"Failed to publish ticket_updated event: {e}")
+
+    # Notify user if agent replied (outside event try/catch to ensure it runs even if event bus fails, or wrap in its own try)
+    try:
+        if message.sender_type == "support":
+             user_to_notify = db.query(User).filter(User.uid == ticket.user_id).first()
+             if user_to_notify:
+                 NotificationService(db).create_notification(
+                     user=user_to_notify,
+                     title="New Support Message",
+                     message=f"Agent replied to ticket '{ticket.subject}'.",
+                     send_email=True
+                 )
+    except Exception as e:
+        logger.error(f"Failed to notify user of reply: {e}")
 
     logger.info(f"Message added to ticket {ticket.id} by user {current_user.uid}")
 

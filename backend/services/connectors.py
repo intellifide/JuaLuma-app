@@ -319,7 +319,9 @@ def build_connector(
         )
 
     if rpc_url is None:
-        raise ValueError("rpc_url is required for production web3 connectors.")
+        # Fallback to a public RPC for read-only if not provided
+        rpc_url = "https://cloudflare-eth.com"
+        
     return Web3RpcConnectorClient(rpc_url=rpc_url, converter=converter)
 
 

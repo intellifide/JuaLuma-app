@@ -119,6 +119,18 @@ class SupportTicket(Base):
         nullable=False,
     )
 
+    @property
+    def Status(self) -> str:
+        return self.status
+
+    @Status.setter
+    def Status(self, value: str):
+        self.status = value
+
+    @property
+    def Priority(self) -> str:
+        return "Normal"  # Default for MVP
+
     messages: Mapped[list["SupportTicketMessage"]] = relationship(
         "SupportTicketMessage",
         back_populates="ticket",

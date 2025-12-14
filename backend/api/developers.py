@@ -2,8 +2,11 @@ import logging
 from datetime import date
 from decimal import Decimal
 from typing import List, Any, Dict
+import os
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -13,6 +16,20 @@ from backend.utils import get_db
 
 router = APIRouter(prefix="/api/developers", tags=["developers"])
 logger = logging.getLogger(__name__)
+
+@router.get("/sdk", response_class=FileResponse)
+def download_sdk():
+    """Download the latest Finity Widget SDK."""
+    # Resolve path relative to this file (backend/api/developers.py)
+    # Target: backend/static/sdk-latest.zip
+    base_dir = Path(__file__).resolve().parent.parent # backend/
+    file_path = base_dir / "static" / "sdk-latest.zip"
+    
+    if not file_path.exists():
+        logger.error(f"SDK file not found at: {file_path}")
+        raise HTTPException(status_code=404, detail="SDK not found")
+        
+    return FileResponse(path=file_path, media_type="application/zip", filename="finity-widget-sdk.zip")
 
 class PayoutResponse(BaseModel):
     month: date

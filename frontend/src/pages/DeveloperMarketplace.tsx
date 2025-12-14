@@ -159,7 +159,7 @@ export const DeveloperMarketplace = () => {
         <div className="container py-12">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Developer Dashboard</h1>
-                <Link to="/developer-sdk" className="btn btn-outline text-sm">Download SDK</Link>
+                <a href="/api/developers/sdk" className="btn btn-outline text-sm" download>Download SDK</a>
             </div>
 
             {/* Tabs */}

@@ -19,6 +19,7 @@ from backend.models import (
 )
 from backend.utils import get_db
 from backend.services.auth import revoke_refresh_tokens
+from backend.services.notifications import NotificationService
 
 from firebase_admin import auth
 
@@ -194,6 +195,17 @@ def update_subscription(
     )
     db.add(log_entry)
     
+    # Notify User
+    try:
+        NotificationService(db).create_notification(
+            user=current_user,
+            title="Subscription Updated",
+            message=f"Your subscription has been updated to {payload.plan.title()}.",
+            send_email=True
+        )
+    except Exception as e:
+        logger.error(f"Failed to send subscription notification: {e}")
+
     db.commit()
     
     return {"message": f"Subscription updated to {payload.plan}"}

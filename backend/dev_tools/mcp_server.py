@@ -134,3 +134,116 @@ def reset_local_state() -> str:
         return "Local state reset successfully."
     except subprocess.CalledProcessError as e:
         return f"Error resetting state: {str(e)}"
+
+@dev_mcp.tool()
+async def verify_crypto_config() -> dict:
+    """
+    Verify Crypto/Web3 configuration.
+    Checks:
+    1. Ethereum RPC reachability (ETH_RPC_URL or default).
+    2. CCXT library availability and exchange loading.
+    """
+    results = {}
+    
+    # 1. Web3 RPC
+    rpc_url = settings.eth_rpc_url or "https://cloudflare-eth.com"
+    try:
+        async with httpx.AsyncClient() as client:
+            # simple JSON-RPC ping: eth_blockNumber
+            payload = {"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1}
+            resp = await client.post(rpc_url, json=payload, timeout=5.0)
+            if resp.status_code == 200 and "result" in resp.json():
+                results["web3_rpc"] = f"reachable ({rpc_url})"
+            else:
+                results["web3_rpc"] = f"error: status {resp.status_code}"
+    except Exception as e:
+        results["web3_rpc"] = f"unreachable: {e}"
+
+    # 2. CCXT
+    try:
+        import ccxt
+        # Try loading a common exchange class to verify library integrity
+        _ = ccxt.binanceus()
+        results["ccxt"] = "installed and loadable (binanceus)"
+    except ImportError:
+        results["ccxt"] = "not installed"
+    except Exception as e:
+        results["ccxt"] = f"error loading: {e}"
+
+    return results
+
+@dev_mcp.tool()
+def trigger_test_email(to_email: str) -> str:
+    """
+    Trigger a generic test email via the configured EmailClient.
+    Useful for verifying SMTP or Mock behavior.
+    """
+    try:
+        from backend.services.email import get_email_client
+        client = get_email_client()
+        client.send_generic_alert(to_email, "Test Email from Dev Tools")
+        return f"Email dispatch triggered to {to_email}. Check logs or inbox."
+    except Exception as e:
+        return f"Failed to trigger email: {str(e)}"
+
+@dev_mcp.tool()
+def seed_support_tickets(email: str) -> str:
+    """
+    Seed support tickets for a given user email.
+    Creates 3 tickets (Open, In Progress, Resolved).
+    """
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.email == email).first()
+        if not user:
+            return f"User with email {email} not found."
+
+        from backend.models.support import SupportTicket
+        
+        tickets = [
+            {
+                "subject": "Login Issue",
+                "description": "I cannot login to my account.",
+                "category": "account",
+                "status": "open",
+                "priority": "High"
+            },
+            {
+                "subject": "Billing Question",
+                "description": "Why was I charged twice?",
+                "category": "billing",
+                "status": "in_progress",
+                "priority": "Normal"
+            },
+            {
+                "subject": "Feature Request",
+                "description": "Please add dark mode.",
+                "category": "general",
+                "status": "resolved",
+                "priority": "Low"
+            }
+        ]
+
+        for t in tickets:
+            ticket = SupportTicket(
+                user_id=user.uid,
+                subject=t["subject"],
+                description=t["description"],
+                category=t["category"],
+                status=t["status"]
+                # Priority is implied/property in model, or column if schema matches.
+                # Based on previous fixes, Priority is a property. 
+                # We can't set it in constructor if it's not a column.
+                # But we patched the model to have a Priority property.
+                # Wait, 'status' IS a column (lowercase).
+            )
+            session.add(ticket)
+        
+        session.commit()
+        return f"Seeded {len(tickets)} support tickets for {email}."
+
+    except Exception as e:
+        session.rollback()
+        return f"Error seeding tickets: {str(e)}"
+    finally:
+        session.close()

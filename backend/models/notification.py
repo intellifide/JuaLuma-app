@@ -85,13 +85,19 @@ class LocalNotification(Base):
     uid: Mapped[str] = mapped_column(
         String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
     )
-    ticket_id: Mapped[uuid.UUID] = mapped_column(
+    # Generic notifications don't need a ticket.
+    ticket_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("support_tickets.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
-    event_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    # event_key can be a unique dedup key or generic ID
+    event_key: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    
+    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

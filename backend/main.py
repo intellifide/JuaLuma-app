@@ -26,6 +26,8 @@ from backend.api.support import router as support_router
 from backend.api.users import router as users_router
 from backend.api.billing import router as billing_router
 from backend.api.webhooks import router as webhooks_router
+from backend.api.notifications import router as notifications_router
+from backend.api.support_portal import router as support_portal_router
 from backend.middleware import (
     RateLimitMiddleware,
     RequestContextMiddleware,
@@ -94,6 +96,8 @@ app.include_router(support_router)
 app.include_router(users_router)
 app.include_router(billing_router)
 app.include_router(webhooks_router)
+app.include_router(notifications_router)
+app.include_router(support_portal_router) # New router inclusion
 
 # Initialize and Mount Main MCP Server (Phase 3)
 from backend.mcp_server import mcp

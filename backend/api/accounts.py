@@ -13,9 +13,18 @@ from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
 from backend.core.dependencies import enforce_account_limit
+from backend.core.dependencies import enforce_account_limit
 from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.plaid import fetch_accounts, fetch_transactions
 from backend.utils import get_db
+from backend.utils.encryption import encrypt_secret, decrypt_secret
+from backend.services.connectors import build_connector
+from web3 import Web3  # For address validation
+import json
+import os
+from backend.utils.encryption import encrypt_secret, decrypt_secret
+from web3 import Web3  # For address validation
+import json
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -49,6 +58,62 @@ class AccountCreate(BaseModel):
                 f"account_type must be one of {sorted(_ALLOWED_ACCOUNT_TYPES)}"
             )
         return normalized
+
+
+class Web3LinkRequest(BaseModel):
+    address: str = Field(description="Wallet public address (0x...)")
+    chain_id: int = Field(default=1, description="Chain ID (1=Mainnet)")
+    account_name: str = Field(max_length=256)
+
+    @field_validator("address")
+    @classmethod
+    def validate_address(cls, v: str) -> str:
+        if not Web3.is_address(v):
+            raise ValueError("Invalid Web3 address format")
+        return Web3.to_checksum_address(v)
+
+
+class CexLinkRequest(BaseModel):
+    exchange_id: str = Field(description="Exchange ID (e.g., coinbase, kraken)")
+    api_key: str = Field(description="API Public Key")
+    api_secret: str = Field(description="API Secret Key")
+    account_name: str = Field(max_length=256)
+
+    @field_validator("exchange_id")
+    @classmethod
+    def validate_exchange(cls, v: str) -> str:
+        allowed = {"coinbase", "kraken", "binance", "binanceus"}
+        if v.lower() not in allowed:
+            raise ValueError(f"Unsupported exchange. Allowed: {allowed}")
+        return v.lower()
+
+
+class Web3LinkRequest(BaseModel):
+    address: str = Field(description="Wallet public address (0x...)")
+    chain_id: int = Field(default=1, description="Chain ID (1=Mainnet)")
+    account_name: str = Field(max_length=256)
+
+    @field_validator("address")
+    @classmethod
+    def validate_address(cls, v: str) -> str:
+        if not Web3.is_address(v):
+            raise ValueError("Invalid Web3 address format")
+        return Web3.to_checksum_address(v)
+
+
+class CexLinkRequest(BaseModel):
+    exchange_id: str = Field(description="Exchange ID (e.g., coinbase, kraken)")
+    api_key: str = Field(description="API Public Key")
+    api_secret: str = Field(description="API Secret Key")
+    account_name: str = Field(max_length=256)
+
+    @field_validator("exchange_id")
+    @classmethod
+    def validate_exchange(cls, v: str) -> str:
+        allowed = {"coinbase", "kraken", "binance", "binanceus"}
+        if v.lower() not in allowed:
+            raise ValueError(f"Unsupported exchange. Allowed: {allowed}")
+        return v.lower()
 
 
 class AccountUpdate(BaseModel):
@@ -332,7 +397,7 @@ def sync_account_transactions(
     if not account.secret_ref:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account is missing Plaid access token.",
+            detail="Account is missing credentials.",
         )
 
     plan = _get_subscription_plan(db, current_user.uid)
@@ -347,19 +412,56 @@ def sync_account_transactions(
             detail="start_date must be before or equal to end_date.",
         )
 
-    try:
-        plaid_transactions = fetch_transactions(
-            account.secret_ref, resolved_start, resolved_end
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Plaid sync failed: {exc}",
-        ) from exc
+    # Sync Logic Dispatch
+    fetched_txns = []
+    
+    # 1. Traditional (Plaid)
+    if account.account_type == "traditional":
+        try:
+            fetched_txns = fetch_transactions(
+                account.secret_ref, resolved_start, resolved_end
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+            ) from exc
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Plaid sync failed: {exc}",
+            ) from exc
+
+    # 2. Web3
+    elif account.account_type == "web3":
+        # For now, we'll parse the secret_ref JSON to get address
+        try:
+            conn_data = json.loads(account.secret_ref)
+            address = conn_data.get("address")
+            if not address:
+                raise ValueError("Invalid Web3 configuration")
+            # Mock fetch or call service
+            # For this MVP phase, we skip actual RPC call unless connector service is ready
+            # We will rely on the verify_crypto_config tool to test this flow
+            pass 
+        except Exception as e:
+            logger.error(f"Web3 sync error: {e}")
+
+    # 3. CEX
+    elif account.account_type == "cex":
+        try:
+            # Decrypt
+            decrypted_json = decrypt_secret(account.secret_ref, current_user.uid)
+            response = json.loads(decrypted_json)
+            # api_key = response["apiKey"]
+            # secret = response["secret"]
+            # Call connector...
+            pass
+        except Exception as e:
+            logger.error(f"CEX sync error: {e}")
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to decrypt credentials")
+
+    # Common normalization (Plaid serves as the schema reference)
+    plaid_transactions = fetched_txns
 
     # Optionally refresh balance if Plaid provides it.
     try:

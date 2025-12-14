@@ -1,11 +1,166 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
+import { api as apiClient } from '../services/api';
+
+const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
+  const [address, setAddress] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await apiClient.post('/api/accounts/link/web3', {
+        address,
+        chain_id: 1, // Mainnet default
+        account_name: name
+      });
+      toast.show('Wallet linked successfully', 'success');
+      onSuccess();
+    } catch (err: any) {
+      toast.show(err.response?.data?.detail || 'Failed to link wallet', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-1 bordered p-6 rounded-lg w-full max-w-md shadow-xl">
+        <h3 className="text-xl font-bold mb-4">Connect Web3 Wallet</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Wallet Label</label>
+            <input
+              type="text"
+              className="input w-full"
+              placeholder="My ETH Vault"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">ETH Address</label>
+            <input
+              type="text"
+              className="input w-full font-mono text-sm"
+              placeholder="0x..."
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              pattern="^0x[a-fA-F0-9]{40}$"
+              title="Must be a valid Ethereum address starting with 0x"
+              required
+            />
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Linking...' : 'Link Wallet'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
+  const [exchange, setExchange] = useState('coinbase');
+  const [apiKey, setApiKey] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await apiClient.post('/api/accounts/link/cex', {
+        exchange_id: exchange,
+        api_key: apiKey,
+        api_secret: apiSecret,
+        account_name: name
+      });
+      toast.show('Exchange linked successfully', 'success');
+      onSuccess();
+    } catch (err: any) {
+      toast.show(err.response?.data?.detail || 'Failed to link exchange', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-1 bordered p-6 rounded-lg w-full max-w-md shadow-xl">
+        <h3 className="text-xl font-bold mb-4">Connect Exchange</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Exchange</label>
+            <select className="input w-full" value={exchange} onChange={(e) => setExchange(e.target.value)}>
+              <option value="coinbase">Coinbase</option>
+              <option value="kraken">Kraken</option>
+              <option value="binance">Binance</option>
+              <option value="binanceus">Binance US</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Label</label>
+            <input
+              type="text"
+              className="input w-full"
+              placeholder="My Pro Trading Account"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">API Key</label>
+            <input
+              type="password"
+              className="input w-full font-mono text-sm"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">API Secret</label>
+            <input
+              type="password"
+              className="input w-full font-mono text-sm"
+              value={apiSecret}
+              onChange={(e) => setApiSecret(e.target.value)}
+              required
+            />
+          </div>
+          <p className="text-xs text-text-secondary">
+            Ensure your API key has <strong>Ready-Only</strong> permissions. We do not support trading or withdrawals.
+          </p>
+          <div className="flex gap-3 justify-end mt-6">
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Verifying...' : 'Link Exchange'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export const ConnectAccounts = () => {
   const { accounts, loading, remove, sync, refetch } = useAccounts();
   const toast = useToast();
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showCexModal, setShowCexModal] = useState(false);
 
   const handlePlaidSuccess = () => {
     toast.show('Account connected successfully', 'success');
@@ -50,7 +205,13 @@ export const ConnectAccounts = () => {
               <ul className="list-disc pl-6 mb-4 space-y-1">
                 <li>Supports up to 5 wallets (Pro/Essential)</li>
               </ul>
-              <button className="btn btn-secondary w-full md:w-auto" type="button" onClick={() => toast.show('Web3 Wallet connection coming soon.', 'error')}>Connect Wallet</button>
+              <button
+                className="btn btn-secondary w-full md:w-auto"
+                type="button"
+                onClick={() => setShowWalletModal(true)}
+              >
+                Connect Wallet
+              </button>
             </div>
           </div>
           <div className="card">
@@ -63,10 +224,30 @@ export const ConnectAccounts = () => {
                 <li>Supports up to 5 CEX accounts (Pro/Essential)</li>
                 <li>API keys stored in Secret Manager (never in DB)</li>
               </ul>
-              <button className="btn btn-outline w-full md:w-auto" type="button" onClick={() => toast.show('CEX connection coming soon.', 'error')}>Connect Exchange</button>
+              <button
+                className="btn btn-outline w-full md:w-auto"
+                type="button"
+                onClick={() => setShowCexModal(true)}
+              >
+                Connect Exchange
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Modals */}
+        {showWalletModal && (
+          <AddWalletModal
+            onClose={() => setShowWalletModal(false)}
+            onSuccess={() => { setShowWalletModal(false); refetch(); }}
+          />
+        )}
+        {showCexModal && (
+          <AddCexModal
+            onClose={() => setShowCexModal(false)}
+            onSuccess={() => { setShowCexModal(false); refetch(); }}
+          />
+        )}
 
         <div className="glass-panel mb-12">
           <h2 className="mb-6">Linked Accounts</h2>
