@@ -15,7 +15,6 @@ class TicketResponse(BaseModel):
     customer_uid: str
     subject: str
     Status: str # Keeping db column name case for now, should normalize later if possible or use alias
-    Priority: str
     created_at: datetime
     updated_at: datetime
     

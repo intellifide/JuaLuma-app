@@ -39,9 +39,7 @@ export const Navigation = () => {
       <NavLink to="/settings" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Settings
       </NavLink>
-      <NavLink to="/support" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
-        Support
-      </NavLink>
+
       {/* Notification Bell */}
       <button
         onClick={() => setDrawerOpen((prev) => !prev)}
@@ -136,9 +134,7 @@ export const Navigation = () => {
               <NavLink to="/settings" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 Settings
               </NavLink>
-              <NavLink to="/support" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
-                Support
-              </NavLink>
+
               <button
                 onClick={() => {
                   setDrawerOpen(true);

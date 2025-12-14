@@ -231,8 +231,6 @@ def seed_support_tickets(email: str) -> str:
                 description=t["description"],
                 category=t["category"],
                 status=t["status"]
-                # Priority is implied/property in model, or column if schema matches.
-                # Based on previous fixes, Priority is a property. 
                 # We can't set it in constructor if it's not a column.
                 # But we patched the model to have a Priority property.
                 # Wait, 'status' IS a column (lowercase).

@@ -16,11 +16,12 @@ router = APIRouter(prefix="/api/support-portal", tags=["support-portal"])
 
 # Role check dependency
 def require_support_role(user: User = Depends(get_current_user)):
-    # In a real app, strict role checks. For now, we assume if they can login to this portal they are authorized, 
-    # OR we check a specific flag/role. Phase 3 requirements say "support_agent" or "support_manager".
-    # Assuming 'role' field exists on User or similar mechanism.
-    # For MVP context discussed in task 301, we'll verify valid user for now.
-    # Ideally: if user.role not in ['support_agent', 'support_manager']: raise 403
+    """Ensure the user has support agent privileges."""
+    if user.role not in ['support_agent', 'admin', 'support_manager']:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Support role required."
+        )
     return user
 
 @router.get("/tickets", response_model=List[TicketResponse])
@@ -78,7 +79,6 @@ def get_ticket_detail(
         subject=ticket.subject,
         description=ticket.description,
         Status=ticket.Status,
-        Priority=ticket.Priority,
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
         messages=[{"sender": m.sender_type, "message": m.message, "created_at": m.created_at} for m in msgs]

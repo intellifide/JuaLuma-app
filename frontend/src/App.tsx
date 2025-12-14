@@ -21,7 +21,6 @@ import { FeatureRequest } from './pages/FeatureRequest'
 import { About } from './pages/About'
 import { Privacy } from './pages/legal/Privacy'
 import { Terms } from './pages/legal/Terms'
-import { SupportPortal } from './pages/SupportPortal'
 import { Marketplace } from './pages/Marketplace'
 import { DeveloperMarketplace } from './pages/DeveloperMarketplace'
 import { DeveloperSDK } from './pages/DeveloperSDK'
@@ -110,7 +109,7 @@ function App() {
             <Route path="/legal/privacy" element={<Privacy />} />
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/ai-disclaimer" element={<AIDisclaimer />} />
-            <Route path="/support-portal" element={<SupportPortal />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

@@ -6,12 +6,15 @@ import './styles/index.css'
 import './styles/theme.css'
 import { ThemeProvider } from './hooks/useTheme'
 import { ToastProvider } from './components/ui'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
       <ToastProvider>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </ToastProvider>
     </ThemeProvider>
   </React.StrictMode>,
