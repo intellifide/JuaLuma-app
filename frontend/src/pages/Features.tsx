@@ -370,7 +370,7 @@ export const Features = () => {
                         <div className="order-1">
                             <h2>AI-Powered Financial Analysis</h2>
                             <p>
-                                Access AI-powered financial analysis tools powered by Vertex AI Gemini 2.5 Flash (Pro Tier) with
+                                Access AI-powered financial analysis tools powered by Gemini 2.5 Flash (All Tiers) with
                                 encrypted RAG prompts.
                             </p>
                             <ul className="mt-4 pl-8">

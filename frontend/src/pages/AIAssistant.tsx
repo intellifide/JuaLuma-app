@@ -105,21 +105,21 @@ export default function AIAssistant() {
               } else {
                 setMessages([{
                   role: 'assistant',
-                  text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+                  text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
                   time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }]);
               }
             } catch {
               setMessages([{
                 role: 'assistant',
-                text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+                text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }]);
             }
           } else {
             setMessages([{
               role: 'assistant',
-              text: "Hello! I'm your Finity AI Assistant. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+              text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);
           }
@@ -244,7 +244,7 @@ export default function AIAssistant() {
       <div className="alert alert-info mb-8">
         <strong>Important Disclaimer:</strong> The AI Assistant provides access to third-party large language models. It is NOT a financial, investment, tax, or legal advisor. Its responses are not endorsed or verified by Intellifide, LLC and may be inaccurate or inappropriate. You must not rely on the AI for any financial decisions. All investments carry risk, and you must consult a qualified professional.
         <p className="mt-2">
-          <a href="#" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }}>View full AI Assistant Disclaimer</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true); }}>View full Gemini AI Disclaimer</a>
         </p>
       </div>
 
@@ -257,7 +257,7 @@ export default function AIAssistant() {
       <div className="glass-panel mb-8" id="ai-chat-wrapper">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h2 className="m-0">Chat with your AI Assistant</h2>
+            <h2 className="m-0">Chat with Gemini</h2>
           </div>
           <QuotaDisplay
             used={quota?.used ?? 0}
@@ -348,7 +348,7 @@ export default function AIAssistant() {
       </div>
 
       <div className="alert alert-info mt-12">
-        <strong>Usage Limits:</strong> Free Tier: 20 queries/day (Gemini 2.5 Flash). Essential/Pro: 75 queries/day (Gemini 3 Pro). Ultimate: 200 queries/day (Gemini 3 Pro). Queries reset daily at midnight CT.
+        <strong>Usage Limits:</strong> Free Tier: 20 queries/day. Essential/Pro: 75 queries/day. Ultimate: 200 queries/day. Powered by Gemini 2.5 Flash. Queries reset daily at midnight CT.
       </div>
     </section>
   );

@@ -215,10 +215,10 @@ export const Pricing = () => {
                                     <td>
                                         <strong>AI Model</strong>
                                     </td>
-                                    <td>Standard</td>
-                                    <td>Standard</td>
-                                    <td>Standard</td>
-                                    <td>Advanced with smart routing</td>
+                                    <td>Gemini 2.5 Flash</td>
+                                    <td>Gemini 2.5 Flash</td>
+                                    <td>Gemini 2.5 Flash</td>
+                                    <td>Gemini 2.5 Flash</td>
                                 </tr>
                                 <tr>
                                     <td>

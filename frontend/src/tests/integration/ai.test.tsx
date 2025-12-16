@@ -63,7 +63,7 @@ describe('AI Assistant Integration', () => {
         })
         expect(screen.getByText(/5 \/ 20/)).toBeInTheDocument() // Quota display
         // Expect default welcome message if history is empty
-        expect(screen.getByText(/Hello! I'm your Finity AI Assistant/i)).toBeInTheDocument()
+        expect(screen.getByText(/Hello! I am Gemini 2.5 Flash/i)).toBeInTheDocument()
     })
 
     it('sends a message and displays response', async () => {
@@ -81,7 +81,7 @@ describe('AI Assistant Integration', () => {
 
         // Wait for initial load
         await waitFor(() => {
-            expect(screen.getByText(/Hello! I'm your Finity AI Assistant/i)).toBeInTheDocument()
+            expect(screen.getByText(/Hello! I am Gemini 2.5 Flash/i)).toBeInTheDocument()
         })
 
         const input = screen.getByRole('textbox', { name: /Chat input/i })
