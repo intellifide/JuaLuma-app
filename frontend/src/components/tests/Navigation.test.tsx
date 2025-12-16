@@ -4,6 +4,7 @@ import { Navigation } from '../Navigation'
 import { BrowserRouter } from 'react-router-dom'
 import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { User } from 'firebase/auth'
+import { ToastProvider } from '../ui/Toast'
 
 // Mock the useAuth hook
 vi.mock('../../hooks/useAuth', () => ({
@@ -35,9 +36,11 @@ describe('Navigation', () => {
         })
 
         render(
-            <BrowserRouter>
-                <Navigation />
-            </BrowserRouter>
+            <ToastProvider>
+                <BrowserRouter>
+                    <Navigation />
+                </BrowserRouter>
+            </ToastProvider>
         )
 
         expect(screen.getAllByText('Features')[0]).toBeInTheDocument()
@@ -61,9 +64,11 @@ describe('Navigation', () => {
         })
 
         render(
-            <BrowserRouter>
-                <Navigation />
-            </BrowserRouter>
+            <ToastProvider>
+                <BrowserRouter>
+                    <Navigation />
+                </BrowserRouter>
+            </ToastProvider>
         )
 
         expect(screen.getAllByText('Dashboard')[0]).toBeInTheDocument()
@@ -87,9 +92,11 @@ describe('Navigation', () => {
         })
 
         render(
-            <BrowserRouter>
-                <Navigation />
-            </BrowserRouter>
+            <ToastProvider>
+                <BrowserRouter>
+                    <Navigation />
+                </BrowserRouter>
+            </ToastProvider>
         )
 
         // Using getAllByText because logout might appear in mobile menu too

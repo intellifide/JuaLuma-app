@@ -58,12 +58,13 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
 
           // Try to hydrate transactions right after linking so the dashboard shows data immediately.
           const linkedAccounts = (response as { data: { accounts?: Array<{ id?: string }> } }).data.accounts ?? []
-          const firstAccount = linkedAccounts.find((account) => account?.id)
-          if (firstAccount?.id) {
-            try {
-              await syncAccount(firstAccount.id)
-            } catch (syncErr) {
-              console.warn('Plaid account sync failed', syncErr)
+          for (const account of linkedAccounts) {
+            if (account?.id) {
+              try {
+                await syncAccount(account.id)
+              } catch (syncErr) {
+                console.warn(`Plaid account sync failed for ${account.id}`, syncErr)
+              }
             }
           }
 
