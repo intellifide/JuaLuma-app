@@ -14,7 +14,7 @@ import os
 import subprocess
 
 # Initialize the Dev Tools MCP server
-dev_mcp = FastMCP("Finity Dev Tools")
+dev_mcp = FastMCP("JuaLuma Dev Tools")
 logger = logging.getLogger(__name__)
 
 @dev_mcp.tool()

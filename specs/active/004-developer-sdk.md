@@ -1,7 +1,7 @@
 # Specification: Developer SDK Distribution
 
 ## 1. Overview
-To enable third-party developers to build widgets for the Finity Marketplace, we need to distribute a `finity-widget-sdk`. This SDK provides the necessary TypeScript type definitions (`.d.ts`) and protocol documentation for communicating with the Finity main app.
+To enable third-party developers to build widgets for the JuaLuma Marketplace, we need to distribute a `JuaLuma-widget-sdk`. This SDK provides the necessary TypeScript type definitions (`.d.ts`) and protocol documentation for communicating with the JuaLuma main app.
 
 ## 2. Requirements
 
@@ -10,7 +10,7 @@ To enable third-party developers to build widgets for the Finity Marketplace, we
 - **Access**: Public (or Restricted to Developers - Public is easier for adoption).
 - **Response**: Returns a downloadable `.zip` or `.tgz` file containing the SDK.
 - **Content**:
-    - `index.d.ts`: Type definitions for `WidgetContext`, `FinityClient`, and `WidgetProps`.
+    - `index.d.ts`: Type definitions for `WidgetContext`, `JuaLumaClient`, and `WidgetProps`.
     - `README.md`: Quick start guide.
     - `example-widget.tsx`: A minimal example.
 

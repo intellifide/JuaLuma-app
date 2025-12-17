@@ -9,12 +9,12 @@ All engineering decisions must strictly adhere to these six non\-negotiable pill
 - __Regulatory Compliance Alignment:__ GLBA Safeguards: Security program aligns with the Gramm\-Leach\-Bliley Act \(Encryption, Access Control, Audit\)\. Non\-Custodial Mandate: The platform never executes write\-access transfers or withdrawals\. All integrations are strictly Read\-Only to maintain non\-MSB \(Money Services Business\) status under FinCEN\.
 - __Accessibility via Engineered Vibrancy:__ The platform utilizes an "Engineered Liquid Glass" framework\. The default UI uses advanced compositing \(blur, saturation, luminance clamping\) to ensure all text/interactive elements maintain WCAG 2\.1 AA \(4\.5:1\) contrast dynamically\.
 - __Legal\-First Product Lifecycle:__ Legal is a mandatory stakeholder\. No features regarding "sending," "swapping," or "rebalancing" assets may be prototyped without specific counsel approval \(FinCEN MSB trigger\)\. All user\-facing disclaimers, Terms of Service, Privacy Policies, and legal documentation must be reviewed and approved by qualified legal counsel before publication\. All developer agreements, contractor agreements, and third\-party development contracts must be reviewed and approved by qualified legal counsel before execution\.
-- __Intellectual Property Ownership:__ All property developed on, for, or in connection with the Finity application is the exclusive property of Intellifide, LLC\. This includes all source code, features, designs, algorithms, documentation, and derivative works\. All developer agreements must explicitly include intellectual property assignment clauses that assign all rights, title, and interest to Intellifide, LLC\. This provision is non\-negotiable\.
+- __Intellectual Property Ownership:__ All property developed on, for, or in connection with the JuaLuma application is the exclusive property of Intellifide, LLC\. This includes all source code, features, designs, algorithms, documentation, and derivative works\. All developer agreements must explicitly include intellectual property assignment clauses that assign all rights, title, and interest to Intellifide, LLC\. This provision is non\-negotiable\.
 - __Operational Resilience \(Circuit Breakers\):__ The system must fail safely and cheaply\. Automated kill switches and hard budget caps are architected into the codebase to prevent "runaway" API costs or infinite loops\.
 - __Developer Payout Integrity:__ Mandate the tracking of __Downloads__ and __Ratings__ must be __immutable__ \(written to the Cloud SQL log ledger plus Firestore `widget_engagement`\) to ensure accurate and auditable developer payouts\.
 
 ### 1\.1 Local Docker Layout (GCP-Portability)
-- Orchestration: `docker-compose` runs backend (FastAPI) on 8001 and frontend (Vite) on 5175; all services join the `finity-network` bridge.
+- Orchestration: `docker-compose` runs backend (FastAPI) on 8001 and frontend (Vite) on 5175; all services join the `JuaLuma-network` bridge.
 - Frontend proxy: `/api` is proxied to `VITE_API_TARGET`. Inside Docker set `VITE_API_TARGET=http://backend:8001`; leave `VITE_API_BASE_URL` empty for browser builds.
 - Backend env: use `APP_ENV=local` with `ENABLE_AI_GATEWAY=false` in compose for local runs so AI uses the local AI Studio path (no Vertex credentials required).
 - Emulators: Postgres (Cloud SQL mirror), Firestore emulator (8080), Auth emulator (9099), Pub/Sub emulator (8085) are provided via compose envs.
@@ -33,8 +33,8 @@ All non-trivial features must follow a strict "Spec-First" workflow. Ad-hoc codi
     3. Implement code only after Spec approval.
     4. Move to `specs/archive/` upon completion.
 
-### 1\.3 Operational Tooling (Finity Dev Tools)
-Maintenance tasks are handled via the **Finity Dev Tools MCP Server**, running inside the backend container.
+### 1\.3 Operational Tooling (JuaLuma Dev Tools)
+Maintenance tasks are handled via the **JuaLuma Dev Tools MCP Server**, running inside the backend container.
 - **Access:** `http://localhost:8001/mcp-dev` (Local Environment Only).
 - **Standard Tools:**
     - `seed_database(tier)`: Resets and populates DB with valid test data.
@@ -46,7 +46,7 @@ Maintenance tasks are handled via the **Finity Dev Tools MCP Server**, running i
 
 #### 2\.0\.0 Unified Product Scope
 
-The Finity application delivers a complete financial aggregation and AI-powered planning platform with the following full-scope features:
+The JuaLuma application delivers a complete financial aggregation and AI-powered planning platform with the following full-scope features:
 
 **Core Aggregation & Data:**
 - Bank account aggregation via Plaid (traditional accounts)
@@ -149,7 +149,7 @@ The product goal is to abstract financial complexity and provide a simple, autom
 	- __Aggregator:__ Link up to 3 Traditional accounts / 2 investment accounts / 1 Web3 wallet / 3 CEX accounts.
 - __AI Model:__ Cloud AI model: Vertex AI Gemini 2.5 Flash (Production) with encrypted RAG prompts. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
 	- __Sync Cadence:__ Webhook-driven deltas plus guaranteed 24-hour Cloud Scheduler refresh (`essential-ledger-refresh`); manual "Sync Now" is disabled to keep aggregator/API costs predictable.
-	- __Data Retention:__ 30-day Cloud SQL hot window (`ledger_hot_essential`). The `essential-ledger-archiver` job moves data older than 30 days to Coldline (`gs://finity-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only retrieval. AI chat history has no retention limits; all transactions remain fully visible.
+	- __Data Retention:__ 30-day Cloud SQL hot window (`ledger_hot_essential`). The `essential-ledger-archiver` job moves data older than 30 days to Coldline (`gs://JuaLuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only retrieval. AI chat history has no retention limits; all transactions remain fully visible.
 	- __Quota:__ 30 Cloud AI queries/day (Metered, resets daily; shared with Pro tier via Firestore enforcement).
 - __Pro Tier \($25/month or $20.83/month annual - $250/year\):__
 	- __Aggregator:__ Link up to 5 Traditional accounts / 5 investment accounts \(via Plaid Investments API\) / 5 Web3 wallets\.
@@ -189,7 +189,7 @@ The product goal is to abstract financial complexity and provide a simple, autom
 
 #### 2\.4 Third\-Party Widget Marketplace
 
-This is a curated catalog where developers earn revenue based on user engagement and verified ratings \(1\-5 star system\)\. All developers must execute a Developer Agreement that has been reviewed and approved by qualified legal counsel\. The Developer Agreement must include intellectual property assignment clauses assigning all rights, title, and interest in any work product related to the Finity platform to Intellifide, LLC\.
+This is a curated catalog where developers earn revenue based on user engagement and verified ratings \(1\-5 star system\)\. All developers must execute a Developer Agreement that has been reviewed and approved by qualified legal counsel\. The Developer Agreement must include intellectual property assignment clauses assigning all rights, title, and interest in any work product related to the JuaLuma platform to Intellifide, LLC\.
 
 **Marketplace Access by Tier:**
 - **Free & Essential Tiers**: Preview-only access to widgets (interactions blocked, upgrade CTA shown). Cannot publish widgets.
@@ -199,9 +199,9 @@ The static website template (`website_template/`) includes mock Developer Market
 
 #### 2.4.1 MCP Server & Developer SDK
 
-The Finity platform provides a Model Context Protocol (MCP) server as the single capability surface for marketplace widgets and the Developer SDK. This architecture enhances security by preventing direct API access and provides a standardized, typed interface for all developer interactions.
+The JuaLuma platform provides a Model Context Protocol (MCP) server as the single capability surface for marketplace widgets and the Developer SDK. This architecture enhances security by preventing direct API access and provides a standardized, typed interface for all developer interactions.
 
-*Note: This "Public Widget MCP" is distinct from the "Internal Finity App MCP" used by the AI Agent for backend operations.*
+*Note: This "Public Widget MCP" is distinct from the "Internal JuaLuma App MCP" used by the AI Agent for backend operations.*
 
 **MCP Server Architecture:**
 
@@ -218,7 +218,7 @@ The Finity platform provides a Model Context Protocol (MCP) server as the single
 - __Palette:__ Royal Purple, Deep Indigo, Aqua\.
 - __Modes:__ System\-based Light/Dark\.
 - __Intellifide Corporate Logo:__ Business logo naming matches the entity \("Intellifide"\). Deliver vector-first lockups \(primary horizontal, stacked, monochrome\), provide SVG + PNG exports, define clear-space/usage specs, and include trademark briefing notes for `Trademark-Filing-Strategy.md`\.
-- __Finity Product Icon System:__ Refresh the Finity app logo/icon, produce a 1024x1024 master asset, and export platform-specific slices \(PWA manifest, iOS @1x/@3x, Android adaptive foreground/background\) while documenting gradient stops and elevation rules for the Engineered Liquid Glass aesthetic\.
+- __JuaLuma Product Icon System:__ Refresh the JuaLuma app logo/icon, produce a 1024x1024 master asset, and export platform-specific slices \(PWA manifest, iOS @1x/@3x, Android adaptive foreground/background\) while documenting gradient stops and elevation rules for the Engineered Liquid Glass aesthetic\.
 - __App Store Creative Kit:__ Create six-screenshot storytelling sets for Apple and Google, hero/feature graphics \(Google Play 1024x500\) and App Store promotional artwork \(4320x1080\)\. Each frame must highlight budgeting, AI chat, and aggregation, with caption overlays driven by `Marketing-Content-Guidelines.md`\.
 
 #### 2\.6 Notifications
@@ -315,11 +315,11 @@ features:
 
 ##### 3.1.2 Native Packaging & Store Distribution
 
-- __Wrapper:__ Capacitor 6 wraps the PWA build output (`dist/pwa`) into native shells. `capacitor.config.ts` holds the shared app id `com.intellifide.finity` plus platform metadata; never fork the React codebase.
+- __Wrapper:__ Capacitor 6 wraps the PWA build output (`dist/pwa`) into native shells. `capacitor.config.ts` holds the shared app id `com.intellifide.JuaLuma` plus platform metadata; never fork the React codebase.
 - __iOS Build:__ Generate the Xcode 16 project via `npx cap add ios`. Automatic signing uses the Intellifide Apple Developer Program team ID with App Store Connect API keys stored in Secret Manager. CI runs `xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -allowProvisioningUpdates` to create the `.ipa`.
 - __Android Build:__ Generate the Android Studio/Gradle 8 project via `npx cap add android`. Produce Android App Bundles (`.aab`) with Play App Signing enabled, Play Integrity API configured, and Firebase Crashlytics wired through the Capacitor Firebase plugin.
 - __CI/CD:__ Pipeline `mobile-release.yaml` executes after tagging `release/*`. Steps: install dependencies, `pnpm build:pwa`, `npx cap sync`, run Detox smoke tests, package iOS/Android artifacts, and upload to TestFlight/Play Console using service accounts. Artifacts are stored in Cloud Storage for audit.
-- __Store Assets:__ Automatically pull the Finity icon system and App Store creative kit (Section 2.5) during build via `scripts/export_store_assets.ts`. Pipeline fails if required dimensions or counts (iOS 6 screenshots, Android 8, Play feature graphic) are missing.
+- __Store Assets:__ Automatically pull the JuaLuma icon system and App Store creative kit (Section 2.5) during build via `scripts/export_store_assets.ts`. Pipeline fails if required dimensions or counts (iOS 6 screenshots, Android 8, Play feature graphic) are missing.
 - __Privacy Declarations:__ Generate App Store Privacy Nutrition Label metadata from `compliance/privacy_manifest.json`, configure ATT prompt messaging sourced from `Marketing-Content-Guidelines.md`, and maintain Google Play Data Safety + Permissions declarations in `android/play-data-safety.yaml`.
 - __Testing Tracks:__ Maintain TestFlight Internal + Beta groups and Google Play Internal + Closed testing tracks. Build numbers map to Git commit SHAs to simplify rollback.
 - __Release Gates:__ Store submissions require sign-off from Engineering, Compliance, and Marketing. App Store release remains Manual until launch readiness criteria are met; Google Play uses staged rollout (10% -> 100%) with automated rollback if crash-free sessions drop below 97%.
@@ -339,7 +339,7 @@ features:
 - **FastAPI Dependency:** All premium routes depend on `require_feature(feature_key: str)` which loads the caller's tier from Cloud SQL (`subscriptions.plan`). Unauthorized calls raise `HTTPException(status_code=403, detail="feature_preview_required")` and emit `feature_preview.backend_blocked` telemetry.
 
 ```python
-# Ensures Finity AI Cloud can't run unless the user tier meets the requirement
+# Ensures JuaLuma AI Cloud can't run unless the user tier meets the requirement
 @router.post("/ai/chat")
 async def chat(payload: ChatRequest, user=Depends(auth_ctx), _=Depends(require_feature("ai.cloud"))):
     return await ai_service.handle(payload, user)
@@ -455,7 +455,7 @@ Cloud SQL (`audit` schema) + Coldline archive
 
 Audit events, encrypted LLM logs, widget download/rating ledger.
 
-Append-only tables keep costs predictable while nightly `log-ledger-archiver` exports Parquet copies to `gs://finity-log-vault/<table>/<YYYY>/<MM>/<DD>/` for 7-year retention without introducing a separate analytics warehouse.
+Append-only tables keep costs predictable while nightly `log-ledger-archiver` exports Parquet copies to `gs://JuaLuma-log-vault/<table>/<YYYY>/<MM>/<DD>/` for 7-year retention without introducing a separate analytics warehouse.
 
 __Secrets__
 
@@ -468,12 +468,12 @@ Zero secrets in DB\.
 **Tier Retention Summary**
 
 - **Free Tier:** Cloud SQL table `ledger_hot_free` stores 45 days of transactions; the nightly `free-ledger-pruner` Cloud Run Job (02:00 CT) deletes rows older than 45 days, and no archive copy exists.
-- **Essential Tier:** Cloud SQL table `ledger_hot_essential` stores 30 days of transactions; the `essential-ledger-archiver` job writes older rows to Coldline (`gs://finity-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
+- **Essential Tier:** Cloud SQL table `ledger_hot_essential` stores 30 days of transactions; the `essential-ledger-archiver` job writes older rows to Coldline (`gs://JuaLuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
 - **Pro / Ultimate:** Cloud SQL `ledger_pro` retains full history; pruning occurs only during "Right to be Forgotten" workflows.
 
 #### 3\.4 Machine Learning Pipeline (Categorization & Vertex AI)
 
-1\. **Feature Extraction (Dataflow):** `categorization-feature-builder` reads transactions from Cloud SQL. Features are written to Cloud Storage (`gs://finity-ml-features/dt=<YYYY-MM-DD>/features.parquet`).
+1\. **Feature Extraction (Dataflow):** `categorization-feature-builder` reads transactions from Cloud SQL. Features are written to Cloud Storage (`gs://JuaLuma-ml-features/dt=<YYYY-MM-DD>/features.parquet`).
 2\. **Training (Vertex AI Pipelines):** Nightly pipeline (`ml/pipelines/categorization_pipeline.py`) performs data validation, trains a TensorFlow multi-class classifier, evaluates precision/recall, and registers the model in Vertex AI Model Registry.
 3\. **Serving (Vertex AI Prediction):** Production endpoint `categorization-prod` (us-central1) exposes the latest model. CategorizationService calls the endpoint with a 300 ms latency budget; traffic splitting enables blue/green deploys.
 4\. **RAG Pipeline (New):**
@@ -594,7 +594,7 @@ Zero secrets in DB\.
 	- category \(STRING\)
 	- raw\_json \(JSONB\)
 	- indexes: `idx_ledger_hot_ess_uid_ts`, `idx_ledger_hot_ess_account`
-	- retention: `essential-ledger-archiver` streams rows older than 30 days to Coldline (`gs://finity-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table
+	- retention: `essential-ledger-archiver` streams rows older than 30 days to Coldline (`gs://JuaLuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table
 	- archive format: partitioned Parquet files with per-user manifests
 
 #### B\. Firestore \(Datastore Mode\) \- High\-Velocity Metering
@@ -652,7 +652,7 @@ Zero secrets in DB\.
 	- feedback_text (TEXT, nullable): Optional customer feedback.
 	- created_at (TIMESTAMPTZ DEFAULT now()).
 - __Export & Retention__
-	- Cloud Run Job `log-ledger-archiver` runs daily to export the previous 24 hours of `audit_log`, `feature_preview`, `developer_payout_events`, `llm_logs`, and `support_portal_actions` rows to Parquet files in `gs://finity-log-vault/<table>/<YYYY>/<MM>/<DD>/`.
+	- Cloud Run Job `log-ledger-archiver` runs daily to export the previous 24 hours of `audit_log`, `feature_preview`, `developer_payout_events`, `llm_logs`, and `support_portal_actions` rows to Parquet files in `gs://JuaLuma-log-vault/<table>/<YYYY>/<MM>/<DD>/`.
 	- Each export is encrypted with CMEK, emits a manifest + checksum, and marks the corresponding Cloud SQL rows as archived.
 	- After a successful export, Cloud SQL rows older than 90 days are pruned; Coldline objects store the encrypted 7-year retention copy (GLBA).
 	- Cryptographic erasure destroys a user’s DEK, making encrypted payloads unreadable instantly. `log-ledger-shredder` deletes impacted rows from Cloud SQL and issues lifecycle delete markers for corresponding Parquet files within 24 hours.
@@ -809,11 +809,11 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 - **Entrypoint:** `python jobs/log_ledger_archiver.py --since=${YESTERDAY} --until=${TODAY}`.
 - **Environment:**
 	- `DATABASE_URL` (Cloud SQL Auth Proxy)
-	- `GCS_BUCKET=gs://finity-log-vault`
-	- `CMEK_KEY=projects/finity/locations/us/keyRings/ledger/cryptoKeys/log-ledger`
+	- `GCS_BUCKET=gs://JuaLuma-log-vault`
+	- `CMEK_KEY=projects/JuaLuma/locations/us/keyRings/ledger/cryptoKeys/log-ledger`
 	- `AUDIT_TABLES=audit.audit_log,audit.feature_preview,audit.developer_payout_events,audit.llm_logs,audit.support_portal_actions`
 - **Workflow:**
-	1. Query each table for `ts >= since AND ts < until`, stream chunked Parquet files to `gs://finity-log-vault/<table>/<YYYY>/<MM>/<DD>/<chunk>.parquet`.
+	1. Query each table for `ts >= since AND ts < until`, stream chunked Parquet files to `gs://JuaLuma-log-vault/<table>/<YYYY>/<MM>/<DD>/<chunk>.parquet`.
 	2. Emit a manifest JSON + SHA256 checksum per table, store alongside exports, and set object state to Coldline after 90 days via lifecycle rules.
 	3. Update the exported rows with `archived = TRUE`, then delete any `archived` rows older than 90 days.
 	4. Process `log_purge_queue` events (Right-to-Be-Forgotten) by deleting matching rows and pushing delete markers to `coldline_delete_queue` for downstream storage cleanup.
@@ -905,9 +905,9 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 **Environment Matrix:**
 
 - __Local:__ Docker Compose with emulators \(Postgres, Firestore Emulator, Pub/Sub Emulator\)\. Ports: Postgres 5433, Firestore 8080, Pub/Sub 8085, MCP Server 3000\.
-- __Dev:__ GCP project `finity-dev`, region `us-central1`, Cloud Run services with `-dev` suffix\.
-- __Stage:__ GCP project `finity-stage`, region `us-central1`, Cloud Run services with `-stage` suffix\.
-- __Prod:__ GCP project `finity-prod`, regions `us-central1` \(primary\), `us-east1` \(DR\)\.
+- __Dev:__ GCP project `JuaLuma-dev`, region `us-central1`, Cloud Run services with `-dev` suffix\.
+- __Stage:__ GCP project `JuaLuma-stage`, region `us-central1`, Cloud Run services with `-stage` suffix\.
+- __Prod:__ GCP project `JuaLuma-prod`, regions `us-central1` \(primary\), `us-east1` \(DR\)\.
 
 **Emulator Map:**
 

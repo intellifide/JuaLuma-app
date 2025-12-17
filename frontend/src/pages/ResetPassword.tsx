@@ -35,7 +35,7 @@ export const ResetPassword = () => {
           <div>
             <h1 className="text-3xl font-bold mb-4">Reset your password</h1>
             <p className="mb-4">
-              Enter the email tied to your Finity account. We&apos;ll send a password reset link to help you get back in.
+              Enter the email tied to your JuaLuma account. We&apos;ll send a password reset link to help you get back in.
             </p>
             <p className="text-sm text-slate-700">
               Make sure the Firebase Auth emulator is running locally so the reset flow works in development.

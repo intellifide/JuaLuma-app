@@ -15,7 +15,7 @@ export const Terms = () => {
                         <h2>1. Acceptance of Terms</h2>
 
                         <h3>1.1 Agreement to Terms</h3>
-                        <p>By accessing or using the Finity platform (&quot;Service&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, you may not access or use the Service.</p>
+                        <p>By accessing or using the JuaLuma platform (&quot;Service&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, you may not access or use the Service.</p>
 
                         <h3>1.2 Click-Wrap Agreement</h3>
                         <p>These Terms constitute a legal contract between you and Intellifide, LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). By clicking &quot;I Agree&quot; or similar acceptance mechanism, you acknowledge that you have read, understood, and agree to be bound by these Terms.</p>
@@ -29,7 +29,7 @@ export const Terms = () => {
                         <h2>2. Description of Service</h2>
 
                         <h3>2.1 Service Description</h3>
-                        <p>Finity is a financial aggregation and analysis platform that allows you to:</p>
+                        <p>JuaLuma is a financial aggregation and analysis platform that allows you to:</p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Securely connect and aggregate financial accounts (banks, credit cards, cryptocurrency exchanges, Web3 wallets)</li>
                             <li>Automatically categorize and analyze financial transactions</li>
@@ -167,7 +167,7 @@ export const Terms = () => {
                         <p>You retain ownership of any content you provide to the Service. By providing content, you grant us a license to use, store, and process that content to provide the Service.</p>
 
                         <h3>7.3 Trademarks</h3>
-                        <p>&quot;Finity&quot; and related logos and marks are trademarks of Intellifide, LLC. You may not use our trademarks without our prior written permission.</p>
+                        <p>&quot;JuaLuma&quot; and related logos and marks are trademarks of Intellifide, LLC. You may not use our trademarks without our prior written permission.</p>
 
                         <h2>8. Privacy and Data Protection</h2>
 
@@ -305,7 +305,7 @@ export const Terms = () => {
                             Austin, TX 78701<br />
                             United States<br />
                             Phone: +1 (555) 123-4567<br />
-                            Email: support@finity.com
+                            Email: support@jualuma.com
                         </p>
 
                         <h3>15.2 Legal Notices</h3>
@@ -321,8 +321,8 @@ export const Terms = () => {
                         <h3>15.3 Support</h3>
                         <p>For support inquiries:</p>
                         <p>
-                            Email: <Link to="mailto:support@finity.com" className="text-primary hover:underline">support@finity.com</Link><br />
-                            Website: <Link to="/support" className="text-primary hover:underline">finity.com/support</Link>
+                            Email: <Link to="mailto:support@jualuma.com" className="text-primary hover:underline">support@jualuma.com</Link><br />
+                            Website: <Link to="/support" className="text-primary hover:underline">jualuma.com/support</Link>
                         </p>
                     </div>
                 </div>

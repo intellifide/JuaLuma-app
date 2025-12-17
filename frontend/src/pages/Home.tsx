@@ -78,7 +78,7 @@ export const Home = () => (
     <section className="container text-center py-16">
       <h2 className="mb-8">Ready to Get Started?</h2>
       <p className="text-lg mb-12 text-[var(--text-secondary)]">
-        Join thousands of users who are taking control of their finances with Finity.
+        Join thousands of users who are taking control of their finances with JuaLuma.
       </p>
       <Link to="/signup" className="btn btn-lg">
         Create Your Free Account

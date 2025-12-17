@@ -1,8 +1,8 @@
-const CACHE_NAME = 'finity-pwa-v1';
+const CACHE_NAME = 'JuaLuma-pwa-v1';
 
 const STATIC_ASSETS = [
     '/',
-    '/assets/finity-logo.png'
+    '/assets/JuaLuma-logo.png'
 ];
 
 self.addEventListener('install', (event) => {

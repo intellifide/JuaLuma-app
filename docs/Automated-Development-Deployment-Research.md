@@ -1,12 +1,12 @@
 # Automated Development and Deployment Process Research
-## Intellifide, LLC - Finity Platform
+## Intellifide, LLC - JuaLuma Platform
 
 
 ---
 
 ## Executive Summary
 
-This document presents research findings and recommendations for refining the automated development and deployment process for the Finity platform. The research focuses on identifying pre-built MCP (Model Context Protocol) servers and tools that provide context/data to Cursor AI or perform actions that Cursor AI cannot execute directly.
+This document presents research findings and recommendations for refining the automated development and deployment process for the JuaLuma platform. The research focuses on identifying pre-built MCP (Model Context Protocol) servers and tools that provide context/data to Cursor AI or perform actions that Cursor AI cannot execute directly.
 
 **Key Findings:**
 - MCP servers that provide data/context enable Cursor AI to make informed decisions
@@ -145,7 +145,7 @@ MCP servers provide:
       "args": ["gcp-mcp-server"],
       "env": {
         "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/key.json",
-        "GCP_PROJECT_ID": "finity-app-dev"
+        "GCP_PROJECT_ID": "JuaLuma-app-dev"
       }
     }
   }
@@ -369,7 +369,7 @@ Cursor IDE includes an integrated browser feature that enables real-time testing
 4. Restart Cursor if prompted
 5. Access via sidebar or Cmd/Ctrl + Shift + B
 
-**Use Cases for Finity Platform:**
+**Use Cases for JuaLuma Platform:**
 1. **Engineered Liquid Glass Testing:**
    - Real-time contrast ratio verification
    - Visual regression testing

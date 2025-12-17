@@ -1,6 +1,6 @@
-// Finity Platform - Main JavaScript
+// JuaLuma Platform - Main JavaScript
 // Last Updated: December 05, 2025 at 09:33 PM
-(function() {
+(function () {
   'use strict';
 
   // Theme Management
@@ -8,24 +8,24 @@
     init() {
       const savedTheme = localStorage.getItem('theme') || 'light';
       this.setTheme(savedTheme);
-      
+
       const toggle = document.querySelector('.theme-toggle');
       if (toggle) {
         toggle.addEventListener('click', () => this.toggle());
       }
     },
-    
+
     setTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('theme', theme);
-      
+
       const toggle = document.querySelector('.theme-toggle');
       if (toggle) {
         toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
         toggle.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
       }
     },
-    
+
     toggle() {
       const current = document.documentElement.getAttribute('data-theme') || 'light';
       const newTheme = current === 'dark' ? 'light' : 'dark';
@@ -38,13 +38,13 @@
     init() {
       const toggle = document.querySelector('.nav-mobile-toggle');
       const nav = document.querySelector('.nav-mobile');
-      
+
       if (toggle && nav) {
         toggle.addEventListener('click', () => {
           nav.classList.toggle('open');
           toggle.setAttribute('aria-expanded', nav.classList.contains('open'));
         });
-        
+
         // Close on link click
         nav.querySelectorAll('a').forEach(link => {
           link.addEventListener('click', () => {
@@ -61,7 +61,7 @@
     init() {
       const currentPath = window.location.pathname;
       const navLinks = document.querySelectorAll('.nav-link, .nav-mobile a');
-      
+
       navLinks.forEach(link => {
         const href = link.getAttribute('href');
         if (href && (currentPath.includes(href) || (currentPath === '/' && href === 'index.html'))) {
@@ -75,17 +75,17 @@
   const TabSystem = {
     init() {
       const tabContainers = document.querySelectorAll('.tabs');
-      
+
       tabContainers.forEach(container => {
         const buttons = container.querySelectorAll('.tab-button');
         const contents = container.parentElement.querySelectorAll('.tab-content');
-        
+
         buttons.forEach((button, index) => {
           button.addEventListener('click', () => {
             // Remove active from all
             buttons.forEach(b => b.classList.remove('active'));
             contents.forEach(c => c.classList.remove('active'));
-            
+
             // Add active to clicked
             button.classList.add('active');
             if (contents[index]) {
@@ -108,7 +108,7 @@
           this.open(modalId);
         });
       });
-      
+
       // Close modals
       document.querySelectorAll('.modal-close, .modal').forEach(element => {
         element.addEventListener('click', (e) => {
@@ -118,7 +118,7 @@
           }
         });
       });
-      
+
       // Close on Escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -129,29 +129,29 @@
         }
       });
     },
-    
+
     open(modalId) {
       const modal = document.getElementById(modalId);
       if (modal) {
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
-        
+
         // Focus trap
         const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (firstFocusable) {
           firstFocusable.focus();
         }
-        
+
         // Prevent body scroll
         document.body.style.overflow = 'hidden';
       }
     },
-    
+
     close(modal) {
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
-      
+
       // Return focus to trigger
       const trigger = document.querySelector(`[data-modal="${modal.id}"]`);
       if (trigger) {
@@ -167,18 +167,18 @@
       toast.className = `toast toast-${type}`;
       toast.setAttribute('role', 'alert');
       toast.setAttribute('aria-live', 'polite');
-      
+
       const icon = type === 'success' ? '✓' : '✕';
       toast.innerHTML = `
         <span>${icon}</span>
         <span>${message}</span>
       `;
-      
+
       document.body.appendChild(toast);
-      
+
       // Show
       setTimeout(() => toast.classList.add('show'), 10);
-      
+
       // Hide after 3 seconds
       setTimeout(() => {
         toast.classList.remove('show');
@@ -197,23 +197,23 @@
         });
       });
     },
-    
+
     handleSubmit(form) {
       const submitButton = form.querySelector('button[type="submit"]');
       const originalText = submitButton ? submitButton.textContent : '';
-      
+
       // Show loading state
       if (submitButton) {
         submitButton.disabled = true;
         submitButton.textContent = 'Submitting...';
         form.classList.add('loading');
       }
-      
+
       // Simulate API call
       setTimeout(() => {
         // Show success
         Toast.show('Form submitted successfully!', 'success');
-        
+
         // Reset form
         form.reset();
         if (submitButton) {
@@ -230,11 +230,11 @@
     init() {
       const chatContainer = document.getElementById('ai-chat-container');
       if (!chatContainer) return;
-      
+
       const input = chatContainer.querySelector('.chat-input');
       const sendButton = chatContainer.querySelector('.chat-send');
       const messagesContainer = chatContainer.querySelector('.chat-messages');
-      
+
       if (input && sendButton && messagesContainer) {
         sendButton.addEventListener('click', () => this.sendMessage(input, messagesContainer));
         input.addEventListener('keypress', (e) => {
@@ -243,22 +243,22 @@
           }
         });
       }
-      
+
       // Load sample threads
       this.loadSampleThreads();
     },
-    
+
     sendMessage(input, container) {
       const message = input.value.trim();
       if (!message) return;
-      
+
       // Add user message
       this.addMessage(container, message, 'user');
       input.value = '';
-      
+
       // Show typing indicator
       const typing = this.addTypingIndicator(container);
-      
+
       // Simulate AI response
       setTimeout(() => {
         typing.remove();
@@ -272,7 +272,7 @@
         this.addMessage(container, response, 'assistant');
       }, 1500);
     },
-    
+
     addMessage(container, text, role) {
       const messageDiv = document.createElement('div');
       messageDiv.className = `chat-message chat-message-${role}`;
@@ -280,12 +280,12 @@
         <div class="chat-message-content">
           <p>${this.escapeHtml(text)}</p>
         </div>
-        <div class="chat-message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        <div class="chat-message-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
       `;
       container.appendChild(messageDiv);
       container.scrollTop = container.scrollHeight;
     },
-    
+
     addTypingIndicator(container) {
       const typing = document.createElement('div');
       typing.className = 'chat-message chat-message-assistant chat-typing';
@@ -300,26 +300,32 @@
       container.scrollTop = container.scrollHeight;
       return typing;
     },
-    
+
     loadSampleThreads() {
       const threadSelector = document.getElementById('chat-thread-selector');
       if (!threadSelector) return;
-      
+
       const threads = [
-        { id: 'budget', name: 'Budget Analysis', messages: [
-          { role: 'user', text: 'How am I doing with my budget this month?' },
-          { role: 'assistant', text: 'You\'re doing well! You\'ve spent 68% of your monthly budget. Dining is at 85% of your limit, while utilities are only at 45%.' }
-        ]},
-        { id: 'networth', name: 'Net Worth Tracking', messages: [
-          { role: 'user', text: 'Show me my net worth trend' },
-          { role: 'assistant', text: 'Your net worth has grown from $125,430 to $132,890 over the past 3 months, a 5.9% increase. Your investment accounts are the primary driver of this growth.' }
-        ]},
-        { id: 'subscriptions', name: 'Subscription Review', messages: [
-          { role: 'user', text: 'What subscriptions am I paying for?' },
-          { role: 'assistant', text: 'You have 8 active subscriptions totaling $127.50/month: Netflix ($15.99), Spotify ($9.99), Adobe Creative Cloud ($52.99), and 5 others. Would you like to see the full list?' }
-        ]}
+        {
+          id: 'budget', name: 'Budget Analysis', messages: [
+            { role: 'user', text: 'How am I doing with my budget this month?' },
+            { role: 'assistant', text: 'You\'re doing well! You\'ve spent 68% of your monthly budget. Dining is at 85% of your limit, while utilities are only at 45%.' }
+          ]
+        },
+        {
+          id: 'networth', name: 'Net Worth Tracking', messages: [
+            { role: 'user', text: 'Show me my net worth trend' },
+            { role: 'assistant', text: 'Your net worth has grown from $125,430 to $132,890 over the past 3 months, a 5.9% increase. Your investment accounts are the primary driver of this growth.' }
+          ]
+        },
+        {
+          id: 'subscriptions', name: 'Subscription Review', messages: [
+            { role: 'user', text: 'What subscriptions am I paying for?' },
+            { role: 'assistant', text: 'You have 8 active subscriptions totaling $127.50/month: Netflix ($15.99), Spotify ($9.99), Adobe Creative Cloud ($52.99), and 5 others. Would you like to see the full list?' }
+          ]
+        }
       ];
-      
+
       threadSelector.addEventListener('change', (e) => {
         const threadId = e.target.value;
         const thread = threads.find(t => t.id === threadId);
@@ -328,17 +334,17 @@
         }
       });
     },
-    
+
     loadThread(thread) {
       const container = document.getElementById('ai-chat-messages');
       if (!container) return;
-      
+
       container.innerHTML = '';
       thread.messages.forEach(msg => {
         this.addMessage(container, msg.text, msg.role);
       });
     },
-    
+
     escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
@@ -357,13 +363,13 @@
         });
       });
     },
-    
+
     switchAccount(accountId) {
       // Hide all account sections
       document.querySelectorAll('.account-section').forEach(section => {
         section.style.display = 'none';
       });
-      
+
       // Show selected account
       const selected = document.getElementById(`account-${accountId}`);
       if (selected) {
@@ -374,8 +380,8 @@
 
   // Auth simulation for prototype
   const AuthSim = {
-    key: 'finity_session',
-    fakeUser: { email: 'demo@finity.com', password: 'Demo1234!' },
+    key: 'JuaLuma_session',
+    fakeUser: { email: 'demo@JuaLuma.com', password: 'Demo1234!' },
     init() {
       this.enforceAuth();
       this.bindForms();
@@ -427,7 +433,7 @@
             const next = this.sanitizeNext(params.get('next'));
             window.location.href = next || 'dashboard.html';
           } else {
-            Toast.show('Invalid credentials (use demo@finity.com / Demo1234!)', 'error');
+            Toast.show('Invalid credentials (use demo@JuaLuma.com / Demo1234!)', 'error');
           }
         });
       }
@@ -460,7 +466,7 @@
         btn.addEventListener('click', (e) => {
           e.preventDefault();
           this.saveSession(this.fakeUser.email);
-          Toast.show('Logged in as demo@finity.com (prototype)', 'success');
+          Toast.show('Logged in as demo@JuaLuma.com (prototype)', 'success');
           window.location.href = 'dashboard.html';
         });
       });
@@ -492,24 +498,24 @@
       'investment.advanced': 'pro',
       'aggregation.advanced': 'essential'
     },
-    
+
     // Mock current tier (set via data-user-tier on body, defaults to 'free')
     getCurrentTier() {
       const tier = document.body.getAttribute('data-user-tier') || 'free';
       return tier;
     },
-    
+
     isPremiumFeature(featureKey) {
       const requiredTier = this.featureRequirements[featureKey];
       if (!requiredTier) return false;
-      
+
       const tierOrder = { 'free': 0, 'essential': 1, 'pro': 2, 'ultimate': 3 };
       const currentTier = tierOrder[this.getCurrentTier()] || 0;
       const requiredTierLevel = tierOrder[requiredTier] || 0;
-      
+
       return currentTier < requiredTierLevel;
     },
-    
+
     init() {
       const previewElements = document.querySelectorAll('[data-feature-preview]');
       previewElements.forEach(element => {
@@ -519,27 +525,27 @@
         }
       });
     },
-    
+
     wrapPremiumSection(element, featureKey) {
       // Add wrapper class
       element.classList.add('feature-preview-wrapper');
-      
+
       // Create overlay
       const overlay = document.createElement('div');
       overlay.className = 'feature-preview-overlay';
       overlay.setAttribute('aria-hidden', 'true');
-      
+
       // Create badge
       const badge = document.createElement('div');
       badge.className = 'feature-preview-badge';
       badge.textContent = 'Premium';
       badge.setAttribute('aria-label', 'Premium feature');
-      
+
       // Insert overlay and badge
       element.style.position = 'relative';
       element.appendChild(overlay);
       element.appendChild(badge);
-      
+
       // Block interactions on interactive elements
       const interactiveElements = element.querySelectorAll('button, input, select, textarea, a[href], [role="button"], [tabindex]:not([tabindex="-1"])');
       interactiveElements.forEach(el => {
@@ -557,7 +563,7 @@
           }
         });
       });
-      
+
       // Block form submissions
       const forms = element.querySelectorAll('form');
       forms.forEach(form => {
@@ -567,7 +573,7 @@
         });
       });
     },
-    
+
     showPaywallModal(featureKey) {
       // Create or show paywall modal
       let modal = document.getElementById('paywall-modal');
@@ -575,22 +581,22 @@
         modal = this.createPaywallModal();
         document.body.appendChild(modal);
       }
-      
+
       // Update modal content based on feature
       const featureNames = {
         'ai.cloud': 'AI-Powered Financial Analysis',
         'investment.advanced': 'Investment Account Aggregation',
         'aggregation.advanced': 'Advanced Account Aggregation'
       };
-      
+
       const featureName = featureNames[featureKey] || 'Premium Feature';
       const title = modal.querySelector('.paywall-title');
       if (title) title.textContent = `Upgrade to Access ${featureName}`;
-      
+
       // Show modal
       ModalSystem.open('paywall-modal');
     },
-    
+
     createPaywallModal() {
       const modal = document.createElement('div');
       modal.id = 'paywall-modal';
@@ -598,7 +604,7 @@
       modal.setAttribute('aria-hidden', 'true');
       modal.setAttribute('aria-modal', 'true');
       modal.setAttribute('role', 'dialog');
-      
+
       modal.innerHTML = `
         <div class="modal-content">
           <button class="modal-close" aria-label="Close modal">&times;</button>
@@ -640,7 +646,7 @@
           </div>
         </div>
       `;
-      
+
       return modal;
     }
   };
@@ -652,7 +658,7 @@
       document.addEventListener('DOMContentLoaded', init);
       return;
     }
-    
+
     ThemeManager.init();
     MobileNav.init();
     NavHighlight.init();
@@ -746,7 +752,7 @@
       const startInput = document.getElementById('custom-start-date');
       const endInput = document.getElementById('custom-end-date');
       const applyBtn = document.getElementById('apply-custom-period');
-      
+
       if (startInput && endInput && applyBtn) {
         applyBtn.addEventListener('click', () => {
           const start = startInput.value;
@@ -773,28 +779,28 @@
       const data = DATASETS[tf] || DATASETS['1m'];
       const chartData = data.networthChart;
       if (!chartData) return;
-      
+
       const subtitle = document.getElementById('networth-subtitle');
       const startLabel = document.getElementById('networth-start-label');
       const endLabel = document.getElementById('networth-end-label');
       const lineEl = document.querySelector('#networth-line polyline');
       const areaEl = document.querySelector('#networth-area polyline');
       const dotsEl = document.getElementById('networth-dots');
-      
+
       if (subtitle) subtitle.textContent = chartData.subtitle;
       if (startLabel) startLabel.textContent = chartData.startLabel;
       if (endLabel) endLabel.textContent = chartData.endLabel;
-      
+
       if (lineEl && chartData.points) {
         lineEl.setAttribute('points', chartData.points);
       }
-      
+
       if (areaEl && chartData.points) {
         // Create area points (add bottom corners)
         const areaPoints = '0,120 ' + chartData.points + ' 320,120';
         areaEl.setAttribute('points', areaPoints);
       }
-      
+
       // Update dots based on points
       if (dotsEl && chartData.points) {
         const pointPairs = chartData.points.split(' ').map(p => p.split(','));
@@ -846,7 +852,7 @@
   init();
 
   // Export for global access
-  window.Finity = {
+  window.JuaLuma = {
     Toast,
     Modal: ModalSystem,
     Theme: ThemeManager

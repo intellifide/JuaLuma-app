@@ -1,6 +1,6 @@
-# Finity Infrastructure as Code (IaC)
+# JuaLuma Infrastructure as Code (IaC)
 
-This directory contains Terraform configurations for managing all GCP infrastructure for the Finity platform.
+This directory contains Terraform configurations for managing all GCP infrastructure for the JuaLuma platform.
 
 ## Overview
 
@@ -41,7 +41,7 @@ infra/
 ## Prerequisites
 
 1. **GCP Account Setup:**
-   - Create GCP projects: `finity-prod`, `finity-stage`, `finity-dev`
+   - Create GCP projects: `JuaLuma-prod`, `JuaLuma-stage`, `JuaLuma-dev`
    - Enable required APIs (see `getting started gcp.md`)
    - Set up billing accounts and alerts
 
@@ -58,11 +58,11 @@ infra/
    gcloud auth application-default login
    
    # Set project
-   gcloud config set project finity-prod  # or finity-stage, finity-dev
+   gcloud config set project JuaLuma-prod  # or JuaLuma-stage, JuaLuma-dev
    ```
 
 4. **Bootstrap State Backend:**
-   - Create GCS bucket for Terraform state (e.g., `finity-terraform-state`)
+   - Create GCS bucket for Terraform state (e.g., `JuaLuma-terraform-state`)
    - Enable versioning on the bucket
    - Create KMS key for state encryption
    - Copy `backend.tf.example` to `backend.tf` and configure

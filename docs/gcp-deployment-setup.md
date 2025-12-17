@@ -1,4 +1,4 @@
-# Finity App - GCP Deployment Setup Guide
+# JuaLuma App - GCP Deployment Setup Guide
 
 **Status:** Future Phase (Post Local Development)  
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This guide outlines the Google Cloud Platform (GCP) infrastructure setup and deployment process for the Finity application. This phase begins **after** local development is complete and tested.
+This guide outlines the Google Cloud Platform (GCP) infrastructure setup and deployment process for the JuaLuma application. This phase begins **after** local development is complete and tested.
 
 **⚠️ Important:** Do NOT execute these steps until local development is complete and you have approval to proceed with cloud deployment.
 
@@ -34,13 +34,13 @@ You'll need three separate projects for different environments:
 
 ```bash
 # Development environment
-gcloud projects create finity-dev --name="Finity Development"
+gcloud projects create JuaLuma-dev --name="JuaLuma Development"
 
 # Staging environment
-gcloud projects create finity-stage --name="Finity Staging"
+gcloud projects create JuaLuma-stage --name="JuaLuma Staging"
 
 # Production environment
-gcloud projects create finity-prod --name="Finity Production"
+gcloud projects create JuaLuma-prod --name="JuaLuma Production"
 ```
 
 ### Step 2: Link Billing Account
@@ -50,9 +50,9 @@ gcloud projects create finity-prod --name="Finity Production"
 gcloud billing accounts list
 
 # Link billing to projects
-gcloud billing projects link finity-dev --billing-account=<BILLING_ACCOUNT_ID>
-gcloud billing projects link finity-stage --billing-account=<BILLING_ACCOUNT_ID>
-gcloud billing projects link finity-prod --billing-account=<BILLING_ACCOUNT_ID>
+gcloud billing projects link JuaLuma-dev --billing-account=<BILLING_ACCOUNT_ID>
+gcloud billing projects link JuaLuma-stage --billing-account=<BILLING_ACCOUNT_ID>
+gcloud billing projects link JuaLuma-prod --billing-account=<BILLING_ACCOUNT_ID>
 ```
 
 ### Step 3: Enable Required APIs
@@ -97,9 +97,9 @@ Run for each environment:
 
 ```bash
 chmod +x scripts/enable-apis.sh
-./scripts/enable-apis.sh finity-dev
-./scripts/enable-apis.sh finity-stage
-./scripts/enable-apis.sh finity-prod
+./scripts/enable-apis.sh JuaLuma-dev
+./scripts/enable-apis.sh JuaLuma-stage
+./scripts/enable-apis.sh JuaLuma-prod
 ```
 
 ---
@@ -120,21 +120,21 @@ terraform version
 
 ```bash
 # Create GCS bucket for Terraform state
-gsutil mb -p finity-prod -l us-central1 gs://finity-terraform-state
+gsutil mb -p JuaLuma-prod -l us-central1 gs://JuaLuma-terraform-state
 
 # Enable versioning
-gsutil versioning set on gs://finity-terraform-state
+gsutil versioning set on gs://JuaLuma-terraform-state
 
 # Create KMS keyring and key for encryption
 gcloud kms keyrings create terraform-state \
     --location=us-central1 \
-    --project=finity-prod
+    --project=JuaLuma-prod
 
 gcloud kms keys create terraform-state-key \
     --location=us-central1 \
     --keyring=terraform-state \
     --purpose=encryption \
-    --project=finity-prod
+    --project=JuaLuma-prod
 ```
 
 ### Step 3: Configure Backend
@@ -144,9 +144,9 @@ Create `infra/backend.tf`:
 ```hcl
 terraform {
   backend "gcs" {
-    bucket  = "finity-terraform-state"
+    bucket  = "JuaLuma-terraform-state"
     prefix  = "terraform/state"
-    encryption_key = "projects/finity-prod/locations/us-central1/keyRings/terraform-state/cryptoKeys/terraform-state-key"
+    encryption_key = "projects/JuaLuma-prod/locations/us-central1/keyRings/terraform-state/cryptoKeys/terraform-state-key"
   }
 }
 ```
@@ -189,20 +189,20 @@ terraform apply -target=module.network
 
 ```bash
 # Create Cloud DNS zone (if using custom domain)
-gcloud dns managed-zones create finity-zone \
-    --dns-name="finity.app." \
-    --description="Finity production DNS zone" \
-    --project=finity-prod
+gcloud dns managed-zones create JuaLuma-zone \
+    --dns-name="JuaLuma.app." \
+    --description="JuaLuma production DNS zone" \
+    --project=JuaLuma-prod
 ```
 
 ### Step 3: Reserve Static IPs
 
 ```bash
 # Reserve global IP for load balancer
-gcloud compute addresses create finity-lb-ip \
+gcloud compute addresses create JuaLuma-lb-ip \
     --global \
     --ip-version=IPV4 \
-    --project=finity-prod
+    --project=JuaLuma-prod
 ```
 
 ---
@@ -227,15 +227,15 @@ This creates:
 
 ```bash
 # Get Cloud SQL connection name
-gcloud sql instances describe finity-db-dev \
-    --project=finity-dev \
+gcloud sql instances describe JuaLuma-db-dev \
+    --project=JuaLuma-dev \
     --format="value(connectionName)"
 
 # Connect using Cloud SQL Proxy
 cloud_sql_proxy -instances=<CONNECTION_NAME>=tcp:5432
 
 # In another terminal, run migrations
-psql "host=127.0.0.1 port=5432 dbname=finity user=finity_admin" < scripts/init-db.sql
+psql "host=127.0.0.1 port=5432 dbname=JuaLuma user=JuaLuma_admin" < scripts/init-db.sql
 ```
 
 ### Step 3: Setup Firestore
@@ -245,7 +245,7 @@ psql "host=127.0.0.1 port=5432 dbname=finity user=finity_admin" < scripts/init-d
 gcloud firestore databases create \
     --type=datastore-mode \
     --location=us-central1 \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 ---
@@ -259,22 +259,22 @@ gcloud firestore databases create \
 echo -n "your-plaid-client-id" | gcloud secrets create plaid-client-id \
     --data-file=- \
     --replication-policy=automatic \
-    --project=finity-dev
+    --project=JuaLuma-dev
 
 echo -n "your-plaid-secret" | gcloud secrets create plaid-secret \
     --data-file=- \
     --replication-policy=automatic \
-    --project=finity-dev
+    --project=JuaLuma-dev
 
 echo -n "your-stripe-secret-key" | gcloud secrets create stripe-secret-key \
     --data-file=- \
     --replication-policy=automatic \
-    --project=finity-dev
+    --project=JuaLuma-dev
 
 echo -n "your-jwt-secret" | gcloud secrets create jwt-secret \
     --data-file=- \
     --replication-policy=automatic \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 ### Step 2: Grant Access to Service Accounts
@@ -282,9 +282,9 @@ echo -n "your-jwt-secret" | gcloud secrets create jwt-secret \
 ```bash
 # Grant Cloud Run service account access to secrets
 gcloud secrets add-iam-policy-binding plaid-client-id \
-    --member="serviceAccount:finity-backend@finity-dev.iam.gserviceaccount.com" \
+    --member="serviceAccount:JuaLuma-backend@JuaLuma-dev.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor" \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 ---
@@ -294,11 +294,11 @@ gcloud secrets add-iam-policy-binding plaid-client-id \
 ### Step 1: Create Artifact Registry Repository
 
 ```bash
-gcloud artifacts repositories create finity-containers \
+gcloud artifacts repositories create JuaLuma-containers \
     --repository-format=docker \
     --location=us-central1 \
-    --description="Finity application containers" \
-    --project=finity-dev
+    --description="JuaLuma application containers" \
+    --project=JuaLuma-dev
 ```
 
 ### Step 2: Configure Docker Authentication
@@ -342,23 +342,23 @@ Build and push:
 
 ```bash
 cd backend
-docker build -t us-central1-docker.pkg.dev/finity-dev/finity-containers/backend:latest .
-docker push us-central1-docker.pkg.dev/finity-dev/finity-containers/backend:latest
+docker build -t us-central1-docker.pkg.dev/JuaLuma-dev/JuaLuma-containers/backend:latest .
+docker push us-central1-docker.pkg.dev/JuaLuma-dev/JuaLuma-containers/backend:latest
 ```
 
 ### Step 2: Deploy Backend to Cloud Run
 
 ```bash
-gcloud run deploy finity-backend \
-    --image=us-central1-docker.pkg.dev/finity-dev/finity-containers/backend:latest \
+gcloud run deploy JuaLuma-backend \
+    --image=us-central1-docker.pkg.dev/JuaLuma-dev/JuaLuma-containers/backend:latest \
     --platform=managed \
     --region=us-central1 \
     --allow-unauthenticated \
     --set-env-vars="APP_ENV=dev" \
     --set-secrets="PLAID_CLIENT_ID=plaid-client-id:latest,PLAID_SECRET=plaid-secret:latest" \
-    --vpc-connector=finity-connector \
+    --vpc-connector=JuaLuma-connector \
     --vpc-egress=private-ranges-only \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 ### Step 3: Deploy Frontend to Cloud Storage
@@ -369,10 +369,10 @@ cd frontend
 pnpm build
 
 # Upload to Cloud Storage
-gsutil -m rsync -r -d dist/ gs://finity-frontend-dev
+gsutil -m rsync -r -d dist/ gs://JuaLuma-frontend-dev
 
 # Set public access
-gsutil iam ch allUsers:objectViewer gs://finity-frontend-dev
+gsutil iam ch allUsers:objectViewer gs://JuaLuma-frontend-dev
 ```
 
 ---
@@ -397,32 +397,32 @@ This creates:
 
 ```bash
 # Create security policy
-gcloud compute security-policies create finity-armor-policy \
-    --description="Finity Cloud Armor policy" \
-    --project=finity-dev
+gcloud compute security-policies create JuaLuma-armor-policy \
+    --description="JuaLuma Cloud Armor policy" \
+    --project=JuaLuma-dev
 
 # Add OWASP rules
 gcloud compute security-policies rules create 1000 \
-    --security-policy=finity-armor-policy \
+    --security-policy=JuaLuma-armor-policy \
     --expression="evaluatePreconfiguredExpr('xss-stable')" \
     --action=deny-403 \
-    --project=finity-dev
+    --project=JuaLuma-dev
 
 gcloud compute security-policies rules create 1001 \
-    --security-policy=finity-armor-policy \
+    --security-policy=JuaLuma-armor-policy \
     --expression="evaluatePreconfiguredExpr('sqli-stable')" \
     --action=deny-403 \
-    --project=finity-dev
+    --project=JuaLuma-dev
 
 # Add rate limiting
 gcloud compute security-policies rules create 2000 \
-    --security-policy=finity-armor-policy \
+    --security-policy=JuaLuma-armor-policy \
     --expression="true" \
     --action=rate-based-ban \
     --rate-limit-threshold-count=100 \
     --rate-limit-threshold-interval-sec=60 \
     --ban-duration-sec=600 \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 ---
@@ -441,8 +441,8 @@ terraform apply -target=module.log_export
 
 ```bash
 # Create custom dashboard
-gcloud monitoring dashboards create --config-from-file=monitoring/finity-dashboard.json \
-    --project=finity-dev
+gcloud monitoring dashboards create --config-from-file=monitoring/JuaLuma-dashboard.json \
+    --project=JuaLuma-dev
 ```
 
 ### Step 3: Setup Alerting
@@ -450,7 +450,7 @@ gcloud monitoring dashboards create --config-from-file=monitoring/finity-dashboa
 Create `monitoring/alerts.yaml`:
 
 ```yaml
-displayName: "Finity Alerts"
+displayName: "JuaLuma Alerts"
 conditions:
   - displayName: "High Error Rate"
     conditionThreshold:
@@ -470,7 +470,7 @@ Apply alerts:
 
 ```bash
 gcloud alpha monitoring policies create --policy-from-file=monitoring/alerts.yaml \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 ---
@@ -507,16 +507,16 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finity-containers/backend:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/JuaLuma-containers/backend:$COMMIT_SHA'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finity-containers/backend:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/JuaLuma-containers/backend:latest'
       - 'backend/'
 
   # Push container
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finity-containers/backend:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/JuaLuma-containers/backend:$COMMIT_SHA'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -524,9 +524,9 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'finity-backend'
+      - 'JuaLuma-backend'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finity-containers/backend:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/JuaLuma-containers/backend:$COMMIT_SHA'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -549,11 +549,11 @@ steps:
     args:
       - '-c'
       - |
-        gsutil -m rsync -r -d frontend/dist/ gs://finity-frontend-$PROJECT_ID
+        gsutil -m rsync -r -d frontend/dist/ gs://JuaLuma-frontend-$PROJECT_ID
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/finity-containers/backend:$COMMIT_SHA'
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/finity-containers/backend:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/JuaLuma-containers/backend:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/JuaLuma-containers/backend:latest'
 
 options:
   machineType: 'N1_HIGHCPU_8'
@@ -565,11 +565,11 @@ options:
 ```bash
 # Create trigger for main branch
 gcloud builds triggers create github \
-    --repo-name=finity-app \
+    --repo-name=JuaLuma-app \
     --repo-owner=<your-github-org> \
     --branch-pattern="^main$" \
     --build-config=cloudbuild.yaml \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 ---
@@ -581,12 +581,12 @@ gcloud builds triggers create github \
 ```bash
 # Disable external IPs
 gcloud resource-manager org-policies set-policy \
-    --project=finity-prod \
+    --project=JuaLuma-prod \
     policies/disable-external-ips.yaml
 
 # Disable service account key creation
 gcloud resource-manager org-policies set-policy \
-    --project=finity-prod \
+    --project=JuaLuma-prod \
     policies/disable-sa-key-creation.yaml
 ```
 
@@ -594,24 +594,24 @@ gcloud resource-manager org-policies set-policy \
 
 ```bash
 # Create service accounts with least privilege
-gcloud iam service-accounts create finity-backend \
-    --display-name="Finity Backend Service Account" \
-    --project=finity-dev
+gcloud iam service-accounts create JuaLuma-backend \
+    --display-name="JuaLuma Backend Service Account" \
+    --project=JuaLuma-dev
 
 # Grant minimal permissions
-gcloud projects add-iam-policy-binding finity-dev \
-    --member="serviceAccount:finity-backend@finity-dev.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding JuaLuma-dev \
+    --member="serviceAccount:JuaLuma-backend@JuaLuma-dev.iam.gserviceaccount.com" \
     --role="roles/cloudsql.client"
 
-gcloud projects add-iam-policy-binding finity-dev \
-    --member="serviceAccount:finity-backend@finity-dev.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding JuaLuma-dev \
+    --member="serviceAccount:JuaLuma-backend@JuaLuma-dev.iam.gserviceaccount.com" \
     --role="roles/datastore.user"
 ```
 
 ### Step 3: Enable Security Command Center
 
 ```bash
-gcloud services enable securitycenter.googleapis.com --project=finity-prod
+gcloud services enable securitycenter.googleapis.com --project=JuaLuma-prod
 ```
 
 ---
@@ -624,7 +624,7 @@ gcloud services enable securitycenter.googleapis.com --project=finity-prod
 # Create budget
 gcloud billing budgets create \
     --billing-account=<BILLING_ACCOUNT_ID> \
-    --display-name="Finity Dev Budget" \
+    --display-name="JuaLuma Dev Budget" \
     --budget-amount=500USD \
     --threshold-rule=percent=50 \
     --threshold-rule=percent=90 \
@@ -637,7 +637,7 @@ Create budget automation:
 
 ```bash
 # Create Pub/Sub topic for budget alerts
-gcloud pubsub topics create budget-alerts --project=finity-dev
+gcloud pubsub topics create budget-alerts --project=JuaLuma-dev
 
 # Create Cloud Function to disable services on budget breach
 # (Implementation in separate function deployment)
@@ -651,24 +651,24 @@ gcloud pubsub topics create budget-alerts --project=finity-dev
 
 ```bash
 # Cloud SQL automated backups (already enabled by Terraform)
-gcloud sql instances patch finity-db-prod \
+gcloud sql instances patch JuaLuma-db-prod \
     --backup-start-time=02:00 \
     --retained-backups-count=30 \
-    --project=finity-prod
+    --project=JuaLuma-prod
 
 # Firestore export schedule
-gcloud firestore export gs://finity-firestore-backups-prod \
-    --project=finity-prod
+gcloud firestore export gs://JuaLuma-firestore-backups-prod \
+    --project=JuaLuma-prod
 ```
 
 ### Step 2: Setup Cross-Region Replication
 
 ```bash
 # Create Cloud Storage bucket for disaster recovery
-gsutil mb -p finity-prod -l us-east1 gs://finity-dr-backup
+gsutil mb -p JuaLuma-prod -l us-east1 gs://JuaLuma-dr-backup
 
 # Enable replication
-gsutil rewrite -r gs://finity-frontend-prod/* gs://finity-dr-backup/
+gsutil rewrite -r gs://JuaLuma-frontend-prod/* gs://JuaLuma-dr-backup/
 ```
 
 ### Step 3: Document Recovery Procedures
@@ -744,19 +744,19 @@ Before deploying to production:
 
 ```bash
 # Check service health
-gcloud run services describe finity-backend \
+gcloud run services describe JuaLuma-backend \
     --region=us-central1 \
-    --project=finity-prod
+    --project=JuaLuma-prod
 
 # View logs
 gcloud logging read "resource.type=cloud_run_revision" \
     --limit=50 \
-    --project=finity-prod
+    --project=JuaLuma-prod
 
 # Check metrics
 gcloud monitoring time-series list \
     --filter='metric.type="run.googleapis.com/request_count"' \
-    --project=finity-prod
+    --project=JuaLuma-prod
 ```
 
 ### Weekly Maintenance
@@ -784,25 +784,25 @@ gcloud monitoring time-series list \
 **Cloud Run Service Not Starting:**
 ```bash
 # Check logs
-gcloud run services logs read finity-backend \
+gcloud run services logs read JuaLuma-backend \
     --region=us-central1 \
-    --project=finity-dev
+    --project=JuaLuma-dev
 
 # Check service configuration
-gcloud run services describe finity-backend \
+gcloud run services describe JuaLuma-backend \
     --region=us-central1 \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 **Database Connection Issues:**
 ```bash
 # Test Cloud SQL connectivity
-gcloud sql connect finity-db-dev --user=finity_admin --project=finity-dev
+gcloud sql connect JuaLuma-db-dev --user=JuaLuma_admin --project=JuaLuma-dev
 
 # Check VPC connector
-gcloud compute networks vpc-access connectors describe finity-connector \
+gcloud compute networks vpc-access connectors describe JuaLuma-connector \
     --region=us-central1 \
-    --project=finity-dev
+    --project=JuaLuma-dev
 ```
 
 **High Costs:**
@@ -811,8 +811,8 @@ gcloud compute networks vpc-access connectors describe finity-connector \
 gcloud billing accounts describe <BILLING_ACCOUNT_ID>
 
 # Check resource usage
-gcloud compute instances list --project=finity-dev
-gcloud run services list --project=finity-dev
+gcloud compute instances list --project=JuaLuma-dev
+gcloud run services list --project=JuaLuma-dev
 ```
 
 ---

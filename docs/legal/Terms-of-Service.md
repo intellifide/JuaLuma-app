@@ -1,9 +1,9 @@
 # Terms of Service Draft
-## Finity Platform - Intellifide, LLC
+## JuaLuma Platform - Intellifide, LLC
 
 ## Overview
 
-This document is a draft Terms of Service agreement for the Finity platform. **This draft must be reviewed and approved by qualified legal counsel before publication.** This is a non-negotiable "click-wrap" agreement that all users must accept before gaining access to the platform.
+This document is a draft Terms of Service agreement for the JuaLuma platform. **This draft must be reviewed and approved by qualified legal counsel before publication.** This is a non-negotiable "click-wrap" agreement that all users must accept before gaining access to the platform.
 
 
 **Legal Review Required:** Yes - Mandatory before publication
@@ -16,7 +16,7 @@ This document is a draft Terms of Service agreement for the Finity platform. **T
 
 **1.1 Agreement to Terms**
 
-By accessing or using the Finity platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service.
+By accessing or using the JuaLuma platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service.
 
 **1.2 Click-Wrap Agreement**
 
@@ -36,7 +36,7 @@ You must be at least 18 years old and have the legal capacity to enter into cont
 
 **2.1 Service Description**
 
-Finity is a financial aggregation and analysis platform that allows you to:
+JuaLuma is a financial aggregation and analysis platform that allows you to:
 - Securely connect and aggregate financial accounts (banks, credit cards, cryptocurrency exchanges, Web3 wallets)
 - Automatically categorize and analyze financial transactions
 - View financial health metrics and reports
@@ -199,7 +199,7 @@ You retain ownership of any content you provide to the Service. By providing con
 
 **7.3 Trademarks**
 
-"Finity" and related logos and marks are trademarks of Intellifide, LLC. You may not use our trademarks without our prior written permission.
+"JuaLuma" and related logos and marks are trademarks of Intellifide, LLC. You may not use our trademarks without our prior written permission.
 
 ---
 

@@ -25,14 +25,14 @@ const AIDisclaimer = () => {
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">1. Nature of AI Services</h2>
                             <p>
-                                Finity&apos;s AI Assistant (&quot;The Assistant&quot;) utilizes advanced large language models to provide financial insights, categorization, and analysis. While we strive for accuracy, AI models can occasionally produce incorrect, misleading, or hallucinations (false information). The Assistant&apos;s outputs should be used as a reference only and not as the sole basis for financial decisions.
+                                JuaLuma&apos;s AI Assistant (&quot;The Assistant&quot;) utilizes advanced large language models to provide financial insights, categorization, and analysis. While we strive for accuracy, AI models can occasionally produce incorrect, misleading, or hallucinations (false information). The Assistant&apos;s outputs should be used as a reference only and not as the sole basis for financial decisions.
                             </p>
                         </section>
 
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">2. Not Financial Advice</h2>
                             <p>
-                                The information provided by the Assistant does NOT constitute professional financial, investment, tax, or legal advice. Finity is a technology platform, not a registered investment advisor or broker-dealer. You should consult with a qualified professional before making any financial decisions.
+                                The information provided by the Assistant does NOT constitute professional financial, investment, tax, or legal advice. JuaLuma is a technology platform, not a registered investment advisor or broker-dealer. You should consult with a qualified professional before making any financial decisions.
                             </p>
                         </section>
 
@@ -46,7 +46,7 @@ const AIDisclaimer = () => {
                         <section>
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">4. Limitations of Liability</h2>
                             <p>
-                                Finity is not liable for any losses or damages resulting from actions taken based on the Assistant&apos;s recommendations or analysis. You agree to independently verify all information provided by the AI.
+                                JuaLuma is not liable for any losses or damages resulting from actions taken based on the Assistant&apos;s recommendations or analysis. You agree to independently verify all information provided by the AI.
                             </p>
                         </section>
 

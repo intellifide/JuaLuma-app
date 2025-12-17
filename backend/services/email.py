@@ -22,7 +22,7 @@ class SmtpEmailClient:
         self.port = settings.smtp_port or 1025
         self.username = settings.smtp_username
         self.password = settings.smtp_password
-        self.from_email = settings.smtp_from_email or "no-reply@finity.finance"
+        self.from_email = settings.smtp_from_email or "no-reply@jualuma.com"
 
     def send_generic_alert(self, to_email: str, title: str) -> None:
         """
@@ -36,8 +36,8 @@ class SmtpEmailClient:
 
         # ID Check: Ensure no PII in the body
         body = (
-            "You have a new notification in your secure Finity Portal.\n\n"
-            "Please log in to view the details: https://app.finity.finance/notifications\n\n"
+            "You have a new notification in your secure JuaLuma Portal.\n\n"
+            "Please log in to view the details: https://app.jualuma.com/notifications\n\n"
             "Running a financial platform means we prioritize your privacy. "
             "We do not include sensitive details in emails."
         )

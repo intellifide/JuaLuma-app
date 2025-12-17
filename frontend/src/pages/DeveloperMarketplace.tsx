@@ -113,7 +113,7 @@ export const DeveloperMarketplace = () => {
                 <div className="max-w-3xl mx-auto glass-panel">
                     <h1 className="text-3xl font-bold mb-6 text-center">Join the Developer Program</h1>
                     <p className="text-lg text-text-secondary mb-8 text-center">
-                        Publish widgets to the Finity Marketplace and earn revenue from user engagement.
+                        Publish widgets to the JuaLuma Marketplace and earn revenue from user engagement.
                     </p>
 
                     {!hasPro ? (

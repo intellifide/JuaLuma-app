@@ -5,7 +5,7 @@ export const Features = () => {
         <div>
             <section className="container py-12">
                 <h1 className="text-center mb-4">
-                    Finity Features
+                    JuaLuma Features
                 </h1>
                 <p
                     className="text-center text-lg text-text-secondary mb-12 max-w-[700px] mx-auto"

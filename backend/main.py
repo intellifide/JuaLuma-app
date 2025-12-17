@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(
-    title="Finity API",
+    title="JuaLuma API",
     description="Financial aggregation and AI-powered planning platform",
     version="0.1.0",
     lifespan=lifespan,
@@ -199,7 +199,7 @@ async def unhandled_exception_handler(
 async def root():
     """Lightweight service descriptor for uptime checks and metadata."""
     return {
-        "message": "Finity API",
+        "message": "JuaLuma API",
         "environment": settings.app_env,
         "version": "0.1.0",
     }

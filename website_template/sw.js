@@ -1,11 +1,11 @@
-const CACHE_NAME = 'finity-cache-v6';
+const CACHE_NAME = 'JuaLuma-cache-v6';
 
 // Only cache static assets that don't redirect
 const STATIC_ASSETS = [
   '/manifest.json',
   '/css/styles.css',
   '/js/main.js',
-  '/assets/finity-logo.png'
+  '/assets/JuaLuma-logo.png'
 ];
 
 self.addEventListener('install', (event) => {

@@ -1,9 +1,9 @@
 # Privacy Policy Draft
-## Finity Platform - Intellifide, LLC
+## JuaLuma Platform - Intellifide, LLC
 
 ## Overview
 
-This document is a draft Privacy Policy for the Finity platform. **This draft must be reviewed and approved by qualified legal counsel before publication.** This policy complies with GLBA Privacy Rule (Reg P) requirements and CCPA baseline standards.
+This document is a draft Privacy Policy for the JuaLuma platform. **This draft must be reviewed and approved by qualified legal counsel before publication.** This policy complies with GLBA Privacy Rule (Reg P) requirements and CCPA baseline standards.
 
 
 **Legal Review Required:** Yes - Mandatory before publication
@@ -16,7 +16,7 @@ This document is a draft Privacy Policy for the Finity platform. **This draft mu
 
 ### Introduction
 
-Intellifide, LLC ("Company," "we," "us," or "our") operates the Finity financial aggregation and analysis platform ("Service"). We are committed to protecting your privacy and handling your personal information responsibly.
+Intellifide, LLC ("Company," "we," "us," or "our") operates the JuaLuma financial aggregation and analysis platform ("Service"). We are committed to protecting your privacy and handling your personal information responsibly.
 
 **Important:** As a financial data aggregator, we are classified as a "financial institution" under the Gramm-Leach-Bliley Act (GLBA). This Privacy Policy describes how we collect, use, share, and protect your information in compliance with GLBA and other applicable privacy laws.
 
@@ -293,7 +293,7 @@ The Service is not intended for children under 18 years of age. We do not knowin
 ### 8. International Data Transfers
 
 **International User Access:**
-The Finity platform is accessible to users worldwide and includes currency conversion features to support international users. However, the Service is primarily optimized for the United States market, and full international compliance frameworks (including GDPR, country-specific privacy regulations, and data transfer agreements) are currently in development for a future release.
+The JuaLuma platform is accessible to users worldwide and includes currency conversion features to support international users. However, the Service is primarily optimized for the United States market, and full international compliance frameworks (including GDPR, country-specific privacy regulations, and data transfer agreements) are currently in development for a future release.
 
 **Data Processing Location:**
 Your information may be processed and stored in the United States. By using the Service, you consent to the transfer of your information to the United States, which may have different data protection laws than your country of residence.

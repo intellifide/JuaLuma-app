@@ -35,7 +35,7 @@ export const DataFetcherWidget: React.FC<WidgetProps> = ({ client, context }) =>
     return (
         <div style={styles}>
             <h3 style={{ margin: '0 0 10px 0' }}>Data Fetcher Widget</h3>
-            <p>Demonstrates using FinityClient to fetch data.</p>
+            <p>Demonstrates using JuaLumaClient to fetch data.</p>
 
             <button
                 onClick={fetchData}

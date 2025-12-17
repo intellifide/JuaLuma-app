@@ -64,7 +64,7 @@ JSON
       "args": \["gcp\-mcp\-server"\],  
       "env": \{  
         "GOOGLE\_APPLICATION\_CREDENTIALS": "/Users/yourname/keys/dev\-support\.json",  
-        "GCP\_PROJECT\_ID": "finity\-app\-dev"  
+        "GCP\_PROJECT\_ID": "JuaLuma\-app\-dev"  
       \}  
     \},  
     "sentry": \{  

@@ -1,12 +1,12 @@
 # Application Security Implementation Guide
-## Intellifide, LLC - Finity Platform
+## Intellifide, LLC - JuaLuma Platform
 
 
 ---
 
 ## Overview
 
-This document outlines the application security implementation strategy for the Finity platform, including authentication architecture, security hardening procedures, automated security testing, vulnerability management, and security incident automation.
+This document outlines the application security implementation strategy for the JuaLuma platform, including authentication architecture, security hardening procedures, automated security testing, vulnerability management, and security incident automation.
 
 ---
 

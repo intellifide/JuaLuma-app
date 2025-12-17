@@ -5,15 +5,15 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: finity-backend
+    container_name: jualuma-backend
     env_file: .env
     environment:
       APP_ENV: local
       API_PORT: 8001
-      DATABASE_URL: postgresql://finity_user:finity_password@postgres:5432/finity_db
-      FIRESTORE_EMULATOR_HOST: finity-firebase-emulator:8080
-      FIREBASE_AUTH_EMULATOR_HOST: finity-firebase-emulator:9099
-      FIREBASE_PROJECT_ID: finity-local
+      DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
+      FIRESTORE_EMULATOR_HOST: jualuma-firebase-emulator:8080
+      FIREBASE_AUTH_EMULATOR_HOST: jualuma-firebase-emulator:9099
+      FIREBASE_PROJECT_ID: jualuma-local
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       ENABLE_AI_GATEWAY: "false"
       BACKEND_CORS_ORIGINS: "http://localhost:5175,http://localhost:5176"
@@ -26,13 +26,13 @@ services:
     volumes:
       - ./backend:/app/backend
     networks:
-      - finity-network
+      - jualuma-network
 
   user-frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    container_name: finity-user-frontend
+    container_name: jualuma-user-frontend
     env_file: .env
     environment:
       VITE_API_BASE_URL: http://backend:8001
@@ -44,13 +44,13 @@ services:
       - ./frontend:/app
       - /app/node_modules
     networks:
-      - finity-network
+      - jualuma-network
 
   support-frontend:
     build:
       context: .
       dockerfile: support-portal/Dockerfile
-    container_name: finity-support-frontend
+    container_name: jualuma-support-frontend
     env_file: .env
     environment:
       VITE_API_BASE_URL: /api
@@ -62,12 +62,12 @@ services:
       - ./support-portal:/app
       - /app/node_modules
     networks:
-      - finity-network
+      - jualuma-network
 
   # PostgreSQL (Cloud SQL Mirror)
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: finity-postgres
+    container_name: jualuma-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -78,7 +78,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
-      - finity-network
+      - jualuma-network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 10s
@@ -88,13 +88,13 @@ services:
   # Firebase Emulator Suite
   firebase-emulator:
     image: node:20-bullseye
-    container_name: finity-firebase-emulator
+    container_name: jualuma-firebase-emulator
     working_dir: /workspace
     command: >
       bash -c "
         apt-get update && apt-get install -y openjdk-17-jre-headless &&
         npm install -g firebase-tools@13 &&
-        firebase emulators:start --only firestore,auth --project finity-local --import=/workspace/.firebase --export-on-exit --config=/workspace/firebase.json
+        firebase emulators:start --only firestore,auth --project jualuma-local --import=/workspace/.firebase --export-on-exit --config=/workspace/firebase.json
       "
     ports:
       - "8080:8080" # Firestore
@@ -104,7 +104,7 @@ services:
       - ./firebase.json:/workspace/firebase.json
       - firebase_data:/workspace/.firebase
     networks:
-      - finity-network
+      - jualuma-network
     environment:
       - FIRESTORE_EMULATOR_HOST=0.0.0.0:8080
       - FIREBASE_AUTH_EMULATOR_HOST=0.0.0.0:9099
@@ -112,13 +112,13 @@ services:
   # Pub/Sub Emulator
   pubsub-emulator:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
-    container_name: finity-pubsub-emulator
+    container_name: jualuma-pubsub-emulator
     command: >
       gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
     ports:
       - "8085:8085"
     networks:
-      - finity-network
+      - jualuma-network
     environment:
       - PUBSUB_EMULATOR_HOST=0.0.0.0:8085
 
@@ -128,5 +128,5 @@ volumes:
 
 
 networks:
-  finity-network:
+  jualuma-network:
     driver: bridge

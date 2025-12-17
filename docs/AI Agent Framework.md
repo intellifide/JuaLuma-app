@@ -26,7 +26,7 @@
 
 - __Production Path Details (Vertex AI Gemini & Vector Search):__
 	- For Essential/Pro/Ultimate tiers, the ChatService MUST:
-		- Validate or create a per\-user Vertex AI Vector Search index \(e\.g\., `finity-vector-index-{uid}`\) or a documented per\-user namespace.
+		- Validate or create a per\-user Vertex AI Vector Search index \(e\.g\., `JuaLuma-vector-index-{uid}`\) or a documented per\-user namespace.
 		- Use that index/namespace to fetch only the authenticated user's financial context (Budget Status, Net Worth, etc\.) for RAG.
 		- Tag each Vertex AI Gemini request with the authenticated `uid` and a unique `session_id` (e\.g\., `{uid}-{timestamp}-{rand}`\) via labels/metadata to enforce isolation.
 		- Ensure that data logging is disabled on all Gemini endpoints so prompts/responses are not stored or used for training.

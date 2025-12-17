@@ -33,7 +33,7 @@ describe('AI Assistant Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         localStorage.clear()
-        localStorage.setItem('finity_privacy_accepted', 'true') // Bypass privacy modal for main tests
+        localStorage.setItem('JuaLuma_privacy_accepted', 'true') // Bypass privacy modal for main tests
             ; vi.mocked(useAuth).mockReturnValue({
                 user: mockUser,
                 logout: vi.fn(),
@@ -107,7 +107,7 @@ describe('AI Assistant Integration', () => {
     })
 
     it('shows privacy modal if not accepted', async () => {
-        localStorage.removeItem('finity_privacy_accepted')
+        localStorage.removeItem('JuaLuma_privacy_accepted')
 
         render(
             <BrowserRouter>
@@ -137,7 +137,7 @@ describe('AI Assistant Integration', () => {
         expect(acceptButton).not.toBeDisabled()
         fireEvent.click(acceptButton)
 
-        expect(localStorage.getItem('finity_privacy_accepted')).toBe('true')
+        expect(localStorage.getItem('JuaLuma_privacy_accepted')).toBe('true')
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 })

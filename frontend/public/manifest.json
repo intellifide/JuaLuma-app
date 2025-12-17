@@ -1,6 +1,6 @@
 {
-    "name": "Finity",
-    "short_name": "Finity",
+    "name": "JuaLuma",
+    "short_name": "JuaLuma",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
@@ -18,7 +18,7 @@
             "type": "image/png"
         },
         {
-            "src": "/assets/finity-logo.png",
+            "src": "/assets/jualuma-logo.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"

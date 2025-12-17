@@ -14,7 +14,7 @@ export const Privacy = () => {
 
                     <div className="max-w-[800px] mx-auto space-y-6">
                         <h2>Introduction</h2>
-                        <p>Intellifide, LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you access or use the Finity platform (the &quot;Service&quot;). We are committed to protecting your privacy and handling your personal information responsibly.</p>
+                        <p>Intellifide, LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you access or use the JuaLuma platform (the &quot;Service&quot;). We are committed to protecting your privacy and handling your personal information responsibly.</p>
                         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 my-4">
                             <strong>Important:</strong> As a financial data aggregator, we are classified as a &quot;financial institution&quot; under the Gramm-Leach-Bliley Act (GLBA). This Privacy Policy describes how we collect, use, share, and protect your information in compliance with GLBA and other applicable privacy laws.
                         </div>
@@ -252,7 +252,7 @@ export const Privacy = () => {
                         <p><strong>How to Exercise CCPA Rights:</strong></p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Submit requests through your account settings</li>
-                            <li>Email us at <a href="mailto:privacy@finity.com" className="text-primary hover:underline">privacy@finity.com</a></li>
+                            <li>Email us at <a href="mailto:privacy@jualuma.com" className="text-primary hover:underline">privacy@jualuma.com</a></li>
                             <li>We will respond within 45 days (may extend to 90 days with notice)</li>
                         </ul>
 
@@ -315,7 +315,7 @@ export const Privacy = () => {
                         <p>The Service is not intended for children under 18 years of age. We do not knowingly collect personal information from children under 18. If we become aware that we have collected information from a child under 18, we will delete that information immediately.</p>
 
                         <h2>8. International Data Transfers</h2>
-                        <p><strong>International User Access:</strong> The Finity platform is accessible to users worldwide and includes currency conversion features to support international users. However, the Service is primarily optimized for the United States market, and full international compliance frameworks (including GDPR, country-specific privacy regulations, and data transfer agreements) are currently in development for a future release.</p>
+                        <p><strong>International User Access:</strong> The JuaLuma platform is accessible to users worldwide and includes currency conversion features to support international users. However, the Service is primarily optimized for the United States market, and full international compliance frameworks (including GDPR, country-specific privacy regulations, and data transfer agreements) are currently in development for a future release.</p>
                         <p><strong>Data Processing Location:</strong> Your information may be processed and stored in the United States. By using the Service, you consent to the transfer of your information to the United States, which may have different data protection laws than your country of residence.</p>
                         <p><strong>International User Disclaimer:</strong> If you are located outside the United States, please be aware that:</p>
                         <ul className="list-disc pl-6 space-y-1">
@@ -435,14 +435,14 @@ export const Privacy = () => {
                             Austin, TX 78701<br />
                             United States<br />
                             Phone: +1 (555) 123-4567<br />
-                            Email: <a href="mailto:privacy@finity.com" className="text-primary hover:underline">privacy@finity.com</a>
+                            Email: <a href="mailto:privacy@jualuma.com" className="text-primary hover:underline">privacy@jualuma.com</a>
                         </p>
 
                         <h3>13.2 Privacy Requests</h3>
                         <p>To exercise your privacy rights (access, deletion, opt-out), please:</p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Submit requests through your account settings</li>
-                            <li>Email us at <a href="mailto:privacy@finity.com" className="text-primary hover:underline">privacy@finity.com</a></li>
+                            <li>Email us at <a href="mailto:privacy@jualuma.com" className="text-primary hover:underline">privacy@jualuma.com</a></li>
                             <li>Include sufficient information to verify your identity</li>
                         </ul>
 

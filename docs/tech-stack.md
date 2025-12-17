@@ -1,11 +1,11 @@
-# Finity App - Technology Stack
+# JuaLuma App - Technology Stack
 
 
 ---
 
 ## Overview
 
-This document outlines the complete technology stack for the Finity financial aggregation and AI-powered planning platform, from local development through production deployment.
+This document outlines the complete technology stack for the JuaLuma financial aggregation and AI-powered planning platform, from local development through production deployment.
 
 ---
 
@@ -30,7 +30,7 @@ This document outlines the complete technology stack for the Finity financial ag
 
 ### Source Control
 - **GitHub Pro** (Student Pack): Private repository hosting
-  - Repository: `github.com/TCoder920x/finity-app`
+  - Repository: `github.com/TCoder920x/JuaLuma-app`
   - Branches: `main` (production), `Dev` (development)
   - Access: Private repository with GitHub Pro benefits
 
@@ -281,7 +281,7 @@ This document outlines the complete technology stack for the Finity financial ag
 
 ---
 
-**Repository**: `github.com/TCoder920x/finity-app`  
+**Repository**: `github.com/TCoder920x/JuaLuma-app`  
 **Primary IDE**: Cursor  
 **CI/CD**: GitHub Actions  
 **Cloud Provider**: GCP only

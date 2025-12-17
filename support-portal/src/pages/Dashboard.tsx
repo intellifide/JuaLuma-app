@@ -35,7 +35,7 @@ export default function Dashboard() {
             {/* Sidebar */}
             <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col">
                 <div className="p-6">
-                    <h1 className="text-xl font-bold tracking-tight">Finity Support</h1>
+                    <h1 className="text-xl font-bold tracking-tight">JuaLuma Support</h1>
                     <div className="mt-2 text-xs text-slate-400 uppercase font-semibold tracking-wider">Agent Portal</div>
                 </div>
                 <nav className="px-4 space-y-2 flex-1">

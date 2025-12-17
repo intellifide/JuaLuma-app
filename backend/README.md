@@ -1,4 +1,4 @@
-# Finity Backend (FastAPI)
+# JuaLuma Backend (FastAPI)
 
 ## Key Endpoints
 - **API:** `http://localhost:8001`

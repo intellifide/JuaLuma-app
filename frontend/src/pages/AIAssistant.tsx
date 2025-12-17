@@ -50,10 +50,10 @@ export default function AIAssistant() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
-  const storageKey = user?.uid ? `finity_ai_thread_${user.uid}` : 'finity_ai_thread_anon';
+  const storageKey = user?.uid ? `JuaLuma_ai_thread_${user.uid}` : 'JuaLuma_ai_thread_anon';
 
   useEffect(() => {
-    const accepted = localStorage.getItem('finity_privacy_accepted');
+    const accepted = localStorage.getItem('JuaLuma_privacy_accepted');
     if (accepted === 'true') {
       setPrivacyAccepted(true);
     } else {
@@ -137,7 +137,7 @@ export default function AIAssistant() {
   }, [user, privacyAccepted, hasFetchedHistory, storageKey]);
 
   const handleAcceptPrivacy = () => {
-    localStorage.setItem('finity_privacy_accepted', 'true');
+    localStorage.setItem('JuaLuma_privacy_accepted', 'true');
     setPrivacyAccepted(true);
     setShowPrivacyModal(false);
   };

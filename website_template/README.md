@@ -1,6 +1,6 @@
-# Finity Website Template
+# JuaLuma Website Template
 
-This directory contains a complete multi-page HTML prototype of the Finity platform. This is a static website template that demonstrates the full application interface with realistic fake data.
+This directory contains a complete multi-page HTML prototype of the JuaLuma platform. This is a static website template that demonstrates the full application interface with realistic fake data.
 
 ## Structure
 

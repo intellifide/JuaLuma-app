@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppSettings(BaseSettings):
-    """Validated configuration for the Finity backend."""
+    """Validated configuration for the JuaLuma backend."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -34,7 +34,7 @@ class AppSettings(BaseSettings):
     plaid_secret: str = Field(..., alias="PLAID_SECRET")
     plaid_env: str = Field(default="sandbox", alias="PLAID_ENV")
 
-    firebase_project_id: str = Field(default="finity-local", alias="FIREBASE_PROJECT_ID")
+    firebase_project_id: str = Field(default="jualuma-local", alias="FIREBASE_PROJECT_ID")
     firebase_auth_emulator_host: str | None = Field(
         default=None, alias="FIREBASE_AUTH_EMULATOR_HOST"
     )
@@ -56,7 +56,7 @@ class AppSettings(BaseSettings):
 
     gcp_project_id: str | None = Field(default=None, alias="GCP_PROJECT_ID")
     gcp_location: str = Field(default="us-central1", alias="GCP_LOCATION")
-    service_name: str = Field(default="finity-backend", alias="SERVICE_NAME")
+    service_name: str = Field(default="jualuma-backend", alias="SERVICE_NAME")
 
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod

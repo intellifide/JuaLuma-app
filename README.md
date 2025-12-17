@@ -1,11 +1,11 @@
 <!-- Updated 2025-12-10 14:58 CST by ChatGPT -->
-# Finity App
+# JuaLuma App
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-85%25-green)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-Finity is a modern financial management app that syncs bank data, tracks manual assets, surfaces AI-powered insights, and offers a marketplace for extensible widgets.
+JuaLuma is a modern financial management app that syncs bank data, tracks manual assets, surfaces AI-powered insights, and offers a marketplace for extensible widgets.
 
 ## Overview
 - **Bank integration**: Plaid-powered sync for accounts and transactions.
@@ -27,8 +27,8 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
 ### Quick Start
 1. **Clone**
    ```bash
-   git clone https://github.com/TCoder920x/finity-app.git
-   cd finity-app
+   git clone https://github.com/TCoder920x/JuaLuma-app.git
+   cd JuaLuma-app
    ```
 2. **Environment**
    - Create `.env` at the repo root with values for `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, and any API keys (see `docker-compose.yml` for expected variables).
@@ -46,7 +46,7 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
    - Configure Cursor to connect to the **Postgres MCP** (`localhost:5433`) and **Postman MCP** (see details in `docs/Master App Dev Guide.md`).
 
 ## Developer Tools
-- **Agent Skills:** Use the AI Agent to perform database seeding, integration verification, and state resets via the `Finity Dev Tools` MCP (exposed at `/mcp-dev`).
+- **Agent Skills:** Use the AI Agent to perform database seeding, integration verification, and state resets via the `JuaLuma Dev Tools` MCP (exposed at `/mcp-dev`).
 - **Tests (Host):**
    ```bash
    # Backend

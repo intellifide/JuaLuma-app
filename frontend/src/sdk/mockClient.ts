@@ -1,7 +1,7 @@
 // Created 2025-12-11 13:00 CST
-import { FinityClient } from './types';
+import { JuaLumaClient } from './types';
 
-export const mockClient: FinityClient = {
+export const mockClient: JuaLumaClient = {
     request: async <T = unknown>(path: string, options?: RequestInit): Promise<T> => {
         console.log(`[MockClient] Request to ${path}`, options);
         // Simulate network delay

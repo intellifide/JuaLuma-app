@@ -1,4 +1,4 @@
-"""Utility helpers for Finity backend."""
+"""Utility helpers for JuaLuma backend."""
 
 # Updated 2025-12-08 17:53 CST by ChatGPT
 

@@ -1,5 +1,5 @@
 """
-Centralized constants for the Finity application.
+Centralized constants for the JuaLuma application.
 """
 
 class TierLimits:

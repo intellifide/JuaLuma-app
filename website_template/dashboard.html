@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <!-- Last Updated: December 05, 2025 at 09:33 PM -->
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Finity Dashboard - Your complete financial overview in one place.">
-  <title>Dashboard - Finity</title>
-  
+  <meta name="description" content="JuaLuma Dashboard - Your complete financial overview in one place.">
+  <title>Dashboard - JuaLuma</title>
+
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#6B46C1">
-  <link rel="icon" href="assets/finity-logo.png">
-  <link rel="apple-touch-icon" href="assets/finity-logo.png">
+  <link rel="icon" href="assets/JuaLuma-logo.png">
+  <link rel="apple-touch-icon" href="assets/JuaLuma-logo.png">
   <link rel="stylesheet" href="css/styles.css">
   <style>
     .chat-message {
@@ -18,26 +19,31 @@
       padding: var(--spacing-md);
       border-radius: var(--border-radius);
     }
+
     .chat-message-user {
       background: var(--color-primary);
       color: var(--text-inverse);
       margin-left: auto;
       max-width: 70%;
     }
+
     .chat-message-assistant {
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
       max-width: 70%;
     }
+
     .chat-message-time {
       font-size: var(--font-size-xs);
       color: var(--text-muted);
       margin-top: var(--spacing-xs);
     }
+
     .typing-indicator {
       display: flex;
       gap: 4px;
     }
+
     .typing-indicator span {
       width: 8px;
       height: 8px;
@@ -45,24 +51,37 @@
       border-radius: 50%;
       animation: typing 1.4s infinite;
     }
+
     .typing-indicator span:nth-child(2) {
       animation-delay: 0.2s;
     }
+
     .typing-indicator span:nth-child(3) {
       animation-delay: 0.4s;
     }
+
     @keyframes typing {
-      0%, 60%, 100% { opacity: 0.3; }
-      30% { opacity: 1; }
+
+      0%,
+      60%,
+      100% {
+        opacity: 0.3;
+      }
+
+      30% {
+        opacity: 1;
+      }
     }
   </style>
 </head>
+
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
-  
+
   <header class="header">
     <div class="header-container">
-      <a href="dashboard.html" class="logo"><img src="assets/finity-logo.png" alt="Finity logo" class="logo-img"><span class="sr-only">Finity</span></a>
+      <a href="dashboard.html" class="logo"><img src="assets/JuaLuma-logo.png" alt="JuaLuma logo" class="logo-img"><span
+          class="sr-only">JuaLuma</span></a>
       <nav class="nav" aria-label="Main navigation">
         <a href="dashboard.html" class="nav-link active">Dashboard</a>
         <a href="ai-assistant.html" class="nav-link">AI Assistant</a>
@@ -113,24 +132,38 @@
       <!-- Summary Cards -->
       <div class="grid grid-4" style="margin-bottom: var(--spacing-xl);">
         <div class="card">
-          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Total Net Worth</h3>
-          <p id="net-worth-value" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">$247,890</p>
-          <p id="net-worth-change" style="font-size: var(--font-size-sm); color: #059669; margin-top: var(--spacing-xs);">↑ 3.2% this month</p>
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Total
+            Net Worth</h3>
+          <p id="net-worth-value"
+            style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">$247,890</p>
+          <p id="net-worth-change"
+            style="font-size: var(--font-size-sm); color: #059669; margin-top: var(--spacing-xs);">↑ 3.2% this month</p>
         </div>
         <div class="card">
-          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Cash Flow (This Month)</h3>
-          <p id="cashflow-value" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">+$2,450</p>
-          <p id="cashflow-breakdown" style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">Income: $6,200 | Expenses: $3,750</p>
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Cash
+            Flow (This Month)</h3>
+          <p id="cashflow-value"
+            style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">+$2,450</p>
+          <p id="cashflow-breakdown"
+            style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">Income:
+            $6,200 | Expenses: $3,750</p>
         </div>
         <div class="card">
-          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Budget Status</h3>
-          <p id="budget-percent" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">68%</p>
-          <p id="budget-amount" style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">$2,550 of $3,750 spent</p>
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Budget
+            Status</h3>
+          <p id="budget-percent"
+            style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">68%</p>
+          <p id="budget-amount"
+            style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">$2,550 of
+            $3,750 spent</p>
         </div>
         <div class="card">
-          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Linked Accounts</h3>
-          <p id="accounts-count" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">8</p>
-          <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">3 Checking, 2 Investment, 2 Web3, 1 CEX</p>
+          <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-sm);">Linked
+            Accounts</h3>
+          <p id="accounts-count"
+            style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--color-primary);">8</p>
+          <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">3
+            Checking, 2 Investment, 2 Web3, 1 CEX</p>
         </div>
       </div>
 
@@ -141,18 +174,21 @@
           <div class="chart-title">Net Worth Trend</div>
           <div class="chart-subtitle" id="networth-subtitle">Growth driven by investment accounts</div>
           <p class="sr-only" id="networth-desc">Net worth trend chart showing growth over selected time period.</p>
-          <svg class="chart-svg" viewBox="0 0 320 140" role="img" aria-label="Net worth trend line chart" aria-describedby="networth-desc">
+          <svg class="chart-svg" viewBox="0 0 320 140" role="img" aria-label="Net worth trend line chart"
+            aria-describedby="networth-desc">
             <defs>
               <linearGradient id="networthGradient" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.25"/>
-                <stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0"/>
+                <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.25" />
+                <stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0" />
               </linearGradient>
             </defs>
             <g id="networth-area">
-              <polyline fill="url(#networthGradient)" stroke="none" points="0,120 0,90 60,95 120,80 180,70 240,55 300,40 320,120" />
+              <polyline fill="url(#networthGradient)" stroke="none"
+                points="0,120 0,90 60,95 120,80 180,70 240,55 300,40 320,120" />
             </g>
             <g id="networth-line">
-              <polyline fill="none" stroke="var(--color-primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="0,90 60,95 120,80 180,70 240,55 300,40" />
+              <polyline fill="none" stroke="var(--color-primary)" stroke-width="3" stroke-linecap="round"
+                stroke-linejoin="round" points="0,90 60,95 120,80 180,70 240,55 300,40" />
             </g>
             <g id="networth-dots" fill="var(--color-primary)">
               <circle cx="0" cy="90" r="4" />
@@ -166,7 +202,8 @@
             <text id="networth-end-label" x="260" y="30" font-size="12" fill="var(--text-primary)">$248k</text>
           </svg>
           <div class="chart-legend">
-            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-primary);"></span>Net Worth</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-primary);"></span>Net
+              Worth</span>
           </div>
         </div>
 
@@ -175,7 +212,8 @@
           <div class="chart-title">Cash Flow</div>
           <div class="chart-subtitle">Income vs. Expenses</div>
           <p class="sr-only" id="cashflow-desc">Cash flow chart showing income and expenses by week.</p>
-          <svg class="chart-svg" viewBox="0 0 320 160" role="img" aria-label="Cash flow bar chart" aria-describedby="cashflow-desc">
+          <svg class="chart-svg" viewBox="0 0 320 160" role="img" aria-label="Cash flow bar chart"
+            aria-describedby="cashflow-desc">
             <!-- Bars with proper positioning -->
             <rect x="20" y="45" width="50" height="70" rx="6" fill="var(--color-primary)" />
             <rect x="90" y="25" width="50" height="100" rx="6" fill="var(--color-accent)" />
@@ -187,13 +225,16 @@
             <text x="195" y="150" font-size="11" fill="var(--text-muted)" text-anchor="middle">Week 3</text>
             <text x="275" y="150" font-size="11" fill="var(--text-muted)" text-anchor="middle">Week 4</text>
             <!-- Value labels above bars -->
-            <text x="45" y="38" font-size="11" fill="var(--color-primary)" text-anchor="middle" font-weight="600">+$3.8k</text>
-            <text x="115" y="18" font-size="11" fill="var(--color-accent)" text-anchor="middle" font-weight="600">+$6.2k</text>
+            <text x="45" y="38" font-size="11" fill="var(--color-primary)" text-anchor="middle"
+              font-weight="600">+$3.8k</text>
+            <text x="115" y="18" font-size="11" fill="var(--color-accent)" text-anchor="middle"
+              font-weight="600">+$6.2k</text>
             <text x="195" y="48" font-size="11" fill="#DC2626" text-anchor="middle" font-weight="600">-$2.7k</text>
             <text x="275" y="63" font-size="11" fill="#DC2626" text-anchor="middle" font-weight="600">-$2.0k</text>
           </svg>
           <div class="chart-legend">
-            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-accent);"></span>Income</span>
+            <span class="legend-item"><span class="legend-swatch"
+                style="background: var(--color-accent);"></span>Income</span>
             <span class="legend-item"><span class="legend-swatch" style="background: #DC2626;"></span>Expenses</span>
           </div>
         </div>
@@ -202,22 +243,33 @@
         <div class="chart-card">
           <div class="chart-title">Spending by Category</div>
           <div class="chart-subtitle">Month-to-date distribution</div>
-          <p class="sr-only" id="spending-desc">Spending distribution: Food & Dining largest, then Entertainment, Transportation, Utilities, Other.</p>
-          <svg class="chart-svg" viewBox="0 0 200 200" role="img" aria-label="Spending by category donut chart" aria-describedby="spending-desc">
-            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--border-color)" stroke-width="24"/>
+          <p class="sr-only" id="spending-desc">Spending distribution: Food & Dining largest, then Entertainment,
+            Transportation, Utilities, Other.</p>
+          <svg class="chart-svg" viewBox="0 0 200 200" role="img" aria-label="Spending by category donut chart"
+            aria-describedby="spending-desc">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--border-color)" stroke-width="24" />
             <!-- Segments -->
-            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--color-primary)" stroke-width="24" stroke-dasharray="150 502" stroke-dashoffset="0" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--color-accent)" stroke-width="24" stroke-dasharray="120 502" stroke-dashoffset="-150" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#F59E0B" stroke-width="24" stroke-dasharray="90 502" stroke-dashoffset="-270" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#10B981" stroke-width="24" stroke-dasharray="60 502" stroke-dashoffset="-360" />
-            <circle cx="100" cy="100" r="80" fill="none" stroke="#EF4444" stroke-width="24" stroke-dasharray="82 502" stroke-dashoffset="-420" />
-            <text x="100" y="105" text-anchor="middle" font-size="18" fill="var(--text-primary)" font-weight="700">$2,550</text>
+            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--color-primary)" stroke-width="24"
+              stroke-dasharray="150 502" stroke-dashoffset="0" />
+            <circle cx="100" cy="100" r="80" fill="none" stroke="var(--color-accent)" stroke-width="24"
+              stroke-dasharray="120 502" stroke-dashoffset="-150" />
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#F59E0B" stroke-width="24" stroke-dasharray="90 502"
+              stroke-dashoffset="-270" />
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#10B981" stroke-width="24" stroke-dasharray="60 502"
+              stroke-dashoffset="-360" />
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#EF4444" stroke-width="24" stroke-dasharray="82 502"
+              stroke-dashoffset="-420" />
+            <text x="100" y="105" text-anchor="middle" font-size="18" fill="var(--text-primary)"
+              font-weight="700">$2,550</text>
             <text x="100" y="125" text-anchor="middle" font-size="12" fill="var(--text-muted)">Spent / $3,750</text>
           </svg>
           <div class="chart-legend">
-            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-primary);"></span>Food & Dining</span>
-            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-accent);"></span>Entertainment</span>
-            <span class="legend-item"><span class="legend-swatch" style="background: #F59E0B;"></span>Transportation</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--color-primary);"></span>Food
+              & Dining</span>
+            <span class="legend-item"><span class="legend-swatch"
+                style="background: var(--color-accent);"></span>Entertainment</span>
+            <span class="legend-item"><span class="legend-swatch"
+                style="background: #F59E0B;"></span>Transportation</span>
             <span class="legend-item"><span class="legend-swatch" style="background: #10B981;"></span>Utilities</span>
             <span class="legend-item"><span class="legend-swatch" style="background: #EF4444;"></span>Other</span>
           </div>
@@ -229,9 +281,12 @@
         <h2 style="margin-bottom: var(--spacing-lg);">Account Overview</h2>
         <div class="tabs">
           <ul class="tab-list" role="tablist">
-            <li><button class="tab-button active" role="tab" aria-selected="true" aria-controls="all-accounts-tab">All Accounts</button></li>
-            <li><button class="tab-button" role="tab" aria-selected="false" aria-controls="checking-tab">Checking</button></li>
-            <li><button class="tab-button" role="tab" aria-selected="false" aria-controls="investment-tab">Investment</button></li>
+            <li><button class="tab-button active" role="tab" aria-selected="true" aria-controls="all-accounts-tab">All
+                Accounts</button></li>
+            <li><button class="tab-button" role="tab" aria-selected="false"
+                aria-controls="checking-tab">Checking</button></li>
+            <li><button class="tab-button" role="tab" aria-selected="false"
+                aria-controls="investment-tab">Investment</button></li>
             <li><button class="tab-button" role="tab" aria-selected="false" aria-controls="web3-tab">Web3</button></li>
             <li><button class="tab-button" role="tab" aria-selected="false" aria-controls="cex-tab">CEX</button></li>
           </ul>
@@ -242,32 +297,44 @@
           <div class="grid grid-2" style="margin-top: var(--spacing-lg);">
             <div class="card">
               <h3>Chase Checking</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$8,450.32</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $8,450.32</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Account ending in 4521</p>
             </div>
             <div class="card">
               <h3>Wells Fargo Savings</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$12,300.00</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $12,300.00</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Account ending in 7890</p>
             </div>
             <div class="card">
               <h3>Fidelity 401(k)</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$145,230.50</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $145,230.50</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Investment Account</p>
             </div>
             <div class="card">
               <h3>Charles Schwab IRA</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$68,420.75</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $68,420.75</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Investment Account</p>
             </div>
             <div class="card">
               <h3>MetaMask Wallet</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$4,250.80</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $4,250.80</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">0x742d...8a3f</p>
             </div>
             <div class="card">
               <h3>Coinbase Pro</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$8,238.45</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $8,238.45</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">CEX Account</p>
             </div>
           </div>
@@ -278,12 +345,16 @@
           <div class="grid grid-2" style="margin-top: var(--spacing-lg);">
             <div class="card">
               <h3>Chase Checking</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$8,450.32</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $8,450.32</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Account ending in 4521</p>
             </div>
             <div class="card">
               <h3>Wells Fargo Savings</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$12,300.00</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $12,300.00</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Account ending in 7890</p>
             </div>
           </div>
@@ -294,15 +365,21 @@
           <div class="grid grid-2" style="margin-top: var(--spacing-lg);">
             <div class="card">
               <h3>Fidelity 401(k)</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$145,230.50</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $145,230.50</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Investment Account</p>
-              <p style="font-size: var(--font-size-sm); color: #059669; margin-top: var(--spacing-xs);">↑ 2.8% this month</p>
+              <p style="font-size: var(--font-size-sm); color: #059669; margin-top: var(--spacing-xs);">↑ 2.8% this
+                month</p>
             </div>
             <div class="card">
               <h3>Charles Schwab IRA</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$68,420.75</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $68,420.75</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">Investment Account</p>
-              <p style="font-size: var(--font-size-sm); color: #059669; margin-top: var(--spacing-xs);">↑ 3.5% this month</p>
+              <p style="font-size: var(--font-size-sm); color: #059669; margin-top: var(--spacing-xs);">↑ 3.5% this
+                month</p>
             </div>
           </div>
         </div>
@@ -312,8 +389,11 @@
           <div class="grid grid-2" style="margin-top: var(--spacing-lg);">
             <div class="card">
               <h3>MetaMask Wallet</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$4,250.80</p>
-              <p style="font-size: var(--font-size-sm); color: var(--text-muted);">0x742d35Cc6634C0532925a3b844Bc9e7595f0b8a3f</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $4,250.80</p>
+              <p style="font-size: var(--font-size-sm); color: var(--text-muted);">
+                0x742d35Cc6634C0532925a3b844Bc9e7595f0b8a3f</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">
                 <strong>Holdings:</strong> 1.25 ETH, 0.5 BTC, 150 USDC
               </p>
@@ -326,7 +406,9 @@
           <div class="grid grid-2" style="margin-top: var(--spacing-lg);">
             <div class="card">
               <h3>Coinbase Pro</h3>
-              <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">$8,238.45</p>
+              <p
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary); margin: var(--spacing-sm) 0;">
+                $8,238.45</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted);">CEX Account</p>
               <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-xs);">
                 <strong>Holdings:</strong> 0.15 BTC, 2.5 ETH, 500 USDC
@@ -338,7 +420,8 @@
 
       <!-- Recent Transactions -->
       <div class="glass-panel" style="margin-bottom: var(--spacing-xl);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
           <h2>Recent Transactions</h2>
           <a href="#" class="btn btn-outline btn-sm">View All</a>
         </div>
@@ -592,14 +675,19 @@
           <div style="display: flex; flex-direction: column; align-items: center;">
             <div style="position: relative; margin-bottom: var(--spacing-md);">
               <svg viewBox="0 0 80 80" style="width: 120px; height: 120px;">
-                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--border-color)" stroke-width="8"/>
-                <circle cx="40" cy="40" r="32" fill="none" stroke="#10B981" stroke-width="8" stroke-dasharray="160 201" stroke-dashoffset="0" transform="rotate(-90 40 40)"/>
+                <circle cx="40" cy="40" r="32" fill="none" stroke="var(--border-color)" stroke-width="8" />
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#10B981" stroke-width="8" stroke-dasharray="160 201"
+                  stroke-dashoffset="0" transform="rotate(-90 40 40)" />
               </svg>
-              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                <span style="display: block; font-size: var(--font-size-2xl); font-weight: 700; color: #10B981;">79%</span>
+              <div
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                <span
+                  style="display: block; font-size: var(--font-size-2xl); font-weight: 700; color: #10B981;">79%</span>
               </div>
             </div>
-            <span style="display: block; font-size: var(--font-size-lg); color: var(--text-muted); text-align: center;">Health Score</span>
+            <span
+              style="display: block; font-size: var(--font-size-lg); color: var(--text-muted); text-align: center;">Health
+              Score</span>
           </div>
           <div>
             <div class="grid grid-1" style="gap: var(--spacing-md);">
@@ -607,8 +695,11 @@
                 <div style="display: flex; align-items: center; gap: var(--spacing-md);">
                   <span style="font-size: var(--font-size-xl);">📈</span>
                   <div style="flex: 1;">
-                    <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Assets</h3>
-                    <p style="font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary);">$267,450</p>
+                    <h3
+                      style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">
+                      Assets</h3>
+                    <p style="font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary);">$267,450
+                    </p>
                   </div>
                 </div>
               </div>
@@ -616,7 +707,9 @@
                 <div style="display: flex; align-items: center; gap: var(--spacing-md);">
                   <span style="font-size: var(--font-size-xl);">📉</span>
                   <div style="flex: 1;">
-                    <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Liabilities</h3>
+                    <h3
+                      style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">
+                      Liabilities</h3>
                     <p style="font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary);">$19,560</p>
                   </div>
                 </div>
@@ -625,7 +718,9 @@
                 <div style="display: flex; align-items: center; gap: var(--spacing-md);">
                   <span style="font-size: var(--font-size-xl);">💰</span>
                   <div style="flex: 1;">
-                    <h3 style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">Net Worth</h3>
+                    <h3
+                      style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--spacing-xs);">
+                      Net Worth</h3>
                     <p style="font-size: var(--font-size-xl); font-weight: 700; color: #10B981;">$247,890</p>
                   </div>
                 </div>
@@ -637,7 +732,8 @@
 
       <!-- Manual Asset Tracking -->
       <div class="glass-panel" style="margin-bottom: var(--spacing-xl);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
           <h2>Manual Asset Tracking</h2>
           <a href="#" class="btn btn-outline btn-sm">Add Asset</a>
         </div>
@@ -673,9 +769,11 @@
             </div>
           </div>
           <div class="card" style="background: var(--bg-secondary);">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-md);">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-md);">
               <span style="font-size: var(--font-size-lg); font-weight: 600;">Total Manual Assets</span>
-              <span style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary);">$472,500</span>
+              <span
+                style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary);">$472,500</span>
             </div>
           </div>
         </div>
@@ -714,17 +812,31 @@
         <div class="footer-section">
           <h3>Connect</h3>
           <div class="social-links">
-            <a href="https://twitter.com/finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Twitter">𝕏</a>
-            <a href="https://discord.gg/finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Discord"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></a>
-            <a href="https://youtube.com/@finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
-            <a href="https://tiktok.com/@finity" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></a>
+            <a href="https://twitter.com/JuaLuma" class="social-link" target="_blank" rel="noopener noreferrer"
+              aria-label="Twitter">𝕏</a>
+            <a href="https://discord.gg/JuaLuma" class="social-link" target="_blank" rel="noopener noreferrer"
+              aria-label="Discord"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+              </svg></a>
+            <a href="https://youtube.com/@JuaLuma" class="social-link" target="_blank" rel="noopener noreferrer"
+              aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+              </svg></a>
+            <a href="https://tiktok.com/@JuaLuma" class="social-link" target="_blank" rel="noopener noreferrer"
+              aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+              </svg></a>
           </div>
         </div>
       </div>
       <div class="footer-bottom">
         <p>&copy; 2025 Intellifide, LLC. All rights reserved.</p>
         <p style="margin-top: var(--spacing-sm); font-size: var(--font-size-xs);">
-          Finity is for informational and educational purposes only. Finity does not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.
+          JuaLuma is for informational and educational purposes only. JuaLuma does not provide financial, investment,
+          tax, or legal advice. Always consult qualified professionals for financial decisions.
         </p>
       </div>
     </div>
@@ -732,5 +844,5 @@
 
   <script src="js/main.js"></script>
 </body>
-</html>
 
+</html>

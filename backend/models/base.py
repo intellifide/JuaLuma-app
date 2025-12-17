@@ -1,4 +1,4 @@
-"""SQLAlchemy base configuration for Finity backend.
+"""SQLAlchemy base configuration for JuaLuma backend.
 
 Updated 2025-12-11 01:28 CST by ChatGPT
 """

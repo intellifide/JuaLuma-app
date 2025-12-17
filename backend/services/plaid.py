@@ -84,7 +84,7 @@ def create_link_token(user_id: str, products: Iterable[str]) -> Tuple[str, str]:
 
     request = LinkTokenCreateRequest(
         user=LinkTokenCreateRequestUser(client_user_id=user_id),
-        client_name="Finity",
+        client_name="JuaLuma",
         products=requested_products,
         country_codes=[CountryCode("US")],
         language="en",

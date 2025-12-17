@@ -1,4 +1,4 @@
-"""Aggregate exports for Finity backend models.
+"""Aggregate exports for JuaLuma backend models.
 
 2025-12-10 13:50 CST - restored __init__ to expose Base/SessionLocal/models
 """

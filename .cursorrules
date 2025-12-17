@@ -1,4 +1,4 @@
-# Finity App Context Rules
+# JuaLuma App Context Rules
 
 # 1. Documentation Priority
 - ALWAYS reference `docs/Master App Dev Guide.md` for Business Logic (Tiers, Tax, Compliance).
@@ -12,10 +12,10 @@
     - `backend/core/` -> Contains Config & Constants.
 
 # 3. Agent Capabilities
-- You have access to "Finity Dev Tools" via MCP. Use them! 
+- You have access to "JuaLuma Dev Tools" via MCP. Use them! 
 - If asked to "reset db", "seed data", or "check health", use the MCP tool triggers, do not suggest manual commands.
 
-# Cursor Rules for Finity App
+# Cursor Rules for JuaLuma App
 
 ## Developer Context
 - User is a junior developer. When explaining technical terms, assume no prior knowledge and use plain language.
@@ -25,7 +25,7 @@
 - Never use emojis unless requested.
 
 ## Workspace Structure
-- This is the `finity-app` workspace - the main application development environment.
+- This is the `JuaLuma-app` workspace - the main application development environment.
 - Infrastructure-as-code is in the `infra/` directory at the workspace root.
 - App code, documentation, and configuration files are in this workspace at their natural locations.
 - All reference documentation now lives in `docs/` (includes Master App Dev Guide, security, CI/CD, feature registry, and legal docs). Use these as the single source of truth for development.
@@ -55,7 +55,7 @@
 - **Primary IDE**: Cursor IDE for daily development and AI-assisted coding
 - **Secondary IDE**: JetBrains (PyCharm/WebStorm/DataGrip) for deep debugging, heavy refactoring, and database work
 - **Version Control**: GitKraken (Primary Interface) - All git commands must be executed via GitKraken MCP tools.
-- **Repository**: `github.com/TCoder920x/finity-app` (private, GitHub Pro)
+- **Repository**: `github.com/TCoder920x/JuaLuma-app` (private, GitHub Pro)
 - **CI/CD**: GitHub Actions for automated lint, test, typecheck, and deployment workflows
 - **API Testing**: Postman collections with Newman CLI for headless execution in CI/CD
 - **Payment Processing**: Stripe CLI for webhook forwarding (`stripe listen --forward-to localhost:4242/webhook`), Stripe MCP server for AI-assisted operations
@@ -65,7 +65,7 @@
 
 ## Source Control & Safety
 - **Primary Tool**: GitKraken is the standardized and sole method for all Git interactions. Do not use CLI git commands unless debugging tool issues.
-- Repository: `github.com/TCoder920x/finity-app` (private, GitHub Pro)
+- Repository: `github.com/TCoder920x/JuaLuma-app` (private, GitHub Pro)
 - Branches: `main` (production), `Dev` (development)
 - Never run global searches; scope searches narrowly.
 - No destructive commands (no `git reset --hard`, no mass deletions of user changes).
@@ -93,6 +93,6 @@
 - Favor minimal, scoped changes; avoid broad refactors without approval.
 
 ## Scope
-- Never work outside of this workspace directory /finity-app unless instructed by the user. 
+- Never work outside of this workspace directory /JuaLuma-app unless instructed by the user. 
 
 - ignore all contents in notes.md

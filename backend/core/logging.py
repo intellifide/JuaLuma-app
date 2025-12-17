@@ -1,5 +1,5 @@
 # Updated 2025-12-11 01:32 CST by ChatGPT
-"""JSON logging configuration for the Finity backend."""
+"""JSON logging configuration for the JuaLuma backend."""
 
 import contextvars
 import logging

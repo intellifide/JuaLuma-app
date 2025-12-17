@@ -1,7 +1,7 @@
 # Developer SDK Guide
 
 ## Overview
-The Finity Developer SDK allows developers to build custom widgets for the Finity dashboard.
+The JuaLuma Developer SDK allows developers to build custom widgets for the JuaLuma dashboard.
 
 ## Installation
 Currently, the SDK types are available within the `frontend/src/sdk` directory.
@@ -18,10 +18,10 @@ interface WidgetContext {
 }
 ```
 
-### FinityClient
+### JuaLumaClient
 Provides a safe interface for making API requests.
 ```typescript
-interface FinityClient {
+interface JuaLumaClient {
   request: <T = unknown>(path: string, options?: RequestInit) => Promise<T>;
   storage: {
     get: <T = unknown>(key: string) => Promise<T | null>;
