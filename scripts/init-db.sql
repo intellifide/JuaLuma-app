@@ -1,4 +1,5 @@
 -- Updated 2025-12-07 21:02 CST by ChatGPT
+-- Modified 2025-12-18 by Antigravity: Removed audit tables as they are managed by Alembic
 
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -182,55 +183,6 @@ CREATE TABLE IF NOT EXISTS support_agents (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Audit schema tables
-CREATE TABLE IF NOT EXISTS audit.audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ts TIMESTAMPTZ NOT NULL DEFAULT now(),
-    actor_uid VARCHAR(128) NOT NULL,
-    target_uid VARCHAR(128),
-    action VARCHAR(128) NOT NULL,
-    source VARCHAR(32) NOT NULL CHECK (source IN ('frontend', 'backend', 'workflow')),
-    metadata_json JSONB NOT NULL,
-    archived BOOLEAN NOT NULL DEFAULT false
-);
-
-CREATE TABLE IF NOT EXISTS audit.feature_preview (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ts TIMESTAMPTZ NOT NULL DEFAULT now(),
-    uid VARCHAR(128) NOT NULL,
-    feature_key VARCHAR(128) NOT NULL,
-    tier VARCHAR(32) NOT NULL,
-    action VARCHAR(64) NOT NULL,
-    metadata_json JSONB NOT NULL,
-    archived BOOLEAN NOT NULL DEFAULT false
-);
-
-CREATE TABLE IF NOT EXISTS audit.llm_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ts TIMESTAMPTZ NOT NULL DEFAULT now(),
-    uid VARCHAR(128) NOT NULL,
-    model VARCHAR(64) NOT NULL,
-    encrypted_prompt BYTEA NOT NULL,
-    encrypted_response BYTEA NOT NULL,
-    tokens INT NOT NULL,
-    user_dek_ref VARCHAR(256) NOT NULL,
-    archived BOOLEAN NOT NULL DEFAULT false
-);
-
-CREATE TABLE IF NOT EXISTS audit.support_portal_actions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ts TIMESTAMPTZ NOT NULL DEFAULT now(),
-    agent_id UUID NOT NULL,
-    agent_company_id VARCHAR(32) NOT NULL,
-    agent_name VARCHAR(256) NOT NULL,
-    ticket_id VARCHAR(128) NOT NULL,
-    customer_uid VARCHAR(128),
-    action_type VARCHAR(64) NOT NULL,
-    action_details JSONB NOT NULL,
-    ip_address VARCHAR(45),
-    archived BOOLEAN NOT NULL DEFAULT false
-);
-
 CREATE TABLE IF NOT EXISTS support_ticket_ratings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_id VARCHAR(128) UNIQUE NOT NULL,
@@ -240,12 +192,6 @@ CREATE TABLE IF NOT EXISTS support_ticket_ratings (
     feedback_text TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
--- Enable Row Level Security on audit tables
-ALTER TABLE audit.audit_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit.feature_preview ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit.llm_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 -- Seed test data
 INSERT INTO users (uid, email, role, theme_pref, currency_pref) VALUES

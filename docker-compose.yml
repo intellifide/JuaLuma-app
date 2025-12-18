@@ -25,6 +25,8 @@ services:
       - "8001:8001"
     volumes:
       - ./backend:/app/backend
+      - ./alembic.ini:/app/alembic.ini
+      - ./alembic:/app/alembic
     networks:
       - jualuma-network
 
