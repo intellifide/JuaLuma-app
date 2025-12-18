@@ -338,8 +338,8 @@ def sync_transactions_cursor(
     """
     client = get_plaid_client()
     
-    # Plaid's SDK requires a string for the cursor. For the first sync, this should be an empty string.
-    effective_cursor = cursor if cursor and cursor.strip() else ""
+    # Plaid's SDK requires None or string, but ensure it's None if empty string
+    effective_cursor = cursor if cursor and cursor.strip() else None
 
     request = TransactionsSyncRequest(
         access_token=access_token,
