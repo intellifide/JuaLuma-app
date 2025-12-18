@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.exc import IntegrityError
@@ -114,7 +114,7 @@ def _sync_logic(db: Session, account_id: uuid.UUID, user_uid: str):
             clean = {}
             for k, v in txn_dict.items():
                 if isinstance(v, Decimal): clean[k] = float(v)
-                elif isinstance(v, (datetime, datetime.date)): clean[k] = v.isoformat()
+                elif isinstance(v, (datetime, date)): clean[k] = v.isoformat()
                 else: clean[k] = v
             return clean
 
