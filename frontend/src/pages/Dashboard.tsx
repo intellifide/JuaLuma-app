@@ -1,5 +1,5 @@
 // Updated 2025-12-11 12:20 CST by ChatGPT - trigger Plaid sync + refetch transactions
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
@@ -224,21 +224,6 @@ export default function Dashboard() {
     // Add logic for web3/cex if those types existed in our backend, simpler fallback:
     return false;
   });
-
-  // Check if any account is currently syncing
-  const isSyncing = accounts.some(acc => acc.syncStatus === 'queued' || acc.syncStatus === 'syncing');
-
-  // Poll for updates if syncing
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isSyncing) {
-      interval = setInterval(() => {
-        refetchAccounts();
-        refetchTransactions();
-      }, 3000);
-    }
-    return () => clearInterval(interval);
-  }, [isSyncing, refetchAccounts, refetchTransactions]);
 
   // Calculate Net Worth Chart SVG Path
   const netWorthPoints = currentData.networthChart.points;
@@ -492,16 +477,7 @@ export default function Dashboard() {
             <tbody>
               {recentTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-text-muted italic">
-                    {isSyncing ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-royal-purple border-t-transparent rounded-full animate-spin"></div>
-                        <span>Syncing your transaction history...</span>
-                      </div>
-                    ) : (
-                      "No transactions found"
-                    )}
-                  </td>
+                  <td colSpan={5} className="text-center py-6 text-text-muted italic">No transactions found</td>
                 </tr>
               ) : (
                 recentTransactions.map((txn) => {

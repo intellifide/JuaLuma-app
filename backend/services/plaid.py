@@ -27,7 +27,6 @@ from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUse
 from plaid.model.products import Products
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
-from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from plaid.exceptions import ApiException
 
 from backend.core import settings
@@ -322,80 +321,6 @@ def fetch_investments(
     return {"holdings": holdings, "investment_transactions": investment_transactions}
 
 
-
-def sync_transactions_cursor(
-    access_token: str,
-    cursor: str | None = None,
-    *,
-    count: int = 500,
-) -> Dict[str, object]:
-    """
-    Sync transactions using Plaid's /transactions/sync endpoint (cursor-based).
-
-    Returns a dict with keys: 'added', 'modified', 'removed', 'next_cursor', 'has_more'.
-    This is preferred over fetch_transactions as it avoids PRODUCT_NOT_READY errors
-    and handles incremental updates robustly.
-    """
-    client = get_plaid_client()
-    
-    # Plaid's SDK requires None or string, but ensure it's None if empty string
-    effective_cursor = cursor if cursor and cursor.strip() else None
-
-    request = TransactionsSyncRequest(
-        access_token=access_token,
-        cursor=effective_cursor,
-        count=count,
-    )
-
-    try:
-        response = client.transactions_sync(request)
-    except ApiException as exc:
-        # Per Plaid docs, /transactions/sync should NOT raise PRODUCT_NOT_READY,
-        # but if it does (e.g. very fresh Sandbox item), we handle it gracefully.
-        if "PRODUCT_NOT_READY" in str(exc) or getattr(exc, "status", 0) == 400:
-            return {
-                "added": [],
-                "modified": [],
-                "removed": [],
-                "next_cursor": cursor,  # Keep existing cursor
-                "has_more": False,
-            }
-        raise _wrap_plaid_error("transactions_sync", exc)
-
-    def _fmt_txn(txn):
-        currency = _pick_currency(
-            getattr(txn, "iso_currency_code", None),
-            getattr(txn, "unofficial_currency_code", None),
-        )
-        # Handle date typing
-        txn_date = txn.date
-        if isinstance(txn_date, str):
-            txn_date = datetime.strptime(txn_date, "%Y-%m-%d").date()
-        elif isinstance(txn_date, datetime):
-            txn_date = txn_date.date()
-
-        return {
-            "transaction_id": txn.transaction_id,
-            "account_id": txn.account_id,
-            "name": txn.name,
-            "amount": Decimal(str(txn.amount)),
-            "date": txn_date,
-            "category": (txn.category or [None])[0] if txn.category else None,
-            "merchant_name": txn.merchant_name,
-            "currency": currency,
-            # Pass raw for debugging if needed, but usually stripped before DB
-            "pending": getattr(txn, "pending", False),
-        }
-
-    return {
-        "added": [_fmt_txn(t) for t in response.added],
-        "modified": [_fmt_txn(t) for t in response.modified],
-        "removed": [{"transaction_id": t.transaction_id} for t in response.removed],
-        "next_cursor": response.next_cursor,
-        "has_more": response.has_more,
-    }
-
-
 __all__ = [
     "get_plaid_client",
     "create_link_token",
@@ -403,5 +328,4 @@ __all__ = [
     "fetch_accounts",
     "fetch_transactions",
     "fetch_investments",
-    "sync_transactions_cursor",
 ]

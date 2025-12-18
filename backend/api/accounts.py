@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
@@ -175,8 +175,6 @@ class AccountResponse(BaseModel):
     secret_ref: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    sync_status: Optional[str] = "idle"
-    last_synced_at: Optional[datetime] = None
     transactions: list[TransactionSummary] = Field(default_factory=list)
 
     model_config = ConfigDict(
@@ -361,67 +359,226 @@ def get_account_details(
     response_model=AccountSyncResponse,
     status_code=status.HTTP_200_OK,
 )
-from backend.services.sync_service import perform_background_sync
-
-@router.post(
-    "/{account_id}/sync",
-    response_model=AccountSyncResponse,
-    status_code=status.HTTP_200_OK,
-)
 def sync_account_transactions(
     account_id: uuid.UUID,
-    background_tasks: BackgroundTasks,
+    start_date: Optional[date] = Query(
+        default=None, description="Start date (inclusive) for the sync window."
+    ),
+    end_date: Optional[date] = Query(
+        default=None, description="End date (inclusive) for the sync window."
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AccountSyncResponse:
     """
-    Trigger a background sync for a linked account.
-    Returns immediately with status 'syncing'.
+    Trigger a manual sync of transactions for a linked account (e.g., via Plaid).
+
+    - **start_date**: Start of sync window (default: 30 days ago).
+    - **end_date**: End of sync window (default: today).
+
+    Rate limited for free tier users.
+    Returns sync statistics.
     """
     account = (
         db.query(Account)
         .filter(
             Account.id == account_id,
             Account.uid == current_user.uid,
+            Account.account_type == "traditional",
         )
         .first()
     )
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found.",
+            detail="Account not found or unsupported for sync.",
         )
 
     if not account.secret_ref:
-         raise HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Account is missing credentials.",
         )
 
-    # Rate Limit Check
     plan = _get_subscription_plan(db, current_user.uid)
-    try:
-        _enforce_sync_limit(db, current_user.uid, plan)
-    except HTTPException:
-        # If user is hitting button too fast, just return current state without erroring
-        # to avoid bad UX, or re-raise if strictly needed. 
-        # For now, let's re-raise so they know why.
-        raise
+    _enforce_sync_limit(db, current_user.uid, plan)
 
-    # 1. Update status immediately to prevent double-clicks
-    account.sync_status = "queued"
+    today = date.today()
+    resolved_start = start_date or (today - timedelta(days=30))
+    resolved_end = end_date or today
+    if resolved_start > resolved_end:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_date must be before or equal to end_date.",
+        )
+
+    # Sync Logic Dispatch
+    fetched_txns = []
+    
+    # 1. Traditional (Plaid)
+    if account.account_type == "traditional":
+        try:
+            fetched_txns = fetch_transactions(
+                account.secret_ref, resolved_start, resolved_end
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+            ) from exc
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Plaid sync failed: {exc}",
+            ) from exc
+
+    # 2. Web3
+    elif account.account_type == "web3":
+        # For now, we'll parse the secret_ref JSON to get address
+        try:
+            conn_data = json.loads(account.secret_ref)
+            address = conn_data.get("address")
+            if not address:
+                raise ValueError("Invalid Web3 configuration")
+            # Mock fetch or call service
+            # For this MVP phase, we skip actual RPC call unless connector service is ready
+            # We will rely on the verify_crypto_config tool to test this flow
+            pass 
+        except Exception as e:
+            logger.error(f"Web3 sync error: {e}")
+
+    # 3. CEX
+    elif account.account_type == "cex":
+        try:
+            # Decrypt
+            decrypted_json = decrypt_secret(account.secret_ref, current_user.uid)
+            response = json.loads(decrypted_json)
+            # api_key = response["apiKey"]
+            # secret = response["secret"]
+            # Call connector...
+            pass
+        except Exception as e:
+            logger.error(f"CEX sync error: {e}")
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to decrypt credentials")
+
+    # Common normalization (Plaid serves as the schema reference)
+    plaid_transactions = fetched_txns
+
+    # Optionally refresh balance if Plaid provides it.
+    try:
+        plaid_accounts = fetch_accounts(account.secret_ref)
+        match = next(
+            (
+                acct
+                for acct in plaid_accounts
+                if acct.get("mask") == account.account_number_masked
+            ),
+            None,
+        )
+        if match:
+            balance_raw = match.get("balance_current")
+            if balance_raw is not None:
+                account.balance = Decimal(str(balance_raw))
+            account.currency = (
+                match.get("currency")
+                or account.currency
+                or current_user.currency_pref
+                or "USD"
+            )
+    except Exception:
+        # Non-fatal: keep existing balance if Plaid balance refresh fails.
+        pass
+
+    synced = 0
+    new_count = 0
+
+    def _clean_raw(txn_dict: dict) -> dict:
+        clean = {}
+        for k, v in txn_dict.items():
+            if isinstance(v, Decimal):
+                clean[k] = float(v)
+            elif isinstance(v, datetime):
+                clean[k] = v.isoformat()
+            elif isinstance(v, date):
+                clean[k] = v.isoformat()
+            else:
+                clean[k] = v
+        return clean
+
+    for txn in plaid_transactions:
+        txn_ts = datetime.combine(
+            txn["date"], datetime.min.time(), tzinfo=timezone.utc
+        )
+        existing = (
+            db.query(Transaction)
+            .filter(
+                Transaction.uid == current_user.uid,
+                Transaction.account_id == account.id,
+                Transaction.external_id == txn.get("transaction_id"),
+            )
+            .first()
+        )
+
+        if existing:
+            existing.ts = txn_ts
+            existing.amount = txn["amount"]
+            existing.currency = txn.get("currency") or existing.currency
+            existing.category = txn.get("category")
+            existing.merchant_name = txn.get("merchant_name")
+            existing.description = txn.get("name") or txn.get("merchant_name")
+            existing.raw_json = _clean_raw(txn)
+            db.add(existing)
+            synced += 1
+            continue
+
+        new_txn = Transaction(
+            uid=current_user.uid,
+            account_id=account.id,
+            ts=txn_ts,
+            amount=txn["amount"],
+            currency=txn.get("currency") or account.currency or "USD",
+            category=txn.get("category"),
+            merchant_name=txn.get("merchant_name"),
+            description=txn.get("name") or txn.get("merchant_name"),
+            external_id=txn.get("transaction_id"),
+            is_manual=False,
+            archived=False,
+            raw_json=_clean_raw(txn),
+        )
+        db.add(new_txn)
+        synced += 1
+        new_count += 1
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conflict while syncing transactions; please retry.",
+        )
+
+    audit = AuditLog(
+        actor_uid=current_user.uid,
+        target_uid=current_user.uid,
+        action="account_sync_manual",
+        source="backend",
+        metadata_json={
+            "account_id": str(account.id),
+            "plan": plan,
+            "synced_count": synced,
+            "new_transactions": new_count,
+            "start_date": resolved_start.isoformat(),
+            "end_date": resolved_end.isoformat(),
+        },
+    )
+    db.add(audit)
     db.commit()
 
-    # 2. Dispatch Task
-    background_tasks.add_task(perform_background_sync, account.id, current_user.uid)
-
-    # 3. Return 'empty' response saying it's queued
-    # The frontend should poll or just show 'Syncing...' based on the initial click
     return AccountSyncResponse(
-        synced_count=0,
-        new_transactions=0,
-        start_date=date.today(),
-        end_date=date.today(),
+        synced_count=synced,
+        new_transactions=new_count,
+        start_date=resolved_start,
+        end_date=resolved_end,
         plan=plan,
     )
 
