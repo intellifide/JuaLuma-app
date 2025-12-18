@@ -24,15 +24,6 @@ All engineering decisions must strictly adhere to these six non\-negotiable pill
 - Ports: expose backend `8001:8001`, frontend `5175:5175`; emulator ports are mapped for browser access.
 - API quirk: widget endpoints require trailing slashes (`/widgets/…`) to avoid 307 redirects in-browser.
 
-### 1\.2 Technology Standard: Spec-Driven Development
-All non-trivial features must follow a strict "Spec-First" workflow. Ad-hoc coding is prohibited for complex logic.
-- **Source of Truth:** `specs/_TEMPLATE.md` defines the structure.
-- **Workflow:**
-    1. Create `specs/active/FEATURE_NAME.md`.
-    2. Define User Story, Compliance Checks (FinCEN/Tax), and Schema Changes.
-    3. Implement code only after Spec approval.
-    4. Move to `specs/archive/` upon completion.
-
 ### 1\.3 Operational Tooling (JuaLuma Dev Tools)
 Maintenance tasks are handled via the **JuaLuma Dev Tools MCP Server**, running inside the backend container.
 - **Access:** `http://localhost:8001/mcp-dev` (Local Environment Only).

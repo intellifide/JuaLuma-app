@@ -6,10 +6,10 @@ trigger: always_on
 
 # 1. Documentation Priority
 - ALWAYS reference `docs/Master App Dev Guide.md` for Business Logic (Tiers, Tax, Compliance).
-- ALWAYS reference `specs/_TEMPLATE.md` or active specs in `specs/` for Task Implementation details.
+
 
 # 2. File Groupings
-- **Specs:** `specs/*.md` (Read these first for intent).
+
 - **Infrastructure:** `infra/` (Terraform) and `docker-compose.yml` (Local Stack).
 - **Backend:** `backend/` (FastAPI).
     - `backend/dev_tools/` -> Contains Agent MCP Tools.
