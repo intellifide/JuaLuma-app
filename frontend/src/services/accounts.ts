@@ -112,9 +112,12 @@ export const deleteAccount = async (id: string): Promise<void> => {
   }
 }
 
-export const syncAccount = async (id: string): Promise<AccountSyncResponse> => {
+export const syncAccount = async (id: string, initialSync = false): Promise<AccountSyncResponse> => {
   try {
-    const { data } = await api.post(`/accounts/${id}/sync`)
+    const params = new URLSearchParams()
+    if (initialSync) params.set('initial_sync', 'true')
+
+    const { data } = await api.post(`/accounts/${id}/sync`, null, { params })
     return {
       syncedCount: data.synced_count ?? data.syncedCount ?? 0,
       newTransactions: data.new_transactions ?? data.newTransactions ?? 0,

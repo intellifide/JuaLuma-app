@@ -11,6 +11,9 @@ from decimal import Decimal
 from functools import lru_cache
 import time
 from typing import Dict, Iterable, List, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
 
 from plaid import ApiClient, Configuration, Environment
 from plaid.api import plaid_api
@@ -193,6 +196,13 @@ def fetch_transactions(
                 if getattr(exc, "status", None) == 429 and attempt < 2:
                     time.sleep(2**attempt)
                     continue
+
+                # Handle PRODUCT_NOT_READY gracefully for fresh items
+                error_body = getattr(exc, "body", "")
+                if "PRODUCT_NOT_READY" in str(error_body) or "PRODUCT_NOT_READY" in str(exc):
+                    logger.warning(f"Plaid product not ready, returning empty transactions: {exc}")
+                    return []
+                
                 raise _wrap_plaid_error("transactions_get", exc)
 
         for txn in response.transactions:

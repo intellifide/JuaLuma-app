@@ -63,7 +63,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
           for (const account of linkedAccounts) {
             if (account?.id) {
               try {
-                await syncAccount(account.id)
+                await syncAccount(account.id, true)
               } catch (syncErr) {
                 console.warn(`Plaid account sync failed for ${account.id}`, syncErr)
               }

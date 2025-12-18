@@ -367,6 +367,9 @@ def sync_account_transactions(
     end_date: Optional[date] = Query(
         default=None, description="End date (inclusive) for the sync window."
     ),
+    initial_sync: bool = Query(
+        default=False, description="Bypass limit for initial post-link hydration."
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AccountSyncResponse:
@@ -375,8 +378,9 @@ def sync_account_transactions(
 
     - **start_date**: Start of sync window (default: 30 days ago).
     - **end_date**: End of sync window (default: today).
+    - **initial_sync**: If true, bypasses manual sync limits (internal use only).
 
-    Rate limited for free tier users.
+    Rate limited for free tier users (unless initial_sync=True).
     Returns sync statistics.
     """
     account = (
@@ -401,7 +405,9 @@ def sync_account_transactions(
         )
 
     plan = _get_subscription_plan(db, current_user.uid)
-    _enforce_sync_limit(db, current_user.uid, plan)
+    
+    if not initial_sync:
+        _enforce_sync_limit(db, current_user.uid, plan)
 
     today = date.today()
     resolved_start = start_date or (today - timedelta(days=30))
@@ -464,6 +470,7 @@ def sync_account_transactions(
     plaid_transactions = fetched_txns
 
     # Optionally refresh balance if Plaid provides it.
+    plaid_account_id = None
     try:
         plaid_accounts = fetch_accounts(account.secret_ref)
         match = next(
@@ -475,6 +482,7 @@ def sync_account_transactions(
             None,
         )
         if match:
+            plaid_account_id = match.get("account_id")
             balance_raw = match.get("balance_current")
             if balance_raw is not None:
                 account.balance = Decimal(str(balance_raw))
@@ -484,8 +492,15 @@ def sync_account_transactions(
                 or current_user.currency_pref
                 or "USD"
             )
-    except Exception:
-        # Non-fatal: keep existing balance if Plaid balance refresh fails.
+            
+            # Filter transactions to only those belonging to this specific account
+            if plaid_account_id:
+                plaid_transactions = [
+                    t for t in fetched_txns if t.get("account_id") == plaid_account_id
+                ]
+    except Exception as e:
+        logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
+        # Non-fatal: keep existing balance/transactions if refresh fails
         pass
 
     synced = 0
@@ -560,7 +575,7 @@ def sync_account_transactions(
     audit = AuditLog(
         actor_uid=current_user.uid,
         target_uid=current_user.uid,
-        action="account_sync_manual",
+        action="account_sync_initial" if initial_sync else "account_sync_manual",
         source="backend",
         metadata_json={
             "account_id": str(account.id),

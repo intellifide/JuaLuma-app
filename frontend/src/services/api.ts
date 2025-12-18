@@ -4,6 +4,8 @@ import { clearCachedToken, getIdToken } from './auth'
 
 // Prevent using Docker hostname in browser
 const envBase = import.meta.env.VITE_API_BASE_URL;
+// If envBase contains 'backend' (docker service name), it won't work in browser.
+// Fallback to empty string to use relative path (proxy) or let axios handle it.
 const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
 
 const api = axios.create({
