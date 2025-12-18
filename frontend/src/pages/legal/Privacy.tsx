@@ -168,9 +168,27 @@ export const Privacy = () => {
                         <h3>3.5 With Your Consent</h3>
                         <p>We may share your information with your explicit consent or at your direction.</p>
 
-                        <h2>4. Data Security</h2>
+                        <h2>4. Third-Party Integrations & Liability</h2>
 
-                        <h3>4.1 Security Measures</h3>
+                        <h3>4.1 External Account Credentials (&quot;The Bridge&quot;)</h3>
+                        <p>When you link a bank account or cryptocurrency exchange (e.g., via Plaid or Coinbase), <strong>you are interacting directly with that third-party provider</strong>. JuaLuma:</p>
+                        <ul className="list-disc pl-6 space-y-1">
+                            <li>Does <strong>not</strong> see, store, or process your external banking username or password.</li>
+                            <li>Does <strong>not</strong> have the ability to access your account outside of the &quot;read-only&quot; token provided by the third party.</li>
+                            <li>Is not liable for security breaches occurring at the third-party provider level.</li>
+                        </ul>
+
+                        <h3>4.2 Biometric Data (On-Device Only)</h3>
+                        <p>If you enable FaceID or TouchID permissions:</p>
+                        <ul className="list-disc pl-6 space-y-1">
+                            <li>JuaLuma relies on your device&apos;s native local authentication framework (e.g., Apple LocalAuthentication).</li>
+                            <li>We <strong>do not</strong> collect, store, transmit, or process your biometric data (face or fingerprint templates).</li>
+                            <li>All biometric validation happens entirely on your device hardware.</li>
+                        </ul>
+
+                        <h2>5. Data Security</h2>
+
+                        <h3>5.1 Security Measures</h3>
                         <p>We implement industry-standard security measures to protect your information:</p>
                         <p><strong>Encryption:</strong></p>
                         <ul className="list-disc pl-6 space-y-1">
@@ -213,7 +231,7 @@ export const Privacy = () => {
                             <li>Notify us immediately of any unauthorized access</li>
                         </ul>
 
-                        <h2>5. Your Privacy Rights</h2>
+                        <h2>6. Your Privacy Rights</h2>
 
                         <h3>5.1 GLBA Privacy Rights</h3>
                         <p>As a financial institution under GLBA, we provide you with:</p>
@@ -272,7 +290,7 @@ export const Privacy = () => {
                             <li>Export your data (see Section 6)</li>
                         </ul>
 
-                        <h2>6. Data Retention and Deletion</h2>
+                        <h2>7. Data Retention and Deletion</h2>
 
                         <h3>6.1 Data Retention</h3>
                         <p>We retain your information for as long as necessary to:</p>
@@ -311,10 +329,10 @@ export const Privacy = () => {
                             <li>Information in anonymized or aggregated form</li>
                         </ul>
 
-                        <h2>7. Children&apos;s Privacy</h2>
+                        <h2>8. Children&apos;s Privacy</h2>
                         <p>The Service is not intended for children under 18 years of age. We do not knowingly collect personal information from children under 18. If we become aware that we have collected information from a child under 18, we will delete that information immediately.</p>
 
-                        <h2>8. International Data Transfers</h2>
+                        <h2>9. International Data Transfers</h2>
                         <p><strong>International User Access:</strong> The JuaLuma platform is accessible to users worldwide and includes currency conversion features to support international users. However, the Service is primarily optimized for the United States market, and full international compliance frameworks (including GDPR, country-specific privacy regulations, and data transfer agreements) are currently in development for a future release.</p>
                         <p><strong>Data Processing Location:</strong> Your information may be processed and stored in the United States. By using the Service, you consent to the transfer of your information to the United States, which may have different data protection laws than your country of residence.</p>
                         <p><strong>International User Disclaimer:</strong> If you are located outside the United States, please be aware that:</p>
@@ -326,7 +344,7 @@ export const Privacy = () => {
                         </ul>
                         <p><strong>Currency Conversion:</strong> The platform supports automatic currency conversion for display purposes. All financial calculations are performed using USD as the base currency, with conversion rates provided by third-party services. Currency conversion is for display convenience only and should not be used for financial decision-making without consulting a qualified financial professional.</p>
 
-                        <h2>9. Cookies and Tracking Technologies</h2>
+                        <h2>10. Cookies and Tracking Technologies</h2>
 
                         <h3>9.1 Cookies</h3>
                         <p>We use cookies and similar technologies to:</p>
@@ -357,7 +375,7 @@ export const Privacy = () => {
                         <h3>9.3 Cookie Management</h3>
                         <p>You can manage cookies through your browser settings. Note that disabling certain cookies may affect Service functionality.</p>
 
-                        <h2>10. Third-Party Links and Services</h2>
+                        <h2>11. Third-Party Links and Services</h2>
                         <p>The Service may contain links to third-party websites or services. We are not responsible for the privacy practices of third parties. We encourage you to review the privacy policies of third-party services you use.</p>
                         <p><strong>Key Third-Party Services:</strong></p>
                         <ul className="list-disc pl-6 space-y-1">
@@ -366,7 +384,7 @@ export const Privacy = () => {
                             <li>Google Cloud Platform (infrastructure) - See Google Privacy Policy</li>
                         </ul>
 
-                        <h2>11. Data Types and Classifications</h2>
+                        <h2>12. Data Types and Classifications</h2>
 
                         <h3>11.1 Nonpublic Personal Information (NPPI) - GLBA</h3>
                         <p><strong>Examples:</strong></p>
@@ -414,7 +432,7 @@ export const Privacy = () => {
                             <li>Additional security measures</li>
                         </ul>
 
-                        <h2>12. Changes to This Privacy Policy</h2>
+                        <h2>13. Changes to This Privacy Policy</h2>
                         <p>We may update this Privacy Policy from time to time. The updated version will be indicated by an updated &quot;Last Updated&quot; date and the updated version will be effective as soon as it is accessible.</p>
                         <p>We will notify you of material changes by:</p>
                         <ul className="list-disc pl-6 space-y-1">
@@ -424,7 +442,7 @@ export const Privacy = () => {
                         </ul>
                         <p><strong>Continued Use:</strong> Your continued use of the Service after changes to this Privacy Policy constitutes your acceptance of the updated policy.</p>
 
-                        <h2>13. Contact Us</h2>
+                        <h2>14. Contact Us</h2>
 
                         <h3>13.1 Privacy Inquiries</h3>
                         <p>If you have questions about this Privacy Policy or our privacy practices, please contact us:</p>
@@ -454,7 +472,7 @@ export const Privacy = () => {
                             <li><strong>Other requests:</strong> Within reasonable time</li>
                         </ul>
 
-                        <h2>14. Additional Information</h2>
+                        <h2>15. Additional Information</h2>
 
                         <h3>14.1 GLBA Annual Privacy Notice</h3>
                         <p>We provide annual privacy notices as required by GLBA. You will receive:</p>

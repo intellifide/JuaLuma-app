@@ -45,7 +45,12 @@ describe('PlaidLinkButton', () => {
     const button = await screen.findByRole('button', { name: /connect with plaid/i })
     await waitFor(() => expect(button).not.toBeDisabled())
 
+    // Click trigger button
     await userEvent.click(button)
+
+    // Expect modal to appear and click confirm
+    const confirmButton = await screen.findByRole('button', { name: /continue to secure login/i })
+    await userEvent.click(confirmButton)
 
     await waitFor(() => {
       expect(postMock).toHaveBeenCalledWith('/plaid/exchange-token', {

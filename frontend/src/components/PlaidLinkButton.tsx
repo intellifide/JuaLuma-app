@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata, type PlaidLinkError } from 'react-plaid-link'
 import { api } from '../services/api'
 import { syncAccount } from '../services/accounts'
+import { ExternalLinkModal } from './ExternalLinkModal'
 
 type PlaidLinkButtonProps = {
   onSuccess?: () => void | Promise<void>
@@ -13,6 +14,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
   const [linkToken, setLinkToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [opening, setOpening] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const linkReadyOnce = useRef(false)
   const fetchedTokenOnce = useRef(false)
 
@@ -91,8 +93,13 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
     }
   )
 
-  const handleOpen = useCallback(() => {
+  const handleOpenModal = useCallback(() => {
     if (!linkConfig || !ready) return
+    setShowModal(true)
+  }, [linkConfig, ready])
+
+  const handleConfirm = useCallback(() => {
+    setShowModal(false)
     // Plaid Link should only initialize once per user action.
     linkReadyOnce.current = true
     setOpening(true)
@@ -102,16 +109,25 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
       linkReadyOnce.current = false
       setOpening(false)
     }, 0)
-  }, [linkConfig, open, ready])
+  }, [open])
 
   return (
-    <button
-      type="button"
-      onClick={handleOpen}
-      disabled={!linkConfig || !ready || loading || opening}
-      className="px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo disabled:opacity-50 transition-colors"
-    >
-      {loading ? 'Preparing...' : 'Connect with Plaid'}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleOpenModal}
+        disabled={!linkConfig || !ready || loading || opening}
+        className="px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo disabled:opacity-50 transition-colors"
+      >
+        {loading ? 'Preparing...' : 'Connect with Plaid'}
+      </button>
+
+      <ExternalLinkModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onConfirm={handleConfirm}
+        providerName="Plaid"
+      />
+    </>
   )
 }
