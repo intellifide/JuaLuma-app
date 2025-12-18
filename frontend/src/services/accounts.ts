@@ -112,7 +112,10 @@ export const deleteAccount = async (id: string): Promise<void> => {
   }
 }
 
-export const syncAccount = async (id: string): Promise<AccountSyncResponse> => {
+export const syncAccount = async (
+  id: string,
+  options?: { silent?: boolean }
+): Promise<AccountSyncResponse> => {
   try {
     const { data } = await api.post(`/accounts/${id}/sync`)
     return {
@@ -123,7 +126,9 @@ export const syncAccount = async (id: string): Promise<AccountSyncResponse> => {
       plan: data.plan,
     }
   } catch (error) {
-    handleError(error)
+    if (!options?.silent) {
+      handleError(error)
+    }
     throw error
   }
 }

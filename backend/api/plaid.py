@@ -3,7 +3,7 @@
 from decimal import Decimal
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from backend.services.plaid import (
     exchange_public_token,
     fetch_accounts,
 )
+from backend.services.sync_service import perform_background_sync
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
@@ -40,6 +41,8 @@ class ExchangeAccount(BaseModel):
     balance: Decimal | None = None
     currency: str | None = None
     account_number_masked: str | None = None
+    sync_status: str | None = "idle"
+    last_synced_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -74,6 +77,7 @@ def create_link_token_endpoint(
 )
 def exchange_token_endpoint(
     payload: ExchangeTokenRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ExchangeTokenResponse:
@@ -157,6 +161,15 @@ def exchange_token_endpoint(
     )
     db.add(audit)
     db.commit()
+
+    # Trigger background sync for the first account (syncs entire item)
+    if linked_accounts:
+        first_account = linked_accounts[0]
+        # Set status for ALL linked accounts to 'queued' to be safe/nice
+        for acc in linked_accounts:
+            acc.sync_status = "queued"
+        db.commit()
+        background_tasks.add_task(perform_background_sync, first_account.id, current_user.uid)
 
     return ExchangeTokenResponse(item_id=item_id, accounts=linked_accounts)
 

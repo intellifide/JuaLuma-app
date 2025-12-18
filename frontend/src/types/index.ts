@@ -44,6 +44,8 @@ export interface Account {
   secretRef?: string | null
   createdAt?: string
   updatedAt?: string
+  syncStatus?: 'idle' | 'queued' | 'syncing' | 'success' | 'failed' | null
+  lastSyncedAt?: string | null
 }
 
 export interface Transaction {
