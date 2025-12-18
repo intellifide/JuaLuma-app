@@ -20,6 +20,7 @@ export const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
+  const [acceptResident, setAcceptResident] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,6 +45,11 @@ export const Signup = () => {
 
     if (!acceptTerms || !acceptPrivacy) {
       setError('Please accept the Terms of Service and Privacy Policy.')
+      return
+    }
+
+    if (!acceptResident) {
+      setError('You must certify that you are a resident of the United States.')
       return
     }
 
@@ -124,31 +130,47 @@ export const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-slate-700">
+                <label className="flex items-start gap-2 text-sm text-slate-700">
                   <input
                     type="checkbox"
                     checked={acceptTerms}
                     onChange={(e) => setAcceptTerms(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple"
+                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
                     required
                   />
-                  I agree to the{' '}
-                  <a href="/legal/terms" className="text-royal-purple font-medium hover:text-deep-indigo">
-                    Terms of Service
-                  </a>
+                  <span>
+                    I agree to the{' '}
+                    <a href="/legal/terms" className="text-royal-purple font-medium hover:text-deep-indigo">
+                      Terms of Service
+                    </a>
+                  </span>
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-700">
+                <label className="flex items-start gap-2 text-sm text-slate-700">
                   <input
                     type="checkbox"
                     checked={acceptPrivacy}
                     onChange={(e) => setAcceptPrivacy(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple"
+                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
                     required
                   />
-                  I agree to the{' '}
-                  <a href="/legal/privacy" className="text-royal-purple font-medium hover:text-deep-indigo">
-                    Privacy Policy
-                  </a>
+                  <span>
+                    I agree to the{' '}
+                    <a href="/legal/privacy" className="text-royal-purple font-medium hover:text-deep-indigo">
+                      Privacy Policy
+                    </a>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={acceptResident}
+                    onChange={(e) => setAcceptResident(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
+                    required
+                  />
+                  <span>
+                    I certify that I am a resident of the United States and agree to the Terms of Service.
+                  </span>
                 </label>
               </div>
 

@@ -1,6 +1,7 @@
 // Updated 2025-12-09 16:45 CST by ChatGPT
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
+import { CookieConsentBanner } from './components/CookieConsentBanner'
 import { Navigation } from './components/Navigation'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Footer } from './components/Footer'
@@ -40,6 +41,7 @@ function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
+        <CookieConsentBanner />
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
