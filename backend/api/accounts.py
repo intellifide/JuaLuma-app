@@ -1,8 +1,6 @@
 # Updated 2025-12-10 14:58 CST by ChatGPT
 import logging
 import uuid
-import json
-import os
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -15,13 +13,18 @@ from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
 from backend.core.dependencies import enforce_account_limit
+from backend.core.dependencies import enforce_account_limit
 from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.plaid import fetch_accounts, fetch_transactions
-from backend.services.sync_service import perform_background_sync
 from backend.utils import get_db
 from backend.utils.encryption import encrypt_secret, decrypt_secret
 from backend.services.connectors import build_connector
 from web3 import Web3  # For address validation
+import json
+import os
+from backend.utils.encryption import encrypt_secret, decrypt_secret
+from web3 import Web3  # For address validation
+import json
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -85,6 +88,32 @@ class CexLinkRequest(BaseModel):
         return v.lower()
 
 
+class Web3LinkRequest(BaseModel):
+    address: str = Field(description="Wallet public address (0x...)")
+    chain_id: int = Field(default=1, description="Chain ID (1=Mainnet)")
+    account_name: str = Field(max_length=256)
+
+    @field_validator("address")
+    @classmethod
+    def validate_address(cls, v: str) -> str:
+        if not Web3.is_address(v):
+            raise ValueError("Invalid Web3 address format")
+        return Web3.to_checksum_address(v)
+
+
+class CexLinkRequest(BaseModel):
+    exchange_id: str = Field(description="Exchange ID (e.g., coinbase, kraken)")
+    api_key: str = Field(description="API Public Key")
+    api_secret: str = Field(description="API Secret Key")
+    account_name: str = Field(max_length=256)
+
+    @field_validator("exchange_id")
+    @classmethod
+    def validate_exchange(cls, v: str) -> str:
+        allowed = {"coinbase", "kraken", "binance", "binanceus"}
+        if v.lower() not in allowed:
+            raise ValueError(f"Unsupported exchange. Allowed: {allowed}")
+        return v.lower()
 
 
 class AccountUpdate(BaseModel):
@@ -326,6 +355,13 @@ def get_account_details(
 
     return _serialize_account(account, transactions=transactions)
 
+
+@router.post(
+    "/{account_id}/sync",
+    response_model=AccountSyncResponse,
+    status_code=status.HTTP_200_OK,
+)
+from backend.services.sync_service import perform_background_sync
 
 @router.post(
     "/{account_id}/sync",
