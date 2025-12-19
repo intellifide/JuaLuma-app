@@ -67,7 +67,7 @@ const formatCompactCurrency = (value: number) =>
 
 // SVG Generators
 const generateLinePath = (data: DataPoint[], width: number, height: number) => {
-  if (!data || data.length === 0) return { path: '', points: [], min: 0, max: 0, startLabel: '', endLabel: '' };
+  if (!data || data.length === 0) return { path: '', areaPath: '', dots: [], min: 0, max: 0, startLabel: '', endLabel: '' };
 
   const values = data.map(d => d.value);
   const min = Math.min(...values) * 0.99;
