@@ -206,13 +206,13 @@ export const DeveloperSDK = () => {
                     <div className="space-y-8">
                         <div>
                             <div className="badge bg-bg-secondary mb-2">Install SDK</div>
-                            <pre className="bg-black/30 p-4 rounded border border-white/10 font-mono text-sm">npm install @JuaLuma/sdk</pre>
+                            <pre className="bg-black/30 p-4 rounded border border-white/10 font-mono text-sm">npm install @jualuma/sdk</pre>
                         </div>
                         <div>
                             <div className="badge bg-bg-secondary mb-2">Initialize Widget</div>
                             <pre className="bg-black/30 p-4 rounded border border-white/10 font-mono text-sm">
                                 {`# Initialize new widget project
-JuaLuma dev init my-widget
+jualuma dev init my-widget
 
 # This creates:
 # - widget.json (manifest)
@@ -224,10 +224,10 @@ JuaLuma dev init my-widget
                             <div className="badge bg-bg-secondary mb-2">Run Sandbox</div>
                             <pre className="bg-black/30 p-4 rounded border border-white/10 font-mono text-sm">
                                 {`# Build widget bundle
-JuaLuma dev build
+jualuma dev build
 
 # Run in local sandbox
-JuaLuma dev sandbox`}
+jualuma dev sandbox`}
                             </pre>
                         </div>
                     </div>
@@ -267,7 +267,7 @@ JuaLuma dev sandbox`}
                 <div className="glass-panel">
                     <h2 className="text-2xl font-bold mb-6">Live SDK Examples</h2>
                     <p className="mb-8 text-text-muted">
-                        Live rendering of test widgets using the <code>JuaLumaClient</code> and <code>WidgetContext</code>.
+                        Live rendering of test widgets using the <code>jualumaClient</code> and <code>WidgetContext</code>.
                     </p>
 
                     <div className="grid md:grid-cols-2 gap-8">

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/sdk", response_class=FileResponse)
 def download_sdk():
-    """Download the latest JuaLuma Widget SDK."""
+    """Download the latest jualuma Widget SDK."""
     # Resolve path relative to this file (backend/api/developers.py)
     # Target: backend/static/sdk-latest.zip
     base_dir = Path(__file__).resolve().parent.parent # backend/
@@ -29,7 +29,7 @@ def download_sdk():
         logger.error(f"SDK file not found at: {file_path}")
         raise HTTPException(status_code=404, detail="SDK not found")
         
-    return FileResponse(path=file_path, media_type="application/zip", filename="JuaLuma-widget-sdk.zip")
+    return FileResponse(path=file_path, media_type="application/zip", filename="jualuma-widget-sdk.zip")
 
 class PayoutResponse(BaseModel):
     month: date

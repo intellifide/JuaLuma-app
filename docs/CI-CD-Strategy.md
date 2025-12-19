@@ -1,12 +1,12 @@
 # CI/CD Strategy
-## Intellifide, LLC - JuaLuma Platform
+## Intellifide, LLC - jualuma Platform
 
 
 ---
 
 ## Overview
 
-This document outlines the Continuous Integration and Continuous Deployment (CI/CD) strategy for the JuaLuma platform, using GitHub Actions for automation, Google Artifact Registry for container storage, and Cloud Run for deployment.
+This document outlines the Continuous Integration and Continuous Deployment (CI/CD) strategy for the jualuma platform, using GitHub Actions for automation, Google Artifact Registry for container storage, and Cloud Run for deployment.
 
 ---
 
@@ -129,13 +129,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 - No GCP resources required
 
 **Dev:**
-- GCP project `JuaLuma-dev`, region `us-central1`, Cloud Run services with `-dev` suffix
+- GCP project `jualuma-dev`, region `us-central1`, Cloud Run services with `-dev` suffix
 
 **Stage:**
-- GCP project `JuaLuma-stage`, region `us-central1`, Cloud Run services with `-stage` suffix
+- GCP project `jualuma-stage`, region `us-central1`, Cloud Run services with `-stage` suffix
 
 **Prod:**
-- GCP project `JuaLuma-prod`, regions `us-central1` (primary), `us-east1` (DR)
+- GCP project `jualuma-prod`, regions `us-central1` (primary), `us-east1` (DR)
 - Cloud Run (Backend)
 - Cloud Storage + CDN (Frontend)
 - Cloud SQL Enterprise Plus (Database)

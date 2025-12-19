@@ -1,9 +1,9 @@
 # Marketing Content Guidelines
-## Intellifide, LLC - JuaLuma Platform
+## Intellifide, LLC - jualuma Platform
 
 ## Overview
 
-This document expands on Section 3.2 of the business plan and provides comprehensive guidelines for all marketing content, advertising, and communications for the JuaLuma platform. These guidelines ensure compliance with regulatory requirements and protect against misrepresentation claims.
+This document expands on Section 3.2 of the business plan and provides comprehensive guidelines for all marketing content, advertising, and communications for the jualuma platform. These guidelines ensure compliance with regulatory requirements and protect against misrepresentation claims.
 
 
 **Review Frequency:** Quarterly, or as regulations change
@@ -50,7 +50,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 2.1 Platform Capabilities
 
 **APPROVED - Data Aggregation:**
-- "The JuaLuma platform securely connects to numerous CEXs via API"
+- "The jualuma platform securely connects to numerous CEXs via API"
 - "Aggregate all your financial accounts in one place"
 - "Connect your bank accounts, credit cards, and cryptocurrency exchanges"
 - "View all your financial data in a single dashboard"
@@ -83,7 +83,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 - "Free tier retains 45 days of transactions locally; older data is automatically removed (no archives kept)"
 
 **APPROVED - Essential Tier:**
-- "Essential tier delivers the full JuaLuma experience for $10/month"
+- "Essential tier delivers the full jualuma experience for $10/month"
 - "24-hour automated refresh cadence keeps data current without manual sync"
 - "Essential retains 30 days of detailed ledger data hot, with older history archived securely for read-only review"
 - "Essential includes the same 75 cloud AI queries/day allocation as Pro"
@@ -151,7 +151,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 3.3 Misleading Claims Prohibitions
 
 **PROHIBITED - Exaggerated Benefits:**
-- ❌ "Become a millionaire with JuaLuma"
+- ❌ "Become a millionaire with jualuma"
 - ❌ "Get rich quick"
 - ❌ "Financial freedom guaranteed"
 - ❌ "Eliminate all your debt"
@@ -236,8 +236,8 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 5.1 General Disclaimers
 
 **Recommended Disclaimers:**
-- "JuaLuma is for informational and educational purposes only"
-- "JuaLuma does not provide financial, investment, tax, or legal advice"
+- "jualuma is for informational and educational purposes only"
+- "jualuma does not provide financial, investment, tax, or legal advice"
 - "Always consult qualified professionals for financial decisions"
 
 **Placement:**
@@ -352,14 +352,14 @@ When discussing investments or financial markets:
 ### 6.5 App Store Listings
 
 #### 6.5.1 Metadata & Copy
-- Use the approved store name: `JuaLuma – Powered by Intellifide`.
+- Use the approved store name: `jualuma – Powered by Intellifide`.
 - Subtitle/short description must highlight aggregation + budgeting + AI assistant in one line without implying advice.
 - Long description uses 3 paragraphs: (1) aggregation summary, (2) budgeting/automation benefits, (3) compliance statements (read-only, no advice, GLBA/GDPR alignment).
-- Include mandatory disclaimers verbatim: "JuaLuma provides informational insights only. No investment, tax, or legal advice."
+- Include mandatory disclaimers verbatim: "jualuma provides informational insights only. No investment, tax, or legal advice."
 - Locales: English (US) MVP. Structure copy so future locales can swap strings via `store-listings.json`.
 
 #### 6.5.2 Visual Assets
-- **Icons:** Use the refreshed JuaLuma product icon derived from the Intellifide brand system. Export 1024×1024 (Apple) and adaptive foreground/background layers (Google). No drop shadows or gradients that violate store policies.
+- **Icons:** Use the refreshed jualuma product icon derived from the Intellifide brand system. Export 1024×1024 (Apple) and adaptive foreground/background layers (Google). No drop shadows or gradients that violate store policies.
 - **Screenshots (Apple):** 6 total (6.7" and 6.5" sizes). Narrative order: Dashboard Overview → Aggregated Accounts → Budget Canvas → AI Assistant (with disclaimer caption) → Net Worth Visualization → Security/Privacy commitments. Each frame uses Engineered Liquid Glass template and caption overlays sourced from this document.
 - **Screenshots (Google):** 8 total (phone). Same story arc plus Plaid/Web3 connectivity frame and Compliance frame.
 - **Feature Graphic (Google Play):** 1024×500 hero referencing the Intellifide corporate logo subtly (watermark only). Text limited to 4 words max.
@@ -403,7 +403,7 @@ When discussing investments or financial markets:
 [Factual content about feature/update]
 
 **Footer:**
-JuaLuma is for informational and educational purposes only. JuaLuma does not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.
+jualuma is for informational and educational purposes only. jualuma does not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.
 
 [Unsubscribe] [Privacy Policy] [Terms of Service]
 
@@ -413,7 +413,7 @@ JuaLuma is for informational and educational purposes only. JuaLuma does not pro
 
 #PersonalFinance #FinTech
 
-Disclaimer: JuaLuma is for informational purposes only and does not provide financial advice.
+Disclaimer: jualuma is for informational purposes only and does not provide financial advice.
 
 ---
 

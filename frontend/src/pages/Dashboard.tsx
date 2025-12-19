@@ -73,7 +73,7 @@ const CATEGORY_RULES: { label: string; keywords: RegExp }[] = [
   { label: 'Food & Drink', keywords: /(starbucks|coffee|cafe|restaurant|grill|pizza|dunkin|chipotle|mcdonald|burger|kfc|taco bell)/i },
   { label: 'Groceries', keywords: /(grocery|supermarket|whole foods|walmart|target|costco|aldi|kroger|trader joe)/i },
   { label: 'Transport', keywords: /(uber|lyft|metro|gas|shell|exxon|chevron|parking|toll|transit|fuel)/i },
-  { label: 'Utilities', keywords: /(electric|water|utility|utilities|comcast|JuaLuma|spectrum|verizon|at&t|att|internet|wifi)/i },
+  { label: 'Utilities', keywords: /(electric|water|utility|utilities|comcast|jualuma|spectrum|verizon|at&t|att|internet|wifi)/i },
   { label: 'Entertainment', keywords: /(netflix|spotify|hulu|disney|youtube|game|cinema|theater|apple music)/i },
   { label: 'Health', keywords: /(pharmacy|cvs|walgreens|clinic|hospital|dental|fitness|gym|workout)/i },
   { label: 'Shopping', keywords: /(amazon|shop|mall|boutique|best buy|electronics|clothing|apparel)/i },

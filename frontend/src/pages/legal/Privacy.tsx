@@ -14,7 +14,7 @@ export const Privacy = () => {
 
                     <div className="max-w-[800px] mx-auto space-y-6">
                         <h2>Introduction</h2>
-                        <p>Intellifide, LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you access or use the JuaLuma platform (the &quot;Service&quot;). We are committed to protecting your privacy and handling your personal information responsibly.</p>
+                        <p>Intellifide, LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you access or use the jualuma platform (the &quot;Service&quot;). We are committed to protecting your privacy and handling your personal information responsibly.</p>
                         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 my-4">
                             <strong>Important:</strong> As a financial data aggregator, we are classified as a &quot;financial institution&quot; under the Gramm-Leach-Bliley Act (GLBA). This Privacy Policy describes how we collect, use, share, and protect your information in compliance with GLBA and other applicable privacy laws.
                         </div>
@@ -171,7 +171,7 @@ export const Privacy = () => {
                         <h2>4. Third-Party Integrations & Liability</h2>
 
                         <h3>4.1 External Account Credentials (&quot;The Bridge&quot;)</h3>
-                        <p>When you link a bank account or cryptocurrency exchange (e.g., via Plaid or Coinbase), <strong>you are interacting directly with that third-party provider</strong>. JuaLuma:</p>
+                        <p>When you link a bank account or cryptocurrency exchange (e.g., via Plaid or Coinbase), <strong>you are interacting directly with that third-party provider</strong>. jualuma:</p>
                         <ul className="list-disc pl-6 space-y-1">
                             <li>Does <strong>not</strong> see, store, or process your external banking username or password.</li>
                             <li>Does <strong>not</strong> have the ability to access your account outside of the &quot;read-only&quot; token provided by the third party.</li>
@@ -181,7 +181,7 @@ export const Privacy = () => {
                         <h3>4.2 Biometric Data (On-Device Only)</h3>
                         <p>If you enable FaceID or TouchID permissions:</p>
                         <ul className="list-disc pl-6 space-y-1">
-                            <li>JuaLuma relies on your device&apos;s native local authentication framework (e.g., Apple LocalAuthentication).</li>
+                            <li>jualuma relies on your device&apos;s native local authentication framework (e.g., Apple LocalAuthentication).</li>
                             <li>We <strong>do not</strong> collect, store, transmit, or process your biometric data (face or fingerprint templates).</li>
                             <li>All biometric validation happens entirely on your device hardware.</li>
                         </ul>
@@ -333,7 +333,7 @@ export const Privacy = () => {
                         <p>The Service is not intended for children under 18 years of age. We do not knowingly collect personal information from children under 18. If we become aware that we have collected information from a child under 18, we will delete that information immediately.</p>
 
                         <h2>9. International Data Transfers</h2>
-                        <p><strong>International User Access:</strong> The JuaLuma platform is accessible to users worldwide and includes currency conversion features to support international users. However, the Service is primarily optimized for the United States market, and full international compliance frameworks (including GDPR, country-specific privacy regulations, and data transfer agreements) are currently in development for a future release.</p>
+                        <p><strong>International User Access:</strong> The jualuma platform is accessible to users worldwide and includes currency conversion features to support international users. However, the Service is primarily optimized for the United States market, and full international compliance frameworks (including GDPR, country-specific privacy regulations, and data transfer agreements) are currently in development for a future release.</p>
                         <p><strong>Data Processing Location:</strong> Your information may be processed and stored in the United States. By using the Service, you consent to the transfer of your information to the United States, which may have different data protection laws than your country of residence.</p>
                         <p><strong>International User Disclaimer:</strong> If you are located outside the United States, please be aware that:</p>
                         <ul className="list-disc pl-6 space-y-1">

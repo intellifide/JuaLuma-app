@@ -1,7 +1,7 @@
 // Created 2025-12-11 13:00 CST
-import { JuaLumaClient } from './types';
+import { jualumaClient } from './types';
 
-export const mockClient: JuaLumaClient = {
+export const mockClient: jualumaClient = {
     request: async <T = unknown>(path: string, options?: RequestInit): Promise<T> => {
         console.log(`[MockClient] Request to ${path}`, options);
         // Simulate network delay

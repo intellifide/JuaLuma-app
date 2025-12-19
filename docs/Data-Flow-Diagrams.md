@@ -1,9 +1,9 @@
 # Data Flow Diagrams
-## JuaLuma Platform - Intellifide, LLC
+## jualuma Platform - Intellifide, LLC
 
 ## Overview
 
-This document provides data flow diagrams and descriptions for the JuaLuma platform, showing how user data flows through the system from collection to display. These diagrams support security architecture, compliance documentation, and development planning.
+This document provides data flow diagrams and descriptions for the jualuma platform, showing how user data flows through the system from collection to display. These diagrams support security architecture, compliance documentation, and development planning.
 
 
 **Review Frequency:** As architecture changes
@@ -22,7 +22,7 @@ This document provides data flow diagrams and descriptions for the JuaLuma platf
 ### 1.1 High-Level Data Flow
 
 ```
-User → JuaLuma Platform → Data Aggregation → Storage → Processing → Display → User
+User → jualuma Platform → Data Aggregation → Storage → Processing → Display → User
 ```
 
 **Key Components:**
@@ -360,7 +360,7 @@ User Budget Settings (Cloud SQL)
 Cloud SQL (tier-specific windows)
   │
   ├─→ Dataflow Job: categorization-feature-builder
-  │     └─→ Writes Parquet features to Cloud Storage (gs://JuaLuma-ml-features/dt=YYYY-MM-DD/)
+  │     └─→ Writes Parquet features to Cloud Storage (gs://jualuma-ml-features/dt=YYYY-MM-DD/)
   │
   ├─→ Vertex AI Pipelines (Nightly)
   │     ├─→ Data Validation
@@ -515,7 +515,7 @@ Data Type → Storage Decision → Storage Location
 **Tier-Specific Hot Windows:**
 
 - **Free Tier:** Transactions live in Cloud SQL table `ledger_hot_free` for 45 days. The nightly `free-ledger-pruner` Cloud Run Job (triggered via Cloud Scheduler at 02:00 CT) deletes data older than 45 days; no archive copy exists.
-- **Essential Tier:** Transactions live in Cloud SQL table `ledger_hot_essential` for 30 days. The `essential-ledger-archiver` job copies aged rows into Coldline (`gs://JuaLuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
+- **Essential Tier:** Transactions live in Cloud SQL table `ledger_hot_essential` for 30 days. The `essential-ledger-archiver` job copies aged rows into Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
 - **Pro/Ultimate:** Continue to rely on Cloud SQL Enterprise Plus for full-history storage; no hot-window pruning is applied.
 
 ### 6.2 Data Flow to Storage

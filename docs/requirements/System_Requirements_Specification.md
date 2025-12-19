@@ -1,7 +1,7 @@
 # System Requirements Specification (SyRS)
 
 ## 1. Introduction
-This document specifies the system-level requirements for the JuaLuma Application, including hardware, software, and communication interfaces for both development and production environments.
+This document specifies the system-level requirements for the jualuma Application, including hardware, software, and communication interfaces for both development and production environments.
 
 ## 2. System Architecture
 The system follows a microservices-lite architecture primarily hosted on Google Cloud Platform (GCP).

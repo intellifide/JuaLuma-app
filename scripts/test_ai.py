@@ -34,7 +34,7 @@ def main() -> None:
             {
                 "parts": [
                     {
-                        "text": "JuaLuma local dev health check: one short sentence about AI.",
+                        "text": "jualuma local dev health check: one short sentence about AI.",
                     }
                 ]
             }

@@ -1,7 +1,7 @@
 # Getting Started with GCP: Cost Optimization & Projections
 
 
-## GCP Cost Optimization Strategies for JuaLuma
+## GCP Cost Optimization Strategies for jualuma
 
 ### 1. Cloud SQL Optimization (Unified Ledger & Metadata)
 
@@ -30,7 +30,7 @@
 
 - **Dedicated Audit Schema:** Keep `audit.*` tables on the same Cloud SQL instance (separate schema) with `autovacuum_vacuum_scale_factor = 0.01` to prevent bloat on append-only workloads.
 - **Monthly Partitioning:** Use declarative partitions on `audit.llm_logs`/`audit.audit_log` so nightly purges and exports only touch the active partition.
-- **Hot vs. Cold Retention:** Retain 90 days of logs in Cloud SQL; `log-ledger-archiver` exports Parquet files to `gs://JuaLuma-log-vault/<table>/<YYYY>/<MM>/<DD>/` for 7-year GLBA retention.
+- **Hot vs. Cold Retention:** Retain 90 days of logs in Cloud SQL; `log-ledger-archiver` exports Parquet files to `gs://jualuma-log-vault/<table>/<YYYY>/<MM>/<DD>/` for 7-year GLBA retention.
 - **Read Replica for Analytics:** If dashboards need heavy queries, attach a `db-custom-1-2` read replica; shut it down off-hours to minimize spend.
 
 ### 5. Storage & CDN Optimization

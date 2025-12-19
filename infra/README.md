@@ -1,6 +1,6 @@
-# JuaLuma Infrastructure as Code (IaC)
+# jualuma Infrastructure as Code (IaC)
 
-This directory contains Terraform configurations for managing all GCP infrastructure for the JuaLuma platform.
+This directory contains Terraform configurations for managing all GCP infrastructure for the jualuma platform.
 
 ## Overview
 
@@ -41,7 +41,7 @@ infra/
 ## Prerequisites
 
 1. **GCP Account Setup:**
-   - Create GCP projects: `JuaLuma-prod`, `JuaLuma-stage`, `JuaLuma-dev`
+   - Create GCP projects: `jualuma-prod`, `jualuma-stage`, `jualuma-dev`
    - Enable required APIs (see `getting started gcp.md`)
    - Set up billing accounts and alerts
 
@@ -58,11 +58,11 @@ infra/
    gcloud auth application-default login
    
    # Set project
-   gcloud config set project JuaLuma-prod  # or JuaLuma-stage, JuaLuma-dev
+   gcloud config set project jualuma-prod  # or jualuma-stage, jualuma-dev
    ```
 
 4. **Bootstrap State Backend:**
-   - Create GCS bucket for Terraform state (e.g., `JuaLuma-terraform-state`)
+   - Create GCS bucket for Terraform state (e.g., `jualuma-terraform-state`)
    - Enable versioning on the bucket
    - Create KMS key for state encryption
    - Copy `backend.tf.example` to `backend.tf` and configure

@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppSettings(BaseSettings):
-    """Validated configuration for the JuaLuma backend."""
+    """Validated configuration for the jualuma backend."""
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -10,7 +10,7 @@ from backend.utils import get_db
 from sqlalchemy import func
 
 # Initialize the Main App MCP server
-mcp = FastMCP("JuaLuma App")
+mcp = FastMCP("jualuma App")
 logger = logging.getLogger(__name__)
 
 def get_db_session():

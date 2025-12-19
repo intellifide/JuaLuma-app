@@ -1,6 +1,7 @@
-# Updated 2025-12-10 14:58 CST by ChatGPT
+# Updated 2025-12-19 02:05 CST by Antigravity
 import logging
 import uuid
+import json
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -10,21 +11,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from web3 import Web3  # For address validation
 
 from backend.middleware.auth import get_current_user
 from backend.core.dependencies import enforce_account_limit
-from backend.core.dependencies import enforce_account_limit
 from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.plaid import fetch_accounts, fetch_transactions
+from backend.services.connectors import build_connector
 from backend.utils import get_db
 from backend.utils.encryption import encrypt_secret, decrypt_secret
-from backend.services.connectors import build_connector
-from web3 import Web3  # For address validation
-import json
-import os
-from backend.utils.encryption import encrypt_secret, decrypt_secret
-from web3 import Web3  # For address validation
-import json
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -58,34 +53,6 @@ class AccountCreate(BaseModel):
                 f"account_type must be one of {sorted(_ALLOWED_ACCOUNT_TYPES)}"
             )
         return normalized
-
-
-class Web3LinkRequest(BaseModel):
-    address: str = Field(description="Wallet public address (0x...)")
-    chain_id: int = Field(default=1, description="Chain ID (1=Mainnet)")
-    account_name: str = Field(max_length=256)
-
-    @field_validator("address")
-    @classmethod
-    def validate_address(cls, v: str) -> str:
-        if not Web3.is_address(v):
-            raise ValueError("Invalid Web3 address format")
-        return Web3.to_checksum_address(v)
-
-
-class CexLinkRequest(BaseModel):
-    exchange_id: str = Field(description="Exchange ID (e.g., coinbase, kraken)")
-    api_key: str = Field(description="API Public Key")
-    api_secret: str = Field(description="API Secret Key")
-    account_name: str = Field(max_length=256)
-
-    @field_validator("exchange_id")
-    @classmethod
-    def validate_exchange(cls, v: str) -> str:
-        allowed = {"coinbase", "kraken", "binance", "binanceus"}
-        if v.lower() not in allowed:
-            raise ValueError(f"Unsupported exchange. Allowed: {allowed}")
-        return v.lower()
 
 
 class Web3LinkRequest(BaseModel):
@@ -355,6 +322,151 @@ def get_account_details(
 
 
 @router.post(
+    "/link/web3",
+    response_model=AccountResponse,
+    status_code=status.HTTP_201_CREATED
+)
+def link_web3_account(
+    payload: Web3LinkRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AccountResponse:
+    """
+    Link a Web3 wallet (Ethereum address).
+    Validates the address format and prevents duplicate linking of the same address by the same user.
+    """
+    # 1. Check duplicate checks
+    # While secret_ref might differ in formatting, we check if any existing account has this address in secret_ref
+    # Since secret_ref is text, we can do a ILIKE or JSON exact match.
+    # For now, let's just fetch all web3 accounts and check in python to handle JSON parsing safely,
+    # or rely on a simple string check if we ensure stored format is consistent.
+    
+    # Simple consistent storage format:
+    secret_data = {"address": payload.address, "chain_id": payload.chain_id}
+    secret_ref_str = json.dumps(secret_data, sort_keys=True)
+
+    # Check for duplicates using Python iteration to be safe against JSON variations if not strict,
+    # or just checking the address field inside.
+    existing_accounts = db.query(Account).filter(
+        Account.uid == current_user.uid,
+        Account.account_type == "web3"
+    ).all()
+
+    for acc in existing_accounts:
+        if not acc.secret_ref:
+            continue
+        try:
+            stored = json.loads(acc.secret_ref)
+            if stored.get("address") == payload.address:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Wallet address {payload.address} is already linked."
+                )
+        except json.JSONDecodeError:
+            continue
+
+    enforce_account_limit(current_user, db, "web3")
+
+    account = Account(
+        uid=current_user.uid,
+        account_type="web3",
+        provider="ethereum",
+        account_name=payload.account_name,
+        currency="ETH",
+        secret_ref=secret_ref_str,
+        balance=Decimal("0.0"),  # Will be updated via sync
+    )
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+
+    audit = AuditLog(
+        actor_uid=current_user.uid,
+        target_uid=current_user.uid,
+        action="account_linked_web3",
+        source="backend",
+        metadata_json={"account_id": str(account.id), "address": payload.address},
+    )
+    db.add(audit)
+    db.commit()
+
+    return _serialize_account(account)
+
+
+@router.post(
+    "/link/cex",
+    response_model=AccountResponse,
+    status_code=status.HTTP_201_CREATED
+)
+def link_cex_account(
+    payload: CexLinkRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AccountResponse:
+    """
+    Link a Centralized Exchange (CEX) account using API credentials.
+    Validates credentials by attempting a connection (or mock validation).
+    Encrypts API secrets before storage.
+    """
+    # 1. Validate credentials
+    try:
+        # build_connector handles the logic of choosing mock vs real based on ENV
+        connector = build_connector(
+            kind="cex",
+            exchange_id=payload.exchange_id,
+            api_key=payload.api_key,
+            api_secret=payload.api_secret
+        )
+        # Attempt to fetch transactions (or just a basic check if available) to validate keys.
+        # Since fetch_transactions pulls up to 50, it's a reasonable connectivity check.
+        # We pass a dummy account_id as we are just testing connectivity.
+        list(connector.fetch_transactions(account_id="validation_check"))
+    except Exception as e:
+        logger.warning(f"CEX validation failed for {payload.exchange_id}: {e}")
+        # In production, we'd want to block invalid keys. In dev/mock, it might pass.
+        # If it's a specific credential error, raise 400.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to validate CEX credentials: {str(e)}"
+        )
+
+    # 2. Encrypt secrets
+    secret_data = {
+        "apiKey": payload.api_key,
+        "secret": payload.api_secret
+    }
+    secret_json = json.dumps(secret_data)
+    encrypted_ref = encrypt_secret(secret_json, current_user.uid)
+
+    enforce_account_limit(current_user, db, "cex")
+
+    account = Account(
+        uid=current_user.uid,
+        account_type="cex",
+        provider=payload.exchange_id,
+        account_name=payload.account_name,
+        currency="USD", # Default for CEX until synced
+        secret_ref=encrypted_ref,
+        balance=Decimal("0.0"),
+    )
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+
+    audit = AuditLog(
+        actor_uid=current_user.uid,
+        target_uid=current_user.uid,
+        action="account_linked_cex",
+        source="backend",
+        metadata_json={"account_id": str(account.id), "exchange": payload.exchange_id},
+    )
+    db.add(audit)
+    db.commit()
+
+    return _serialize_account(account)
+
+
+@router.post(
     "/{account_id}/sync",
     response_model=AccountSyncResponse,
     status_code=status.HTTP_200_OK,
@@ -388,14 +500,19 @@ def sync_account_transactions(
         .filter(
             Account.id == account_id,
             Account.uid == current_user.uid,
-            Account.account_type == "traditional",
         )
         .first()
     )
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found or unsupported for sync.",
+            detail="Account not found.",
+        )
+
+    if account.account_type not in ["traditional", "web3", "cex"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Sync not supported for account type: {account.account_type}",
         )
 
     if not account.secret_ref:
@@ -439,69 +556,101 @@ def sync_account_transactions(
 
     # 2. Web3
     elif account.account_type == "web3":
-        # For now, we'll parse the secret_ref JSON to get address
         try:
             conn_data = json.loads(account.secret_ref)
             address = conn_data.get("address")
             if not address:
                 raise ValueError("Invalid Web3 configuration")
-            # Mock fetch or call service
-            # For this MVP phase, we skip actual RPC call unless connector service is ready
-            # We will rely on the verify_crypto_config tool to test this flow
-            pass 
+            
+            # Use Connector Service
+            connector = build_connector(kind="web3", rpc_url=None) # Uses public fallback or mock
+            
+            normalized_txns = connector.fetch_transactions(account_id=address)
+            
+            fetched_txns = []
+            for t in normalized_txns:
+                fetched_txns.append({
+                    "date": t.timestamp.date(),
+                    "transaction_id": t.tx_id,
+                    "amount": float(t.amount),
+                    "currency": t.currency_code,
+                    "category": ["Transfer"] if t.type == 'transfer' else ["Trade"],
+                    "merchant_name": t.merchant_name,
+                    "name": t.merchant_name or t.tx_id[:8],
+                })
+
         except Exception as e:
             logger.error(f"Web3 sync error: {e}")
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}")
 
     # 3. CEX
     elif account.account_type == "cex":
         try:
             # Decrypt
             decrypted_json = decrypt_secret(account.secret_ref, current_user.uid)
-            response = json.loads(decrypted_json)
-            # api_key = response["apiKey"]
-            # secret = response["secret"]
-            # Call connector...
-            pass
+            creds = json.loads(decrypted_json)
+            
+            connector = build_connector(
+                kind="cex",
+                exchange_id=account.provider,
+                api_key=creds.get("apiKey"),
+                api_secret=creds.get("secret")
+            )
+            
+            normalized_txns = connector.fetch_transactions(account_id=str(account.id))
+            
+            fetched_txns = []
+            for t in normalized_txns:
+                fetched_txns.append({
+                    "date": t.timestamp.date(),
+                    "transaction_id": t.tx_id,
+                    "amount": float(t.amount),
+                    "currency": t.currency_code,
+                    "category": ["Trade"] if t.type == 'trade' else ["Transfer"],
+                    "merchant_name": t.merchant_name,
+                    "name": f"{t.counterparty} {t.type}",
+                })
+                
         except Exception as e:
             logger.error(f"CEX sync error: {e}")
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to decrypt credentials")
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to decrypt credentials or sync CEX")
 
     # Common normalization (Plaid serves as the schema reference)
     plaid_transactions = fetched_txns
 
     # Optionally refresh balance if Plaid provides it.
     plaid_account_id = None
-    try:
-        plaid_accounts = fetch_accounts(account.secret_ref)
-        match = next(
-            (
-                acct
-                for acct in plaid_accounts
-                if acct.get("mask") == account.account_number_masked
-            ),
-            None,
-        )
-        if match:
-            plaid_account_id = match.get("account_id")
-            balance_raw = match.get("balance_current")
-            if balance_raw is not None:
-                account.balance = Decimal(str(balance_raw))
-            account.currency = (
-                match.get("currency")
-                or account.currency
-                or current_user.currency_pref
-                or "USD"
+    if account.account_type == "traditional":
+        try:
+            plaid_accounts = fetch_accounts(account.secret_ref)
+            match = next(
+                (
+                    acct
+                    for acct in plaid_accounts
+                    if acct.get("mask") == account.account_number_masked
+                ),
+                None,
             )
-            
-            # Filter transactions to only those belonging to this specific account
-            if plaid_account_id:
-                plaid_transactions = [
-                    t for t in fetched_txns if t.get("account_id") == plaid_account_id
-                ]
-    except Exception as e:
-        logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
-        # Non-fatal: keep existing balance/transactions if refresh fails
-        pass
+            if match:
+                plaid_account_id = match.get("account_id")
+                balance_raw = match.get("balance_current")
+                if balance_raw is not None:
+                    account.balance = Decimal(str(balance_raw))
+                account.currency = (
+                    match.get("currency")
+                    or account.currency
+                    or current_user.currency_pref
+                    or "USD"
+                )
+                
+                # Filter transactions to only those belonging to this specific account
+                if plaid_account_id:
+                    plaid_transactions = [
+                        t for t in fetched_txns if t.get("account_id") == plaid_account_id
+                    ]
+        except Exception as e:
+            logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
+            pass
 
     synced = 0
     new_count = 0
@@ -520,8 +669,13 @@ def sync_account_transactions(
         return clean
 
     for txn in plaid_transactions:
+        d = txn["date"]
+        # Ensure d is a date object
+        if isinstance(d, str):
+             d = date.fromisoformat(d)
+        
         txn_ts = datetime.combine(
-            txn["date"], datetime.min.time(), tzinfo=timezone.utc
+            d, datetime.min.time(), tzinfo=timezone.utc
         )
         existing = (
             db.query(Transaction)
@@ -537,7 +691,7 @@ def sync_account_transactions(
             existing.ts = txn_ts
             existing.amount = txn["amount"]
             existing.currency = txn.get("currency") or existing.currency
-            existing.category = txn.get("category")
+            existing.category = txn.get("category")[0] if isinstance(txn.get("category"), list) and txn.get("category") else None
             existing.merchant_name = txn.get("merchant_name")
             existing.description = txn.get("name") or txn.get("merchant_name")
             existing.raw_json = _clean_raw(txn)
@@ -551,7 +705,7 @@ def sync_account_transactions(
             ts=txn_ts,
             amount=txn["amount"],
             currency=txn.get("currency") or account.currency or "USD",
-            category=txn.get("category"),
+            category=txn.get("category")[0] if isinstance(txn.get("category"), list) and txn.get("category") else None,
             merchant_name=txn.get("merchant_name"),
             description=txn.get("name") or txn.get("merchant_name"),
             external_id=txn.get("transaction_id"),

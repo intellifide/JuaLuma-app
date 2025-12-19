@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(
-    title="JuaLuma API",
+    title="jualuma API",
     description="Financial aggregation and AI-powered planning platform",
     version="0.1.0",
     lifespan=lifespan,
@@ -102,13 +102,22 @@ app.include_router(support_portal_router) # New router inclusion
 # Initialize and Mount Main MCP Server (Phase 3)
 from backend.mcp_server import mcp
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI
-app.mount("/mcp", mcp.sse_app)
+# Compatibility: 'sse_app' (v0.x) vs 'http_app' (v2.x)
+mcp_app = getattr(mcp, "sse_app", getattr(mcp, "http_app", None))
+if mcp_app:
+    app.mount("/mcp", mcp_app)
+else:
+    logger.warning("Could not find ASGI app attribute on FastMCP instance.")
 
 # Initialize and Mount Dev Tools MCP Server (Phase 4)
 # Only mount dangerous dev tools in LOCAL environment
 if settings.app_env.lower() == "local":
     from backend.dev_tools.mcp_server import dev_mcp
-    app.mount("/mcp-dev", dev_mcp.sse_app)
+    dev_app = getattr(dev_mcp, "sse_app", getattr(dev_mcp, "http_app", None))
+    if dev_app:
+        app.mount("/mcp-dev", dev_app)
+
+
 
 # Structured error handlers ----------------------------------------------------
 def _build_error_response(
@@ -199,7 +208,7 @@ async def unhandled_exception_handler(
 async def root():
     """Lightweight service descriptor for uptime checks and metadata."""
     return {
-        "message": "JuaLuma API",
+        "message": "jualuma API",
         "environment": settings.app_env,
         "version": "0.1.0",
     }

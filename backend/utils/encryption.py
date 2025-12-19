@@ -26,7 +26,7 @@ def _get_local_key(user_dek_ref: str) -> bytes:
     master_key = os.getenv("LOCAL_ENCRYPTION_KEY", "CHANGE_ME_IN_PROD_OR_USE_KMS_PLEASE_12345")
     
     # Derive a key using PBKDF2
-    salt = b'JuaLuma_local_salt' # In prod, store salt per user
+    salt = b'jualuma_local_salt' # In prod, store salt per user
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,

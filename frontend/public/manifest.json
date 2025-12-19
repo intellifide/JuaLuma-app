@@ -1,6 +1,6 @@
 {
-    "name": "JuaLuma",
-    "short_name": "JuaLuma",
+    "name": "jualuma",
+    "short_name": "jualuma",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",

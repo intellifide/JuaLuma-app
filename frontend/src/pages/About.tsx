@@ -5,7 +5,7 @@ export const About = () => {
     return (
         <div>
             <section className="container py-12">
-                <h1 className="text-center mb-4 text-3xl font-bold">About JuaLuma</h1>
+                <h1 className="text-center mb-4 text-3xl font-bold">About jualuma</h1>
                 <p className="text-center text-lg text-text-secondary mb-12 max-w-[700px] mx-auto">
                     Simplifying financial management for everyone, one transaction at a time.
                 </p>
@@ -15,13 +15,13 @@ export const About = () => {
                     <h2 className="text-center mb-8">Our Mission</h2>
                     <div className="max-w-[800px] mx-auto space-y-4">
                         <p className="text-lg">
-                            At JuaLuma, we believe that managing your finances shouldn&apos;t be complicated. Our mission is to abstract financial complexity and provide a simple, automated, and visual platform for the mass-market consumer.
+                            At jualuma, we believe that managing your finances shouldn&apos;t be complicated. Our mission is to abstract financial complexity and provide a simple, automated, and visual platform for the mass-market consumer.
                         </p>
                         <p>
                             The product goal is to abstract financial complexity and provide a simple, automated, and visual platform for the mass-market consumer. The engineering focus is on simplicity, automation, and immediate value to serve a broad audience, not just financial experts.
                         </p>
                         <p>
-                            Our primary value is the automation of financial tracking to save users time and provide a clear, holistic view of their financial health. Whether you&apos;re just starting out with one or two accounts, or managing a complex portfolio across multiple institutions, JuaLuma brings everything together in one place.
+                            Our primary value is the automation of financial tracking to save users time and provide a clear, holistic view of their financial health. Whether you&apos;re just starting out with one or two accounts, or managing a complex portfolio across multiple institutions, jualuma brings everything together in one place.
                         </p>
                     </div>
                 </div>
@@ -52,7 +52,7 @@ export const About = () => {
                         </div>
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">No Financial Advice</h3>
-                            <p className="text-text-secondary">JuaLuma is for informational and educational purposes only. We do not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.</p>
+                            <p className="text-text-secondary">jualuma is for informational and educational purposes only. We do not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.</p>
                         </div>
                     </div>
                 </div>
@@ -62,10 +62,10 @@ export const About = () => {
                     <h2 className="text-center mb-8">About Intellifide, LLC</h2>
                     <div className="max-w-[800px] mx-auto space-y-4">
                         <p>
-                            JuaLuma is developed and operated by <strong>Intellifide, LLC</strong>, a Texas-based technology company focused on developing software applications in areas lacking innovation.
+                            jualuma is developed and operated by <strong>Intellifide, LLC</strong>, a Texas-based technology company focused on developing software applications in areas lacking innovation.
                         </p>
                         <p>
-                            Intellifide, LLC is organized to develop and operate multiple software applications, with JuaLuma being our flagship financial aggregation and analysis platform. We are committed to creating tools that simplify complex processes and provide immediate value to our users.
+                            Intellifide, LLC is organized to develop and operate multiple software applications, with jualuma being our flagship financial aggregation and analysis platform. We are committed to creating tools that simplify complex processes and provide immediate value to our users.
                         </p>
                         <p>
                             Our team combines expertise in financial technology, security, compliance, and user experience design to deliver a platform that is both powerful and easy to use.
@@ -80,13 +80,13 @@ export const About = () => {
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">The Beginner (Free Tier)</h3>
                             <p className="text-text-secondary mb-2">
-                                If you&apos;re just starting out with 1-2 bank accounts, JuaLuma provides an immediate &quot;Aha!&quot; moment. Our priority is on flawless automated categorization, budget visualization, and recurring subscription detection. The system provides value within minutes of linking one account.
+                                If you&apos;re just starting out with 1-2 bank accounts, jualuma provides an immediate &quot;Aha!&quot; moment. Our priority is on flawless automated categorization, budget visualization, and recurring subscription detection. The system provides value within minutes of linking one account.
                             </p>
                         </div>
                         <div className="card">
                             <h3 className="text-xl font-bold mb-2">The Overwhelmed (Pro Tier)</h3>
                             <p className="text-text-secondary mb-2">
-                                If you manage multiple accounts, spreadsheets, and crypto, JuaLuma provides a robust aggregation engine. Our priority is on reliable multi-source data ingestion (Plaid, CEX APIs, Web3) and a unified feed that consolidates all activity into a single, clean interface.
+                                If you manage multiple accounts, spreadsheets, and crypto, jualuma provides a robust aggregation engine. Our priority is on reliable multi-source data ingestion (Plaid, CEX APIs, Web3) and a unified feed that consolidates all activity into a single, clean interface.
                             </p>
                         </div>
                     </div>

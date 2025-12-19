@@ -87,9 +87,9 @@ export const Navigation = () => {
     <>
       <header className="header">
         <div className="header-container">
-          <Link to="/" className="logo" aria-label="JuaLuma home">
-            <img src="/assets/jualuma-logo.png" alt="JuaLuma logo" className="logo-img" />
-            <span className="sr-only">JuaLuma</span>
+          <Link to="/" className="logo" aria-label="jualuma home">
+            <img src="/assets/jualuma-logo.png" alt="jualuma logo" className="logo-img" />
+            <span className="sr-only">jualuma</span>
           </Link>
 
           <nav className="nav" aria-label="Main navigation">

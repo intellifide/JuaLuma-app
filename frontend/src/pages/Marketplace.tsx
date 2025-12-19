@@ -84,7 +84,7 @@ export const Marketplace = () => {
 
     return (
         <div className="container py-16">
-            <h1 className="text-center mb-4">JuaLuma Marketplace</h1>
+            <h1 className="text-center mb-4">jualuma Marketplace</h1>
             <p className="text-center text-lg text-text-secondary mb-12 max-w-[700px] mx-auto">
                 Discover curated widgets and tools from developers to enhance your financial management experience.
             </p>
@@ -219,7 +219,7 @@ export const Marketplace = () => {
                 <h2 className="text-center mb-8">For Developers</h2>
                 <div className="max-w-[800px] mx-auto">
                     <p className="mb-4">
-                        Interested in developing widgets for the JuaLuma Marketplace? We&apos;re building a developer program that will allow you to create and distribute widgets that integrate with the JuaLuma platform.
+                        Interested in developing widgets for the jualuma Marketplace? We&apos;re building a developer program that will allow you to create and distribute widgets that integrate with the jualuma platform.
                     </p>
                     <p className="mb-4">
                         Developers earn revenue based on user engagement (downloads) and verified ratings. All widgets must comply with our Developer Agreement and platform guidelines.

@@ -30,7 +30,7 @@ export const ExternalLinkModal: React.FC<ExternalLinkModalProps> = ({
                         You are securely connecting to your financial institution via <strong>{providerName}</strong>.
                     </p>
                     <p className="text-sm text-text-secondary mb-4">
-                        JuaLuma does not see, store, or have access to your external login credentials. You are interacting directly with {providerName}.
+                        jualuma does not see, store, or have access to your external login credentials. You are interacting directly with {providerName}.
                     </p>
                 </div>
 

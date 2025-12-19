@@ -1,9 +1,9 @@
 # Security Architecture Documentation
-## JuaLuma Platform - Intellifide, LLC
+## jualuma Platform - Intellifide, LLC
 
 ## Overview
 
-This document expands on Section 5 of the business plan and provides detailed security architecture specifications for the JuaLuma platform. This architecture implements "Security by Design" and "Zero Trust" principles to protect customer data and ensure GLBA compliance.
+This document expands on Section 5 of the business plan and provides detailed security architecture specifications for the jualuma platform. This architecture implements "Security by Design" and "Zero Trust" principles to protect customer data and ensure GLBA compliance.
 
 
 **Review Frequency:** As security requirements change
@@ -335,7 +335,7 @@ Roles are separated into four categories: App Users, Marketplace Developers, Int
 
 - **Shared Registry:** `feature_requirements.yaml` is the single source of truth for every premium `featureKey`. A build step generates both the frontend module (`packages/shared/accessControl.ts`) and the FastAPI registry (`services/access_control/registry.py`) to prevent drift.
 - **Runtime Enforcement:** FastAPI dependencies (`require_feature(feature_key)`) validate the caller's subscription tier before executing business logic. Blocks respond with `403` and emit `feature_preview.backend_blocked` events to Cloud SQL (`audit.feature_preview`).
-- **Preview Endpoints:** `/preview/<feature_key>` routes read immutable JSON artifacts stored in a dedicated Cloud Storage bucket (`gs://JuaLuma-preview-content`). Buckets contain only synthetic data, inherit CMEK, and expose read-only signed URLs. No NPPI or user identifiers may be stored alongside preview data.
+- **Preview Endpoints:** `/preview/<feature_key>` routes read immutable JSON artifacts stored in a dedicated Cloud Storage bucket (`gs://jualuma-preview-content`). Buckets contain only synthetic data, inherit CMEK, and expose read-only signed URLs. No NPPI or user identifiers may be stored alongside preview data.
 - **Audit Logging:** All accesses (allowed, blocked, preview fetch) record `{uid, feature_key, tier, source_ip, user_agent}`. Logs feed the Security Operations dashboards and trigger anomaly alerts if unusually high preview traffic appears.
 - **Remote Config Kill Switch:** Firebase Remote Config exposes `feature_preview.kill_switch` and per-feature toggles. Support can disable previews or premium enforcement in emergencies without redeploying; changes are logged via Config Change Notifications.
 - **Data Minimization:** Preview telemetry only stores hashed `uid` + tier, satisfying GDPR data minimization while still supporting conversion analytics.
@@ -465,7 +465,7 @@ Roles are separated into four categories: App Users, Marketplace Developers, Int
 - Regular data purging
 - **Tier Windows:**
   - Free Tier: Transactions reside in Cloud SQL `ledger_hot_free` for 45 days; the `free-ledger-pruner` Cloud Run Job deletes older rows with no archival copy.
-  - Essential Tier: Transactions reside in Cloud SQL `ledger_hot_essential` for 30 days; `essential-ledger-archiver` copies aged rows to Coldline (`gs://JuaLuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
+  - Essential Tier: Transactions reside in Cloud SQL `ledger_hot_essential` for 30 days; `essential-ledger-archiver` copies aged rows to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
   - Pro/Ultimate: Continue to rely on Cloud SQL Enterprise Plus for full-history retention; data purging occurs only via cryptographic erasure workflows.
 
 **Right to be Forgotten:**

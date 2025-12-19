@@ -1,9 +1,9 @@
 # Educational Content Strategy
-## JuaLuma "University" - Intellifide, LLC
+## jualuma "University" - Intellifide, LLC
 
 ## Overview
 
-This document outlines the strategy for the "University" educational content hub within the JuaLuma platform. The University provides in-house educational articles and videos explaining financial concepts in simple terms to help users improve their financial literacy.
+This document outlines the strategy for the "University" educational content hub within the jualuma platform. The University provides in-house educational articles and videos explaining financial concepts in simple terms to help users improve their financial literacy.
 
 
 **Review Frequency:** Quarterly, or as content strategy evolves
@@ -25,7 +25,7 @@ The University serves to:
 - Improve user financial literacy
 - Support user financial health goals
 - Provide value beyond data aggregation
-- Differentiate JuaLuma from competitors
+- Differentiate jualuma from competitors
 
 ### 1.2 Positioning
 

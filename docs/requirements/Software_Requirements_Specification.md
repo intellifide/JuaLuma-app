@@ -1,7 +1,7 @@
 # Software Requirements Specification (SRS)
 
 ## 1. Introduction
-This document outlines the specific software requirements, including functional behaviors, data models, and APIs for the JuaLuma Application.
+This document outlines the specific software requirements, including functional behaviors, data models, and APIs for the jualuma Application.
 
 ## 2. Functional Requirements
 

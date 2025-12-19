@@ -1,12 +1,12 @@
 # Deployment Automation Guide
-## Intellifide, LLC - JuaLuma Platform
+## Intellifide, LLC - jualuma Platform
 
 
 ---
 
 ## Overview
 
-This document outlines the deployment automation strategy for the JuaLuma platform, including deployment strategies and patterns, environment management, database migration automation, feature flag integration, and rollback procedures.
+This document outlines the deployment automation strategy for the jualuma platform, including deployment strategies and patterns, environment management, database migration automation, feature flag integration, and rollback procedures.
 
 ---
 

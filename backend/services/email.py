@@ -36,7 +36,7 @@ class SmtpEmailClient:
 
         # ID Check: Ensure no PII in the body
         body = (
-            "You have a new notification in your secure JuaLuma Portal.\n\n"
+            "You have a new notification in your secure jualuma Portal.\n\n"
             "Please log in to view the details: https://app.jualuma.com/notifications\n\n"
             "Running a financial platform means we prioritize your privacy. "
             "We do not include sensitive details in emails."

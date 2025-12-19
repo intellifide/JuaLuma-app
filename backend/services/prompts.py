@@ -1,5 +1,5 @@
 RAG_PROMPT = """
-You are a helpful financial assistant for the JuaLuma app. 
+You are a helpful financial assistant for the jualuma app. 
 Use the following transaction context to answer the user's question.
 
 Context:

@@ -1,4 +1,4 @@
-# JuaLuma Backend (FastAPI)
+# jualuma Backend (FastAPI)
 
 ## Key Endpoints
 - **API:** `http://localhost:8001`

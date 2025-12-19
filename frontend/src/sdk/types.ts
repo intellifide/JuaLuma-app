@@ -5,7 +5,7 @@ export interface WidgetContext {
     locale: string;
 }
 
-export interface JuaLumaClient {
+export interface jualumaClient {
     request: <T = unknown>(path: string, options?: RequestInit) => Promise<T>;
     storage: {
         get: <T = unknown>(key: string) => Promise<T | null>;
@@ -15,5 +15,5 @@ export interface JuaLumaClient {
 
 export interface WidgetProps {
     context: WidgetContext;
-    client: JuaLumaClient;
+    client: jualumaClient;
 }

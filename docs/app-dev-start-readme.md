@@ -1,11 +1,11 @@
 # App Development Start Package
 
-This directory contains all essential files needed to begin development of the JuaLuma application. This package is self-contained for the development workspace and includes all technical specifications, legal text, and implementation requirements.
+This directory contains all essential files needed to begin development of the jualuma application. This package is self-contained for the development workspace and includes all technical specifications, legal text, and implementation requirements.
 
 ## Contents
 
 ### Core Development Guides
-- **Master App Dev Guide.md** - Complete technical specification and architecture guide for the JuaLuma platform (includes Customer Support Portal and Google Workspace integration)
+- **Master App Dev Guide.md** - Complete technical specification and architecture guide for the jualuma platform (includes Customer Support Portal and Google Workspace integration)
 - **Local App Dev Guide.md** - Local development setup and environment configuration
 
 ### Framework Documentation

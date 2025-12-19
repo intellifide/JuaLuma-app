@@ -1,8 +1,8 @@
 {
     "info": {
         "_postman_id": "b3f8a9b0-1c2d-4e5f-9a0b-1c2d3e4f5a6c",
-        "name": "JuaLuma API",
-        "description": "API collection for the JuaLuma Application backend.",
+        "name": "jualuma API",
+        "description": "API collection for the jualuma Application backend.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [

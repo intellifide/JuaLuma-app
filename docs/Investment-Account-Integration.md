@@ -1,9 +1,9 @@
 # Investment Account Integration Guide
-## Intellifide, LLC - JuaLuma Platform
+## Intellifide, LLC - jualuma Platform
 
 ## Overview
 
-This document outlines the investment account integration strategy for the JuaLuma platform, using Plaid Investments API as the primary provider with SnapTrade API available as a backlog option for additional brokerages.
+This document outlines the investment account integration strategy for the jualuma platform, using Plaid Investments API as the primary provider with SnapTrade API available as a backlog option for additional brokerages.
 
 
 **Review Frequency:** As integration evolves

@@ -34,7 +34,7 @@ provider "google-beta" {
 variable "project_id" {
   description = "GCP project ID for production"
   type        = string
-  default     = "JuaLuma-prod"  # Update with actual project ID
+  default     = "jualuma-prod"  # Update with actual project ID
 }
 
 variable "region" {

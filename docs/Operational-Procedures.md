@@ -1,9 +1,9 @@
 # Operational Procedures
-## Intellifide, LLC - JuaLuma Platform
+## Intellifide, LLC - jualuma Platform
 
 ## Overview
 
-This document outlines day-to-day operational procedures for the JuaLuma platform, including user onboarding, account linking, data synchronization, support procedures, and escalation paths. These procedures ensure consistent operations and quality service delivery.
+This document outlines day-to-day operational procedures for the jualuma platform, including user onboarding, account linking, data synchronization, support procedures, and escalation paths. These procedures ensure consistent operations and quality service delivery.
 
 
 **Review Frequency:** Quarterly, or as processes change
@@ -23,7 +23,7 @@ This document outlines day-to-day operational procedures for the JuaLuma platfor
 ### 1.1 Account Creation
 
 **Step 1: User Registration**
-- User visits JuaLuma platform
+- User visits jualuma platform
 - Clicks "Sign Up" or "Get Started"
 - Selects authentication method:
   - Email/Password
@@ -67,7 +67,7 @@ This document outlines day-to-day operational procedures for the JuaLuma platfor
 - Limits: 5 traditional accounts, 5 investment accounts, 5 Web3 wallets, 5 CEX accounts.
 - Cloud AI models enabled (Vertex AI Gemini 2.5 Flash) with encrypted RAG context.
 - Sync cadence: real-time Plaid/CEX webhooks plus a guaranteed nightly Cloud Scheduler run (`essential-ledger-refresh`). Manual “Sync Now” is disabled to keep aggregator costs predictable.
-- Rolling 30-day hot data window stored in Cloud SQL (`ledger_hot_essential`). The paired `essential-ledger-archiver` job moves data older than 30 days into Coldline (`gs://JuaLuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only access.
+- Rolling 30-day hot data window stored in Cloud SQL (`ledger_hot_essential`). The paired `essential-ledger-archiver` job moves data older than 30 days into Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only access.
 - 75 cloud AI queries/day quota set (shared enforcement with Pro Tier through the Firestore `api_usage` collection).
 
 **Pro Tier (Upgrade):**
@@ -347,7 +347,7 @@ This document outlines day-to-day operational procedures for the JuaLuma platfor
 - Contact form
 
 **Email Support:**
-- Support email: [support@JuaLuma.com - to be determined]
+- Support email: [support@jualuma.com - to be determined]
 - Response time target: 24-48 hours
 - Ticket tracking system
 
@@ -420,7 +420,7 @@ This document outlines day-to-day operational procedures for the JuaLuma platfor
 ### 4.4 Kevin Pendergrass Support Workflow
 
 **Daily Operations:**
-- Monitor support channels: email (support@JuaLuma.com), in-app chat, and help center submissions
+- Monitor support channels: email (support@jualuma.com), in-app chat, and help center submissions
 - Create tickets in the support system (workflow automation system TBD) and assign ticket numbers
 - Triage tickets: categorize (technical, billing, account, feature questions), assign priority (Low/Medium/High/Critical), and start SLA timers
 - Respond within 24-48 hours (per Section 4.1)
@@ -653,7 +653,7 @@ For detailed Kevin Pendergrass responsibilities, see `Personnel.md`.
 - All kill switch activations require follow-up in the Weekly Ops review with a remediation plan.
 
 **Support Scripts**
-- When users ask why a feature is "read-only," agents reference the Preview Mode script: explain that the UI is illustrative, highlight upgrade path, re-state that JuaLuma is non-custodial and does not provide advice.
+- When users ask why a feature is "read-only," agents reference the Preview Mode script: explain that the UI is illustrative, highlight upgrade path, re-state that jualuma is non-custodial and does not provide advice.
 - Tag Zendesk tickets with `preview_feedback` for analytics; escalate recurring confusion to Product/Growth.
 
 **Monitoring**
@@ -779,7 +779,7 @@ For detailed AI automation strategy, see `Personnel.md` and `Business-Model-Evol
 > _When a Free user reports that a screen is "read-only" or cannot be edited._
 1. Thank the user for exploring the feature.
 2. Explain that the panel is currently in Preview Mode and is showing illustrative data only.
-3. Reiterate that JuaLuma is non-custodial and does not execute transactions or provide financial advice.
+3. Reiterate that jualuma is non-custodial and does not execute transactions or provide financial advice.
 4. Provide the direct link to `/userSettings?tab=subscription` to upgrade, mentioning Texas SaaS tax disclosure.
 5. If the user declines to upgrade, capture feedback (what information they expected) and tag the ticket `preview_feedback`.
 

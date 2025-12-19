@@ -1,7 +1,7 @@
 # User Requirement Specification (URS)
 
 ## 1. Introduction
-This document defines the user requirements for the JuaLuma Application, focusing on the needs of various user personas including End Users, Marketplace Developers, and Support Agents.
+This document defines the user requirements for the jualuma Application, focusing on the needs of various user personas including End Users, Marketplace Developers, and Support Agents.
 
 ## 2. User Personas
 
@@ -13,7 +13,7 @@ This document defines the user requirements for the JuaLuma Application, focusin
     *   **The Power User (Ultimate Tier)**: Deeply engaged, manages family finances or complex portfolios. Needs advanced reporting and high AI quotas.
 
 ### 2.2 Marketplace Developer ("The Creator")
-*   **Description**: A third-party developer who builds and publishes widgets for the JuaLuma Marketplace.
+*   **Description**: A third-party developer who builds and publishes widgets for the jualuma Marketplace.
 *   **Prerequisites**: Must subscribe to Pro or Ultimate tier and execute a Developer Agreement.
 *   **Needs**: Robust SDK, testing tools, and transparency in payouts and engagement metrics.
 
@@ -45,7 +45,7 @@ This document defines the user requirements for the JuaLuma Application, focusin
 
 ### 3.5 Widget Marketplace
 *   **URS-12**: As a user, I want to browse and install third-party widgets to extend the app's functionality.
-*   **URS-13**: As a Developer, I want to publish a widget using the JuaLuma SDK.
+*   **URS-13**: As a Developer, I want to publish a widget using the jualuma SDK.
 *   **URS-14**: As a Developer, I want to view my widget's download stats and ratings to track my performance.
 *   **URS-15**: As a Developer, I want to view my accrued payouts.
 

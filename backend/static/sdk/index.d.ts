@@ -6,11 +6,11 @@ export interface WidgetContext {
     };
 }
 
-export interface JuaLumaClient {
+export interface jualumaClient {
     request: (endpoint: string, options?: RequestInit) => Promise<any>;
 }
 
 export interface WidgetProps {
     context: WidgetContext;
-    client: JuaLumaClient;
+    client: jualumaClient;
 }

@@ -1,4 +1,4 @@
-"""SQLAlchemy base configuration for JuaLuma backend.
+"""SQLAlchemy base configuration for jualuma backend.
 
 Updated 2025-12-11 01:28 CST by ChatGPT
 """

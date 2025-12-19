@@ -1,9 +1,9 @@
 # AI Assistant Disclaimer Document
-## JuaLuma Platform - Intellifide, LLC
+## jualuma Platform - Intellifide, LLC
 
 ## Overview
 
-This document contains the mandatory disclaimer for the JuaLuma AI Assistant feature. This disclaimer must be displayed to users and accepted before they can use the AI Assistant. **This document must be reviewed and approved by qualified legal counsel before implementation.**
+This document contains the mandatory disclaimer for the jualuma AI Assistant feature. This disclaimer must be displayed to users and accepted before they can use the AI Assistant. **This document must be reviewed and approved by qualified legal counsel before implementation.**
 
 
 **Legal Review Required:** Yes - Mandatory before implementation
@@ -26,11 +26,11 @@ This document contains the mandatory disclaimer for the JuaLuma AI Assistant fea
 
 **AI Assistant Disclaimer and User Acknowledgment**
 
-Before using the JuaLuma AI Assistant, you must read and acknowledge the following:
+Before using the jualuma AI Assistant, you must read and acknowledge the following:
 
 **1. Nature of the AI Assistant**
 
-The JuaLuma AI Assistant provides direct, unrestricted access to Large Language Models (LLMs) via cloud LLMs provided exclusively by Google Vertex AI Gemini (e.g., Gemini 2.5 Flash, Gemini 2.5 Pro for Ultimate tier).
+The jualuma AI Assistant provides direct, unrestricted access to Large Language Models (LLMs) via cloud LLMs provided exclusively by Google Vertex AI Gemini (e.g., Gemini 2.5 Flash, Gemini 2.5 Pro for Ultimate tier).
 
 No other cloud LLM providers (including but not limited to OpenAI, xAI Grok, or Claude) are used by the Service.
 

@@ -1,9 +1,9 @@
 # Developer Payout Structure
-## JuaLuma Widget Marketplace - Intellifide, LLC
+## jualuma Widget Marketplace - Intellifide, LLC
 
 ## Overview
 
-This document defines the developer payout structure for the JuaLuma Widget Marketplace, including the Engagement Score formula, revenue share model, payment terms, and verification process. This structure is based on user engagement and verified ratings.
+This document defines the developer payout structure for the jualuma Widget Marketplace, including the Engagement Score formula, revenue share model, payment terms, and verification process. This structure is based on user engagement and verified ratings.
 
 
 **Review Frequency:** Annually, or as business model evolves

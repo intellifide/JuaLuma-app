@@ -1,8 +1,8 @@
 import React from 'react';
-import { WidgetProps, useJuaLuma } from './index';
+import { WidgetProps, usejualuma } from './index';
 
 export const ExampleWidget: React.FC<WidgetProps> = ({ context }) => {
-    const { client } = useJuaLuma();
+    const { client } = usejualuma();
     const [data, setData] = React.useState<any>(null);
 
     React.useEffect(() => {

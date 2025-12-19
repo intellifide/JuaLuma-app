@@ -3,7 +3,7 @@
 
 ## Overview
 
-This playbook defines how JuaLuma produces, governs, and deploys synthetic data and marketing copy for the FeaturePreview subsystem. The objective is to showcase premium workflows to Free Tier users without ever exposing Nonpublic Personal Information (NPPI) or violating the marketing guardrails outlined in `planning/business docs/Marketing-Content-Guidelines.md`.
+This playbook defines how jualuma produces, governs, and deploys synthetic data and marketing copy for the FeaturePreview subsystem. The objective is to showcase premium workflows to Free Tier users without ever exposing Nonpublic Personal Information (NPPI) or violating the marketing guardrails outlined in `planning/business docs/Marketing-Content-Guidelines.md`.
 
 ## Guiding Principles
 

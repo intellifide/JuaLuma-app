@@ -1,9 +1,9 @@
 # Compliance Checklist
-## Intellifide, LLC - JuaLuma Platform
+## Intellifide, LLC - jualuma Platform
 
 ## Overview
 
-This document consolidates all compliance requirements for Intellifide, LLC and the JuaLuma platform, including GLBA, CCPA, FinCEN, SEC, and Texas tax compliance. This checklist should be reviewed regularly to ensure ongoing compliance.
+This document consolidates all compliance requirements for Intellifide, LLC and the jualuma platform, including GLBA, CCPA, FinCEN, SEC, and Texas tax compliance. This checklist should be reviewed regularly to ensure ongoing compliance.
 
 
 **Review Frequency:** Quarterly, or as regulations change

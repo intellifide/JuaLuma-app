@@ -91,15 +91,15 @@ export const Support = () => {
                             <h3 className="text-lg font-semibold mb-2">Email Support</h3>
                             <p className="mb-2">
                                 <strong>General Inquiries:</strong><br />
-                                <a href="mailto:support@JuaLuma.com" className="text-royal-purple hover:underline">support@JuaLuma.com</a>
+                                <a href="mailto:support@jualuma.com" className="text-royal-purple hover:underline">support@jualuma.com</a>
                             </p>
                             <p className="mb-2">
                                 <strong>Privacy & Legal:</strong><br />
-                                <a href="mailto:privacy@JuaLuma.com" className="text-royal-purple hover:underline">privacy@JuaLuma.com</a>
+                                <a href="mailto:privacy@jualuma.com" className="text-royal-purple hover:underline">privacy@jualuma.com</a>
                             </p>
                             <p>
                                 <strong>Business Inquiries:</strong><br />
-                                <a href="mailto:business@JuaLuma.com" className="text-royal-purple hover:underline">business@JuaLuma.com</a>
+                                <a href="mailto:business@jualuma.com" className="text-royal-purple hover:underline">business@jualuma.com</a>
                             </p>
                         </div>
 

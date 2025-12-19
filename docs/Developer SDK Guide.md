@@ -1,7 +1,7 @@
 # Developer SDK Guide
 
 ## Overview
-The JuaLuma Developer SDK allows developers to build custom widgets for the JuaLuma dashboard.
+The jualuma Developer SDK allows developers to build custom widgets for the jualuma dashboard.
 
 ## Installation
 Currently, the SDK types are available within the `frontend/src/sdk` directory.
@@ -18,10 +18,10 @@ interface WidgetContext {
 }
 ```
 
-### JuaLumaClient
+### jualumaClient
 Provides a safe interface for making API requests.
 ```typescript
-interface JuaLumaClient {
+interface jualumaClient {
   request: <T = unknown>(path: string, options?: RequestInit) => Promise<T>;
   storage: {
     get: <T = unknown>(key: string) => Promise<T | null>;

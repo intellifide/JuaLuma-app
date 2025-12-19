@@ -1,5 +1,5 @@
 """
-Centralized constants for the JuaLuma application.
+Centralized constants for the jualuma application.
 """
 
 class TierLimits:

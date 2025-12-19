@@ -1,4 +1,4 @@
-// JuaLuma Platform - Main JavaScript
+// jualuma Platform - Main JavaScript
 // Last Updated: December 05, 2025 at 09:33 PM
 (function () {
   'use strict';
@@ -380,8 +380,8 @@
 
   // Auth simulation for prototype
   const AuthSim = {
-    key: 'JuaLuma_session',
-    fakeUser: { email: 'demo@JuaLuma.com', password: 'Demo1234!' },
+    key: 'jualuma_session',
+    fakeUser: { email: 'demo@jualuma.com', password: 'Demo1234!' },
     init() {
       this.enforceAuth();
       this.bindForms();
@@ -433,7 +433,7 @@
             const next = this.sanitizeNext(params.get('next'));
             window.location.href = next || 'dashboard.html';
           } else {
-            Toast.show('Invalid credentials (use demo@JuaLuma.com / Demo1234!)', 'error');
+            Toast.show('Invalid credentials (use demo@jualuma.com / Demo1234!)', 'error');
           }
         });
       }
@@ -466,7 +466,7 @@
         btn.addEventListener('click', (e) => {
           e.preventDefault();
           this.saveSession(this.fakeUser.email);
-          Toast.show('Logged in as demo@JuaLuma.com (prototype)', 'success');
+          Toast.show('Logged in as demo@jualuma.com (prototype)', 'success');
           window.location.href = 'dashboard.html';
         });
       });
@@ -852,7 +852,7 @@
   init();
 
   // Export for global access
-  window.JuaLuma = {
+  window.jualuma = {
     Toast,
     Modal: ModalSystem,
     Theme: ThemeManager

@@ -1,11 +1,11 @@
-# JuaLuma App - Technology Stack
+# jualuma App - Technology Stack
 
 
 ---
 
 ## Overview
 
-This document outlines the complete technology stack for the JuaLuma financial aggregation and AI-powered planning platform, from local development through production deployment.
+This document outlines the complete technology stack for the jualuma financial aggregation and AI-powered planning platform, from local development through production deployment.
 
 ---
 
@@ -30,7 +30,7 @@ This document outlines the complete technology stack for the JuaLuma financial a
 
 ### Source Control
 - **GitHub Pro** (Student Pack): Private repository hosting
-  - Repository: `github.com/TCoder920x/JuaLuma-app`
+  - Repository: `github.com/TCoder920x/jualuma-app`
   - Branches: `main` (production), `Dev` (development)
   - Access: Private repository with GitHub Pro benefits
 
@@ -281,7 +281,7 @@ This document outlines the complete technology stack for the JuaLuma financial a
 
 ---
 
-**Repository**: `github.com/TCoder920x/JuaLuma-app`  
+**Repository**: `github.com/TCoder920x/jualuma-app`  
 **Primary IDE**: Cursor  
 **CI/CD**: GitHub Actions  
 **Cloud Provider**: GCP only

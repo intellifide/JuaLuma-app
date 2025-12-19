@@ -434,7 +434,7 @@ def rate_ticket(
         agent = SupportAgent(
             company_id="system",
             name="System Agent",
-            email="system@JuaLuma.support",
+            email="system@jualuma.support",
             role="support_agent",
             active=True,
         )
