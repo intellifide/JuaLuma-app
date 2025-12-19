@@ -67,22 +67,39 @@ const formatCompactCurrency = (value: number) =>
 
 
 // SVG Generators
+// SVG Generators
 const generateLinePath = (data: DataPoint[], width: number, height: number) => {
-  if (!data || data.length === 0) return { path: '', areaPath: '', dots: [], min: 0, max: 0, startLabel: '', endLabel: '' };
+  const padding = { top: 10, right: 10, bottom: 25, left: 45 };
+  const drawWidth = width - padding.left - padding.right;
+  const drawHeight = height - padding.top - padding.bottom;
+
+  if (!data || data.length === 0) return { path: '', areaPath: '', dots: [], yLabels: [], xLabels: [], padding };
 
   const values = data.map(d => d.value);
-  const min = Math.min(...values) * 0.99;
-  const max = Math.max(...values) * 1.01;
+  const min = Math.min(...values) * 0.98;
+  const max = Math.max(...values) * 1.02;
   const range = max - min || 1;
 
   const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((d.value - min) / range) * height;
+    const x = padding.left + (i / (data.length - 1)) * drawWidth;
+    const y = padding.top + drawHeight - ((d.value - min) / range) * drawHeight;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
 
   const path = points.join(' ');
-  const areaPath = `0,${height} ${path} ${width},${height}`;
+  const areaPath = `${padding.left},${padding.top + drawHeight} ${path} ${padding.left + drawWidth},${padding.top + drawHeight}`;
+
+  // Y-axis labels (Value)
+  const yLabels = [min, (min + max) / 2, max].map(val => ({
+    label: formatCompactCurrency(val),
+    y: padding.top + drawHeight - ((val - min) / range) * drawHeight
+  }));
+
+  // X-axis labels (Timeframe - start, mid, end)
+  const xLabels = [0, Math.floor(data.length / 2), data.length - 1].map(i => ({
+    label: new Date(data[i].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    x: padding.left + (i / (data.length - 1)) * drawWidth
+  }));
 
   // Select a few points to show dots (start, middle, end)
   const dotIndices = [0, Math.floor(data.length / 2), data.length - 1];
@@ -95,60 +112,76 @@ const generateLinePath = (data: DataPoint[], width: number, height: number) => {
     path,
     areaPath,
     dots,
-    min,
-    max,
-    startLabel: formatCompactCurrency(data[0].value),
-    endLabel: formatCompactCurrency(data[data.length - 1].value)
+    yLabels,
+    xLabels,
+    padding
   };
 };
 
-const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: number, height: number) => {
+const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: number, height: number, cfInterval: string) => {
+  const padding = { top: 10, right: 10, bottom: 25, left: 45 };
+  const drawWidth = width - padding.left - padding.right;
+  const drawHeight = height - padding.top - padding.bottom;
+
   // Merge dates to ensure alignment
   const allDates = new Set([...income.map(d => d.date), ...expenses.map(d => d.date)]);
   const sortedDates = Array.from(allDates).sort();
+
+  if (sortedDates.length === 0) return { bars: [], yLabels: [], padding };
 
   const dataMap: Record<string, { inc: number, exp: number }> = {};
   sortedDates.forEach(d => dataMap[d] = { inc: 0, exp: 0 });
 
   income.forEach(d => { if (dataMap[d.date]) dataMap[d.date].inc = d.value; });
-  expenses.forEach(d => { if (dataMap[d.date]) dataMap[d.date].exp = Math.abs(d.value); }); // Expenses are negative from DB, simplify? Backend sends +? No DB stored negative. Analytics checks < 0 and sums. But response converts to float. Let's assume + magnitude for display.
+  expenses.forEach(d => { if (dataMap[d.date]) dataMap[d.date].exp = Math.abs(d.value); });
 
   // Calculate max for scale
   let maxVal = 0;
   Object.values(dataMap).forEach(v => {
     maxVal = Math.max(maxVal, v.inc, v.exp);
   });
-  maxVal = maxVal * 1.1 || 100;
+  maxVal = maxVal * 1.1 || 1000;
 
-  const barWidth = (width / sortedDates.length) * 0.4; // 40% width for each bar
-  const gap = (width / sortedDates.length) * 0.2;
+  const barWidth = (drawWidth / sortedDates.length) * 0.4;
+  const gap = (drawWidth / sortedDates.length) * 0.1;
 
-  const drawHeight = height - 20;
   const bars = sortedDates.map((date, i) => {
-    const xBase = (width / sortedDates.length) * i + gap;
+    const xBase = padding.left + (drawWidth / sortedDates.length) * i + gap;
     const vals = dataMap[date];
 
     const hInc = (vals.inc / maxVal) * drawHeight;
-    // Let's use standard bottom-up.
-
     const hExp = (vals.exp / maxVal) * drawHeight;
-    // Side by side?
 
     return {
       date,
       xInc: xBase,
-      yInc: drawHeight - hInc,
+      yInc: padding.top + drawHeight - hInc,
       hInc,
-      xExp: xBase + barWidth, // Side-by-side
-      yExp: drawHeight - hExp,
+      xExp: xBase + barWidth,
+      yExp: padding.top + drawHeight - hExp,
       hExp,
-      // Center the label between the two bars
       labelX: xBase + barWidth,
-      label: new Date(date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+      label: (() => {
+        const d = new Date(date);
+        // If we are in 'week' view, the backend returns the start of the week (Mon).
+        // User wants the end of the week (Dec 10, Dec 17 etc) for analysis.
+        // We'll add 6 days to the start-of-week provided by Postgres date_trunc.
+        if (cfInterval === 'week') {
+          d.setDate(d.getDate() + 6);
+          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+        return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+      })()
     };
   });
 
-  return { bars, maxVal };
+  // Y-axis labels
+  const yLabels = [0, maxVal / 2, maxVal].map(val => ({
+    label: formatCompactCurrency(val),
+    y: padding.top + drawHeight - (val / maxVal) * drawHeight
+  }));
+
+  return { bars, yLabels, padding };
 };
 
 
@@ -250,6 +283,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { accounts, refetch: refetchAccounts } = useAccounts();
   const { transactions, refetch: refetchTransactions, updateOne } = useTransactions();
+  const [accountsExpanded, setAccountsExpanded] = useState(false);
   const toast = useToast();
 
   const handleCategoryChange = async (id: string, newCategory: string) => {
@@ -292,7 +326,7 @@ export default function Dashboard() {
 
   // Chart Generators
   const netWorthChart = useMemo(() => generateLinePath(nwData?.data || [], 320, 140), [nwData]); // Height 140 match SVG
-  const cashFlowChart = useMemo(() => generateBarChart(cfData?.income || [], cfData?.expenses || [], 320, 160), [cfData]);
+  const cashFlowChart = useMemo(() => generateBarChart(cfData?.income || [], cfData?.expenses || [], 320, 160, cfInterval), [cfData, cfInterval]);
 
   // Cash Flow Card Sums
   const cashFlowStats = useMemo(() => {
@@ -415,9 +449,64 @@ export default function Dashboard() {
                   <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
                 </linearGradient>
               </defs>
-              {/* Axes */}
-              <line x1="0" y1="130" x2="320" y2="130" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
-              <line x1="0" y1="0" x2="0" y2="130" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
+
+              {/* Grid Lines & Y Labels */}
+              {netWorthChart.yLabels?.map((l, i) => (
+                <g key={i}>
+                  <line
+                    x1={netWorthChart.padding.left}
+                    y1={l.y}
+                    x2={320 - netWorthChart.padding.right}
+                    y2={l.y}
+                    stroke="var(--border-color)"
+                    strokeWidth="1"
+                    strokeOpacity="0.1"
+                  />
+                  <text
+                    x={netWorthChart.padding.left - 5}
+                    y={l.y + 4}
+                    fontSize="9"
+                    fill="var(--text-muted)"
+                    textAnchor="end"
+                  >
+                    {l.label}
+                  </text>
+                </g>
+              ))}
+
+              {/* X Labels */}
+              {netWorthChart.xLabels?.map((l, i) => (
+                <text
+                  key={i}
+                  x={l.x}
+                  y={135}
+                  fontSize="9"
+                  fill="var(--text-muted)"
+                  textAnchor="middle"
+                >
+                  {l.label}
+                </text>
+              ))}
+
+              {/* Main Axes */}
+              <line
+                x1={netWorthChart.padding.left}
+                y1={140 - netWorthChart.padding.bottom}
+                x2={320 - netWorthChart.padding.right}
+                y2={140 - netWorthChart.padding.bottom}
+                stroke="var(--border-color)"
+                strokeWidth="1"
+                strokeOpacity="0.3"
+              />
+              <line
+                x1={netWorthChart.padding.left}
+                y1={netWorthChart.padding.top}
+                x2={netWorthChart.padding.left}
+                y2={140 - netWorthChart.padding.bottom}
+                stroke="var(--border-color)"
+                strokeWidth="1"
+                strokeOpacity="0.3"
+              />
 
               <g id="networth-area">
                 <polyline fill="url(#networthGradient)" stroke="none" points={netWorthChart.areaPath} />
@@ -428,8 +517,6 @@ export default function Dashboard() {
               <g id="networth-dots" fill="var(--color-primary)">
                 {netWorthChart.dots.map((d, i) => <circle key={i} cx={d.cx} cy={d.cy} r="4" />)}
               </g>
-              <text x="5" y="20" fontSize="10" fill="var(--text-muted)">{netWorthChart.startLabel}</text>
-              <text x="315" y="125" fontSize="10" fill="var(--text-muted)" textAnchor="end">{netWorthChart.endLabel}</text>
             </svg>
           )}
         </div>
@@ -441,19 +528,59 @@ export default function Dashboard() {
 
           {cfLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
             <svg className="chart-svg" viewBox="0 0 320 160" role="img" aria-label="Cash flow bar chart">
-              {/* Axes */}
-              <line x1="0" y1="145" x2="320" y2="145" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
-              <line x1="0" y1="0" x2="0" y2="145" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
+              {/* Grid Lines & Y Labels */}
+              {cashFlowChart.yLabels?.map((l, i) => (
+                <g key={i}>
+                  <line
+                    x1={cashFlowChart.padding.left}
+                    y1={l.y}
+                    x2={320 - cashFlowChart.padding.right}
+                    y2={l.y}
+                    stroke="var(--border-color)"
+                    strokeWidth="1"
+                    strokeOpacity="0.1"
+                  />
+                  <text
+                    x={cashFlowChart.padding.left - 5}
+                    y={l.y + 4}
+                    fontSize="9"
+                    fill="var(--text-muted)"
+                    textAnchor="end"
+                  >
+                    {l.label}
+                  </text>
+                </g>
+              ))}
+
+              {/* Main Axes */}
+              <line
+                x1={cashFlowChart.padding.left}
+                y1={160 - cashFlowChart.padding.bottom}
+                x2={320 - cashFlowChart.padding.right}
+                y2={160 - cashFlowChart.padding.bottom}
+                stroke="var(--border-color)"
+                strokeWidth="1"
+                strokeOpacity="0.3"
+              />
+              <line
+                x1={cashFlowChart.padding.left}
+                y1={cashFlowChart.padding.top}
+                x2={cashFlowChart.padding.left}
+                y2={160 - cashFlowChart.padding.bottom}
+                stroke="var(--border-color)"
+                strokeWidth="1"
+                strokeOpacity="0.3"
+              />
 
               {cashFlowChart.bars.map((bar, i) => (
                 <g key={i}>
                   {/* Income Bar (Cyan) */}
-                  <rect x={bar.xInc} y={bar.yInc} width={(320 / cashFlowChart.bars.length) * 0.4} height={bar.hInc} rx="2" fill="var(--color-accent)" />
+                  <rect x={bar.xInc} y={bar.yInc} width={((320 - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hInc} rx="2" fill="var(--color-accent)" />
                   {/* Expense Bar (Red) */}
-                  <rect x={bar.xExp} y={bar.yExp} width={(320 / cashFlowChart.bars.length) * 0.4} height={bar.hExp} rx="2" fill="#DC2626" />
+                  <rect x={bar.xExp} y={bar.yExp} width={((320 - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hExp} rx="2" fill="#DC2626" />
 
                   {/* X Axis Label */}
-                  <text x={bar.labelX} y="158" fontSize="11" fill="var(--text-muted)" textAnchor="middle">{bar.label}</text>
+                  <text x={bar.labelX} y="155" fontSize="9" fill="var(--text-muted)" textAnchor="middle">{bar.label}</text>
                 </g>
               ))}
             </svg>
@@ -495,34 +622,75 @@ export default function Dashboard() {
       </div>
 
       {/* Account Overview */}
-      <div className="glass-panel mb-10">
-        <h2 className="mb-6 text-xl font-semibold">Account Overview</h2>
-        <div className="tabs mb-6">
-          <ul className="tab-list flex gap-4 border-b border-slate-200" role="tablist">
-            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
-            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
-            <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
-          </ul>
+      <div className="glass-panel mb-10 transition-all duration-300">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Account Overview</h2>
+          <button
+            onClick={() => setAccountsExpanded(!accountsExpanded)}
+            className="text-sm font-medium text-royal-purple hover:underline"
+          >
+            {accountsExpanded ? 'Collapse' : 'Manage / Details'}
+          </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredAccounts.length === 0 ? (
-            <div className="col-span-full text-center py-10 text-text-muted italic">
-              No accounts found. {accounts.length === 0 && "Use the button above to link an account."}
-            </div>
-          ) : (
-            filteredAccounts.map((account: Account) => (
-              <div key={account.id} className="card hover:shadow-lg transition-shadow">
-                <h3 className="font-semibold text-lg">{account.accountName}</h3>
-                <p className="text-2xl font-bold text-royal-purple my-2">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
-                </p>
-                <p className="text-sm text-text-muted">
-                  {account.accountNumberMasked ? `Account ending in ${account.accountNumberMasked}` : account.accountType}
-                </p>
+
+        {!accountsExpanded ? (
+          <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-transparent border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setAccountsExpanded(true)}>
+            {accounts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center w-full text-center">
+                <p className="text-text-muted font-medium">Link your first financial account to see your net worth and cash flow.</p>
+                <p className="text-xs text-text-secondary mt-1">Connect with Plaid above to securely sync your data.</p>
               </div>
-            ))
-          )}
-        </div>
+            ) : (
+              <>
+                <div className="flex gap-8">
+                  <div>
+                    <span className="block text-xs text-text-muted uppercase tracking-wider">Connected</span>
+                    <span className="text-lg font-bold text-text-primary">{accounts.length} Accounts</span>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-text-muted uppercase tracking-wider">Types</span>
+                    <span className="text-lg font-bold text-text-primary">
+                      {[...new Set(accounts.map(a => a.accountType))].join(', ')}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right mt-4 md:mt-0">
+                  <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
+                  <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="tabs mb-6">
+              <ul className="tab-list flex gap-4 border-b border-white/10" role="tablist">
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
+              </ul>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredAccounts.length === 0 ? (
+                <div className="col-span-full text-center py-10 text-text-muted italic">
+                  No accounts found. {accounts.length === 0 && "Use the button above to link an account."}
+                </div>
+              ) : (
+                filteredAccounts.map((account: Account) => (
+                  <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5">
+                    <h3 className="font-semibold text-lg">{account.accountName}</h3>
+                    <p className="text-2xl font-bold text-royal-purple my-2">
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
+                    </p>
+                    <p className="text-sm text-text-muted">
+                      {account.accountNumberMasked ? `Account ending in ${account.accountNumberMasked}` : account.accountType}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Recent Transactions */}
