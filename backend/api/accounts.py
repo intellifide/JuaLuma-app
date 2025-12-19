@@ -16,9 +16,10 @@ from web3 import Web3  # For address validation
 from backend.middleware.auth import get_current_user
 from backend.core.dependencies import enforce_account_limit
 from backend.models import Account, AuditLog, Subscription, Transaction, User
-from backend.services.plaid import fetch_accounts, fetch_transactions
+from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.services.connectors import build_connector
 from backend.utils import get_db
+from backend.utils.firestore import get_firestore_client
 from backend.utils.encryption import encrypt_secret, decrypt_secret
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -843,13 +844,27 @@ def delete_account(
             status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
         )
 
-    # Placeholder for Plaid item removal; integrates when Plaid tokens are stored.
-    if account.account_type != "manual" and account.secret_ref:
+    # Remove Plaid Item if traditional
+    if account.account_type == "traditional" and account.secret_ref:
         logger.info(
-            "Requested Plaid item removal for account %s with secret_ref=%s",
+            "Removing Plaid item for account %s with secret_ref=%s",
             account.id,
             account.secret_ref,
         )
+        try:
+             remove_item(account.secret_ref)
+        except Exception as e:
+             logger.error("Failed to remove Plaid item: %s", e)
+
+    # Invalidate Analytics Cache
+    try:
+        db_fs = get_firestore_client()
+        # Query for all cache docs belonging to this user
+        # Note: older cache entries without 'uid' will expire naturally in 1h
+        for doc in db_fs.collection("analytics_cache").where("uid", "==", current_user.uid).stream():
+            doc.reference.delete()
+    except Exception as e:
+        logger.warning(f"Failed to invalidate analytics cache: {e}")
 
     audit = AuditLog(
         actor_uid=current_user.uid,

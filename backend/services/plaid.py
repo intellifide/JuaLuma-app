@@ -25,6 +25,7 @@ from plaid.model.investments_transactions_get_request_options import (
     InvestmentsTransactionsGetRequestOptions,
 )
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.item_remove_request import ItemRemoveRequest
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.products import Products
@@ -119,6 +120,24 @@ def exchange_public_token(public_token: str) -> Tuple[str, str]:
         raise _wrap_plaid_error("token exchange", exc)
 
     return response.access_token, response.item_id
+
+
+def remove_item(access_token: str) -> None:
+    """
+    Remove an Item via the Plaid API (unlinks the connection).
+    """
+    client = get_plaid_client()
+    request = ItemRemoveRequest(access_token=access_token)
+
+    try:
+        client.item_remove(request)
+    except ApiException as exc:
+        # If item is already gone (e.g. ITEM_NOT_FOUND), treat as success or ignore
+        err_body = getattr(exc, "body", "")
+        if "ITEM_NOT_FOUND" in str(err_body):
+            logger.warning("Plaid remove_item: Item not found (already removed?)")
+            return
+        raise _wrap_plaid_error("item_remove", exc)
 
 
 def fetch_accounts(access_token: str) -> List[Dict[str, object]]:
@@ -335,6 +354,7 @@ __all__ = [
     "get_plaid_client",
     "create_link_token",
     "exchange_public_token",
+    "remove_item",
     "fetch_accounts",
     "fetch_transactions",
     "fetch_investments",

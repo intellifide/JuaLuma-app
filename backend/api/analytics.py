@@ -174,6 +174,7 @@ def get_net_worth(
     if db_fs and doc_ref:
         try:
             doc_ref.set({
+                "uid": current_user.uid,
                 "payload": resp.model_dump(mode='json'),
                 "expires_at": datetime.now(timezone.utc).timestamp() + 3600
             })
