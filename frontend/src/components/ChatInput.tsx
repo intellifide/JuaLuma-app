@@ -68,7 +68,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <button
                     onClick={handleSubmit}
                     disabled={!value.trim() || isInputDisabled}
-                    className="absolute right-2 bottom-2 p-1.5 rounded-md text-white bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-8 w-8"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-white bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-8 w-8"
                     aria-label="Send message"
                 >
                     {isLoading ? (

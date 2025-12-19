@@ -12,32 +12,6 @@ interface Message {
   time: string;
 }
 
-const sampleThreads = [
-  {
-    id: 'budget',
-    name: 'Budget Analysis',
-    messages: [
-      { role: 'user', text: 'How am I doing with my budget this month?' },
-      { role: 'assistant', text: "You're doing well! You've spent 68% of your monthly budget. Dining is at 85% of your limit, while utilities are only at 45%." }
-    ]
-  },
-  {
-    id: 'networth',
-    name: 'Net Worth Tracking',
-    messages: [
-      { role: 'user', text: 'Show me my net worth trend' },
-      { role: 'assistant', text: 'Your net worth has grown from $125,430 to $132,890 over the past 3 months, a 5.9% increase. Your investment accounts are the primary driver of this growth.' }
-    ]
-  },
-  {
-    id: 'subscriptions',
-    name: 'Subscription Review',
-    messages: [
-      { role: 'user', text: 'What subscriptions am I paying for?' },
-      { role: 'assistant', text: 'You have 8 active subscriptions totaling $127.50/month: Netflix ($15.99), Spotify ($9.99), Adobe Creative Cloud ($52.99), and 5 others. Would you like to see the full list?' }
-    ]
-  }
-] as const;
 
 export default function AIAssistant() {
   const { user } = useAuth();
@@ -209,16 +183,6 @@ export default function AIAssistant() {
     }
   };
 
-  const loadSampleThread = (threadId: string) => {
-    const thread = sampleThreads.find(t => t.id === threadId);
-    if (thread) {
-      const threadMessages: Message[] = thread.messages.map(m => ({
-        ...m,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }));
-      setMessages(threadMessages);
-    }
-  };
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -239,9 +203,6 @@ export default function AIAssistant() {
 
   return (
     <section className="container container-narrow py-12">
-      <h1 className="mb-4">AI Assistant</h1>
-
-      <h1 className="mb-4">AI Chat</h1>
 
       <AIPrivacyModal
         isOpen={showPrivacyModal}
@@ -262,20 +223,6 @@ export default function AIAssistant() {
           />
         </div>
 
-        <div className="mb-4">
-          <label htmlFor="chat-thread-selector" className="form-label">Load Sample Conversation:</label>
-          <select
-            id="chat-thread-selector"
-            className="form-input"
-            onChange={(e) => loadSampleThread(e.target.value)}
-            disabled={!privacyAccepted}
-          >
-            <option value="">Select a sample conversation...</option>
-            <option value="budget">Budget Analysis</option>
-            <option value="networth">Net Worth Tracking</option>
-            <option value="subscriptions">Subscription Review</option>
-          </select>
-        </div>
 
         <div id="ai-chat-container" className="chat-container relative">
           {!privacyAccepted && (

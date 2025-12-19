@@ -106,8 +106,22 @@ function App() {
             <Route path="/feature-request" element={<FeatureRequest />} />
             <Route path="/about" element={<About />} />
             <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/developer-marketplace" element={<DeveloperMarketplace />} />
-            <Route path="/developer-sdk" element={<DeveloperSDK />} />
+            <Route
+              path="/developer-marketplace"
+              element={
+                <ProtectedRoute>
+                  <DeveloperMarketplace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/developer-sdk"
+              element={
+                <ProtectedRoute>
+                  <DeveloperSDK />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/legal/privacy" element={<Privacy />} />
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/ai-disclaimer" element={<AIDisclaimer />} />

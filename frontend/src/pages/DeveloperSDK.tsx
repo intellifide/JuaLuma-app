@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { HelloWorldWidget } from '../sdk/examples/HelloWorldWidget';
 import { DataFetcherWidget } from '../sdk/examples/DataFetcherWidget';
 import { mockClient } from '../sdk/mockClient';
+import { Paywall } from '../components/ui/Paywall';
 
 export const DeveloperSDK = () => {
     const { profile } = useAuth();
@@ -49,14 +50,13 @@ export const DeveloperSDK = () => {
 
     if (!profile) return <div className="container py-16 text-center">Loading...</div>;
 
-    if (!hasPro && !isDeveloper) { // Developers get access regardless of current sub status, logically
+    if (!hasPro && !isDeveloper) {
         return (
-            <div className="container py-16 text-center">
-                <h1 className="text-3xl font-bold mb-6">Developer SDK Access</h1>
-                <div className="alert bg-red-500/10 border border-red-500/20 text-red-400 p-8 rounded-lg max-w-2xl mx-auto">
-                    <p className="mb-4 text-lg">Access to the Developer SDK requires a Pro or Ultimate subscription.</p>
-                    <Link to="/pricing" className="btn btn-primary">Upgrade Now</Link>
-                </div>
+            <div className="container py-16">
+                <Paywall
+                    title="Developer SDK Access"
+                    description="The Developer SDK and Sandbox tools are reserved for our Pro and Ultimate partners. Upgrade your account to start building custom financial widgets today."
+                />
             </div>
         );
     }

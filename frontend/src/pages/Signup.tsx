@@ -136,6 +136,8 @@ export const Signup = () => {
                     checked={acceptTerms}
                     onChange={(e) => setAcceptTerms(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
+                    onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Select this box if you agree with the terms')}
+                    onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
                     required
                   />
                   <span>
@@ -151,6 +153,8 @@ export const Signup = () => {
                     checked={acceptPrivacy}
                     onChange={(e) => setAcceptPrivacy(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
+                    onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Select this box if you agree with the terms')}
+                    onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
                     required
                   />
                   <span>
@@ -166,6 +170,8 @@ export const Signup = () => {
                     checked={acceptResident}
                     onChange={(e) => setAcceptResident(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
+                    onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Select this box if you agree with the terms')}
+                    onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
                     required
                   />
                   <span>

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { widgetService } from '../services/widgets';
 import { developerService, DeveloperPayout } from '../services/developers';
 import { Widget, PaginatedResponse } from '../types';
+import { Paywall } from '../components/ui/Paywall';
 
 export const DeveloperMarketplace = () => {
     const { profile, refetchProfile } = useAuth();
@@ -117,11 +118,10 @@ export const DeveloperMarketplace = () => {
                     </p>
 
                     {!hasPro ? (
-                        <div className="alert bg-red-500/10 border border-red-500/20 text-red-400 p-6 rounded-lg text-center mb-8">
-                            <h3 className="font-bold mb-2">Pro Subscription Required</h3>
-                            <p className="mb-4">You must have an active Pro or Ultimate subscription to become a developer.</p>
-                            <Link to="/pricing" className="btn btn-primary">Upgrade Now</Link>
-                        </div>
+                        <Paywall
+                            title="Developer Program Access"
+                            description="Access to the Developer Marketplace and monetization tools requires an active Pro or Ultimate subscription. Join our community of developers building the future of finance."
+                        />
                     ) : (
                         <div className="bg-bg-secondary/50 p-8 rounded-lg border border-white/5">
                             <h3 className="font-bold mb-4">Developer Agreement</h3>
