@@ -35,6 +35,7 @@ class AppSettings(BaseSettings):
     plaid_env: str = Field(default="sandbox", alias="PLAID_ENV")
 
     firebase_project_id: str = Field(default="jualuma-local", alias="FIREBASE_PROJECT_ID")
+    firebase_api_key: str | None = Field(default=None, alias="VITE_FIREBASE_API_KEY")
     firebase_auth_emulator_host: str | None = Field(
         default=None, alias="FIREBASE_AUTH_EMULATOR_HOST"
     )

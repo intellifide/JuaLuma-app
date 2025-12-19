@@ -63,7 +63,7 @@ type AuthContextValue = {
   signup: (email: string, password: string) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  resetPassword: (email: string) => Promise<void>
+  resetPassword: (email: string, mfa_code?: string) => Promise<void>
   refetchProfile: () => Promise<UserProfile | null>
 }
 
@@ -167,10 +167,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const resetPassword = useCallback(async (email: string) => {
+  const resetPassword = useCallback(async (email: string, mfa_code?: string) => {
     setError(null)
     try {
-      await resetPasswordWithFirebase(email)
+      await resetPasswordWithFirebase(email, mfa_code)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to reset password.'

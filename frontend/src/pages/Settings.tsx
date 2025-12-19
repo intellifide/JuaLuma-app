@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { changePassword } from '../services/auth';
 
 export const Settings = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const tabs = [
     { id: 'profile', label: 'Profile' },
@@ -344,20 +354,88 @@ export const Settings = () => {
                   <h3 className="text-xl font-bold">Change Password</h3>
                 </div>
                 <div className="card-body">
-                  <form onSubmit={(e) => e.preventDefault()}>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    setPasswordError(null);
+                    setPasswordSuccess(false);
+
+                    if (newPassword !== confirmPassword) {
+                      setPasswordError("Passwords do not match.");
+                      return;
+                    }
+
+                    setPasswordLoading(true);
+                    try {
+                      await changePassword(currentPassword, newPassword, mfaCode);
+                      setPasswordSuccess(true);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setMfaCode('');
+                    } catch (err) {
+                      setPasswordError(err instanceof Error ? err.message : "Failed to update password.");
+                    } finally {
+                      setPasswordLoading(false);
+                    }
+                  }}>
+                    {passwordError && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{passwordError}</div>}
+                    {passwordSuccess && <div className="mb-4 p-3 bg-emerald-100 text-emerald-700 rounded-lg text-sm">Password updated successfully.</div>}
+
                     <div className="mb-4">
                       <label htmlFor="current-password" className="block text-sm font-medium text-text-secondary mb-1">Current Password</label>
-                      <input type="password" id="current-password" className="form-input w-full" required />
+                      <input
+                        type="password"
+                        id="current-password"
+                        className="form-input w-full"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                      />
                     </div>
                     <div className="mb-4">
                       <label htmlFor="new-password" className="block text-sm font-medium text-text-secondary mb-1">New Password</label>
-                      <input type="password" id="new-password" className="form-input w-full" required minLength={8} />
+                      <input
+                        type="password"
+                        id="new-password"
+                        className="form-input w-full"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        minLength={8}
+                      />
                     </div>
                     <div className="mb-4">
                       <label htmlFor="confirm-new-password" className="block text-sm font-medium text-text-secondary mb-1">Confirm New Password</label>
-                      <input type="password" id="confirm-new-password" className="form-input w-full" required />
+                      <input
+                        type="password"
+                        id="confirm-new-password"
+                        className="form-input w-full"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
                     </div>
-                    <button type="submit" className="btn btn-primary">Update Password</button>
+
+                    {profile?.mfa_enabled && (
+                      <div className="mb-6">
+                        <label htmlFor="mfa-code" className="block text-sm font-medium text-text-secondary mb-1">2FA Verification Code</label>
+                        <input
+                          type="text"
+                          id="mfa-code"
+                          className="form-input w-full"
+                          placeholder="Enter 6-digit code"
+                          value={mfaCode}
+                          onChange={(e) => setMfaCode(e.target.value)}
+                          required
+                          maxLength={6}
+                        />
+                        <p className="mt-1 text-xs text-text-muted">Since 2FA is enabled, you must provide a valid code to change your password.</p>
+                      </div>
+                    )}
+
+                    <button type="submit" className="btn btn-primary" disabled={passwordLoading}>
+                      {passwordLoading ? "Updating..." : "Update Password"}
+                    </button>
                   </form>
                 </div>
               </div>

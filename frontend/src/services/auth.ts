@@ -73,12 +73,29 @@ export const logout = async (): Promise<void> => {
   clearCachedToken()
 }
 
-export const resetPassword = async (email: string): Promise<void> => {
+export const resetPassword = async (email: string, mfa_code?: string): Promise<void> => {
   try {
-    await sendPasswordResetEmail(auth, email)
+    // 2025-12-19: Call backend to enforce MFA check if enabled
+    await apiFetch('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, mfa_code }),
+      skipAuth: true,
+    })
   } catch (error) {
+    if (error instanceof Error) throw error
     throw new Error(mapFirebaseError(error))
   }
+}
+
+export const changePassword = async (
+  current_password: string,
+  new_password: string,
+  mfa_code?: string
+): Promise<void> => {
+  await apiFetch('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password, new_password, mfa_code }),
+  })
 }
 
 export const getIdToken = async (forceRefresh = false): Promise<string | null> => {

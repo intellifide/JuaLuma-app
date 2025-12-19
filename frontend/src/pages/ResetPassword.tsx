@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth'
 export const ResetPassword = () => {
   const { resetPassword } = useAuth()
   const [email, setEmail] = useState('')
+  const [mfaCode, setMfaCode] = useState('')
+  const [showMfa, setShowMfa] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -17,12 +19,18 @@ export const ResetPassword = () => {
     setSubmitting(true)
 
     try {
-      await resetPassword(email)
+      await resetPassword(email, mfaCode || undefined)
       setMessage('If this email exists, a reset link has been sent. Check your inbox.')
+      setShowMfa(false)
     } catch (err) {
-      const friendly =
-        err instanceof Error ? err.message : 'Unable to send reset email. Try again.'
-      setError(friendly)
+      if (err instanceof Error && err.message === 'MFA_REQUIRED') {
+        setShowMfa(true)
+        setError('2FA is enabled on this account. Please enter your code to proceed.')
+      } else {
+        const friendly =
+          err instanceof Error ? err.message : 'Unable to send reset email. Try again.'
+        setError(friendly)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -54,8 +62,28 @@ export const ResetPassword = () => {
                   className="form-input"
                   placeholder="you@example.com"
                   autoComplete="email"
+                  disabled={showMfa}
                 />
               </div>
+
+              {showMfa && (
+                <div>
+                  <label className="form-label">Verification Code</label>
+                  <input
+                    type="text"
+                    required
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value)}
+                    className="form-input"
+                    placeholder="123456"
+                    maxLength={6}
+                    autoFocus
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Enter the code from your authenticator app or email.
+                  </p>
+                </div>
+              )}
 
               {message && <p className="text-sm text-green-600">{message}</p>}
               {error && <p className="text-sm text-red-600">{error}</p>}

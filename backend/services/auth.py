@@ -1,6 +1,7 @@
-# Updated 2025-12-19 02:45 CST by ChatGPT
+# Updated 2025-12-19 12:20 CST by Antigravity
 import os
 import logging
+import requests
 from typing import Any, Dict
 
 import firebase_admin
@@ -130,6 +131,48 @@ def generate_password_reset_link(email: str) -> str:
         raise RuntimeError("Failed to generate reset link.") from exc
 
 
+def _get_auth_url(action: str) -> str:
+    """Return the Firebase Auth REST API URL."""
+    api_key = settings.firebase_api_key or "fake-key"
+    base = "https://identitytoolkit.googleapis.com/v1"
+    
+    if settings.is_local and settings.resolved_auth_emulator_host:
+        # Emulator override
+        host = settings.resolved_auth_emulator_host
+        return f"http://{host}/identitytoolkit.googleapis.com/v1/accounts:{action}?key={api_key}"
+    
+    return f"{base}/accounts:{action}?key={api_key}"
+
+
+def verify_password(email: str, password: str) -> bool:
+    """
+    Verify email/password credentials via Firebase REST API.
+    Returns True if valid, False otherwise.
+    """
+    url = _get_auth_url("signInWithPassword")
+    payload = {
+        "email": email,
+        "password": password,
+        "returnSecureToken": True
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        return response.status_code == 200
+    except Exception as exc:
+        logger.error(f"Password verification request failed: {exc}")
+        return False
+
+
+def update_user_password(uid: str, new_password: str) -> None:
+    """Update a user's password in Firebase via Admin SDK."""
+    try:
+        auth.update_user(uid, password=new_password, app=_get_firebase_app())
+    except FirebaseError as exc:
+        logger.error(f"Failed to update password for UID {uid}: {exc}")
+        raise RuntimeError("Failed to update password in auth provider.") from exc
+
+
 def revoke_refresh_tokens(uid: str) -> None:
     """Revoke all refresh tokens for a given user."""
     try:
@@ -144,4 +187,6 @@ __all__ = [
     "refresh_custom_claims",
     "generate_password_reset_link",
     "revoke_refresh_tokens",
+    "verify_password",
+    "update_user_password",
 ]
