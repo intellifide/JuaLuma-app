@@ -16,8 +16,9 @@ export const useNetWorth = (startDate: string, endDate: string, interval: 'daily
         try {
             const result = await AnalyticsService.getNetWorth(startDate, endDate, interval);
             setData(result);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch net worth');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to fetch net worth';
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -43,8 +44,9 @@ export const useCashFlow = (startDate: string, endDate: string, interval: 'day' 
         try {
             const result = await AnalyticsService.getCashFlow(startDate, endDate, interval);
             setData(result);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch cash flow');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to fetch cash flow';
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -70,8 +72,9 @@ export const useSpendingByCategory = (startDate: string, endDate: string) => {
         try {
             const result = await AnalyticsService.getSpendingByCategory(startDate, endDate);
             setData(result);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch spending data');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to fetch spending data';
+            setError(message);
         } finally {
             setLoading(false);
         }

@@ -34,7 +34,7 @@ export const CookieConsentBanner: React.FC = () => {
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                             We use cookies to enhance your experience and analyze our traffic.
-                            By clicking "Accept", you consent to our use of cookies.
+                            By clicking &quot;Accept&quot;, you consent to our use of cookies.
                             Read our <Link to="/legal/privacy" className="text-royal-purple hover:text-deep-indigo underline">Privacy Policy</Link> to learn more.
                         </p>
                     </div>

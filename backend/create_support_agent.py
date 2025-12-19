@@ -1,17 +1,14 @@
 import argparse
 import sys
 import os
-import firebase_admin
-from firebase_admin import auth, credentials
-import requests
-import time
+from firebase_admin import auth
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.utils import get_db
-from backend.models.user import User
-from backend.services.auth import _get_firebase_app
+from backend.utils import get_db  # noqa: E402
+from backend.models.user import User  # noqa: E402
+from backend.services.auth import _get_firebase_app  # noqa: E402
 
 # Default strong password if none provided
 DEFAULT_STRONG_PASSWORD = "SupportAgentSecure!2025"

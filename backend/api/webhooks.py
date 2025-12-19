@@ -1,6 +1,6 @@
 # Updated 2025-12-19 02:40 CST
 import logging
-from fastapi import APIRouter, Header, Request, Depends, HTTPException
+from fastapi import APIRouter, Header, Request, Depends
 from sqlalchemy.orm import Session
 
 from backend.utils import get_db

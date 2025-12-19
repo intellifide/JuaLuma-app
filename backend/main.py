@@ -5,12 +5,14 @@ import typing as _t
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
-from fastmcp import FastMCP
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
+
+# MCP Imports
+from backend.mcp_server import mcp
 
 from backend.core import configure_logging, settings
 from backend.core.events import initialize_events
@@ -100,7 +102,6 @@ app.include_router(notifications_router)
 app.include_router(support_portal_router) # New router inclusion
 
 # Initialize and Mount Main MCP Server (Phase 3)
-from backend.mcp_server import mcp
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI
 # Compatibility: 'sse_app' (v0.x) vs 'http_app' (v2.x)
 mcp_app = getattr(mcp, "sse_app", getattr(mcp, "http_app", None))
@@ -112,7 +113,7 @@ else:
 # Initialize and Mount Dev Tools MCP Server (Phase 4)
 # Only mount dangerous dev tools in LOCAL environment
 if settings.app_env.lower() == "local":
-    from backend.dev_tools.mcp_server import dev_mcp
+    from backend.dev_tools.mcp_server import dev_mcp  # noqa: E402
     dev_app = getattr(dev_mcp, "sse_app", getattr(dev_mcp, "http_app", None))
     if dev_app:
         app.mount("/mcp-dev", dev_app)

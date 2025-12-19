@@ -1,5 +1,4 @@
 
-import pytest
 from decimal import Decimal
 from backend.services.payouts import calculate_engagement_score, calculate_payout_share
 

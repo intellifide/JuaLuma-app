@@ -1,8 +1,5 @@
-from unittest.mock import patch, MagicMock
-from decimal import Decimal
 from fastapi.testclient import TestClient
 from backend.models import Account
-from web3 import Web3
 
 def test_link_web3_account(test_client: TestClient, test_db, mock_auth):
     # Generates a valid eth address

@@ -1,5 +1,4 @@
 from fastmcp import FastMCP
-from sqlalchemy import text
 from backend.core import settings
 from backend.models import SessionLocal
 from backend.models.user import User
@@ -8,9 +7,7 @@ from backend.core.constants import SubscriptionPlans
 from backend.models.transaction import Transaction
 from uuid import uuid4
 import httpx
-import asyncio
 import logging
-import os
 import subprocess
 
 # Initialize the Dev Tools MCP server

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from datetime import datetime
@@ -33,7 +33,7 @@ def list_notifications(
     query = db.query(LocalNotification).filter(LocalNotification.uid == current_user.uid)
     
     if unread_only:
-        query = query.filter(LocalNotification.is_read == False)
+        query = query.filter(LocalNotification.is_read.is_(False))
         
     return query.order_by(desc(LocalNotification.created_at)).limit(50).all()
 

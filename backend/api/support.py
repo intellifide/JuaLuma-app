@@ -21,6 +21,7 @@ from backend.models.support import (
 )
 from backend.core.events import publish_event
 from backend.utils import get_db
+from backend.services.notifications import NotificationService
 
 router = APIRouter(prefix="/api/support", tags=["support"])
 logger = logging.getLogger(__name__)
@@ -105,8 +106,6 @@ def _get_ticket_for_actor(
 
     return query.first()
 
-
-from backend.services.notifications import NotificationService
 
 def _create_resolution_notification_if_needed(
     db: Session, ticket: SupportTicket

@@ -4,6 +4,14 @@ import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
 import { api as apiClient } from '../services/api';
 
+interface ApiError {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
 const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [address, setAddress] = useState('');
   const [name, setName] = useState('');
@@ -21,8 +29,8 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
       });
       toast.show('Wallet linked successfully', 'success');
       onSuccess();
-    } catch (err: any) {
-      toast.show(err.response?.data?.detail || 'Failed to link wallet', 'error');
+    } catch (err) {
+      toast.show((err as ApiError).response?.data?.detail || 'Failed to link wallet', 'error');
     } finally {
       setLoading(false);
     }
@@ -89,8 +97,8 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       });
       toast.show('Exchange linked successfully', 'success');
       onSuccess();
-    } catch (err: any) {
-      toast.show(err.response?.data?.detail || 'Failed to link exchange', 'error');
+    } catch (err) {
+      toast.show((err as ApiError).response?.data?.detail || 'Failed to link exchange', 'error');
     } finally {
       setLoading(false);
     }

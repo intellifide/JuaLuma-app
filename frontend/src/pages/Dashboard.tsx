@@ -4,7 +4,7 @@ import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
-import { Account, Transaction } from '../types';
+import { Account } from '../types';
 import { DataPoint } from '../services/analytics';
 
 const BUDGET_CAP = 3750; // Simple static budget cap for now
@@ -127,7 +127,6 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
     const vals = dataMap[date];
 
     const hInc = (vals.inc / maxVal) * height;
-    const yInc = height - hInc + 20; // +20 offset for labels? No, standard chart. 
     // Let's use standard bottom-up.
 
     const hExp = (vals.exp / maxVal) * height;

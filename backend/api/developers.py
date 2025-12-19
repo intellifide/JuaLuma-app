@@ -2,7 +2,6 @@ import logging
 from datetime import date
 from decimal import Decimal
 from typing import List, Any, Dict
-import os
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query

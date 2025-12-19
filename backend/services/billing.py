@@ -1,7 +1,7 @@
 # Updated 2025-12-19 02:30 CST
 import stripe
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 
 from fastapi import HTTPException
@@ -223,7 +223,6 @@ async def _handle_invoice_paid(invoice: Dict[str, Any], db: Session):
 async def _handle_subscription_updated(subscription: Dict[str, Any], db: Session):
     customer_id = subscription.get("customer")
     status = subscription.get("status")
-    cancel_at_period_end = subscription.get("cancel_at_period_end")
     current_period_end = subscription.get("current_period_end")
     
     items = subscription.get("items", {}).get("data", [])
@@ -272,7 +271,7 @@ async def _handle_subscription_deleted(subscription: Dict[str, Any], db: Session
         return
 
     # Subscription deleted means access is revoked immediately
-    logger.info(f"Webhook: Subscription deleted - downgrading to free")
+    logger.info("Webhook: Subscription deleted - downgrading to free")
     update_user_tier(db, payment.uid, "free", "canceled", None)
     handle_downgrade_logic(db, payment.uid)
 

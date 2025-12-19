@@ -13,8 +13,6 @@ import time
 from typing import Dict, Iterable, List, Tuple
 import logging
 
-logger = logging.getLogger(__name__)
-
 from plaid import ApiClient, Configuration, Environment
 from plaid.api import plaid_api
 from plaid.model.accounts_get_request import AccountsGetRequest
@@ -34,6 +32,8 @@ from plaid.model.transactions_get_request_options import TransactionsGetRequestO
 from plaid.exceptions import ApiException
 
 from backend.core import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _get_environment() -> Environment:

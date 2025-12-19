@@ -3,7 +3,6 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationDrawer } from './notifications/NotificationDrawer'
-import { useSWRConfig } from 'swr' // Optional if we want to prefetch
 
 const linkClass = 'nav-link'
 const activeClass = 'nav-link active'

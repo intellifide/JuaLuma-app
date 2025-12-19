@@ -5,6 +5,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 import uuid
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import UUID, JSONB, BYTEA 
+from sqlalchemy import text
 
 from backend.main import app
 from backend.models import Base, User, Subscription
@@ -29,9 +32,6 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 # Fix for SQLite UUID/JSONB compatibility
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.dialects.postgresql import BYTEA 
 
 @compiles(UUID, 'sqlite')
 def visit_uuid(element, compiler, **kw):
@@ -44,8 +44,6 @@ def visit_jsonb(element, compiler, **kw):
 @compiles(BYTEA, 'sqlite')
 def visit_bytea(element, compiler, **kw):
     return "BLOB"
-
-from sqlalchemy import text
 
 @pytest.fixture(scope="module")
 def db_session():

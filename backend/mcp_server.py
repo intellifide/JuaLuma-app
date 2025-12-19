@@ -1,12 +1,8 @@
 from fastmcp import FastMCP
-from sqlalchemy.orm import Session
-from sqlalchemy import select
-from typing import List, Optional
 import logging
 
 from backend.models import User, Transaction, Subscription, Account
 from backend.models.base import SessionLocal
-from backend.utils import get_db
 from sqlalchemy import func
 
 # Initialize the Main App MCP server
