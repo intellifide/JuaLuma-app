@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from backend.core import settings
+from backend.core.constants import UserStatus
 from backend.models import User, Subscription, Payment
 
 logger = logging.getLogger(__name__)
@@ -162,6 +163,15 @@ def update_user_tier(db: Session, uid: str, tier: str, status: str = "active", e
     
     db.commit()
     db.refresh(sub)
+    
+    # Ensure user status is active if they have a valid plan
+    user = db.query(User).filter(User.uid == uid).first()
+    if user and user.status == UserStatus.PENDING_PLAN_SELECTION:
+        user.status = UserStatus.ACTIVE
+        db.add(user)
+        db.commit()
+        logger.info(f"User {uid} transitioned to ACTIVE status.")
+
     logger.info(f"Updated user {uid} tier to {tier} ({status})")
 
 def handle_downgrade_logic(db: Session, uid: str):
@@ -177,13 +187,13 @@ async def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session):
     """
     Handles incoming Stripe webhooks.
     """
-    if not settings.stripe_endpoint_secret:
+    if not settings.stripe_webhook_secret:
          # Use configured secret or fallback to None which will fail validation if not set
          raise HTTPException(status_code=500, detail="Webhook secret not configured.")
 
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.stripe_endpoint_secret
+            payload, sig_header, settings.stripe_webhook_secret
         )
     except ValueError as e:
         logger.error(f"Webhook error: Invalid payload: {e}")
@@ -203,6 +213,8 @@ async def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session):
         await _handle_subscription_updated(data_object, db)
     elif event_type == "customer.subscription.deleted":
         await _handle_subscription_deleted(data_object, db)
+    elif event_type == "checkout.session.completed":
+        await _handle_checkout_session_completed(data_object, db)
     
     return {"status": "success"}
 
@@ -274,4 +286,47 @@ async def _handle_subscription_deleted(subscription: Dict[str, Any], db: Session
     logger.info("Webhook: Subscription deleted - downgrading to free")
     update_user_tier(db, payment.uid, "free", "canceled", None)
     handle_downgrade_logic(db, payment.uid)
+
+async def _handle_checkout_session_completed(session: Dict[str, Any], db: Session):
+    """
+    Handles successful checkout session.
+    Transitions user from PENDING_PLAN_SELECTION (or Free) to the paid plan.
+    """
+    customer_id = session.get("customer")
+    metadata = session.get("metadata", {})
+    uid = metadata.get("uid")
+    plan_type = metadata.get("plan")
+
+    if not uid:
+        # Try to find by customer_id
+        payment = db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+        if payment:
+            uid = payment.uid
+        else:
+            logger.warning(f"Webhook: Checkout completed but no UID found in metadata or payment record. Customer: {customer_id}")
+            return
+
+    logger.info(f"Webhook: Checkout session completed for user {uid}, plan {plan_type}")
+
+    # If we have a subscription ID in the session, we can fetch details,
+    # but the subscription.updated webhook will likely follow and handle details (renew_at, etc).
+    # However, we should explicitly set the state here to ensure immediate access.
+    
+    # Check if we have subscription info in the session object
+    subscription_id = session.get("subscription")
+    
+    if plan_type:
+         # Map the plan string (e.g. 'pro_monthly') to the tier (e.g. 'pro')
+         # We need a reverse lookup or just checking the string structure.
+         # STRIPE_PLANS maps 'pro_monthly' -> price_ID
+         # STRIPE_PRICE_TO_TIER maps price_ID -> 'pro'
+         # So:
+         price_id = STRIPE_PLANS.get(plan_type)
+         tier = STRIPE_PRICE_TO_TIER.get(price_id, "free")
+         
+         if tier:
+             update_user_tier(db, uid, tier, status="active")
+             logger.info(f"Webhook: User {uid} activated on {tier} via checkout.")
+         else:
+             logger.warning(f"Webhook: Unknown plan type {plan_type} in checkout metadata.")
 

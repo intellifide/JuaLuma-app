@@ -1,6 +1,49 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { selectFreePlan } from '../services/auth'
+import { createCheckoutSession } from '../services/billing'
 
 export const Pricing = () => {
+    const { user, refetchProfile } = useAuth()
+    const navigate = useNavigate()
+    const [loading, setLoading] = useState<string | null>(null)
+
+    const handlePlanSelect = async (plan: string) => {
+        if (!user) {
+            navigate('/signup')
+            return
+        }
+
+        setLoading(plan)
+        try {
+            if (plan === 'free') {
+                await selectFreePlan()
+                await refetchProfile()
+                navigate('/dashboard')
+            } else {
+                // Determine actual plan key (defaulting to monthly for now)
+                let planKey = plan
+                if (plan === 'essential') planKey = 'essential_monthly'
+                if (plan === 'pro') planKey = 'pro_monthly'
+                if (plan === 'ultimate') planKey = 'ultimate_monthly'
+
+                const url = await createCheckoutSession(planKey, window.location.origin + '/dashboard')
+                window.location.href = url
+            }
+        } catch (error) {
+            console.error('Plan selection failed:', error)
+            alert('Failed to select plan. Please try again.')
+        } finally {
+            setLoading(null)
+        }
+    }
+
+    const BtnText = ({ plan }: { plan: string }) => {
+        if (loading === plan) return <span>Processing...</span>
+        return <span>{user ? 'Select Plan' : 'Get Started'}</span>
+    }
+
     return (
         <div>
             <section className="container py-12">
@@ -40,9 +83,13 @@ export const Pricing = () => {
                             </ul>
                         </div>
                         <div className="card-footer">
-                            <Link to="/signup" className="btn btn-outline w-full">
-                                Get Started
-                            </Link>
+                            <button
+                                onClick={() => handlePlanSelect('free')}
+                                disabled={!!loading}
+                                className="btn btn-outline w-full"
+                            >
+                                <BtnText plan="free" />
+                            </button>
                         </div>
                     </div>
 
@@ -76,13 +123,16 @@ export const Pricing = () => {
                             </ul>
                         </div>
                         <div className="card-footer">
-                            <Link to="/signup" className="btn btn-accent w-full">
-                                Get Started
-                            </Link>
+                            <button
+                                onClick={() => handlePlanSelect('essential')}
+                                disabled={!!loading}
+                                className="btn btn-accent w-full"
+                            >
+                                <BtnText plan="essential" />
+                            </button>
                         </div>
                     </div>
 
-                    {/* Pro Tier */}
                     {/* Pro Tier */}
                     <div className="card relative">
                         <div className="card-header">
@@ -109,9 +159,13 @@ export const Pricing = () => {
                             </ul>
                         </div>
                         <div className="card-footer">
-                            <Link to="/signup" className="btn btn-primary w-full">
-                                Start Free Trial
-                            </Link>
+                            <button
+                                onClick={() => handlePlanSelect('pro')}
+                                disabled={!!loading}
+                                className="btn btn-primary w-full"
+                            >
+                                <BtnText plan="pro" />
+                            </button>
                         </div>
                     </div>
 
@@ -142,9 +196,13 @@ export const Pricing = () => {
                             </ul>
                         </div>
                         <div className="card-footer">
-                            <Link to="/signup" className="btn btn-outline w-full">
-                                Get Started
-                            </Link>
+                            <button
+                                onClick={() => handlePlanSelect('ultimate')}
+                                disabled={!!loading}
+                                className="btn btn-outline w-full"
+                            >
+                                <BtnText plan="ultimate" />
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.core import settings
+from backend.core.constants import UserStatus
 from backend.models import AISettings, Subscription, User
 # Import from billing service to sync Stripe
 from backend.services.billing import create_stripe_customer
@@ -86,9 +87,19 @@ def create_user_record(db: Session, *, uid: str, email: str) -> User:
         uid=uid,
         email=email,
         role="user",
+        status=UserStatus.PENDING_VERIFICATION,
         theme_pref="glass",
         currency_pref="USD",
     )
+    # Subscription starts as free/active but user is gated by status?
+    # Task says "Select Plan -> Redirect to Stripe or Free Tier".
+    # So maybe subscription should be None or 'free' but inactive?
+    # The gates are on User Status. Subscription can be 'free' 'active' technically, but user can't use it until verified.
+    # Let's keep subscription as free/active for now, or maybe 'incomplete'?
+    # Given the task sequence: Signup (Pending Verification) -> Verify (Pending Plan Selection) -> Select Plan (Active).
+    # Setting subscription to "free" immediately might be premature if they might choose "pro".
+    # But for now, let's just focus on User.status.
+    
     subscription = Subscription(uid=uid, plan="free", status="active", ai_quota_used=0)
     ai_settings = AISettings(uid=uid)
 

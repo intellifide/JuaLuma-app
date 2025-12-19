@@ -21,6 +21,7 @@ from .user import User
 from .widget import Widget
 from .widget_rating import WidgetRating
 from .category_rule import CategoryRule
+from .budget import Budget
 
 __all__ = [
     "Base",
@@ -51,4 +52,5 @@ __all__ = [
     "Widget",
     "WidgetRating",
     "CategoryRule",
+    "Budget",
 ]

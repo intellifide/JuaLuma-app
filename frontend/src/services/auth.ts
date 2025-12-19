@@ -96,6 +96,28 @@ export const changePassword = async (
     method: 'POST',
     body: JSON.stringify({ current_password, new_password, mfa_code }),
   })
+
+}
+
+export const requestEmailCode = async (email: string): Promise<void> => {
+  await apiFetch('/auth/mfa/email/request-code', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    skipAuth: true,
+  })
+}
+
+export const verifyEmailCode = async (code: string): Promise<void> => {
+  await apiFetch('/auth/mfa/email/enable', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
+}
+
+export const selectFreePlan = async (): Promise<void> => {
+  await apiFetch('/billing/plans/free', {
+    method: 'POST',
+  })
 }
 
 export const getIdToken = async (forceRefresh = false): Promise<string | null> => {

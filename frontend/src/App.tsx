@@ -8,6 +8,7 @@ import { Footer } from './components/Footer'
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
+import { VerifyEmail } from './pages/VerifyEmail'
 import { ResetPassword } from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import { Settings } from './pages/Settings'
@@ -51,6 +52,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/dashboard"

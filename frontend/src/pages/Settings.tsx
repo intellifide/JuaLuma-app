@@ -96,21 +96,21 @@ export const Settings = () => {
               <h2 className="mb-6">Subscription</h2>
               <div className="card mb-6">
                 <div className="card-header pb-2 border-b border-border mb-4">
-                  <h3 className="text-xl font-bold">Current Plan: Pro</h3>
+                  <h3 className="text-xl font-bold">Current Plan: {profile?.plan ? profile.plan.charAt(0).toUpperCase() + profile.plan.slice(1) : 'Free'}</h3>
                 </div>
                 <div className="card-body">
-                  <p className="mb-2"><strong>Billing:</strong> $20.00/month</p>
-                  <p className="mb-2"><strong>Next Billing Date:</strong> February 15, 2025</p>
-                  <p className="mb-2"><strong>Status:</strong> <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Active</span></p>
-                  <p className="mb-2"><strong>AI Queries:</strong> 45/75 used today (Gemini 3 Pro)</p>
-                  <p className="mb-2"><strong>Trial Status:</strong> <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500 text-white">7-day free trial active</span></p>
-                  <p className="mt-4 p-2 bg-royal-purple/10 rounded text-sm">
-                    <strong>Tax Note:</strong> Billing includes Texas sales tax on 80% of subscription fee (20% exemption for data processing services)
-                  </p>
-                  <p className="mt-4">
-                    <strong>Features:</strong> 5 Traditional accounts, 5 Investment accounts, 5 Web3 wallets,
-                    75 AI queries/day, Full transaction history
-                  </p>
+                  <p className="mb-2"><strong>Billing:</strong> {profile?.plan === 'pro' ? '$20.00/month' : 'Free'}</p>
+                  {profile?.subscriptions?.[0]?.renew_at && (
+                    <p className="mb-2"><strong>Next Billing Date:</strong> {new Date(profile.subscriptions[0].renew_at).toLocaleDateString()}</p>
+                  )}
+                  <p className="mb-2"><strong>Status:</strong> <span className={`px-2 py-0.5 rounded text-xs font-semibold ${profile?.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{profile?.subscription_status || 'Inactive'}</span></p>
+                  <p className="mb-2"><strong>AI Queries:</strong> {profile?.subscriptions?.[0]?.ai_quota_used || 0}/75 used today</p>
+
+                  {profile?.plan === 'pro' && (
+                    <p className="mt-4 p-2 bg-royal-purple/10 rounded text-sm">
+                      <strong>Tax Note:</strong> Billing includes Texas sales tax on 80% of subscription fee (20% exemption for data processing services)
+                    </p>
+                  )}
                 </div>
                 <div className="card-footer mt-6 flex gap-2">
                   <button onClick={async () => {
@@ -161,26 +161,10 @@ export const Settings = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-border/50">
-                        <td className="py-3">January 15, 2025</td>
-                        <td className="py-3">$20.00</td>
-                        <td className="py-3">$1.28</td>
-                        <td className="py-3"><span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Paid</span></td>
-                        <td className="py-3"><a href="#" className="text-royal-purple hover:underline">Download</a></td>
-                      </tr>
-                      <tr className="border-b border-border/50">
-                        <td className="py-3">December 15, 2024</td>
-                        <td className="py-3">$20.00</td>
-                        <td className="py-3">$1.28</td>
-                        <td className="py-3"><span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Paid</span></td>
-                        <td className="py-3"><a href="#" className="text-royal-purple hover:underline">Download</a></td>
-                      </tr>
                       <tr>
-                        <td className="py-3">November 15, 2024</td>
-                        <td className="py-3">$20.00</td>
-                        <td className="py-3">$1.28</td>
-                        <td className="py-3"><span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Paid</span></td>
-                        <td className="py-3"><a href="#" className="text-royal-purple hover:underline">Download</a></td>
+                        <td colSpan={5} className="py-6 text-center text-text-muted">
+                          Billing history is available providing you have an active subscription. Click "Manage Subscription" above to view invoices in the secure customer portal.
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -470,23 +454,10 @@ export const Settings = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-border/50">
-                        <td className="py-3">Chrome on MacOS</td>
-                        <td className="py-3">Austin, TX, USA</td>
-                        <td className="py-3">Now</td>
-                        <td className="py-3"><span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Current</span></td>
-                      </tr>
-                      <tr className="border-b border-border/50">
-                        <td className="py-3">Safari on iPhone</td>
-                        <td className="py-3">Austin, TX, USA</td>
-                        <td className="py-3">2 hours ago</td>
-                        <td className="py-3"><button className="btn btn-sm btn-outline text-xs">Revoke</button></td>
-                      </tr>
                       <tr>
-                        <td className="py-3">Chrome on Windows</td>
-                        <td className="py-3">Dallas, TX, USA</td>
-                        <td className="py-3">3 days ago</td>
-                        <td className="py-3"><button className="btn btn-sm btn-outline text-xs">Revoke</button></td>
+                        <td colSpan={4} className="py-6 text-center text-text-muted">
+                          Session management coming soon.
+                        </td>
                       </tr>
                     </tbody>
                   </table>

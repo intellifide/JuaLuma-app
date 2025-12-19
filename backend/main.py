@@ -27,6 +27,7 @@ from backend.api.developers import router as developers_router
 from backend.api.support import router as support_router
 from backend.api.users import router as users_router
 from backend.api.billing import router as billing_router
+from backend.api.budgets import router as budgets_router
 from backend.api.webhooks import router as webhooks_router
 from backend.api.notifications import router as notifications_router
 from backend.api.support_portal import router as support_portal_router
@@ -97,6 +98,7 @@ app.include_router(developers_router)
 app.include_router(support_router)
 app.include_router(users_router)
 app.include_router(billing_router)
+app.include_router(budgets_router)
 app.include_router(webhooks_router)
 app.include_router(notifications_router)
 app.include_router(support_portal_router) # New router inclusion

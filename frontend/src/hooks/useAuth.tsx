@@ -44,6 +44,7 @@ export type UserProfile = {
   uid?: string
   email?: string
   role?: string
+  status?: string
   plan?: string
   subscription_status?: string
   theme_pref?: string | null

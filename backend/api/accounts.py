@@ -204,6 +204,12 @@ def _get_subscription_plan(db: Session, uid: str) -> str:
 
 def _enforce_sync_limit(db: Session, uid: str, plan: str) -> None:
     """Enforce Free-tier manual sync limits."""
+    if plan == "essential":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manual sync is disabled for Essential tier. Your accounts update automatically every 24 hours.",
+        )
+    
     if plan != "free":
         return
 

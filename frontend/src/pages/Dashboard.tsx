@@ -8,7 +8,7 @@ import { Account } from '../types';
 import { DataPoint } from '../services/analytics';
 import { useToast } from '../components/ui/Toast';
 
-const BUDGET_CAP = 3750; // Simple static budget cap for now
+// Removed static BUDGET_CAP
 
 // Helpers for Date Management
 const getDateRange = (timeframe: string) => {
@@ -193,8 +193,8 @@ const BudgetTool = ({ categories }: { categories: string[] }) => {
   const [tempAmount, setTempAmount] = useState<string>('');
   const [expanded, setExpanded] = useState(false);
 
-  // Filter categories to show only those with budgets set when collapsed
-  const activeBudgets = budgets.filter(b => b.amount !== null);
+  // Budgets are only returned if they exist, so activeBudgets is just 'budgets'
+  const activeBudgets = budgets;
   const showAll = expanded || activeBudgets.length === 0;
 
   // If showing all, use all categories. If collapsed, use only active budget categories.
@@ -283,6 +283,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { accounts, refetch: refetchAccounts } = useAccounts();
   const { transactions, refetch: refetchTransactions, updateOne } = useTransactions();
+  const { budgets } = useBudget();
   const [accountsExpanded, setAccountsExpanded] = useState(false);
   const toast = useToast();
 
@@ -322,7 +323,8 @@ export default function Dashboard() {
   }, [spendData]);
 
   const budgetSpent = totalExpense;
-  const budgetPercent = BUDGET_CAP > 0 ? Math.min(100, (budgetSpent / BUDGET_CAP) * 100) : 0;
+  const totalBudget = useMemo(() => budgets.reduce((sum, b) => sum + b.amount, 0), [budgets]);
+  const budgetPercent = totalBudget > 0 ? Math.min(100, (budgetSpent / totalBudget) * 100) : 0;
 
   // Chart Generators
   const netWorthChart = useMemo(() => generateLinePath(nwData?.data || [], 320, 140), [nwData]); // Height 140 match SVG
@@ -416,7 +418,7 @@ export default function Dashboard() {
           <h3 className="text-sm text-text-muted mb-2">Budget Status</h3>
           <p className="text-3xl font-bold text-royal-purple">{budgetPercent.toFixed(0)}%</p>
           <p className="text-sm text-text-muted mt-1">
-            {formatCompactCurrency(budgetSpent)} of {formatCompactCurrency(BUDGET_CAP)} spent
+            {formatCompactCurrency(budgetSpent)} of {formatCompactCurrency(totalBudget)} spent
           </p>
           <div className="w-full bg-slate-100 rounded-full h-2 mt-2" aria-label="Budget usage">
             <div className="h-2 rounded-full bg-royal-purple" style={{ width: `${budgetPercent}%` }} />

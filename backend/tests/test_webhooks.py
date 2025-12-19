@@ -1,10 +1,10 @@
-# Updated 2025-12-11 03:00 CST
+# Updated 2025-12-19 13:00 CST
 import time
 import json
 import hmac
 import hashlib
 from backend.core import settings
-from backend.models import Subscription, User
+from backend.models import Subscription, User, Payment
 from sqlalchemy.orm import Session
 
 # Sample Payloads
@@ -21,7 +21,7 @@ CHECKOUT_SESSION_COMPLETED = {
       "client_reference_id": "test_user_123",
       "customer": "cus_test_123",
       "subscription": "sub_test_123",
-      "metadata": {"uid": "test_user_123"}
+      "metadata": {"uid": "test_user_123", "plan": "pro_monthly"}
     }
   }
 }
@@ -36,6 +36,7 @@ SUBSCRIPTION_UPDATED_CANCELED = {
         "object": {
             "id": "sub_test_123",
             "object": "subscription",
+            "customer": "cus_test_123",
             "status": "canceled",
             "metadata": {"uid": "test_user_123"}
         }
@@ -80,8 +81,12 @@ def test_webhook_subscription_canceled(test_client, test_db: Session):
     # Create user with pro sub
     user = User(uid="test_user_123", email="test@example.com")
     sub = Subscription(uid="test_user_123", plan="pro")
+    # Payment record required for webhook handler to find user by customer_id
+    payment = Payment(uid="test_user_123", stripe_customer_id="cus_test_123")
+    
     test_db.add(user)
     test_db.add(sub)
+    test_db.add(payment)
     test_db.commit()
 
     payload_str = json.dumps(SUBSCRIPTION_UPDATED_CANCELED)

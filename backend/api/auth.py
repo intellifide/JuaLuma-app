@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy.orm import Session, selectinload
 
 from backend.middleware.auth import get_current_user
+from backend.core.constants import UserStatus
 from backend.models import AuditLog, Subscription, User
 from backend.services.auth import (
     _get_firebase_app,
@@ -373,6 +374,7 @@ def login(
         profile["plan"] = subscription.plan
         profile["subscription_status"] = subscription.status
     
+    profile["status"] = user.status
     profile["is_developer"] = True if user.developer else False
 
     return {"user": profile}
@@ -552,6 +554,10 @@ def enable_email_mfa(
     current_user.mfa_enabled = True
     current_user.mfa_method = "email"
     current_user.email_otp = None
+    
+    if current_user.status == UserStatus.PENDING_VERIFICATION:
+        current_user.status = UserStatus.PENDING_PLAN_SELECTION
+        
     db.commit()
     
     return {"message": "Email MFA enabled."}

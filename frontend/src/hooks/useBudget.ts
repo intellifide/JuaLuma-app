@@ -1,44 +1,61 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
+import { apiFetch } from '../services/auth';
 
 export interface Budget {
+    id: string;
     category: string;
-    amount: number | null; // null means no budget set
+    amount: number; // Changed from number | null to number, assuming 0 or delete for "no budget"
+    period: string;
 }
 
 export const useBudget = () => {
     const { user } = useAuth();
     const [budgets, setBudgets] = useState<Budget[]>([]);
+    const [loading, setLoading] = useState(false);
 
-    // Initial load/mock
-    useEffect(() => {
+    const fetchBudgets = useCallback(async () => {
         if (!user) return;
-        // Fetch from backend in future. using local storage for now or simple mock
-        const saved = localStorage.getItem(`jualuma_budgets_${user.uid}`);
-        if (saved) {
-            setBudgets(JSON.parse(saved));
-        } else {
-            setBudgets([]);
+        setLoading(true);
+        try {
+            const res = await apiFetch('/api/budgets/');
+            if (res.ok) {
+                const data = await res.json();
+                setBudgets(data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch budgets", e);
+        } finally {
+            setLoading(false);
         }
     }, [user]);
 
+    useEffect(() => {
+        fetchBudgets();
+    }, [fetchBudgets]);
+
     const saveBudget = async (category: string, amount: number | null) => {
-        setBudgets(prev => {
-            const existing = prev.find(b => b.category === category);
-            let nextState;
-            if (existing) {
-                nextState = prev.map(b => b.category === category ? { ...b, amount } : b);
+        if (!user) return;
+
+        try {
+            if (amount === null) {
+                // Delete
+                await apiFetch(`/api/budgets/${category}`, {
+                    method: 'DELETE'
+                });
             } else {
-                nextState = [...prev, { category, amount }];
+                // Upsert
+                await apiFetch('/api/budgets/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category, amount, period: 'monthly' })
+                });
             }
-
-            // Persist
-            if (user) localStorage.setItem(`jualuma_budgets_${user.uid}`, JSON.stringify(nextState));
-            return nextState;
-        });
-
-        // In real backend, we would POST to /api/budgets here
+            await fetchBudgets();
+        } catch (e) {
+            console.error("Failed to save budget", e);
+        }
     };
 
-    return { budgets, saveBudget };
+    return { budgets, saveBudget, loading, refetch: fetchBudgets };
 };

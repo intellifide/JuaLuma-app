@@ -50,21 +50,18 @@ def enforce_account_limit(
     Raises 403 if limit exceeded.
     """
     sub = get_current_active_subscription(user)
-    plan = sub.plan if sub else SubscriptionPlans.FREE
+    plan = sub.plan.lower() if sub else SubscriptionPlans.FREE
     
-    if plan == SubscriptionPlans.FREE:
-        limit = TierLimits.FREE_LIMITS_BY_TYPE.get(account_type, 3) # Default to 3 if unknown
-        
-        # Count existing accounts of this type
-        # Note: manual accounts are treated separately or aggregated? 
-        # For simplicity, we filter by account_type.
-        count = db.query(func.count(Account.id)).filter(
-            Account.uid == user.uid,
-            Account.account_type == account_type
-        ).scalar()
-        
-        if count >= limit:
-             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Free tier is restricted to {limit} {account_type} accounts. Please upgrade to add more."
-            )
+    tier_limits = TierLimits.LIMITS_BY_TIER.get(plan, TierLimits.FREE_LIMITS)
+    limit = tier_limits.get(account_type, 3) 
+    
+    count = db.query(func.count(Account.id)).filter(
+        Account.uid == user.uid,
+        Account.account_type == account_type
+    ).scalar()
+    
+    if count >= limit:
+            raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"{plan.capitalize()} tier is restricted to {limit} {account_type} accounts. Please upgrade to add more."
+        )

@@ -41,6 +41,9 @@ class Account(Base):
     )
     currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
     secret_ref: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    plaid_next_cursor: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    sync_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, default="active")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

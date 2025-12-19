@@ -8,19 +8,48 @@ class TierLimits:
     FREE_WEB3_WALLETS = 1
     FREE_CEX_ACCOUNTS = 1
     
-    # Map internal account_type strings to these limits
-    FREE_LIMITS_BY_TYPE = {
-        "traditional": FREE_TRADITIONAL_ACCOUNTS,
-        "investment": FREE_INVESTMENT_ACCOUNTS,
-        "web3": FREE_WEB3_WALLETS,
-        "cex": FREE_CEX_ACCOUNTS,
-        "manual": 5 # Allow more flexibility for manual? Or treat as traditional? Let's genericize manual to 5 for now or map based on manual subtype if existing.
-        # Guide doesn't strictly limit "manual" assets in the same list, usually manual assets (house/car) are different from "Accounts".
-        # But 'manual' account_type in accounts.py seems to be for assets?
-        # Re-reading Guide: "Manual Asset Tracking module... House, Car".
-        # Accounts.py has account_type="manual".
-        # Let's set a safe default for manual.
+    # Defined per Master App Dev Guide v2.4
+    FREE_LIMITS = {
+        "traditional": 2,
+        "investment": 1,
+        "web3": 1,
+        "cex": 1,
+        "manual": 5
     }
+
+    ESSENTIAL_LIMITS = {
+        "traditional": 3,
+        "investment": 2,
+        "web3": 1,
+        "cex": 3,
+        "manual": 10
+    }
+
+    PRO_LIMITS = {
+        "traditional": 5,
+        "investment": 5,
+        "web3": 5,
+        "cex": 10,
+        "manual": 20
+    }
+
+    ULTIMATE_LIMITS = {
+        "traditional": 20,
+        "investment": 20,
+        "web3": 20,
+        "cex": 20,
+        "manual": 50
+    }
+
+    LIMITS_BY_TIER = {
+        "free": FREE_LIMITS,
+        "essential": ESSENTIAL_LIMITS,
+        "pro": PRO_LIMITS,
+        "ultimate": ULTIMATE_LIMITS
+    }
+    
+    # Backwards compatibility alias if needed, but we should switch usages
+    FREE_LIMITS_BY_TYPE = FREE_LIMITS
 
 class SubscriptionPlans:
     FREE = "free"
@@ -31,3 +60,10 @@ class SubscriptionPlans:
     ALL = [FREE, ESSENTIAL, PRO, ULTIMATE]
     PAID = [ESSENTIAL, PRO, ULTIMATE]
     DEVELOPER_ELIGIBLE = [PRO, ULTIMATE]
+
+class UserStatus:
+    PENDING_VERIFICATION = "pending_verification"
+    PENDING_PLAN_SELECTION = "pending_plan_selection"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+

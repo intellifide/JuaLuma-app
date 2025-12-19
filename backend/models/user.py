@@ -32,6 +32,7 @@ class User(Base):
 
     uid: Mapped[str] = mapped_column(String(128), primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending_verification", server_default="pending_verification")
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
     theme_pref: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     currency_pref: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
@@ -127,6 +128,7 @@ class User(Base):
             if self.developer_payout_id
             else None,
             "mfa_enabled": self.mfa_enabled,
+            "status": self.status,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
