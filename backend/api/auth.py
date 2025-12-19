@@ -158,12 +158,15 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
     from firebase_admin import auth
     from firebase_admin import exceptions as firebase_exceptions
 
+    is_fresh_firebase_user = False
+
     try:
         # 2025-12-10 16:46 CST - ensure emulator/SDK is initialized before create_user
         _get_firebase_app()
         record = auth.create_user(
             email=payload.email, password=payload.password
         )
+        is_fresh_firebase_user = True
     except firebase_exceptions.AlreadyExistsError:
         # 2025-12-12: Complete handling for "Zombie" users and "Desync" users
         try:
@@ -226,18 +229,32 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
 
     try:
         # Create DB record if we didn't return early (Zombie case or New user)
-        # Note: If we fell through from Zombie case, 'record' is set. 
-        # If we came from normal flow, 'record' is set in try block.
         if 'record' not in locals():
              # Should not happen unless logic above is flawed, but safe fallback
              raise RuntimeError("User record creation failed unexpectedly.")
 
         user = create_user_record(db, uid=record.uid, email=record.email)
-    except ValueError as exc:
-        # This catches expected IntegrityError wrapped as ValueError
+    except Exception as exc:
+        logger.error(f"DB creation failed for {record.email} (UID: {record.uid}): {exc}")
+
+        # If we just created this user in Firebase, we MUST delete them to prevent zombie state.
+        if is_fresh_firebase_user:
+            try:
+                logger.warning(f"Rolling back Firebase user {record.uid} due to DB failure.")
+                auth.delete_user(record.uid)
+            except Exception as cleanup_exc:
+                 # Critical Error: We failed to create DB AND failed to rollback Firebase.
+                 logger.critical(f"CRITICAL: Failed to rollback Firebase user {record.uid} after DB failure: {cleanup_exc}")
+        
+        if isinstance(exc, ValueError): # Catches IntegrityError wrapper
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User already exists.",
+            ) from exc
+        
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User already exists.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Account creation failed. Please try again.",
         ) from exc
 
     return {"uid": user.uid, "email": user.email, "message": "Signup successful."}
