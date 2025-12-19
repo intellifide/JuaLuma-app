@@ -366,6 +366,12 @@ def update_transaction(
     db.add(audit)
     db.commit()
     db.refresh(txn)
+
+    # Auto-categorization learning
+    if payload.category and txn.merchant_name:
+        from backend.services.categorization import learn_rule
+        learn_rule(db, current_user.uid, txn.merchant_name, payload.category)
+
     return txn
 
 

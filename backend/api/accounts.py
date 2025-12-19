@@ -18,6 +18,7 @@ from backend.core.dependencies import enforce_account_limit
 from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.services.connectors import build_connector
+from backend.services.categorization import predict_category
 from backend.utils import get_db
 from backend.utils.firestore import get_firestore_client
 from backend.utils.encryption import encrypt_secret, decrypt_secret
@@ -688,11 +689,29 @@ def sync_account_transactions(
             .first()
         )
 
+        # Auto-categorization
+        merchant_key = txn.get("merchant_name") or txn.get("name")
+        predicted_category = predict_category(db, current_user.uid, merchant_key)
+        
+        final_category = predicted_category if predicted_category else (
+            txn.get("category")[0] if isinstance(txn.get("category"), list) and txn.get("category") else None
+        )
+
         if existing:
             existing.ts = txn_ts
             existing.amount = txn["amount"]
             existing.currency = txn.get("currency") or existing.currency
-            existing.category = txn.get("category")[0] if isinstance(txn.get("category"), list) and txn.get("category") else None
+            # Only update category if it was NOT manually set by user previously?
+            # Current logic: overwrite if it's a sync. But if user manually set it, we shouldn't overwrite?
+            # We don't track "manually_set_category" vs "plaid_category" well yet.
+            # But the 'predicted_category' comes from manual rules. So it's safe to apply.
+            # If the user changed it manually on THIS transaction, `update_transaction` would have handled it.
+            # If we overwrite it here, we might undo manual changes if sync runs again?
+            # Sync runs usually update pending -> posted.
+            # Let's assume prediction > plaid, but maybe existing manual override > prediction?
+            # We don't have a flag for "user edited this specific transaction's category".
+            # For now, let's apply prediction if it exists, otherwise fall back to Plaid.
+            existing.category = final_category
             existing.merchant_name = txn.get("merchant_name")
             existing.description = txn.get("name") or txn.get("merchant_name")
             existing.raw_json = _clean_raw(txn)
@@ -706,7 +725,7 @@ def sync_account_transactions(
             ts=txn_ts,
             amount=txn["amount"],
             currency=txn.get("currency") or account.currency or "USD",
-            category=txn.get("category")[0] if isinstance(txn.get("category"), list) and txn.get("category") else None,
+            category=final_category,
             merchant_name=txn.get("merchant_name"),
             description=txn.get("name") or txn.get("merchant_name"),
             external_id=txn.get("transaction_id"),

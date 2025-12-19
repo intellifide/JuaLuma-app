@@ -245,16 +245,23 @@ def get_spending_by_category(
     start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
     end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
 
+    # Updated to pick up ALL categories (except explicit non-spending) regardless of sign
+    # as some users might have mis-signed imports or positive 'expenses' (unusual but requested behavior).
+    # We sum the ABS(amount) for magnitude of flow in that category.
+
+    exclude_cats = ["Income", "Transfer", "Credit Card Payment", "Investment"] # Exclude non-spending
+
     query = (
         select(
             Transaction.category,
-            func.sum(Transaction.amount).label("total")
+            func.sum(func.abs(Transaction.amount)).label("total")
         )
         .where(
             Transaction.uid == current_user.uid,
             Transaction.ts >= start_dt,
             Transaction.ts <= end_dt,
-            Transaction.amount < 0,
+            # Transaction.amount < 0, # REMOVED: Capture both signs
+            Transaction.category.not_in(exclude_cats), # Exclude generic income/transfer types
             Transaction.archived.is_(False)
         )
         .group_by(Transaction.category)

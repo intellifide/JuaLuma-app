@@ -20,6 +20,7 @@ from .subscription import Subscription
 from .user import User
 from .widget import Widget
 from .widget_rating import WidgetRating
+from .category_rule import CategoryRule
 
 __all__ = [
     "Base",
@@ -49,4 +50,5 @@ __all__ = [
     "LedgerHotEssential",
     "Widget",
     "WidgetRating",
+    "CategoryRule",
 ]

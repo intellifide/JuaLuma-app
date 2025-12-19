@@ -6,6 +6,7 @@ import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAna
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { Account } from '../types';
 import { DataPoint } from '../services/analytics';
+import { useToast } from '../components/ui/Toast';
 
 const BUDGET_CAP = 3750; // Simple static budget cap for now
 
@@ -122,25 +123,28 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
   const barWidth = (width / sortedDates.length) * 0.4; // 40% width for each bar
   const gap = (width / sortedDates.length) * 0.2;
 
+  const drawHeight = height - 20;
   const bars = sortedDates.map((date, i) => {
     const xBase = (width / sortedDates.length) * i + gap;
     const vals = dataMap[date];
 
-    const hInc = (vals.inc / maxVal) * height;
+    const hInc = (vals.inc / maxVal) * drawHeight;
     // Let's use standard bottom-up.
 
-    const hExp = (vals.exp / maxVal) * height;
+    const hExp = (vals.exp / maxVal) * drawHeight;
     // Side by side?
 
     return {
       date,
       xInc: xBase,
-      yInc: height - hInc,
+      yInc: drawHeight - hInc,
       hInc,
-      xExp: xBase + barWidth,
-      yExp: height - hExp,
+      xExp: xBase + barWidth, // Side-by-side
+      yExp: drawHeight - hExp,
       hExp,
-      label: new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      // Center the label between the two bars
+      labelX: xBase + barWidth,
+      label: new Date(date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
     };
   });
 
@@ -148,10 +152,114 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
 };
 
 
+import { useBudget } from '../hooks/useBudget';
+
+const BudgetTool = ({ categories }: { categories: string[] }) => {
+  const { budgets, saveBudget } = useBudget();
+  const [editing, setEditing] = useState<string | null>(null);
+  const [tempAmount, setTempAmount] = useState<string>('');
+  const [expanded, setExpanded] = useState(false);
+
+  // Filter categories to show only those with budgets set when collapsed
+  const activeBudgets = budgets.filter(b => b.amount !== null);
+  const showAll = expanded || activeBudgets.length === 0;
+
+  // If showing all, use all categories. If collapsed, use only active budget categories.
+  // Exception: If no budgets are set at all, we show all (or a message/CTA) but logically 'showAll' covers it if we force expansion or just render nothing?
+  // User asked: "only displays what current budgets are set by default in its collapse view. if no budgets are set, the container should display a friendly message stating set your budget by category here."
+
+  const categoriesToDisplay = showAll ? categories : activeBudgets.map(b => b.category);
+
+  // If collapsed and no budgets, we display a message, so categoriesToDisplay might be empty or irrelevant
+  const showEmptyMessage = !expanded && activeBudgets.length === 0;
+
+  const getBudget = (cat: string) => budgets.find(b => b.category === cat)?.amount;
+
+  const handleEdit = (cat: string) => {
+    setEditing(cat);
+    setTempAmount(getBudget(cat)?.toString() || '');
+  };
+
+  const handleSave = (cat: string) => {
+    const val = tempAmount === '' ? null : parseFloat(tempAmount);
+    saveBudget(cat, val);
+    setEditing(null);
+  };
+
+  return (
+    <div className="glass-panel mb-10 transition-all duration-300">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Budget Goals</h2>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-sm font-medium text-royal-purple hover:underline"
+        >
+          {expanded ? 'Collapse' : (activeBudgets.length > 0 ? 'Edit / Show All' : 'Expand')}
+        </button>
+      </div>
+
+      {showEmptyMessage ? (
+        <div className="text-center py-6 rounded-lg border-2 border-dashed border-white/10 cursor-pointer hover:border-royal-purple/50 transition-colors" onClick={() => setExpanded(true)}>
+          <p className="text-text-muted font-medium">Set your budget by category here</p>
+          <p className="text-xs text-text-secondary mt-1">Click to expand and set goals</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {categoriesToDisplay.map(cat => (
+              <div key={cat} className="p-4 border border-white/10 rounded-lg flex flex-col gap-2 relative bg-transparent hover:bg-white/5 transition-colors">
+                <span className="font-medium text-sm text-text-muted">{cat}</span>
+                {editing === cat ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      className="input py-1 px-2 text-sm w-full bg-transparent border border-white/20 rounded text-text-primary"
+                      value={tempAmount}
+                      onChange={e => setTempAmount(e.target.value)}
+                      placeholder="No Limit"
+                      autoFocus
+                    />
+                    <button onClick={() => handleSave(cat)} className="btn btn-sm btn-primary">✓</button>
+                  </div>
+                ) : (
+                  <div onClick={() => handleEdit(cat)} className="cursor-pointer rounded -ml-1 flex items-center gap-2 group">
+                    <span className={`text-lg font-bold ${getBudget(cat) ? 'text-royal-purple' : 'text-text-muted italic'}`}>
+                      {getBudget(cat) ? formatCurrency(getBudget(cat)!) : 'Not Set'}
+                    </span>
+                    <span className="opacity-0 group-hover:opacity-100 text-xs text-royal-purple">✎</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {expanded && <p className="text-xs text-text-muted mt-4">* Click on an amount to edit. Leave blank for no limit.</p>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+const CATEGORIES = [
+  "Housing", "Transportation", "Food", "Utilities", "Insurance", "Healthcare",
+  "Savings", "Personal", "Entertainment", "Miscellaneous", "Income", "Transfer",
+  "Groceries", "Dining", "Travel", "Education", "Shopping", "Credit Card Payment", "Investment"
+];
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { accounts, refetch: refetchAccounts } = useAccounts();
-  const { transactions, refetch: refetchTransactions } = useTransactions();
+  const { transactions, refetch: refetchTransactions, updateOne } = useTransactions();
+  const toast = useToast();
+
+  const handleCategoryChange = async (id: string, newCategory: string) => {
+    try {
+      await updateOne(id, { category: newCategory });
+      toast.show('Category updated', 'success');
+    } catch (err) {
+      toast.show('Failed to update category', 'error');
+    }
+  };
 
   const [timeframe, setTimeframe] = useState('1m');
   const [activeTab, setActiveTab] = useState('all-accounts');
@@ -176,7 +284,7 @@ export default function Dashboard() {
   const { totalExpense, topCategories } = useMemo(() => {
     if (!spendData?.data) return { totalExpense: 0, topCategories: [] };
     const total = spendData.data.reduce((sum, item) => sum + item.amount, 0);
-    return { totalExpense: total, topCategories: spendData.data.slice(0, 5) };
+    return { totalExpense: total, topCategories: spendData.data };
   }, [spendData]);
 
   const budgetSpent = totalExpense;
@@ -210,7 +318,7 @@ export default function Dashboard() {
     <section className="container mx-auto py-10 px-4 space-y-8">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white/50 backdrop-blur-md p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-deep-indigo">Dashboard</h1>
           <p className="text-text-secondary mt-1">Welcome back, {user?.displayName || user?.email}</p>
@@ -289,6 +397,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Budgeting Tool */}
+      <BudgetTool categories={CATEGORIES} />
+
       {/* Infographics & Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
         {/* Net Worth Trend */}
@@ -304,6 +415,10 @@ export default function Dashboard() {
                   <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
                 </linearGradient>
               </defs>
+              {/* Axes */}
+              <line x1="0" y1="130" x2="320" y2="130" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
+              <line x1="0" y1="0" x2="0" y2="130" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
+
               <g id="networth-area">
                 <polyline fill="url(#networthGradient)" stroke="none" points={netWorthChart.areaPath} />
               </g>
@@ -314,7 +429,7 @@ export default function Dashboard() {
                 {netWorthChart.dots.map((d, i) => <circle key={i} cx={d.cx} cy={d.cy} r="4" />)}
               </g>
               <text x="5" y="20" fontSize="10" fill="var(--text-muted)">{netWorthChart.startLabel}</text>
-              <text x="315" y="135" fontSize="10" fill="var(--text-muted)" textAnchor="end">{netWorthChart.endLabel}</text>
+              <text x="315" y="125" fontSize="10" fill="var(--text-muted)" textAnchor="end">{netWorthChart.endLabel}</text>
             </svg>
           )}
         </div>
@@ -326,6 +441,10 @@ export default function Dashboard() {
 
           {cfLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
             <svg className="chart-svg" viewBox="0 0 320 160" role="img" aria-label="Cash flow bar chart">
+              {/* Axes */}
+              <line x1="0" y1="145" x2="320" y2="145" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
+              <line x1="0" y1="0" x2="0" y2="145" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.3" />
+
               {cashFlowChart.bars.map((bar, i) => (
                 <g key={i}>
                   {/* Income Bar (Cyan) */}
@@ -334,7 +453,7 @@ export default function Dashboard() {
                   <rect x={bar.xExp} y={bar.yExp} width={(320 / cashFlowChart.bars.length) * 0.4} height={bar.hExp} rx="2" fill="#DC2626" />
 
                   {/* X Axis Label */}
-                  <text x={bar.xInc + 5} y="155" fontSize="9" fill="var(--text-muted)" textAnchor="middle">{bar.label}</text>
+                  <text x={bar.labelX} y="158" fontSize="11" fill="var(--text-muted)" textAnchor="middle">{bar.label}</text>
                 </g>
               ))}
             </svg>
@@ -348,7 +467,7 @@ export default function Dashboard() {
         {/* Spending By Category */}
         <div className="chart-card">
           <div className="chart-title">Spending by Category</div>
-          <div className="chart-subtitle">{spendData?.data.length || 0} Categories Active</div>
+          <div className="chart-subtitle">{spendData?.data.length || 0} Categories</div>
 
           {spendLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
             <div className="space-y-3 mt-4">
@@ -428,15 +547,22 @@ export default function Dashboard() {
                 </tr>
               ) : (
                 recentTransactions.map(txn => (
-                  <tr key={txn.id} className="border-b border-slate-100 last:border-0">
-                    <td className="py-3 text-text-secondary">{new Date(txn.ts).toLocaleDateString()}</td>
-                    <td className="py-3 font-medium text-text-primary">{txn.merchantName || txn.description}</td>
+                  <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3 text-sm">{new Date(txn.ts).toLocaleDateString()}</td>
+                    <td className="py-3 font-medium text-text-primary">{txn.description}</td>
                     <td className="py-3">
-                      <span className="px-2 py-1 rounded-full bg-slate-100 text-xs text-text-secondary">
-                        {txn.category || 'Uncategorized'}
-                      </span>
+                      <select
+                        className="bg-transparent border-none text-sm text-royal-purple font-medium focus:ring-0 cursor-pointer"
+                        value={txn.category || "Uncategorized"}
+                        onChange={(e) => handleCategoryChange(txn.id, e.target.value)}
+                      >
+                        <option value="Uncategorized" disabled>Select...</option>
+                        {CATEGORIES.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
                     </td>
-                    <td className={`py-3 text-right font-medium ${txn.amount > 0 ? 'text-emerald-600' : 'text-text-primary'}`}>
+                    <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                       {formatCurrency(txn.amount)}
                     </td>
                   </tr>
