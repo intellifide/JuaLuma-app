@@ -58,6 +58,13 @@ class AppSettings(BaseSettings):
     gcp_location: str = Field(default="us-central1", alias="GCP_LOCATION")
     service_name: str = Field(default="jualuma-backend", alias="SERVICE_NAME")
 
+    # Email / SMTP Config
+    smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
+    smtp_port: int | None = Field(default=587, alias="SMTP_PORT")
+    smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
+    smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
+    smtp_from_email: str | None = Field(default="no-reply@jualuma.com", alias="SMTP_FROM_EMAIL")
+
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod
     def _require_non_empty(cls, value: str, info):

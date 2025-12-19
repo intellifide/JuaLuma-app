@@ -187,14 +187,15 @@ def get_net_worth(
 def get_cash_flow(
     start_date: date,
     end_date: date,
+    interval: str = Query("month", pattern="^(day|week|month)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # 2025-12-11 02:23 CST - align date bounds with datetime combine for tz safety
+    # 2025-12-18 20:30 CST - align date bounds with datetime combine for tz safety
     # Income
     income_query = (
         select(
-            func.date_trunc('month', Transaction.ts).label("month"),
+            func.date_trunc(interval, Transaction.ts).label("period"),
             func.sum(Transaction.amount).label("total")
         )
         .where(
@@ -204,14 +205,14 @@ def get_cash_flow(
             Transaction.amount > 0,
             Transaction.archived.is_(False)
         )
-        .group_by("month")
-        .order_by("month")
+        .group_by("period")
+        .order_by("period")
     )
     
     # Expenses
     expense_query = (
         select(
-            func.date_trunc('month', Transaction.ts).label("month"),
+            func.date_trunc(interval, Transaction.ts).label("period"),
             func.sum(Transaction.amount).label("total")
         )
         .where(
@@ -221,15 +222,15 @@ def get_cash_flow(
             Transaction.amount < 0,
             Transaction.archived.is_(False)
         )
-        .group_by("month")
-        .order_by("month")
+        .group_by("period")
+        .order_by("period")
     )
     
     income_res = db.execute(income_query).all()
     expense_res = db.execute(expense_query).all()
     
-    income_data = [DataPoint(date=row.month.date(), value=float(row.total)) for row in income_res]
-    expense_data = [DataPoint(date=row.month.date(), value=float(row.total)) for row in expense_res]
+    income_data = [DataPoint(date=row.period.date(), value=float(row.total)) for row in income_res]
+    expense_data = [DataPoint(date=row.period.date(), value=float(row.total)) for row in expense_res]
     
     return CashFlowResponse(income=income_data, expenses=expense_data)
 

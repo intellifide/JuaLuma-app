@@ -3,6 +3,7 @@ import logging
 from collections import defaultdict, deque
 from threading import Lock
 from typing import Deque, Dict, Optional
+import pyotp
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
@@ -18,6 +19,10 @@ from backend.services.auth import (
     verify_token,
 )
 from backend.utils import get_db
+from backend.services.email import get_email_client
+from datetime import datetime, timedelta
+import random
+import string
 
 router = APIRouter(tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -38,12 +43,17 @@ class SignupRequest(BaseModel):
 
 class TokenRequest(BaseModel):
     token: str = Field(min_length=10, example="eyJhbGciOiJSUzI1NiIsImtpZCI6...")
+    mfa_code: Optional[str] = Field(default=None, min_length=6, max_length=6, example="123456")
 
     model_config = ConfigDict(
         json_schema_extra={
-            "examples": [{"token": "eyJhbGciOiJSUzI1NiIsImtpZCI6...sample"}]
+            "examples": [{"token": "eyJhbGciOiJSUzI1NiIsImtpZCI6...sample", "mfa_code": "123456"}]
         }
     )
+
+
+class MFAVerifyRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6, example="123456")
 
 
 class ResetPasswordRequest(BaseModel):
@@ -277,6 +287,53 @@ def login(
             detail="User not found.",
         )
 
+    if user.mfa_enabled:
+        if not payload.mfa_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MFA_REQUIRED",
+            )
+        
+        # Verify code based on method
+        method = user.mfa_method or "totp"
+        
+        if method == "totp":
+            if not user.mfa_secret:
+                 pass 
+            else:
+                totp = pyotp.TOTP(user.mfa_secret)
+                if not totp.verify(payload.mfa_code):
+                     # Fallback check: maybe it's an email code even if method says totp? (Optional, but stick to strict)
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid MFA code",
+                    )
+        elif method == "email":
+            # Check DB OTP
+            if not user.email_otp or not user.email_otp_expires_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No OTP generated. Request a code first.",
+                )
+            if datetime.now(user.email_otp_expires_at.tzinfo) > user.email_otp_expires_at:
+                 raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="OTP expired.",
+                )
+            # Simple check
+            if payload.mfa_code != user.email_otp:
+                 raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid MFA code",
+                )
+            # Consume OTP
+            user.email_otp = None
+            db.commit()
+            
+        elif method == "sms":
+             # Placeholder for SMS
+             raise HTTPException(status_code=501, detail="SMS MFA not implemented")
+
     subscription = (
         db.query(Subscription).filter(Subscription.uid == uid).first()
     )
@@ -369,6 +426,131 @@ def update_profile(
     db.refresh(user)
 
     return {"user": _serialize_profile(user)}
+
+
+@router.post("/mfa/email/request-code")
+def request_email_code(
+    payload: ResetPasswordRequest, # reusing email field
+    db: Session = Depends(get_db),
+) -> dict:
+    """Request an Email OTP for login or setup."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        # Prevent enumeration
+        return {"message": "If account exists, code sent."}
+    
+    code = ''.join(random.choices(string.digits, k=6))
+    user.email_otp = code
+    user.email_otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    db.commit()
+    
+    # Send Email
+    client = get_email_client()
+    client.send_otp(user.email, code)
+    
+    return {"message": "Code sent."}
+
+
+@router.post("/mfa/email/enable")
+def enable_email_mfa(
+    payload: MFAVerifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Enable Email MFA by verifying a sent code."""
+    if not current_user.email_otp or not current_user.email_otp_expires_at:
+        raise HTTPException(status_code=400, detail="Request a code first.")
+        
+    # Timezone naive vs aware fix using utcnow/native
+    if datetime.utcnow() > current_user.email_otp_expires_at.replace(tzinfo=None):
+         raise HTTPException(status_code=400, detail="Code expired.")
+         
+    if payload.code != current_user.email_otp:
+        raise HTTPException(status_code=401, detail="Invalid code.")
+        
+    current_user.mfa_enabled = True
+    current_user.mfa_method = "email"
+    current_user.email_otp = None
+    db.commit()
+    
+    return {"message": "Email MFA enabled."}
+
+# Placeholder for SMS (Commented Out logic)
+# @router.post("/mfa/sms/request-code")
+# def request_sms_code(...):
+#     ...
+#     # logic: generate code, send via Twilio/SNS, save to user.sms_otp
+#     pass
+
+
+@router.post("/mfa/setup")
+def mfa_setup(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Generate a new TOTP secret for the user."""
+    secret = pyotp.random_base32()
+    # Provisioning URI for QR code
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=current_user.email, issuer_name="JuaLuma"
+    )
+    
+    # Store secret temporarily (or overwrite existing). 
+    # Not enabled until verified.
+    current_user.mfa_secret = secret
+    db.commit()
+    
+    return {"secret": secret, "otpauth_url": uri}
+
+
+@router.post("/mfa/enable")
+def mfa_enable(
+    payload: MFAVerifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Verify and enable MFA."""
+    if not current_user.mfa_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MFA setup not started.",
+        )
+
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(payload.code):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid MFA code.",
+        )
+
+    current_user.mfa_enabled = True
+    db.commit()
+    
+    return {"message": "MFA enabled successfully."}
+
+
+@router.post("/mfa/disable")
+def mfa_disable(
+    payload: MFAVerifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Disable MFA (requires valid code as confirmation)."""
+    if not current_user.mfa_enabled:
+        return {"message": "MFA is already disabled."}
+        
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(payload.code):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid MFA code.",
+        )
+
+    current_user.mfa_enabled = False
+    current_user.mfa_secret = None
+    db.commit()
+
+    return {"message": "MFA disabled successfully."}
 
 
 @router.post("/logout")

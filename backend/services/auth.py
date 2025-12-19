@@ -1,5 +1,6 @@
-# Updated 2025-12-11 01:38 CST by ChatGPT
+# Updated 2025-12-19 02:45 CST by ChatGPT
 import os
+import logging
 from typing import Any, Dict
 
 import firebase_admin
@@ -16,9 +17,11 @@ from sqlalchemy.orm import Session
 
 from backend.core import settings
 from backend.models import AISettings, Subscription, User
+# Import from billing service to sync Stripe
+from backend.services.billing import create_stripe_customer
 
 _firebase_app: firebase_admin.App | None = None
-
+logger = logging.getLogger(__name__)
 
 def _get_firebase_app() -> firebase_admin.App:
     """Initialize (or reuse) the Firebase app, honoring the emulator when present."""
@@ -37,10 +40,6 @@ def _get_firebase_app() -> firebase_admin.App:
                 "FIRESTORE_EMULATOR_HOST", settings.resolved_firestore_host
             )
         os.environ.setdefault("FIREBASE_PROJECT_ID", settings.firebase_project_id)
-
-    import logging
-
-    logger = logging.getLogger(__name__)
 
     if os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
         logger.info(
@@ -80,6 +79,7 @@ def create_user_record(db: Session, *, uid: str, email: str) -> User:
     - currency_pref=USD
     - subscription plan=free, status=active
     - AI settings provider/model defaults from model definitions
+    - Syncs with Stripe to create a customer record.
     """
     user = User(
         uid=uid,
@@ -101,6 +101,13 @@ def create_user_record(db: Session, *, uid: str, email: str) -> User:
     except Exception as exc:
         db.rollback()
         raise exc
+
+    # Sync with Stripe (Best effort)
+    try:
+        create_stripe_customer(db, uid, email)
+    except Exception as exc:
+         # Log but don't fail user creation
+        logger.error(f"Failed to sync new user {uid} to Stripe: {exc}")
 
     return user
 

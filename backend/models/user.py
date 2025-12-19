@@ -38,6 +38,11 @@ class User(Base):
     developer_payout_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), nullable=True
     )
+    mfa_secret: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    mfa_enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
+    mfa_method: Mapped[Optional[str]] = mapped_column(String(16), default="totp",  nullable=True, comment="totp|email|sms")
+    email_otp: Mapped[Optional[str]] = mapped_column(String(6), nullable=True)
+    email_otp_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -121,6 +126,7 @@ class User(Base):
             "developer_payout_id": str(self.developer_payout_id)
             if self.developer_payout_id
             else None,
+            "mfa_enabled": self.mfa_enabled,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
