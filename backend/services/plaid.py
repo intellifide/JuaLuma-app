@@ -1,4 +1,4 @@
-# Updated 2025-12-11 01:40 CST by ChatGPT - use centralized settings
+# Updated 2025-12-18 20:25 CST by Antigravity
 """
 Lightweight Plaid helper functions for local development.
 
