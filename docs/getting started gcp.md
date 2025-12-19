@@ -1,6 +1,5 @@
 # Getting Started with GCP: Cost Optimization & Projections
 
-
 ## GCP Cost Optimization Strategies for jualuma
 
 ### 1. Cloud SQL Optimization (Unified Ledger & Metadata)
@@ -51,6 +50,7 @@
 ### 7. AI Model Configuration (Local Development vs Production)
 
 **Local Development (Google AI Studio):**
+
 - **Service:** Google AI Studio Gemini 2.5 Flash API (free tier for development)
 - **Authentication:** API key stored in local `.env` file as `AI_STUDIO_API_KEY`
 - **Rate Limits:** Free tier provides approximately 10 RPM, 250k TPM, 250 RPD
@@ -66,6 +66,7 @@
   - Never commit API keys to version control
 
 **Production (Vertex AI):**
+
 - **Service:** Vertex AI Gemini (requires GCP project with Vertex AI API enabled)
 - **Authentication:** Service account credentials (Application Default Credentials or workload identity)
 - **Rate Limits:** Configurable quotas based on paid tier (see Vertex AI quotas documentation)
@@ -150,12 +151,14 @@
 ## Infrastructure as Code (IaC) Setup
 
 **Terraform Infrastructure:**
+
 - All GCP infrastructure is managed via Terraform using Google Cloud Foundation Toolkit (CFT) and Fabric modules
 - Infrastructure codebase located in `infra/` directory
 - State backend: GCS bucket with versioning + KMS encryption
 - Environments: prod, stage, dev (separate projects, no peering prod↔non-prod)
 
 **Networking Architecture:**
+
 - VPC per environment with private subnets (app, data, ops)
 - Private Service Connect for Google APIs and Cloud SQL (private IP only)
 - Cloud NAT for controlled egress with allow-list policies
@@ -164,18 +167,21 @@
 - Cloud Run ingress restricted to `internal-and-cloud-load-balancing` only
 
 **Security Guardrails:**
+
 - Org policies enforced via Terraform: disable external IPs, disable SA key creation, restrict CMEK projects
 - All egress via Cloud NAT with logging
 - DNS policy forces `googleapis.com` to PSC endpoints
 - Firewall default deny egress; allow-list for third-party APIs
 
 **Deployment Workflow:**
+
 1. Infrastructure changes via Terraform PRs
 2. CI runs: `terraform fmt`, `validate`, `tflint`, `tfsec/checkov`, `plan`
 3. Manual approval required for applies
 4. State locking via GCS prevents concurrent modifications
 
 **Cost Impact:**
+
 - Load Balancer: ~$18/month base + traffic
 - Cloud Armor: ~$5/month base + per-request pricing
 - Cloud NAT: ~$45/month per NAT gateway + egress charges
@@ -183,7 +189,7 @@
 - Cloud CDN: Included with Load Balancer (no additional cost)
 - **Estimated additional networking costs: ~$70-100/month** (adds to base infrastructure costs)
 
-**See `infra/README.md` for detailed setup and usage instructions.**
+#### See `infra/README.md` for detailed setup and usage instructions.
 
 ## Action Items for Cost Control
 
@@ -211,17 +217,20 @@
 This GCP setup guide relates to the following planning documents:
 
 **Business Documents:**
+
 - `Budget-Financial-Planning.md` - Financial planning and GCP cost projections
 - `Product-Roadmap.md` - Timeline for infrastructure setup (Phase 1.1)
 - `Vendor-Relationships.md` - Vendor setup (GCP account configuration)
 
 **App Development Guides:**
+
 - `Master App Dev Guide.md` - Technical specification (Section 3.0, GCP architecture)
 - `Local App Dev Guide.md` - Local development setup (GCP emulator configuration)
 - `Security-Architecture.md` - Security architecture (GCP security configuration)
 
 **Technical Documentation:**
+
 - `Security-Architecture.md` - Security architecture (GCP security controls)
 - `Data-Flow-Diagrams.md` - Data flow architecture (GCP services)
 
-**Last Updated:** December 05, 2025 at 01:34 AM
+**Last Updated:** December 19, 2025 at 01:51 PM CT (Modified 12/19/2025 13:51 Central Time per rules)

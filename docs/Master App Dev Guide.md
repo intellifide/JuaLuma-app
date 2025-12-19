@@ -18,23 +18,26 @@ All engineering decisions must strictly adhere to these six non\-negotiable pill
 - __Developer Payout Integrity:__ Mandate the tracking of __Downloads__ and __Ratings__ must be __immutable__ \(written to the Cloud SQL log ledger plus Firestore `widget_engagement`\) to ensure accurate and auditable developer payouts\.
 
 ### 1\.1 Local Docker Layout (GCP-Portability)
+
 - Orchestration: `docker-compose` runs backend (FastAPI) on 8001 and frontend (Vite) on 5175; all services join the `jualuma-network` bridge.
 - Frontend proxy: `/api` is proxied to `VITE_API_TARGET`. Inside Docker set `VITE_API_TARGET=http://backend:8001`; leave `VITE_API_BASE_URL` empty for browser builds.
 - Backend env: use `APP_ENV=local` with `ENABLE_AI_GATEWAY=false` in compose for local runs so AI uses the local AI Studio path (no Vertex credentials required).
 - Emulators: Postgres (Cloud SQL mirror), Firestore emulator (8080), Auth emulator (9099), Pub/Sub emulator (8085) are provided via compose envs.
 - **Agent Connectivity (MCP):**
-    - **Host Agent:** Connects to Postgres via `localhost:5433` (mapped to container 5432).
-    - **App Tools:** Backend exposes standardized Agent Tools at `http://localhost:8001/mcp` (Application Logic) and `/mcp-dev` (Maintenance Scripts).
+  - **Host Agent:** Connects to Postgres via `localhost:5433` (mapped to container 5432).
+  - **App Tools:** Backend exposes standardized Agent Tools at `http://localhost:8001/mcp` (Application Logic) and `/mcp-dev` (Maintenance Scripts).
 - Ports: expose backend `8001:8001`, frontend `5175:5175`; emulator ports are mapped for browser access.
 - API quirk: widget endpoints require trailing slashes (`/widgets/…`) to avoid 307 redirects in-browser.
 
 ### 1\.3 Operational Tooling (jualuma Dev Tools)
+
 Maintenance tasks are handled via the **jualuma Dev Tools MCP Server**, running inside the backend container.
+
 - **Access:** `http://localhost:8001/mcp-dev` (Local Environment Only).
 - **Standard Tools:**
-    - `seed_database(tier)`: Resets and populates DB with valid test data.
-    - `verify_integrations()`: Checks connections to Stripe, Plaid, and Emulators.
-    - `reset_local_state()`: Safe wrapper for Alembic migrations (Reset).
+  - `seed_database(tier)`: Resets and populates DB with valid test data.
+  - `verify_integrations()`: Checks connections to Stripe, Plaid, and Emulators.
+  - `reset_local_state()`: Safe wrapper for Alembic migrations (Reset).
 - **Constraint:** Do not run manual Python scripts (e.g., `python scripts/verify.py`). Use the Agent Tools.
 
 ### 2\.0 Product Definition & Detailed Scope
@@ -44,6 +47,7 @@ Maintenance tasks are handled via the **jualuma Dev Tools MCP Server**, running 
 The jualuma application delivers a complete financial aggregation and AI-powered planning platform with the following full-scope features:
 
 **Core Aggregation & Data:**
+
 - Bank account aggregation via Plaid (traditional accounts)
 - Investment account aggregation via Plaid Investments API
 - Web3 wallet connections (token balances, NFTs)
@@ -51,6 +55,7 @@ The jualuma application delivers a complete financial aggregation and AI-powered
 - Manual asset tracking (house, car, collectibles)
 
 **Unified Experience:**
+
 - Unified transaction feed with search, filter, bulk edit, undo
 - Smart categorization with ML-based auto-tagging and review queue
 - Budget management with rollover logic and threshold alerts
@@ -59,34 +64,40 @@ The jualuma application delivers a complete financial aggregation and AI-powered
 - Dynamic infographics and reporting
 
 **AI Assistant:**
+
 - Cloud AI chat interface (Vertex AI Gemini models)
 - RAG-powered financial context injection
 - Tier-based quota management
 - Privacy/user agreement workflows
 
 **Marketplace & Developer Tools:**
+
 - Third-party widget marketplace (curated catalog)
 - Developer SDK with MCP server integration
 - Synthetic test datasets for widget development
 - Developer payout system (engagement-based revenue)
 
 **Support & Operations:**
+
 - Customer support portal (separate service for agents)
 - GCP workflow automation integration
 - Google Workspace (Google Chat) notifications
 
 **Legal & Compliance:**
+
 - Terms of Service, Privacy Policy, AI Assistant Disclaimer
 - Legal acceptance tracking
 - GLBA-compliant security program
 - Non-custodial/read-only mandate enforcement
 
 **Mobile & Distribution:**
+
 - Progressive Web App (PWA) with service worker
 - Native iOS and Android apps via Capacitor
 - App Store and Google Play distribution
 
 **Backlog Items (Post-Launch):**
+
 - SnapTrade integration for additional brokerages
 - DeFi protocol tracking (Aave, Compound)
 - Automated alternative asset tracking (real estate, vehicles)
@@ -187,6 +198,7 @@ The product goal is to abstract financial complexity and provide a simple, autom
 This is a curated catalog where developers earn revenue based on user engagement and verified ratings \(1\-5 star system\)\. All developers must execute a Developer Agreement that has been reviewed and approved by qualified legal counsel\. The Developer Agreement must include intellectual property assignment clauses assigning all rights, title, and interest in any work product related to the jualuma platform to Intellifide, LLC\.
 
 **Marketplace Access by Tier:**
+
 - **Free & Essential Tiers**: Preview-only access to widgets (interactions blocked, upgrade CTA shown). Cannot publish widgets.
 - **Pro & Ultimate Tiers**: Full marketplace access including ability to publish and distribute widgets via the Developer Marketplace.
 
@@ -280,12 +292,14 @@ features:
 - **MCP Agent Enforcement:** `FeatureAccessService.assert(feature_key, user_tier)` called before workflow execution
 
 **Workflow:**
+
 1. Developer adds/modifies feature in `feature_requirements.yaml`
 2. Run `python scripts/sync_feature_registry.py` to regenerate TS/Python modules
 3. Both frontend and backend automatically use updated mappings
 4. CI pipeline validates that generated files match YAML source (prevents manual edits)
 
 **Critical:** Never manually edit `accessControl.ts` or `registry.py`—always update `feature_requirements.yaml` and regenerate\. This ensures frontend and backend cannot drift out of sync\.
+
 - __Usage Pattern \(Dashboard Example\):__
 
 ```tsx
@@ -334,7 +348,9 @@ features:
 - **FastAPI Dependency:** All premium routes depend on `require_feature(feature_key: str)` which loads the caller's tier from Cloud SQL (`subscriptions.plan`). Unauthorized calls raise `HTTPException(status_code=403, detail="feature_preview_required")` and emit `feature_preview.backend_blocked` telemetry.
 
 ```python
+
 # Ensures jualuma AI Cloud can't run unless the user tier meets the requirement
+
 @router.post("/ai/chat")
 async def chat(payload: ChatRequest, user=Depends(auth_ctx), _=Depends(require_feature("ai.cloud"))):
     return await ai_service.handle(payload, user)
@@ -349,6 +365,7 @@ async def chat(payload: ChatRequest, user=Depends(auth_ctx), _=Depends(require_f
 **Infrastructure as Code (IaC):** All GCP infrastructure is managed via Terraform using Google Cloud Foundation Toolkit (CFT) and Fabric modules. This ensures reproducible deployments, security guardrails, and full auditability.
 
 **Infrastructure Repository Structure:**
+
 - `infra/modules/` - Reusable Terraform modules (network, nat, psc, cloud-sql, cloud-run, lb-https, org-policies, log-export)
 - `infra/envs/{prod,stage,dev}/` - Environment-specific configurations composing modules
 - State backend: GCS bucket with versioning + KMS encryption
@@ -357,16 +374,19 @@ async def chat(payload: ChatRequest, user=Depends(auth_ctx), _=Depends(require_f
 **Networking Architecture (Zero Trust):**
 
 **VPC Design:**
+
 - Per-environment VPCs (prod, stage, dev) with no peering between prod and non-prod
 - Subnets: `app` (10.10.0.0/22), `data` (10.10.4.0/23), `ops` (10.10.6.0/24)
 - Primary region: `us-central1`, Secondary/DR region: `us-east1`
 
 **Private Service Connect (PSC):**
+
 - Google APIs PSC endpoint forces all `googleapis.com` traffic to private paths
 - Cloud SQL accessed via private IP only (no public IP)
 - DNS policy enforces `googleapis.com` resolution to PSC endpoints
 
 **Ingress Security:**
+
 - Global HTTPS Load Balancer with Cloud Armor WAF (OWASP rules, bot management, rate limiting)
 - TLS 1.3 required, HSTS enabled
 - Cloud Run ingress restricted to `internal-and-cloud-load-balancing` only
@@ -374,34 +394,40 @@ async def chat(payload: ChatRequest, user=Depends(auth_ctx), _=Depends(require_f
 - Cloud CDN enabled for static assets/PWA
 
 **Egress Governance:**
+
 - Cloud NAT with logging for all internet egress
 - Firewall default deny egress; allow-list for third-party APIs (Plaid, SendGrid, Twilio, Stripe, CEX APIs, Infura/Solana RPC)
 - DNS policy blocks wildcard external resolution except allow-listed domains
 
 **Service-to-Service Communication:**
+
 - Cloud Run services use Serverless VPC Connector with `private-ranges-only` egress
 - All Cloud Run invocations require authentication (no `--allow-unauthenticated` except explicit public assets)
 - Per-service service accounts with least privilege IAM
 
 **High Availability & Disaster Recovery:**
+
 - Cloud Run: Regional multi-zone deployment; optional secondary-region standby with LB failover
 - Cloud SQL: Regional HA with automatic failover; backups + PITR enabled
 - Load Balancer: Health checks + failover backends; CDN provides static asset resilience
 - Quarterly DR drills: Cloud SQL failover tests, backup restore validation
 
 **Security Guardrails (Org Policies):**
+
 - Disable external IPs on VM instances
 - Disable service account key creation
 - Restrict CMEK projects (enforce CMEK for Cloud SQL audit schema, critical buckets)
 - Restrict allowed APIs/domains where feasible
 
 **Observability:**
+
 - Logging: LB/Armor logs, VPC Flow Logs, NAT logs, DNS logs, Admin/Data Access logs
 - Log exports to restricted sinks (GCS/BigQuery/PubSub) via `terraform-google-log-export` module
 - Security Command Center enabled
 - Alerting: WAF hits surge, 4xx/5xx spikes, egress to non-allowlisted domains, Cloud SQL failover events
 
 **Deployment Workflow:**
+
 1. Infrastructure changes via Terraform PRs
 2. CI runs: `terraform fmt`, `validate`, `tflint`, `tfsec/checkov`, `plan`
 3. Manual approval required for applies
@@ -409,6 +435,7 @@ async def chat(payload: ChatRequest, user=Depends(auth_ctx), _=Depends(require_f
 5. Policy checks block: public Cloud Run ingress, unauthenticated services, public Cloud SQL IP, org policy violations
 
 **Related Documentation:**
+
 - Infrastructure codebase: `infra/` directory with README
 - Security architecture: `Security-Architecture.md`
 - GCP setup: `getting started gcp.md`
@@ -460,7 +487,7 @@ API Keys, OAuth Tokens\.
 
 Zero secrets in DB\.
 
-**Tier Retention Summary**
+#### Tier Retention Summary
 
 - **Free Tier:** Cloud SQL table `ledger_hot_free` stores 45 days of transactions; the nightly `free-ledger-pruner` Cloud Run Job (02:00 CT) deletes rows older than 45 days, and no archive copy exists.
 - **Essential Tier:** Cloud SQL table `ledger_hot_essential` stores 30 days of transactions; the `essential-ledger-archiver` job writes older rows to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
@@ -472,9 +499,11 @@ Zero secrets in DB\.
 2\. **Training (Vertex AI Pipelines):** Nightly pipeline (`ml/pipelines/categorization_pipeline.py`) performs data validation, trains a TensorFlow multi-class classifier, evaluates precision/recall, and registers the model in Vertex AI Model Registry.
 3\. **Serving (Vertex AI Prediction):** Production endpoint `categorization-prod` (us-central1) exposes the latest model. CategorizationService calls the endpoint with a 300 ms latency budget; traffic splitting enables blue/green deploys.
 4\. **RAG Pipeline (New):**
+
    - **Embeddings:** `Vertex AI Embeddings` (text-embedding-004) converts transactions/budgets to vectors.
    - **Store:** Vectors stored in Cloud SQL `transactions` table (column `embedding vector(768)`).
    - **Retrieval:** Queries use `pgvector` cosine similarity (`<=>`) to fetch relevant financial context for the AI Assistant.
+
 5\. **Monitoring & Retraining:** Vertex AI Model Monitoring tracks per-category precision; alerts trigger when precision < 90% or review queue volume doubles week over week, automatically launching a new training run.
 6\. **Rollback:** If degradation persists, reroute endpoint traffic to the previous model version via `ml/pipelines/promote_model.py --rollback`.
 7\. **Feedback Loop:** Human-reviewed category corrections flow into Cloud SQL (`categorization_feedback`) and are incorporated into subsequent training cycles.
@@ -498,7 +527,9 @@ Zero secrets in DB\.
   - Encryption: All raw prompts/responses encrypted with User DEK before storage in Cloud SQL (`audit.llm_logs`)
 
 - **Migration Strategy:** The client implementation uses a configurable transport layer that allows swapping base URLs and authentication methods without refactoring call sites. Environment variables (`APP_ENV=local|cloud`) control which pathway is used. This ensures minimal code changes when moving from development to production.
+
 -
+
 ### 4\.0 Detailed Database Schema \(Polyglot\)
 
 #### A\. Cloud SQL \(PostgreSQL\) \- Unified Ledger & Metadata
@@ -722,7 +753,6 @@ ALTER TABLE audit.llm_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 ```
 
-
 ### 5\.0 API Surface
 
 #### Auth & User
@@ -814,7 +844,6 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 	4. Process `log_purge_queue` events (Right-to-Be-Forgotten) by deleting matching rows and pushing delete markers to `coldline_delete_queue` for downstream storage cleanup.
 	5. Write a run summary to `audit.log_ledger_archiver_runs` for Compliance.
 - **Testing:** Pytest harness spins up Postgres + the GCS emulator to validate chunking, manifest integrity, and purge handling. CI fails if checksum mismatches or archive deletes exceed 1% of daily volume.
-
 
 ### 6\.1 Future Enhancement Services \(Backlog\)
 
@@ -1035,6 +1064,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 **Before Development Begins:** The following infrastructure and automation must be instantiated \(created and configured\) to enable development workflows:
 
 **CI/CD Pipeline Setup:**
+
 - **Cloud Build Configuration:** Create `cloudbuild.yaml` in repository root with stages for lint, test, build, and deploy
 - **GitHub Actions / Cloud Build Triggers:** Configure webhook triggers on `push` to `main` and `pull_request` events
 - **Service Accounts:** Create dedicated service accounts for Cloud Build with minimal required permissions \(Cloud Run Deployer, Storage Admin, Artifact Registry Writer\)
@@ -1042,6 +1072,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 - **Remote Config Flags:** Create Firebase Remote Config project and initialize required feature flags \(`ENABLE_GLOBAL_SYNC`, `ENABLE_AI_GATEWAY`, `MAINTENANCE_MODE`, `feature_preview.enabled`\)
 
 **Infrastructure as Code \(IaC\) Instantiation:**
+
 - **Terraform State Backend:** Create GCS bucket for Terraform state with versioning and KMS encryption enabled
 - **State Locking:** Configure Cloud Storage backend with DynamoDB\-style locking \(via `terraform-state-lock` GCS bucket object or Cloud SQL table\)
 - **Environment Scaffolding:** Run `terraform init` and `terraform workspace new dev/stage/prod` for each environment
@@ -1049,6 +1080,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 - **State Management:** Never commit `.tfstate` files; ensure `.gitignore` excludes all Terraform state and lock files
 
 **Pre\-Development Checklist:**
+
 - [ ] Cloud Build pipeline runs successfully on test commit
 - [ ] Terraform state backend created and accessible
 - [ ] Dev environment infrastructure provisioned \(VPC, Cloud SQL, Cloud Run services\)
@@ -1063,6 +1095,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 **Purpose:** Define measurable "done" criteria and test coverage for each development slice to ensure features meet specifications before moving to the next slice\.
 
 **Acceptance Criteria Format:** Each feature ticket must include:
+
 - **Functional Requirements:** What the feature must do \(e\.g\., "GET /transactions returns paginated results filtered by date range"\)
 - **Non\-Functional Requirements:** Performance, security, accessibility constraints \(e\.g\., "Response time < 200ms for 1000 transactions"\)
 - **Edge Cases:** Error handling, boundary conditions \(e\.g\., "Returns 401 for unauthenticated requests, 403 for Free tier accessing Pro feature"\)
@@ -1072,16 +1105,19 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 **Test Plan Structure:**
 
 **Unit Tests:**
+
 - Test individual functions/services in isolation
 - Mock external dependencies \(database, APIs, services\)
 - Target: >80% code coverage for business logic
 
 **Integration Tests:**
+
 - Test API endpoints with real database \(local Postgres container\)
 - Test service\-to\-service communication \(FastAPI → Cloud SQL, FastAPI → Firestore Emulator\)
 - Test authentication/authorization flows
 
 **End\-to\-End Tests:**
+
 - Test complete user workflows \(signup → link account → view transactions\)
 - Test feature preview/paywall interactions
 - Test tier\-based access control
@@ -1091,6 +1127,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 **Slice 1: Authentication & Basic Account Management**
 
 **Acceptance Criteria:**
+
 1. User can sign up with email/password via Firebase Auth
 2. User can log in and receive JWT token
 3. `GET /me` returns user profile, tier \(defaults to 'free'\), and preferences
@@ -1099,6 +1136,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 6. Invalid tokens return 401
 
 **Test Plan:**
+
 - **Unit:** Test `AuthService.validate_token()`, `UserService.get_profile()`
 - **Integration:** Test `POST /auth/signup`, `POST /auth/login`, `GET /me` with valid/invalid tokens
 - **E2E:** Complete signup → login → profile view flow
@@ -1106,6 +1144,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 **Slice 2: Account Linking \(Read\-Only\)**
 
 **Acceptance Criteria:**
+
 1. `POST /accounts/link` initiates Plaid Link flow \(returns Link Token\)
 2. `POST /accounts/exchange` stores access token in Secret Manager \(not database\)
 3. `GET /accounts` returns list of linked accounts with masked account numbers
@@ -1113,6 +1152,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 5. Free tier limited to 2 traditional accounts \(returns 403 if exceeded\)
 
 **Test Plan:**
+
 - **Unit:** Test `AccountService.link_account()`, `SecretManagerService.store_token()`
 - **Integration:** Test account CRUD operations with tier enforcement
 - **E2E:** Link account → view accounts → delete account flow
@@ -1120,6 +1160,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 **Slice 3: Transactions Feed with Feature Preview**
 
 **Acceptance Criteria:**
+
 1. `GET /transactions` returns paginated transactions \(default 50 per page\)
 2. Supports filtering by date range, category, account
 3. Free tier sees transactions; Pro features \(advanced filters\) show preview overlay
@@ -1127,6 +1168,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 5. Backend `require_feature()` dependency enforces tier requirements
 
 **Test Plan:**
+
 - **Unit:** Test `TransactionService.get_transactions()` with various filters
 - **Integration:** Test `GET /transactions` with tier\-based feature gating
 - **E2E:** Free user views transactions → clicks Pro feature → sees paywall modal
@@ -1174,7 +1216,6 @@ Financial Crimes Enforcement Network
 __MSB__
 
 Money Services Business
-
 
 __CEX__
 
@@ -1232,7 +1273,6 @@ __UID__
 
 User Identifier
 
-
 __RAG__
 
 Retrieval\-Augmented Generation
@@ -1258,6 +1298,7 @@ Continuous Integration / Continuous Deployment
 Workflow automation for support tickets and operations is implemented using Google Cloud services rather than a separate workflow engine\.
 
 **Deployment:**
+
 - Platform: Google Cloud Run
 - Orchestration: Cloud Workflows
 - Database: Cloud SQL PostgreSQL \(same instance or separate\)
@@ -1265,11 +1306,13 @@ Workflow automation for support tickets and operations is implemented using Goog
 - Integration: REST API calls to FastAPI backend
 
 **Integration Method:**
+
 - Cloud Workflows → FastAPI/Cloud Run: REST API calls \(GET /api/users/{uid}, GET /api/accounts/{uid}, etc\.\)
 - FastAPI/Cloud Run → Cloud Workflows: Pub/Sub events or HTTP triggers from app events
 - External Services → Cloud Run: Webhooks/APIs \(email via Gmail API/Google Workspace, Google Chat webhooks, etc\.\)
 
 **Use Cases:**
+
 - Support ticket automation \(email/app → ticket creation, categorization, routing\)
 - Auto-responses for common issues
 - Customer service workflows \(onboarding emails, account recovery\)
@@ -1277,6 +1320,7 @@ Workflow automation for support tickets and operations is implemented using Goog
 - Business operations automation \(backlog\)
 
 **Google Workspace Integration:**
+
 - Google Chat integration for team notifications to customer service representatives
 - Customer Support Portal integration for non-technical customer service staff
 - Workflow alerts routed to Google Chat channels
@@ -1351,6 +1395,7 @@ Cloud Workflows `token-refresh-workflow`:
 The Customer Support Portal is a separate frontend/service with its own authentication, designed for customer service representatives who may or may not be technically inclined\. Hiring for customer service positions will not be based on coding skills\. The user\-facing application does not contain any admin links or references; users access support through the standard support page\.
 
 **Purpose:**
+
 - Support ticket management and resolution
 - User account status viewing and management \(read\-only, minimal PII exposure\)
 - Customer inquiry handling
@@ -1358,6 +1403,7 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 - Google Workspace \(Google Chat\) notifications for team alerts
 
 **Key Features:**
+
 - Simple, intuitive interface for non\-technical users
 - Support ticket queue and assignment
 - User account lookup and status \(masked PII, read\-only views\)
@@ -1370,6 +1416,7 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 **Security Requirements \(CIA Triad\):**
 
 **Confidentiality:**
+
 - Role\-based access control \(RBAC\): `support_agent` and `support_manager` roles only
 - Minimal PII exposure: Only display necessary customer information; mask sensitive data \(e\.g\., partial email, masked account numbers\)
 - Service\-to\-service authentication: mTLS or JWT tokens for backend API calls
@@ -1377,6 +1424,7 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 - No access to user PII/AI logs beyond what is necessary for ticket resolution
 
 **Integrity:**
+
 - Append\-only audit logs: All actions logged to Cloud SQL `audit.support_portal_actions` table
 - Dual\-control for destructive actions: Critical operations \(e\.g\., account suspension\) require manager approval
 - CSRF protection: All state\-changing operations protected with CSRF tokens
@@ -1384,6 +1432,7 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 - Transaction integrity: Database transactions ensure atomic operations
 
 **Availability:**
+
 - Cloud Run autoscaling: Service scales based on request volume
 - Health checks: Automated health monitoring and automatic restart on failure
 - Per\-agent rate limiting: Prevent abuse and ensure fair resource allocation
@@ -1391,6 +1440,7 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 - Redundant deployments: Multi\-region deployment for high availability
 
 **Technical Requirements:**
+
 - Separate frontend/service with its own authentication \(Workforce Identity Federation or Firebase Auth\)
 - Integration with FastAPI backend for user data \(read\-only, scoped queries\)
 - Integration with GCP workflow automation \(Cloud Workflows \+ Cloud Run\) for workflow automation
@@ -1401,25 +1451,30 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 **GCP Implementation:**
 
 **Frontend:**
+
 - Cloud Storage \+ Cloud CDN for static assets \(or small Cloud Run service for SSR\)
 - Identity\-Aware Proxy \(IAP\) or Cloud Endpoints for authentication
 
 **Backend:**
+
 - Cloud Run service \(`support\-portal\-api`\) behind IAP/Endpoints
 - RBAC enforcement at API layer
 - Rate limiting per agent via Cloud Endpoints or Cloud Armor
 
 **Identity:**
+
 - Workforce Identity Federation or Firebase Auth for agent authentication
 - IAP for console access
 - Short\-lived tokens \(JWT with 1\-hour expiration\)
 
 **Data Storage:**
+
 - Firestore \(Datastore mode\) for tickets, comments, assignments
 - Cloud SQL \(PostgreSQL\) for structured audit logs \(append\-only tables\)
 - Cloud Storage \(CMEK encryption\) for ticket attachments \(signed URLs\)
 
 **Agent Tracking & Accountability:**
+
 - Agent identification: Each agent has a unique Company ID \(format: `INT-AGENT-YYYY-###`\) displayed in the portal UI
 - All agent actions are logged to Cloud SQL `audit.support_portal_actions` table with:
 	- Agent name and Company ID
@@ -1432,11 +1487,13 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 - Audit trail: Complete immutable log of all agent actions for compliance and accountability
 
 **Audit & Telemetry:**
+
 - Cloud Logging \+ log\-based metrics/alerts for real\-time monitoring
 - Selected logs exported to Cloud Storage \(lifecycle rules for retention\)
 - Structured audit rows in Firestore/Cloud SQL \(append\-only, immutable\)
 
 **Integrations:**
+
 - Pub/Sub events for ticket state changes \(triggers workflows\)
 - Optional Vertex AI triage with strict scoping \(no PII exposure\)
 - Google Chat/Email webhooks for escalation notifications
@@ -1444,6 +1501,7 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 - Private Service Connect or VPC peering for backend access
 
 **User Experience:**
+
 - Designed for customer service representatives without technical background
 - Clear, simple interface with minimal technical jargon
 - Workflow\-driven ticket management
@@ -1456,6 +1514,7 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 This master technical specification relates to the following planning documents:
 
 **Business Documents:**
+
 - `Intellifide, LLC business plan.md` - Master business plan (product definition, compliance requirements)
 - `Product-Roadmap.md` - Development timeline and milestones
 - `Vendor-Relationships.md` - Vendor setup (GCP, Plaid, Stripe, etc.)
@@ -1463,6 +1522,7 @@ This master technical specification relates to the following planning documents:
 - `Developer-Payout-Structure.md` - Developer program payout structure (Section 2.4)
 
 **Legal Documents:**
+
 - `Terms-of-Service.md` - User terms (legal-first lifecycle requirement)
 - `Privacy-Policy.md` - Privacy policy (privacy by design requirement)
 - `AI-Assistant-Disclaimer.md` - AI disclaimer (Section 2.2, 2.3)
@@ -1472,13 +1532,15 @@ This master technical specification relates to the following planning documents:
 - `IRP-Framework.md` - Incident response framework (GLBA compliance)
 
 **App Development Guides:**
+
 - `Local App Dev Guide.md` - Local development environment setup
 - `AI Agent Framework.md` - AI agent implementation details (Section 2.2, 2.3)
 - `Model Context Protocol Framework.md` - MCP framework implementation
 
 **Technical Documentation:**
+
 - `Security-Architecture.md` - Detailed security architecture (Section 1.0, 3.0)
 - `Data-Flow-Diagrams.md` - Data flow architecture (Section 3.3, 3.4)
 - `getting started gcp.md` - GCP infrastructure setup (Section 3.0)
 
-**Last Updated:** December 07, 2025 at 08:39 PM
+**Last Updated:** December 19, 2025 at 01:51 PM CT (Modified 12/19/2025 13:51 Central Time per rules)

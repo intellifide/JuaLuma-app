@@ -1,6 +1,5 @@
 # <a id="_ls5ks3ef3570"></a>Model Context Protocol Framework v2\.4
 
-
 ### __1\. Stripe \(Official Remote Server\)__
 
 - __Why it’s Critical:__ Cursor can search *docs*, but it cannot see *your* data\. This server connects to your __Live Test Mode Dashboard__\.
@@ -54,31 +53,31 @@
 
 JSON
 
-\{  
-  "mcpServers": \{  
-    "stripe": \{  
-      "url": "https://mcp\.stripe\.com/sse"  
-    \},  
-    "gcp": \{  
-      "command": "uvx",  
-      "args": \["gcp\-mcp\-server"\],  
-      "env": \{  
-        "GOOGLE\_APPLICATION\_CREDENTIALS": "/Users/yourname/keys/dev\-support\.json",  
-        "GCP\_PROJECT\_ID": "jualuma\-app\-dev"  
-      \}  
-    \},  
-    "sentry": \{  
-      "command": "uvx",  
-      "args": \["mcp\-sentry"\],  
-      "env": \{  
-        "SENTRY\_AUTH\_TOKEN": "sntrys\_\.\.\."  
-      \}  
-    \},  
-    "puppeteer": \{  
-      "command": "npx",  
-      "args": \["\-y", "@modelcontextprotocol/server\-puppeteer"\]  
-    \}  
-  \}  
+\{
+  "mcpServers": \{
+    "stripe": \{
+      "url": "https://mcp\.stripe\.com/sse"
+    \},
+    "gcp": \{
+      "command": "uvx",
+      "args": \["gcp\-mcp\-server"\],
+      "env": \{
+        "GOOGLE\_APPLICATION\_CREDENTIALS": "/Users/yourname/keys/dev\-support\.json",
+        "GCP\_PROJECT\_ID": "jualuma\-app\-dev"
+      \}
+    \},
+    "sentry": \{
+      "command": "uvx",
+      "args": \["mcp\-sentry"\],
+      "env": \{
+        "SENTRY\_AUTH\_TOKEN": "sntrys\_\.\.\."
+      \}
+    \},
+    "puppeteer": \{
+      "command": "npx",
+      "args": \["\-y", "@modelcontextprotocol/server\-puppeteer"\]
+    \}
+  \}
 \}
 
 ---
@@ -88,16 +87,19 @@ JSON
 This Model Context Protocol Framework relates to the following planning documents:
 
 **App Development Guides:**
+
 - `Master App Dev Guide.md` - Master technical specification (MCP integration)
 - `AI Agent Framework.md` - AI agent implementation (MCP server usage)
 - `Local App Dev Guide.md` - Local development setup (local MCP server setup)
 
 **Business Documents:**
+
 - `Product-Roadmap.md` - Timeline for MCP implementation
 - `Vendor-Relationships.md` - Vendor setup (Stripe, GCP MCP servers)
 
 **Technical Documentation:**
+
 - `Security-Architecture.md` - Security architecture (MCP security considerations)
 - `Data-Flow-Diagrams.md` - Data flow architecture (MCP data flow)
 
-**Last Updated:** December 07, 2025 at 08:39 PM
+**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

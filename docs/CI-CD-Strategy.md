@@ -1,6 +1,6 @@
 # CI/CD Strategy
-## Intellifide, LLC - jualuma Platform
 
+## Intellifide, LLC - jualuma Platform
 
 ---
 
@@ -31,6 +31,7 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 **Trigger:** Push to main branch or pull request
 
 **Stages:**
+
 1. **Lint & Format:**
    - Ruff (Python linting and formatting)
    - Fail on linting errors or formatting issues
@@ -64,6 +65,7 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 **Trigger:** Push to main branch or pull request
 
 **Stages:**
+
 1. **Lint & Format:**
    - ESLint (TypeScript/JavaScript linting)
    - Prettier (code formatting)
@@ -94,6 +96,7 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 **Trigger:** Release tags (release/*)
 
 **Stages:**
+
 1. **Build PWA:**
    - Build React PWA
    - Generate production assets
@@ -124,17 +127,21 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Deployment Environments
 
 **Local Development:**
+
 - Docker Compose for local emulation
 - PostgreSQL, Firestore Emulator, Pub/Sub Emulator
 - No GCP resources required
 
 **Dev:**
+
 - GCP project `jualuma-dev`, region `us-central1`, Cloud Run services with `-dev` suffix
 
 **Stage:**
+
 - GCP project `jualuma-stage`, region `us-central1`, Cloud Run services with `-stage` suffix
 
 **Prod:**
+
 - GCP project `jualuma-prod`, regions `us-central1` (primary), `us-east1` (DR)
 - Cloud Run (Backend)
 - Cloud Storage + CDN (Frontend)
@@ -146,6 +153,7 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 **Strategy:** Deploy new revision → Route 0% traffic → Test Live URL → Promote to 100%
 
 **Process:**
+
 1. Deploy new revision to Cloud Run with 0% traffic
 2. New revision receives no user traffic initially
 3. Test new revision using dedicated test URL
@@ -155,12 +163,14 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 7. Rollback if issues detected (instant traffic routing back to previous revision)
 
 **Benefits:**
+
 - Zero-downtime deployments
 - Ability to test new revisions in production before full rollout
 - Quick rollback capability (no redeployment needed)
 - Replaces separate "Sandbox" environment concept
 
 **Rollback Procedure:**
+
 - If issues detected, immediately route 100% traffic back to previous revision
 - No need to redeploy - traffic routing is instant
 - Previous revision remains available for instant rollback
@@ -172,19 +182,23 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Code Quality Gates
 
 **Linting:**
+
 - Zero linting errors allowed
 - All code must pass ESLint/Ruff checks
 
 **Formatting:**
+
 - All code must be formatted with Prettier/Ruff
 - Consistent code style enforced
 
 **Security:**
+
 - Zero high/critical vulnerabilities allowed
 - No secrets detected in code
 - Security scanning must pass
 
 **Accessibility:**
+
 - All UI components must meet WCAG 2.1 AA standards
 - Contrast ratio must be ≥ 4.5:1
 - Accessibility scanning must pass
@@ -192,11 +206,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Test Coverage Thresholds
 
 **Backend:**
+
 - Minimum 80% code coverage
 - All critical paths must have tests
 - Integration tests for database operations
 
 **Frontend:**
+
 - Minimum 75% code coverage
 - All components must have tests
 - E2E tests for critical user flows
@@ -204,11 +220,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Performance Thresholds
 
 **Backend:**
+
 - API response time < 200ms (p95)
 - Database query time < 100ms (p95)
 - No memory leaks detected
 
 **Frontend:**
+
 - Page load time < 2s
 - Time to interactive < 3s
 - Lighthouse score > 90
@@ -222,11 +240,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 **Tool:** trivy
 **Scope:** Docker images, filesystem
 **Checks:**
+
 - Known vulnerabilities in dependencies
 - Secrets in code or environment
 - Misconfigurations
 
 **Action on Failure:**
+
 - Block deployment
 - Require fixes before proceeding
 
@@ -235,11 +255,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 **Tool:** Dependabot (GitHub)
 **Scope:** All dependencies (Python, Node.js)
 **Checks:**
+
 - Known vulnerabilities
 - Outdated dependencies
 - License compliance
 
 **Action on Failure:**
+
 - Alert security team
 - Block deployment for critical vulnerabilities
 
@@ -248,11 +270,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 **Tool:** CodeQL (GitHub)
 **Scope:** Source code
 **Checks:**
+
 - Security vulnerabilities
 - Code quality issues
 - Best practices
 
 **Action on Failure:**
+
 - Review findings
 - Block deployment for critical issues
 
@@ -263,11 +287,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Resource Limits
 
 **GitHub Actions:**
+
 - Maximum job duration: 30 minutes
 - Maximum concurrent jobs: 3
 - Use self-hosted runners for cost optimization (if applicable)
 
 **Build Resources:**
+
 - Docker build cache to reduce build time
 - Parallel test execution
 - Efficient resource usage
@@ -275,11 +301,13 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Cost Monitoring
 
 **Metrics:**
+
 - GitHub Actions minutes used
 - Artifact Registry storage
 - Cloud Run deployment costs
 
 **Alerts:**
+
 - Set budget alerts for CI/CD costs
 - Monitor for unusual spending
 - Optimize workflows to reduce costs
@@ -291,31 +319,37 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Automated Deployment Triggers
 
 **Backend:**
+
 - Push to main branch → Automatic deployment
 - Pull request → Build and test only (no deployment)
 - Release tag → Production deployment
 
 **Frontend:**
+
 - Push to main branch → Automatic deployment
 - Pull request → Build and test only (no deployment)
 
 **Mobile:**
+
 - Release tag (release/*) → Build and upload to stores
 - Manual approval required for store submissions
 
 ### Deployment Automation Features
 
 **Database Migrations:**
+
 - Automated migration execution
 - Rollback capability
 - Migration testing in CI
 
 **Feature Flags:**
+
 - Remote Config integration
 - Gradual feature rollout
 - Kill switch capability
 
 **Monitoring Integration:**
+
 - Automatic alerting on deployment
 - Health checks post-deployment
 - Rollback triggers on errors
@@ -327,17 +361,21 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 ### Automatic Rollback Triggers
 
 **Error Rate:**
+
 - If error rate > 5% within 5 minutes of deployment → Automatic rollback
 
 **Latency:**
+
 - If p95 latency > 500ms → Automatic rollback
 
 **Health Checks:**
+
 - If health checks fail → Automatic rollback
 
 ### Manual Rollback
 
 **Process:**
+
 1. Identify issue requiring rollback
 2. Route 100% traffic to previous revision (instant)
 3. Investigate root cause
@@ -345,6 +383,7 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 5. Redeploy with fix
 
 **Rollback Time:**
+
 - Traffic routing: < 1 second
 - Full rollback: < 30 seconds
 
@@ -355,15 +394,17 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 This CI/CD Strategy relates to the following planning documents:
 
 **App Development Guides:**
+
 - `Master App Dev Guide.md` - Technical specification (Section 9.0: CI/CD & Infrastructure)
 - `Local App Dev Guide.md` - Local development setup
 - `planning/technical docs/Deployment-Automation.md` - Deployment strategies and patterns
 
 **Technical Documentation:**
+
 - `Security-Architecture.md` - Security architecture (security scanning requirements)
 - `Application-Security-Implementation.md` - Security implementation details
 - `planning/technical docs/Runtime-Maintenance-Operations.md` - Production monitoring and operations
 
 ---
 
-**Last Updated:** December 07, 2025 at 08:39 PM
+**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

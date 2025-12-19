@@ -1,14 +1,15 @@
 # Marketing Content Guidelines
+
 ## Intellifide, LLC - jualuma Platform
 
 ## Overview
 
 This document expands on Section 3.2 of the business plan and provides comprehensive guidelines for all marketing content, advertising, and communications for the jualuma platform. These guidelines ensure compliance with regulatory requirements and protect against misrepresentation claims.
 
-
 **Review Frequency:** Quarterly, or as regulations change
 
 **Related Documents:**
+
 - `Intellifide, LLC business plan.md` - Business plan Section 3.2 (Marketing & Advertising Policy)
 - `Terms-of-Service-Draft.md` - Terms of Service (marketing claims compliance)
 - `Compliance-Checklist.md` - Compliance requirements (SEC, marketing compliance)
@@ -24,6 +25,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 **Principle:** All marketing must be transparent, accurate, and based on demonstrable facts.
 
 **Requirements:**
+
 - All claims must be verifiable
 - No exaggeration or hyperbole
 - Clear and understandable language
@@ -33,12 +35,14 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 1.2 Zero-Tolerance Policy
 
 **Policy:** Intellifide, LLC has a zero-tolerance policy for any language that:
+
 - Misrepresents the platform's capabilities
 - Could mislead users into believing the platform provides automated advice
 - Suggests the platform makes financial predictions or forecasts
 - Implies the platform provides investment recommendations
 
 **Enforcement:**
+
 - All marketing content must be reviewed before publication
 - Violations result in immediate content removal
 - Repeat violations may result in disciplinary action
@@ -50,6 +54,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 2.1 Platform Capabilities
 
 **APPROVED - Data Aggregation:**
+
 - "The jualuma platform securely connects to numerous CEXs via API"
 - "Aggregate all your financial accounts in one place"
 - "Connect your bank accounts, credit cards, and cryptocurrency exchanges"
@@ -57,12 +62,14 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 - "Automatically sync your financial accounts"
 
 **APPROVED - Automation:**
+
 - "Use our AI-powered tools to instantly categorize thousands of transactions"
 - "Automated transaction categorization saves you time"
 - "Smart categorization learns from your preferences"
 - "Automatically detect recurring bills and subscriptions"
 
 **APPROVED - Analysis and Insights:**
+
 - "Get a clear view of your financial health"
 - "Track your spending across all accounts"
 - "Visualize your budget and spending patterns"
@@ -70,6 +77,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 - "See your complete financial picture in one place"
 
 **APPROVED - Educational Content:**
+
 - "Learn about personal finance with our educational resources"
 - "Access financial education content in our University section"
 - "Improve your financial literacy"
@@ -77,18 +85,21 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 2.2 Service Features
 
 **APPROVED - Free Tier:**
+
 - "Free tier includes basic account aggregation"
 - "Link up to 2 traditional accounts, 1 Web3 wallet, and 1 CEX account for free"
 - "Free tier includes local AI model access"
 - "Free tier retains 45 days of transactions locally; older data is automatically removed (no archives kept)"
 
 **APPROVED - Essential Tier:**
+
 - "Essential tier delivers the full jualuma experience for $10/month"
 - "24-hour automated refresh cadence keeps data current without manual sync"
 - "Essential retains 30 days of detailed ledger data hot, with older history archived securely for read-only review"
 - "Essential includes the same 75 cloud AI queries/day allocation as Pro"
 
 **APPROVED - Pro Tier:**
+
 - "Pro tier unlocks advanced features"
 - "Access to cloud AI models powered by Vertex AI Gemini 2.5 Flash"
 - "Link up to 5 traditional accounts, 5 investment accounts, and 5 Web3 wallets"
@@ -96,6 +107,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 - "7-day free trial available"
 
 **APPROVED - Ultimate Tier (Phase 3):**
+
 - "Ultimate tier for power users and families"
 - "Unlimited account connections"
 - "Advanced AI models powered by Vertex AI Gemini (Gemini 2.5 Pro / Gemini 3 series in Phase 2)"
@@ -104,6 +116,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 - "Individual and combined net worth tracking"
 
 **APPROVED - Security:**
+
 - "Bank-level security and encryption"
 - "Your data is encrypted and secure"
 - "Read-only access - we never move your money"
@@ -116,6 +129,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 3.1 Financial Advice Prohibitions
 
 **PROHIBITED - Investment Advice:**
+
 - ❌ "Our AI predicts the next market trends"
 - ❌ "Get expert investment recommendations"
 - ❌ "AI-powered investment advice"
@@ -123,12 +137,14 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 - ❌ "Beat the market with our insights"
 
 **PROHIBITED - Financial Predictions:**
+
 - ❌ "Forecast your financial future"
 - ❌ "Predict market movements"
 - ❌ "AI that knows what stocks will rise"
 - ❌ "Financial forecasting powered by AI"
 
 **PROHIBITED - Expert Advice:**
+
 - ❌ "Expert-level insights to optimize your portfolio"
 - ❌ "Professional financial advisor in your pocket"
 - ❌ "Get advice from financial experts"
@@ -137,12 +153,14 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 3.2 Automated Decision-Making Prohibitions
 
 **PROHIBITED - Automated Actions:**
+
 - ❌ "Automatically invest your money"
 - ❌ "AI makes investment decisions for you"
 - ❌ "Set it and forget it investing"
 - ❌ "Automated portfolio management"
 
 **PROHIBITED - Guarantees:**
+
 - ❌ "Guaranteed returns"
 - ❌ "Guaranteed to save money"
 - ❌ "Guaranteed financial success"
@@ -151,12 +169,14 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 3.3 Misleading Claims Prohibitions
 
 **PROHIBITED - Exaggerated Benefits:**
+
 - ❌ "Become a millionaire with jualuma"
 - ❌ "Get rich quick"
 - ❌ "Financial freedom guaranteed"
 - ❌ "Eliminate all your debt"
 
 **PROHIBITED - Unsubstantiated Claims:**
+
 - ❌ "Most accurate financial platform"
 - ❌ "Best financial app ever created"
 - ❌ "Revolutionary AI that changes everything"
@@ -169,11 +189,13 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 4.0 Content Creation Responsibilities
 
 **Primary Content Creator:** Kevin Pendergrass (Operations & Customer Success Manager)
+
 - Location: Charlotte, North Carolina (Remote)
 - Responsibilities: Content creation and marketing, social media management, educational content development
 - Note: Kevin Pendergrass handles content creation with AI agent assistance. All AI-generated content is reviewed and approved by Kevin before publication.
 
 **AI Agent Support:**
+
 - Content Generation Automation Agent assists with content creation
 - Kevin Pendergrass reviews all AI-generated content, provides feedback, approves for publication
 - Human oversight ensures quality and compliance with marketing guidelines
@@ -183,6 +205,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 4.1 Review Requirements
 
 **All Marketing Content Must Be Reviewed:**
+
 - Website copy
 - Social media posts
 - Email marketing
@@ -196,6 +219,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 4.2 Review Checklist
 
 **Before Publication, Verify:**
+
 - [ ] All claims are factual and verifiable
 - [ ] No prohibited language is used
 - [ ] No implication of financial advice
@@ -207,6 +231,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 4.3 Legal Review Triggers
 
 **Content Requiring Legal Review:**
+
 - New product features or capabilities
 - Claims about regulatory compliance
 - Disclaimers or legal language
@@ -217,12 +242,14 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 4.4 Review Workflow
 
 **Standard Review:**
+
 1. Content creator drafts content
 2. Kevin Pendergrass (Operations & Customer Success Manager) reviews against guidelines
 3. Content approved or returned for revision
 4. Final approval before publication
 
 **Legal Review Required:**
+
 1. Content creator drafts content
 2. Kevin Pendergrass (Operations & Customer Success Manager) reviews against guidelines
 3. Flag for legal review if triggers present
@@ -236,11 +263,13 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 ### 5.1 General Disclaimers
 
 **Recommended Disclaimers:**
+
 - "jualuma is for informational and educational purposes only"
 - "jualuma does not provide financial, investment, tax, or legal advice"
 - "Always consult qualified professionals for financial decisions"
 
 **Placement:**
+
 - Website footer
 - Email footers
 - Marketing materials (fine print)
@@ -250,12 +279,14 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 
 **Required Disclaimer:**
 When marketing the AI Assistant feature, include:
+
 - "AI Assistant provides access to third-party language models"
 - "AI responses are not verified or endorsed by Intellifide, LLC"
 - "Do not rely on AI for financial decisions"
 - "Consult qualified professionals for financial advice"
 
 **Placement:**
+
 - AI Assistant feature descriptions
 - AI Assistant marketing materials
 - Any content highlighting AI capabilities
@@ -264,6 +295,7 @@ When marketing the AI Assistant feature, include:
 
 **Required Disclaimer:**
 When discussing investments or financial markets:
+
 - "Past performance does not guarantee future results"
 - "All investments carry risk of loss"
 - "Diversification does not guarantee profit or protect against loss"
@@ -275,18 +307,21 @@ When discussing investments or financial markets:
 ### 6.1 Website
 
 **Homepage:**
+
 - Clear value proposition
 - Factual feature descriptions
 - Prominent disclaimers
 - No exaggerated claims
 
 **Feature Pages:**
+
 - Detailed, accurate feature descriptions
 - Screenshots and demonstrations
 - Clear limitations and requirements
 - Appropriate disclaimers
 
 **Blog/Content:**
+
 - Educational content only
 - No investment advice
 - Factual information
@@ -295,6 +330,7 @@ When discussing investments or financial markets:
 ### 6.2 Social Media
 
 **Platforms:**
+
 - Twitter/X
 - LinkedIn
 - Facebook
@@ -302,6 +338,7 @@ When discussing investments or financial markets:
 - TikTok (if used)
 
 **Guidelines:**
+
 - Keep posts factual and accurate
 - Avoid financial advice language
 - Include disclaimers in bio/description
@@ -309,6 +346,7 @@ When discussing investments or financial markets:
 - Respond professionally to questions
 
 **Prohibited:**
+
 - Investment recommendations
 - Market predictions
 - Financial advice
@@ -317,18 +355,21 @@ When discussing investments or financial markets:
 ### 6.3 Email Marketing
 
 **Transactional Emails:**
+
 - Account updates
 - Security notifications
 - Service updates
 - Billing information
 
 **Marketing Emails:**
+
 - Feature announcements
 - Educational content
 - Product updates
 - Promotional offers
 
 **Requirements:**
+
 - Clear subject lines (no misleading claims)
 - Factual content only
 - Unsubscribe option
@@ -337,12 +378,14 @@ When discussing investments or financial markets:
 ### 6.4 Advertising
 
 **Paid Advertising:**
+
 - Google Ads
 - Social media ads
 - Display advertising
 - Search engine marketing
 
 **Requirements:**
+
 - All claims must be substantiated
 - No prohibited language
 - Clear disclaimers
@@ -352,6 +395,7 @@ When discussing investments or financial markets:
 ### 6.5 App Store Listings
 
 #### 6.5.1 Metadata & Copy
+
 - Use the approved store name: `jualuma – Powered by Intellifide`.
 - Subtitle/short description must highlight aggregation + budgeting + AI assistant in one line without implying advice.
 - Long description uses 3 paragraphs: (1) aggregation summary, (2) budgeting/automation benefits, (3) compliance statements (read-only, no advice, GLBA/GDPR alignment).
@@ -359,6 +403,7 @@ When discussing investments or financial markets:
 - Locales: English (US) MVP. Structure copy so future locales can swap strings via `store-listings.json`.
 
 #### 6.5.2 Visual Assets
+
 - **Icons:** Use the refreshed jualuma product icon derived from the Intellifide brand system. Export 1024×1024 (Apple) and adaptive foreground/background layers (Google). No drop shadows or gradients that violate store policies.
 - **Screenshots (Apple):** 6 total (6.7" and 6.5" sizes). Narrative order: Dashboard Overview → Aggregated Accounts → Budget Canvas → AI Assistant (with disclaimer caption) → Net Worth Visualization → Security/Privacy commitments. Each frame uses Engineered Liquid Glass template and caption overlays sourced from this document.
 - **Screenshots (Google):** 8 total (phone). Same story arc plus Plaid/Web3 connectivity frame and Compliance frame.
@@ -366,12 +411,14 @@ When discussing investments or financial markets:
 - **Promotional Artwork (Apple Optional):** 4320×1080 using the hero imagery defined in Section 2.5. Submit only once marketing approves.
 
 #### 6.5.3 Compliance & Submission
+
 - Apple Privacy Nutrition Label entries must mirror `compliance/privacy_manifest.json`. Update whenever data collection scope changes.
 - ATT prompt headline/body copy must match the approved messaging (Section 5.3). No incentives for tracking.
 - Google Play Data Safety form maintained in `android/play-data-safety.yaml`; engineering exports final text for review.
 - Both listings must cite the Intellifide corporate entity, Texas read-only service positioning, and OFAC/FinCEN compliance stance.
 
 #### 6.5.4 Review Workflow
+
 - Draft assets live in `app-store-assets/` with versioned folders. Changes require Marketing + Compliance + Legal sign-off recorded in `APPROVALS.md`.
 - Prior to submission, run `scripts/store_asset_checklist.py` and attach output to the change request.
 - TestFlight release notes and Google Play "What's New" text follow the same approved language rules—no promises, no advice, no guarantees.
@@ -422,6 +469,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 ### 8.1 Team Training
 
 **Required Training:**
+
 - Kevin Pendergrass (Operations & Customer Success Manager) - Primary content creator and reviewer
 - Founder/Technical Lead (Trevon Collins) - Final approval for critical content
 - Content creators
@@ -429,6 +477,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 - Customer support (if creating content)
 
 **Training Topics:**
+
 - These Marketing Content Guidelines
 - Prohibited language and claims
 - Required disclaimers
@@ -437,6 +486,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 - Examples of approved/prohibited content
 
 **Training Frequency:**
+
 - Initial training upon hire
 - Annual refresher training
 - Training when guidelines are updated
@@ -444,6 +494,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 ### 8.2 Resources
 
 **Reference Materials:**
+
 - This Marketing Content Guidelines document
 - Business Plan Section 3.2
 - Terms of Service
@@ -458,12 +509,14 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 ### 9.1 Content Monitoring
 
 **Regular Reviews:**
+
 - Quarterly review of all marketing materials
 - Review of social media content
 - Review of website content
 - Review of advertising campaigns
 
 **Spot Checks:**
+
 - Random content audits
 - Customer complaint reviews
 - Regulatory inquiry reviews
@@ -471,6 +524,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 ### 9.2 Violation Response
 
 **Upon Violation Detection:**
+
 1. Immediately remove or correct violating content
 2. Document violation
 3. Review with content creator
@@ -478,6 +532,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 5. Update guidelines if necessary
 
 **Repeat Violations:**
+
 - Escalate to management
 - Additional training required
 - Disciplinary action may be taken
@@ -489,6 +544,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 ### 10.1 Guideline Updates
 
 **Update Triggers:**
+
 - Regulatory changes
 - Business model changes
 - New product features
@@ -496,6 +552,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 - Violation patterns identified
 
 **Update Process:**
+
 1. Identify need for update
 2. Draft updated guidelines
 3. Review with legal counsel (if needed)
@@ -506,6 +563,7 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 ### 10.2 Version Control
 
 **Document Management:**
+
 - Version number and date
 - Change log
 - Previous versions retained
@@ -533,7 +591,6 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 
 ---
 
-
 **Next Review:** February 14, 2026
 
 **Approved By:** [Management/Founder]
@@ -542,4 +599,4 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 
 **Note:** These guidelines are living documents and should be reviewed regularly. When in doubt about content, err on the side of caution and consult with legal counsel.
 
-**Last Updated:** December 05, 2025 at 01:34 AM
+**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

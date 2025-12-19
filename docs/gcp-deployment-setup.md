@@ -1,6 +1,6 @@
 # jualuma App - GCP Deployment Setup Guide
 
-**Status:** Future Phase (Post Local Development)  
+**Status:** Future Phase (Post Local Development)
 
 ---
 
@@ -33,23 +33,30 @@ Before beginning GCP setup:
 You'll need three separate projects for different environments:
 
 ```bash
+
 # Development environment
+
 gcloud projects create jualuma-dev --name="jualuma Development"
 
 # Staging environment
+
 gcloud projects create jualuma-stage --name="jualuma Staging"
 
 # Production environment
+
 gcloud projects create jualuma-prod --name="jualuma Production"
 ```
 
 ### Step 2: Link Billing Account
 
 ```bash
+
 # List billing accounts
+
 gcloud billing accounts list
 
 # Link billing to projects
+
 gcloud billing projects link jualuma-dev --billing-account=<BILLING_ACCOUNT_ID>
 gcloud billing projects link jualuma-stage --billing-account=<BILLING_ACCOUNT_ID>
 gcloud billing projects link jualuma-prod --billing-account=<BILLING_ACCOUNT_ID>
@@ -109,23 +116,30 @@ chmod +x scripts/enable-apis.sh
 ### Step 1: Install Terraform
 
 ```bash
+
 # macOS
+
 brew install terraform
 
 # Verify installation
+
 terraform version
 ```
 
 ### Step 2: Create Terraform State Backend
 
 ```bash
+
 # Create GCS bucket for Terraform state
+
 gsutil mb -p jualuma-prod -l us-central1 gs://jualuma-terraform-state
 
 # Enable versioning
+
 gsutil versioning set on gs://jualuma-terraform-state
 
 # Create KMS keyring and key for encryption
+
 gcloud kms keyrings create terraform-state \
     --location=us-central1 \
     --project=jualuma-prod
@@ -174,6 +188,7 @@ terraform workspace new prod
 ### Step 1: Create VPC Networks
 
 The network module creates:
+
 - VPC with custom subnets
 - Private Service Connect endpoints
 - Cloud NAT for egress
@@ -188,7 +203,9 @@ terraform apply -target=module.network
 ### Step 2: Configure DNS
 
 ```bash
+
 # Create Cloud DNS zone (if using custom domain)
+
 gcloud dns managed-zones create jualuma-zone \
     --dns-name="jualuma.app." \
     --description="jualuma production DNS zone" \
@@ -198,7 +215,9 @@ gcloud dns managed-zones create jualuma-zone \
 ### Step 3: Reserve Static IPs
 
 ```bash
+
 # Reserve global IP for load balancer
+
 gcloud compute addresses create jualuma-lb-ip \
     --global \
     --ip-version=IPV4 \
@@ -218,6 +237,7 @@ terraform apply -target=module.cloud_sql
 ```
 
 This creates:
+
 - PostgreSQL 16 instance with pgvector
 - Private IP configuration
 - Automated backups
@@ -226,22 +246,28 @@ This creates:
 ### Step 2: Initialize Database Schema
 
 ```bash
+
 # Get Cloud SQL connection name
+
 gcloud sql instances describe jualuma-db-dev \
     --project=jualuma-dev \
     --format="value(connectionName)"
 
 # Connect using Cloud SQL Proxy
+
 cloud_sql_proxy -instances=<CONNECTION_NAME>=tcp:5432
 
 # In another terminal, run migrations
+
 psql "host=127.0.0.1 port=5432 dbname=jualuma user=jualuma_admin" < scripts/init-db.sql
 ```
 
 ### Step 3: Setup Firestore
 
 ```bash
+
 # Create Firestore database in Datastore mode
+
 gcloud firestore databases create \
     --type=datastore-mode \
     --location=us-central1 \
@@ -255,7 +281,9 @@ gcloud firestore databases create \
 ### Step 1: Create Secrets
 
 ```bash
+
 # Create secrets in Secret Manager
+
 echo -n "your-plaid-client-id" | gcloud secrets create plaid-client-id \
     --data-file=- \
     --replication-policy=automatic \
@@ -280,7 +308,9 @@ echo -n "your-jwt-secret" | gcloud secrets create jwt-secret \
 ### Step 2: Grant Access to Service Accounts
 
 ```bash
+
 # Grant Cloud Run service account access to secrets
+
 gcloud secrets add-iam-policy-binding plaid-client-id \
     --member="serviceAccount:jualuma-backend@jualuma-dev.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor" \
@@ -321,20 +351,25 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install dependencies
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
+
 COPY . .
 
 # Run as non-root user
+
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
+
 EXPOSE 8080
 
 # Run application
+
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
 
@@ -364,14 +399,18 @@ gcloud run deploy jualuma-backend \
 ### Step 3: Deploy Frontend to Cloud Storage
 
 ```bash
+
 # Build frontend
+
 cd frontend
 pnpm build
 
 # Upload to Cloud Storage
+
 gsutil -m rsync -r -d dist/ gs://jualuma-frontend-dev
 
 # Set public access
+
 gsutil iam ch allUsers:objectViewer gs://jualuma-frontend-dev
 ```
 
@@ -388,6 +427,7 @@ terraform apply -target=module.lb_https
 ```
 
 This creates:
+
 - Global HTTPS load balancer
 - SSL certificate (managed or custom)
 - Cloud Armor security policy
@@ -396,12 +436,15 @@ This creates:
 ### Step 2: Configure Cloud Armor
 
 ```bash
+
 # Create security policy
+
 gcloud compute security-policies create jualuma-armor-policy \
     --description="jualuma Cloud Armor policy" \
     --project=jualuma-dev
 
 # Add OWASP rules
+
 gcloud compute security-policies rules create 1000 \
     --security-policy=jualuma-armor-policy \
     --expression="evaluatePreconfiguredExpr('xss-stable')" \
@@ -415,6 +458,7 @@ gcloud compute security-policies rules create 1001 \
     --project=jualuma-dev
 
 # Add rate limiting
+
 gcloud compute security-policies rules create 2000 \
     --security-policy=jualuma-armor-policy \
     --expression="true" \
@@ -440,7 +484,9 @@ terraform apply -target=module.log_export
 ### Step 2: Create Monitoring Dashboards
 
 ```bash
+
 # Create custom dashboard
+
 gcloud monitoring dashboards create --config-from-file=monitoring/jualuma-dashboard.json \
     --project=jualuma-dev
 ```
@@ -452,12 +498,14 @@ Create `monitoring/alerts.yaml`:
 ```yaml
 displayName: "jualuma Alerts"
 conditions:
+
   - displayName: "High Error Rate"
     conditionThreshold:
       filter: 'resource.type="cloud_run_revision" AND metric.type="run.googleapis.com/request_count" AND metric.label.response_code_class="5xx"'
       comparison: COMPARISON_GT
       thresholdValue: 10
       duration: 300s
+
   - displayName: "High Latency"
     conditionThreshold:
       filter: 'resource.type="cloud_run_revision" AND metric.type="run.googleapis.com/request_latencies"'
@@ -484,9 +532,11 @@ Create `cloudbuild.yaml`:
 ```yaml
 steps:
   # Lint and format
+
   - name: 'python:3.11'
     entrypoint: 'bash'
     args:
+
       - '-c'
       - |
         pip install ruff mypy
@@ -494,17 +544,21 @@ steps:
         mypy backend/
 
   # Run tests
+
   - name: 'python:3.11'
     entrypoint: 'bash'
     args:
+
       - '-c'
       - |
         pip install -r backend/requirements.txt
         pytest backend/tests/
 
   # Build backend container
+
   - name: 'gcr.io/cloud-builders/docker'
     args:
+
       - 'build'
       - '-t'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/jualuma-containers/backend:$COMMIT_SHA'
@@ -513,15 +567,19 @@ steps:
       - 'backend/'
 
   # Push container
+
   - name: 'gcr.io/cloud-builders/docker'
     args:
+
       - 'push'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/jualuma-containers/backend:$COMMIT_SHA'
 
   # Deploy to Cloud Run
+
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
+
       - 'run'
       - 'deploy'
       - 'jualuma-backend'
@@ -533,9 +591,11 @@ steps:
       - 'managed'
 
   # Build frontend
+
   - name: 'node:20'
     entrypoint: 'bash'
     args:
+
       - '-c'
       - |
         cd frontend
@@ -544,14 +604,17 @@ steps:
         pnpm build
 
   # Deploy frontend to Cloud Storage
+
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
+
       - '-c'
       - |
         gsutil -m rsync -r -d frontend/dist/ gs://jualuma-frontend-$PROJECT_ID
 
 images:
+
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/jualuma-containers/backend:$COMMIT_SHA'
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/jualuma-containers/backend:latest'
 
@@ -563,7 +626,9 @@ options:
 ### Step 2: Create Build Triggers
 
 ```bash
+
 # Create trigger for main branch
+
 gcloud builds triggers create github \
     --repo-name=jualuma-app \
     --repo-owner=<your-github-org> \
@@ -579,12 +644,15 @@ gcloud builds triggers create github \
 ### Step 1: Enable Organization Policies
 
 ```bash
+
 # Disable external IPs
+
 gcloud resource-manager org-policies set-policy \
     --project=jualuma-prod \
     policies/disable-external-ips.yaml
 
 # Disable service account key creation
+
 gcloud resource-manager org-policies set-policy \
     --project=jualuma-prod \
     policies/disable-sa-key-creation.yaml
@@ -593,12 +661,15 @@ gcloud resource-manager org-policies set-policy \
 ### Step 2: Configure IAM
 
 ```bash
+
 # Create service accounts with least privilege
+
 gcloud iam service-accounts create jualuma-backend \
     --display-name="jualuma Backend Service Account" \
     --project=jualuma-dev
 
 # Grant minimal permissions
+
 gcloud projects add-iam-policy-binding jualuma-dev \
     --member="serviceAccount:jualuma-backend@jualuma-dev.iam.gserviceaccount.com" \
     --role="roles/cloudsql.client"
@@ -621,7 +692,9 @@ gcloud services enable securitycenter.googleapis.com --project=jualuma-prod
 ### Step 1: Set Budget Alerts
 
 ```bash
+
 # Create budget
+
 gcloud billing budgets create \
     --billing-account=<BILLING_ACCOUNT_ID> \
     --display-name="jualuma Dev Budget" \
@@ -636,11 +709,15 @@ gcloud billing budgets create \
 Create budget automation:
 
 ```bash
+
 # Create Pub/Sub topic for budget alerts
+
 gcloud pubsub topics create budget-alerts --project=jualuma-dev
 
 # Create Cloud Function to disable services on budget breach
+
 # (Implementation in separate function deployment)
+
 ```
 
 ---
@@ -650,13 +727,16 @@ gcloud pubsub topics create budget-alerts --project=jualuma-dev
 ### Step 1: Configure Backups
 
 ```bash
+
 # Cloud SQL automated backups (already enabled by Terraform)
+
 gcloud sql instances patch jualuma-db-prod \
     --backup-start-time=02:00 \
     --retained-backups-count=30 \
     --project=jualuma-prod
 
 # Firestore export schedule
+
 gcloud firestore export gs://jualuma-firestore-backups-prod \
     --project=jualuma-prod
 ```
@@ -664,16 +744,20 @@ gcloud firestore export gs://jualuma-firestore-backups-prod \
 ### Step 2: Setup Cross-Region Replication
 
 ```bash
+
 # Create Cloud Storage bucket for disaster recovery
+
 gsutil mb -p jualuma-prod -l us-east1 gs://jualuma-dr-backup
 
 # Enable replication
+
 gsutil rewrite -r gs://jualuma-frontend-prod/* gs://jualuma-dr-backup/
 ```
 
 ### Step 3: Document Recovery Procedures
 
 Create `docs/disaster-recovery.md` with:
+
 - RTO/RPO targets
 - Failover procedures
 - Contact information
@@ -743,17 +827,21 @@ Before deploying to production:
 ### Daily Operations
 
 ```bash
+
 # Check service health
+
 gcloud run services describe jualuma-backend \
     --region=us-central1 \
     --project=jualuma-prod
 
 # View logs
+
 gcloud logging read "resource.type=cloud_run_revision" \
     --limit=50 \
     --project=jualuma-prod
 
 # Check metrics
+
 gcloud monitoring time-series list \
     --filter='metric.type="run.googleapis.com/request_count"' \
     --project=jualuma-prod
@@ -783,12 +871,15 @@ gcloud monitoring time-series list \
 
 **Cloud Run Service Not Starting:**
 ```bash
+
 # Check logs
+
 gcloud run services logs read jualuma-backend \
     --region=us-central1 \
     --project=jualuma-dev
 
 # Check service configuration
+
 gcloud run services describe jualuma-backend \
     --region=us-central1 \
     --project=jualuma-dev
@@ -796,10 +887,13 @@ gcloud run services describe jualuma-backend \
 
 **Database Connection Issues:**
 ```bash
+
 # Test Cloud SQL connectivity
+
 gcloud sql connect jualuma-db-dev --user=jualuma_admin --project=jualuma-dev
 
 # Check VPC connector
+
 gcloud compute networks vpc-access connectors describe jualuma-connector \
     --region=us-central1 \
     --project=jualuma-dev
@@ -807,10 +901,13 @@ gcloud compute networks vpc-access connectors describe jualuma-connector \
 
 **High Costs:**
 ```bash
+
 # Analyze costs
+
 gcloud billing accounts describe <BILLING_ACCOUNT_ID>
 
 # Check resource usage
+
 gcloud compute instances list --project=jualuma-dev
 gcloud run services list --project=jualuma-dev
 ```
@@ -871,7 +968,7 @@ After GCP setup is complete:
 
 ---
 
-**Status:** Awaiting Local Development Completion  
+**Status:** Awaiting Local Development Completion
 **Deployment Target:** Q1 2026 (Estimated)
 
-**Last Updated:** December 07, 2025 at 08:39 PM
+**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

@@ -1,10 +1,10 @@
 # Incident Response Plan (IRP) Framework
+
 ## Intellifide, LLC - GLBA Compliance
 
 ## Overview
 
 This document outlines the Incident Response Plan (IRP) framework for Intellifide, LLC, required under the Gramm-Leach-Bliley Act (GLBA) Safeguards Rule. The IRP incorporates the 30-day FTC breach notification rule and provides procedures for detecting, responding to, and recovering from security incidents.
-
 
 **Review Frequency:** Annually, or after significant incidents
 
@@ -17,21 +17,25 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 1.1 Team Structure
 
 **Incident Response Coordinator:**
+
 - Role: Program Coordinator (from WISP)
 - Responsibilities: Overall coordination, decision-making, external communications
 - Contact: [Program Coordinator contact information]
 
 **Technical Lead:**
+
 - Role: Technical team member or CTO
 - Responsibilities: Technical investigation, containment, recovery
 - Contact: [Technical lead contact information]
 
 **Legal/Compliance Lead:**
+
 - Role: Legal counsel or compliance officer
 - Responsibilities: Legal obligations, regulatory notifications, contract review
 - Contact: [Legal counsel contact information]
 
 **Management/Executive:**
+
 - Role: Founder/CEO
 - Responsibilities: Strategic decisions, resource allocation, public communications
 - Contact: [Management contact information]
@@ -39,18 +43,22 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 1.2 External Resources
 
 **Legal Counsel:**
+
 - Contact: [Attorney name and contact]
 - Role: Legal advice, regulatory compliance, breach notification requirements
 
 **Forensic Services:**
+
 - Contact: [To be determined - retain before incident]
 - Role: Digital forensics, evidence collection, expert analysis
 
 **Public Relations:**
+
 - Contact: [To be determined - if needed]
 - Role: Public communications, media relations
 
 **Insurance:**
+
 - Contact: [Cyber liability insurance provider]
 - Role: Claim filing, coverage determination
 
@@ -61,6 +69,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 2.1 Incident Categories
 
 **Category 1: Data Breach (Highest Priority)**
+
 - Unauthorized access to NPPI
 - Unauthorized disclosure of customer data
 - Theft or loss of devices containing NPPI
@@ -68,6 +77,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - **Notification Required:** Yes - 30-day FTC rule applies
 
 **Category 2: Security Incident (High Priority)**
+
 - Unauthorized access attempts
 - Malware infections
 - Denial of service attacks
@@ -75,12 +85,14 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - **Notification Required:** Depends on circumstances
 
 **Category 3: Policy Violation (Medium Priority)**
+
 - Employee policy violations
 - Unauthorized software installation
 - Access control violations
 - **Notification Required:** Usually no
 
 **Category 4: System Issues (Low Priority)**
+
 - System outages
 - Performance issues
 - Configuration errors (non-security)
@@ -89,24 +101,28 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 2.2 Severity Levels
 
 **Critical:**
+
 - Confirmed data breach affecting NPPI
 - Active ongoing attack
 - System-wide compromise
 - **Response Time:** Immediate (within 1 hour)
 
 **High:**
+
 - Suspected data breach
 - Significant security incident
 - Multiple systems affected
 - **Response Time:** Within 4 hours
 
 **Medium:**
+
 - Security incident with limited scope
 - Policy violations
 - Single system affected
 - **Response Time:** Within 24 hours
 
 **Low:**
+
 - Minor security events
 - System issues
 - **Response Time:** Within 72 hours
@@ -118,6 +134,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 3.1 Detection Methods
 
 **Automated Detection:**
+
 - Security monitoring alerts
 - Intrusion detection systems
 - Anomaly detection
@@ -125,6 +142,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Vulnerability scanners
 
 **Manual Detection:**
+
 - Employee reports
 - Customer reports
 - Vendor notifications
@@ -132,6 +150,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Penetration testing findings
 
 **External Detection:**
+
 - Law enforcement notifications
 - Security researcher reports
 - Media reports
@@ -140,18 +159,21 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 3.2 Detection Procedures
 
 **Monitoring:**
+
 - 24/7 security monitoring (if implemented)
 - Daily log reviews
 - Weekly security reports
 - Monthly vulnerability assessments
 
 **Reporting:**
+
 - All potential incidents reported immediately
 - No incident too small to report
 - Non-punitive reporting culture
 - Multiple reporting channels available
 
 **Initial Assessment:**
+
 - Determine if incident is real
 - Classify incident category and severity
 - Activate incident response team if needed
@@ -164,6 +186,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 4.1 Phase 1: Preparation (Ongoing)
 
 **Pre-Incident Activities:**
+
 - Maintain incident response team contact list
 - Regular training and tabletop exercises
 - Keep incident response procedures updated
@@ -174,6 +197,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 4.2 Phase 2: Detection and Analysis
 
 **Step 1: Initial Detection**
+
 - Incident detected or reported
 - Document initial information:
   - What was detected?
@@ -183,18 +207,21 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
   - What systems/data are involved?
 
 **Step 2: Initial Assessment**
+
 - Determine if incident is real (not false positive)
 - Classify incident (Category and Severity)
 - Assess potential impact
 - Determine if IRP activation is needed
 
 **Step 3: IRP Activation**
+
 - Notify Incident Response Coordinator
 - Activate appropriate team members
 - Establish incident communication channel
 - Begin incident documentation
 
 **Step 4: Investigation**
+
 - Gather evidence (preserve chain of custody)
 - Determine scope of incident
 - Identify affected systems and data
@@ -204,6 +231,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 4.3 Phase 3: Containment
 
 **Short-Term Containment:**
+
 - Isolate affected systems
 - Disable compromised accounts
 - Block malicious IP addresses
@@ -211,6 +239,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Document all containment actions
 
 **Long-Term Containment:**
+
 - Implement temporary fixes
 - Remove threat from environment
 - Patch vulnerabilities
@@ -218,6 +247,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Continue monitoring
 
 **Containment Strategies:**
+
 - Network isolation
 - Account suspension
 - System shutdown (if necessary)
@@ -227,6 +257,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 4.4 Phase 4: Eradication
 
 **Threat Removal:**
+
 - Remove malware
 - Close security gaps
 - Patch vulnerabilities
@@ -234,6 +265,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Clean affected systems
 
 **Verification:**
+
 - Verify threat is removed
 - Confirm no backdoors remain
 - Test security controls
@@ -242,6 +274,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 4.5 Phase 5: Recovery
 
 **System Restoration:**
+
 - Restore from clean backups
 - Rebuild compromised systems
 - Restore services gradually
@@ -249,6 +282,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Verify system functionality
 
 **Business Continuity:**
+
 - Restore critical business functions
 - Communicate with customers (if needed)
 - Resume normal operations
@@ -257,6 +291,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 4.6 Phase 6: Post-Incident Activity
 
 **Documentation:**
+
 - Complete incident report
 - Document timeline of events
 - Document actions taken
@@ -264,6 +299,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Update IRP based on findings
 
 **Post-Incident Review:**
+
 - Conduct post-mortem meeting
 - Identify what went well
 - Identify areas for improvement
@@ -271,6 +307,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Update security controls
 
 **Follow-Up:**
+
 - Implement improvements
 - Monitor for related incidents
 - Conduct additional training if needed
@@ -283,16 +320,19 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 5.1 FTC Breach Notification Rule (30-Day Rule)
 
 **When Notification is Required:**
+
 - Unauthorized access to unencrypted customer information
 - Unauthorized access to encrypted information where encryption key was also accessed
 - Affects 500+ customers OR reasonable likelihood of harm
 
 **Notification Timeline:**
+
 - **30 Days:** Must notify FTC within 30 days of discovery
 - **As Soon As Possible:** Notify affected customers without unreasonable delay
 - **Immediate:** Notify law enforcement if criminal activity suspected
 
 **Notification Content:**
+
 - Description of incident
 - Types of information involved
 - Steps taken to contain incident
@@ -300,6 +340,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Contact information for questions
 
 **Notification Methods:**
+
 - Written notice (mail or email)
 - Telephone (if customer consents)
 - Website notice (if 500+ customers affected)
@@ -308,26 +349,31 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 5.2 Other Notification Requirements
 
 **State Authorities:**
+
 - State Attorney General (if required by state law)
 - State regulatory agencies (if applicable)
 - Check state-specific requirements
 
 **Law Enforcement:**
+
 - Local law enforcement (if criminal activity)
 - FBI Internet Crime Complaint Center (IC3)
 - Secret Service (if financial crimes)
 
 **Regulatory Agencies:**
+
 - FTC (30-day rule)
 - State financial regulators (if applicable)
 - Other industry-specific regulators
 
 **Vendors and Partners:**
+
 - Affected vendors
 - Business partners
 - Insurance provider
 
 **Internal Notifications:**
+
 - Management
 - Board of directors (if applicable)
 - All employees (if incident affects them)
@@ -335,24 +381,28 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 5.3 Notification Procedures
 
 **Step 1: Determine Notification Requirements**
+
 - Assess incident scope
 - Determine if notification is required
 - Identify who must be notified
 - Determine notification timeline
 
 **Step 2: Prepare Notifications**
+
 - Draft customer notification letter
 - Draft regulatory notifications
 - Review with legal counsel
 - Obtain management approval
 
 **Step 3: Execute Notifications**
+
 - Send customer notifications
 - File regulatory notifications
 - Notify law enforcement (if needed)
 - Post website notice (if required)
 
 **Step 4: Document Notifications**
+
 - Document all notifications sent
 - Retain copies of notification letters
 - Document dates and methods
@@ -365,6 +415,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 6.1 Data Breach Response
 
 **Immediate Actions (First Hour):**
+
 1. Activate incident response team
 2. Contain breach (isolate affected systems)
 3. Preserve evidence
@@ -372,6 +423,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 5. Notify legal counsel
 
 **First 24 Hours:**
+
 1. Complete initial investigation
 2. Determine scope of data exposure
 3. Identify affected customers
@@ -379,6 +431,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 5. Begin notification preparation
 
 **First Week:**
+
 1. Complete investigation
 2. Send required notifications
 3. File regulatory notifications
@@ -386,6 +439,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 5. Monitor for related incidents
 
 **Ongoing:**
+
 1. Continue monitoring
 2. Respond to customer inquiries
 3. Update security controls
@@ -395,6 +449,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 6.2 Data Breach Documentation
 
 **Required Documentation:**
+
 - Incident timeline
 - Systems and data affected
 - Number of customers affected
@@ -406,6 +461,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Regulatory filings
 
 **Retention:**
+
 - Retain all breach documentation for 7 years
 - Maintain in secure location
 - Available for regulatory audits
@@ -417,18 +473,21 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 7.1 Internal Communication
 
 **Incident Response Team:**
+
 - Secure communication channel (encrypted)
 - Regular status updates
 - Decision log maintained
 - All communications documented
 
 **Management:**
+
 - Regular briefings
 - Escalation procedures
 - Decision authority
 - Resource allocation
 
 **Employees:**
+
 - General awareness (without sensitive details)
 - Instructions if employee action needed
 - Reassurance and support
@@ -436,18 +495,21 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 7.2 External Communication
 
 **Customers:**
+
 - Transparent and timely
 - Clear and understandable
 - Actionable guidance
 - Contact information provided
 
 **Media:**
+
 - Designated spokesperson only
 - Consistent messaging
 - Factual information only
 - No speculation
 
 **Regulators:**
+
 - Accurate and complete
 - Timely submission
 - Professional tone
@@ -460,6 +522,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 8.1 Evidence Collection
 
 **Types of Evidence:**
+
 - System logs
 - Network traffic logs
 - Access logs
@@ -470,6 +533,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Physical evidence (if applicable)
 
 **Chain of Custody:**
+
 - Document all evidence collection
 - Maintain chain of custody log
 - Secure evidence storage
@@ -479,12 +543,14 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 8.2 Forensic Procedures
 
 **When to Engage Forensics:**
+
 - Confirmed data breach
 - Significant security incident
 - Legal action likely
 - Regulatory investigation possible
 
 **Forensic Services:**
+
 - Retain forensic services before incident
 - Engage early in incident response
 - Preserve evidence before forensic analysis
@@ -497,12 +563,14 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 9.1 Service Continuity
 
 **Critical Services:**
+
 - Identify critical business functions
 - Prioritize service restoration
 - Implement workarounds if needed
 - Communicate service status
 
 **Customer Impact:**
+
 - Minimize customer impact
 - Communicate service disruptions
 - Provide alternative access if possible
@@ -511,16 +579,19 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 9.2 Recovery Priorities
 
 **Priority 1: Customer Data Protection**
+
 - Secure customer data
 - Prevent further exposure
 - Restore data integrity
 
 **Priority 2: Service Restoration**
+
 - Restore critical services
 - Resume normal operations
 - Verify system functionality
 
 **Priority 3: Business Operations**
+
 - Resume all business functions
 - Address customer inquiries
 - Normal business operations
@@ -532,11 +603,13 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 10.1 Tabletop Exercises
 
 **Frequency:**
+
 - Annual tabletop exercises minimum
 - Quarterly exercises recommended
 - After significant changes
 
 **Scenarios:**
+
 - Data breach scenarios
 - Ransomware attack
 - System compromise
@@ -544,6 +617,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 - Physical security incident
 
 **Participants:**
+
 - Incident response team
 - Management
 - Key employees
@@ -552,12 +626,14 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 10.2 Training
 
 **Incident Response Team:**
+
 - Annual training on IRP procedures
 - Training on new threats
 - Training on new tools
 - Cross-training on roles
 
 **All Employees:**
+
 - Incident recognition training
 - Reporting procedures
 - Basic response procedures
@@ -570,6 +646,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 11.1 Incident Metrics
 
 **Track:**
+
 - Number of incidents by category
 - Response times
 - Time to containment
@@ -580,11 +657,13 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 11.2 Reporting
 
 **Management Reports:**
+
 - Quarterly incident summary
 - Annual incident report
 - Significant incident reports (as needed)
 
 **Regulatory Reports:**
+
 - As required by regulations
 - Breach notifications
 - Annual compliance reports
@@ -596,12 +675,14 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 12.1 Regular Updates
 
 **Annual Review:**
+
 - Review and update IRP annually
 - Update based on lessons learned
 - Update based on new threats
 - Update based on regulatory changes
 
 **Triggered Updates:**
+
 - After significant incidents
 - After regulatory changes
 - After business changes
@@ -610,6 +691,7 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### 12.2 Version Control
 
 **Document Management:**
+
 - Version number and date
 - Change log
 - Previous versions retained
@@ -648,9 +730,11 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### Appendix A: Contact Information
 
 **Incident Response Team:**
+
 - [Contact information for all team members]
 
 **External Resources:**
+
 - Legal Counsel: [Contact]
 - Forensic Services: [Contact]
 - Insurance: [Contact]
@@ -659,12 +743,15 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 ### Appendix B: Notification Templates
 
 **Customer Breach Notification Letter:**
+
 - [Template to be developed]
 
 **Regulatory Notification:**
+
 - [Template to be developed]
 
 **Internal Incident Report:**
+
 - [Template to be developed]
 
 ### Appendix C: Related Documents
@@ -672,23 +759,26 @@ This document outlines the Incident Response Plan (IRP) framework for Intellifid
 This IRP Framework relates to the following planning documents:
 
 **Legal Documents:**
+
 - `WISP-Framework.md` - Security program framework (IRP is part of WISP)
 - `Risk-Assessment-Process.md` - Risk Assessment Methodology (incident risk evaluation)
 - `Compliance-Checklist.md` - Compliance requirements (GLBA Safeguards Rule, Section 1.2, 30-day FTC notification)
 - `Program-Coordinator-Role.md` - Program Coordinator Responsibilities (IRP implementation)
 
 **Business Documents:**
+
 - `Intellifide, LLC business plan.md` - Business plan Section 6.3 (GLBA Compliance, 30-day FTC breach notification)
 - `Product-Roadmap.md` - Timeline for IRP implementation (Phase 0.5.2)
 - `Vendor-Relationships.md` - Vendor management (vendor incident procedures)
 
 **Technical Documentation:**
+
 - `Security-Architecture.md` - Technical Security Architecture (incident detection and response)
 - `Data-Flow-Diagrams.md` - Data flow architecture (incident data flow)
 
 ---
 
-**Document Approval**
+#### Document Approval
 
 **Prepared by:** [Program Coordinator Name]
 
@@ -704,4 +794,4 @@ This IRP Framework relates to the following planning documents:
 
 **Note:** This is a framework document. The Program Coordinator must implement specific procedures, tools, and contacts based on this framework. All incident response activities must be documented, and the IRP must be tested regularly.
 
-**Last Updated:** December 05, 2025 at 01:34 AM
+**Last Updated:** December 19, 2025 at 01:51 PM CT (Modified 12/19/2025 13:51 Central Time per rules)

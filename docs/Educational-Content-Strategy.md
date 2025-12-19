@@ -1,14 +1,15 @@
 # Educational Content Strategy
+
 ## jualuma "University" - Intellifide, LLC
 
 ## Overview
 
 This document outlines the strategy for the "University" educational content hub within the jualuma platform. The University provides in-house educational articles and videos explaining financial concepts in simple terms to help users improve their financial literacy.
 
-
 **Review Frequency:** Quarterly, or as content strategy evolves
 
 **Related Documents:**
+
 - `Intellifide, LLC business plan.md` - Business plan Section 2.3 (Educational Resources)
 - `Marketing-Content-Guidelines.md` - Marketing content guidelines for educational materials
 - `Product-Roadmap.md` - Timeline for educational content implementation
@@ -21,6 +22,7 @@ This document outlines the strategy for the "University" educational content hub
 ### 1.1 Purpose
 
 The University serves to:
+
 - Educate users about personal finance concepts
 - Improve user financial literacy
 - Support user financial health goals
@@ -30,12 +32,14 @@ The University serves to:
 ### 1.2 Positioning
 
 **Target Audience:**
+
 - Beginners learning personal finance basics
 - Users seeking to understand their financial data
 - Users wanting to improve financial habits
 - Users looking for actionable financial guidance
 
 **Content Philosophy:**
+
 - Simple, accessible language
 - Visual and engaging formats
 - Actionable, practical advice
@@ -49,6 +53,7 @@ The University serves to:
 ### 2.1 Core Topics (MVP)
 
 **Budgeting Fundamentals:**
+
 - What is a budget and why it matters
 - How to create your first budget
 - Budgeting methods (50/30/20, zero-based, etc.)
@@ -56,6 +61,7 @@ The University serves to:
 - Adjusting your budget over time
 
 **Assets vs. Liabilities:**
+
 - Understanding assets
 - Understanding liabilities
 - Building assets
@@ -63,6 +69,7 @@ The University serves to:
 - Net worth calculation
 
 **Debt Management:**
+
 - Types of debt
 - Good debt vs. bad debt
 - Debt payoff strategies
@@ -70,6 +77,7 @@ The University serves to:
 - Credit score basics
 
 **Savings and Emergency Funds:**
+
 - Why emergency funds matter
 - How much to save
 - Where to keep emergency funds
@@ -77,6 +85,7 @@ The University serves to:
 - Savings goals and planning
 
 **Investing Basics:**
+
 - What is investing
 - Types of investments
 - Risk and return
@@ -84,6 +93,7 @@ The University serves to:
 - Getting started with investing
 
 **Financial Planning:**
+
 - Setting financial goals
 - Short-term vs. long-term goals
 - Financial planning basics
@@ -93,23 +103,27 @@ The University serves to:
 ### 2.2 Advanced Topics (Post-MVP)
 
 **Tax Planning:**
+
 - Understanding taxes
 - Tax-advantaged accounts
 - Tax deductions and credits
 - Tax planning strategies
 
 **Retirement Planning:**
+
 - 401(k) and IRAs
 - Retirement savings goals
 - Social Security basics
 - Retirement planning strategies
 
 **Insurance:**
+
 - Types of insurance
 - How much insurance you need
 - Insurance shopping tips
 
 **Estate Planning:**
+
 - Wills and trusts
 - Beneficiary designations
 - Estate planning basics
@@ -121,6 +135,7 @@ The University serves to:
 ### 3.1 Article Format
 
 **Structure:**
+
 - Clear, engaging headline
 - Introduction (hook and overview)
 - Main content (sections with headers)
@@ -129,6 +144,7 @@ The University serves to:
 - Call-to-action (if appropriate)
 
 **Style:**
+
 - Simple, conversational language
 - Avoid jargon; explain technical terms
 - Use examples and analogies
@@ -136,6 +152,7 @@ The University serves to:
 - Scannable format (headers, bullets)
 
 **Length:**
+
 - Short articles: 500-800 words (quick reads)
 - Medium articles: 1,000-1,500 words (comprehensive)
 - Long articles: 2,000+ words (in-depth guides)
@@ -143,11 +160,13 @@ The University serves to:
 ### 3.2 Video Format
 
 **Types:**
+
 - Explainer videos (2-5 minutes)
 - Tutorial videos (5-10 minutes)
 - Deep dive videos (10-15 minutes)
 
 **Style:**
+
 - Clear narration
 - Visual aids and animations
 - Screen recordings (for tutorials)
@@ -155,6 +174,7 @@ The University serves to:
 - Closed captions for accessibility
 
 **Production:**
+
 - Professional quality
 - Consistent branding
 - Clear audio
@@ -163,6 +183,7 @@ The University serves to:
 ### 3.3 Interactive Content (Future)
 
 **Potential Formats:**
+
 - Calculators (budget, savings, debt payoff)
 - Quizzes (financial knowledge)
 - Interactive guides
@@ -175,11 +196,13 @@ The University serves to:
 ### 4.0 Content Creation Responsibilities
 
 **Primary Content Creator:** Kevin Pendergrass (Operations & Customer Success Manager)
+
 - Location: Charlotte, North Carolina (Remote)
 - Responsibilities: Educational content development, content creation and marketing
 - Note: Kevin Pendergrass handles educational content creation with AI agent assistance. All AI-generated content is reviewed and approved by Kevin before publication.
 
 **AI Agent Support:**
+
 - Content Generation Automation Agent assists with educational content creation
 - Kevin Pendergrass reviews all AI-generated content, provides feedback, approves for publication
 - Human oversight ensures quality, accuracy, and compliance with educational content guidelines
@@ -187,30 +210,35 @@ The University serves to:
 ### 4.1 Content Creation Process
 
 **Step 1: Topic Selection**
+
 - Identify user needs
 - Research trending topics
 - Align with business goals
 - Prioritize topics
 
 **Step 2: Content Planning**
+
 - Outline content structure
 - Identify key points
 - Plan visual elements
 - Research facts and data
 
 **Step 3: Content Creation**
+
 - Write article or script
 - Create visual elements
 - Record video (if applicable)
 - Edit and refine
 
 **Step 4: Review and Approval**
+
 - Internal review
 - Fact-checking
 - Legal review (if needed)
 - Final approval
 
 **Step 5: Publication**
+
 - Publish to University section
 - Optimize for SEO
 - Promote through platform
@@ -219,24 +247,28 @@ The University serves to:
 ### 4.2 Content Quality Standards
 
 **Accuracy:**
+
 - All facts verified
 - Sources cited
 - Data current and accurate
 - Regular updates as needed
 
 **Clarity:**
+
 - Simple, clear language
 - No unnecessary jargon
 - Examples provided
 - Visual aids used
 
 **Compliance:**
+
 - No financial advice
 - Informational only
 - Appropriate disclaimers
 - Marketing guidelines followed
 
 **Accessibility:**
+
 - WCAG 2.1 AA compliance
 - Readable fonts and colors
 - Alt text for images
@@ -249,6 +281,7 @@ The University serves to:
 ### 5.1 University Structure
 
 **Main Categories:**
+
 - Getting Started
 - Budgeting
 - Saving
@@ -258,6 +291,7 @@ The University serves to:
 - Advanced Topics
 
 **Navigation:**
+
 - Category pages
 - Search functionality
 - Related articles
@@ -267,6 +301,7 @@ The University serves to:
 ### 5.2 Content Discovery
 
 **Features:**
+
 - Search bar
 - Category browsing
 - Recommended content
@@ -280,12 +315,14 @@ The University serves to:
 ### 6.1 Publishing Schedule
 
 **MVP Phase:**
+
 - Launch with 10-15 core articles
 - 2-3 videos
 - Monthly: 2-3 new articles
 - Quarterly: 1-2 new videos
 
 **Growth Phase:**
+
 - Monthly: 4-6 new articles
 - Monthly: 1-2 new videos
 - Seasonal content (tax season, etc.)
@@ -294,18 +331,21 @@ The University serves to:
 ### 6.2 Content Priorities
 
 **Priority 1 (MVP Launch):**
+
 - Budgeting basics (3-4 articles)
 - Assets vs. liabilities (2 articles)
 - Getting started guide (1 article)
 - Emergency funds (1 article)
 
 **Priority 2 (First 3 Months):**
+
 - Debt management series
 - Savings strategies
 - Investing basics
 - Financial planning introduction
 
 **Priority 3 (Months 4-6):**
+
 - Advanced topics
 - Specialized content
 - Interactive tools
@@ -318,12 +358,14 @@ The University serves to:
 ### 7.1 Review Process
 
 **Initial Review:**
+
 - Fact-checking
 - Accuracy verification
 - Compliance review
 - Quality assurance
 
 **Ongoing Review:**
+
 - Annual content review
 - Update outdated information
 - Refresh statistics and data
@@ -332,6 +374,7 @@ The University serves to:
 ### 7.2 Content Updates
 
 **Update Triggers:**
+
 - Regulatory changes
 - Tax law changes
 - Market changes
@@ -339,6 +382,7 @@ The University serves to:
 - Accuracy concerns
 
 **Update Process:**
+
 1. Identify need for update
 2. Research updated information
 3. Revise content
@@ -353,6 +397,7 @@ The University serves to:
 ### 8.1 Key Metrics
 
 **Engagement Metrics:**
+
 - Article views
 - Video views
 - Time spent on content
@@ -360,12 +405,14 @@ The University serves to:
 - Bounce rates
 
 **User Metrics:**
+
 - Content discovery methods
 - Most popular topics
 - User feedback
 - Content sharing
 
 **Business Metrics:**
+
 - Content impact on user retention
 - Content impact on conversions
 - Content ROI
@@ -374,6 +421,7 @@ The University serves to:
 ### 8.2 Analytics Tools
 
 **Tools:**
+
 - Google Analytics
 - Platform analytics
 - Video analytics (YouTube/Vimeo)
@@ -386,12 +434,14 @@ The University serves to:
 ### 9.1 Content Creation
 
 **Internal Resources:**
+
 - Content writer(s)
 - Video producer (if applicable)
 - Designer (for visuals)
 - Editor/reviewer
 
 **External Resources (If Needed):**
+
 - Freelance writers
 - Video production services
 - Design services
@@ -400,6 +450,7 @@ The University serves to:
 ### 9.2 Budget Considerations
 
 **Content Production Costs:**
+
 - Writer fees (if external)
 - Video production costs
 - Design costs
@@ -413,11 +464,13 @@ The University serves to:
 ### 10.1 Content Disclaimers
 
 **Required Disclaimers:**
+
 - "This content is for informational and educational purposes only"
 - "This content does not constitute financial, investment, tax, or legal advice"
 - "Always consult qualified professionals for financial decisions"
 
 **Placement:**
+
 - Footer of all articles
 - Beginning or end of videos
 - University section landing page
@@ -425,12 +478,14 @@ The University serves to:
 ### 10.2 Compliance Requirements
 
 **Marketing Guidelines:**
+
 - Follow Marketing Content Guidelines
 - No financial advice language
 - No predictions or guarantees
 - Factual claims only
 
 **Legal Review:**
+
 - Content reviewed for compliance
 - No regulatory violations
 - Appropriate disclaimers
@@ -443,6 +498,7 @@ The University serves to:
 ### 11.1 In-Platform Promotion
 
 **Promotion Methods:**
+
 - Featured content on homepage
 - Email newsletters
 - In-app notifications
@@ -452,6 +508,7 @@ The University serves to:
 ### 11.2 External Promotion
 
 **Promotion Channels:**
+
 - Social media (if used)
 - Blog posts
 - SEO optimization
@@ -464,18 +521,21 @@ The University serves to:
 ### 12.1 Post-MVP Features
 
 **Interactive Tools:**
+
 - Budget calculator
 - Savings goal calculator
 - Debt payoff calculator
 - Retirement calculator
 
 **Personalization:**
+
 - Personalized content recommendations
 - Content based on user financial situation
 - Progress tracking
 - Learning paths
 
 **Community Features (Post-MVP, UGC):**
+
 - User-generated content (qualified individuals/institutions only)
 - Community discussions
 - Expert Q&A sessions
@@ -488,6 +548,7 @@ The University serves to:
 ### 13.1 MVP Phase
 
 **Months 1-3:**
+
 - Launch with 10-15 core articles
 - 2-3 foundational videos
 - Basic University structure
@@ -496,12 +557,14 @@ The University serves to:
 ### 13.2 Growth Phase
 
 **Months 4-6:**
+
 - Expand to 30-40 articles
 - 5-10 videos
 - Interactive calculators
 - Enhanced discovery
 
 **Months 7-12:**
+
 - 50+ articles
 - 15+ videos
 - Advanced topics
@@ -514,12 +577,14 @@ The University serves to:
 ### 14.1 Content Success Indicators
 
 **Engagement:**
+
 - High article/video views
 - Good completion rates
 - Low bounce rates
 - Positive user feedback
 
 **Business Impact:**
+
 - Improved user retention
 - Increased user engagement
 - Higher subscription conversions
@@ -528,12 +593,14 @@ The University serves to:
 ### 14.2 Content Quality Indicators
 
 **User Feedback:**
+
 - Positive reviews
 - Helpful ratings
 - User suggestions
 - Content requests
 
 **Expert Validation:**
+
 - Accuracy verified
 - Expert review (if applicable)
 - Compliance verified
@@ -557,7 +624,6 @@ The University serves to:
 
 ---
 
-
 **Next Review:** February 14, 2026
 
 **Maintained By:** Content Team / Marketing Team
@@ -566,4 +632,4 @@ The University serves to:
 
 **Note:** All content must comply with Marketing Content Guidelines and legal requirements. Content should be educational and informational only, never providing financial, investment, tax, or legal advice.
 
-**Last Updated:** December 05, 2025 at 01:34 AM
+**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

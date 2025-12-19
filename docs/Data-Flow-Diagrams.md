@@ -1,14 +1,15 @@
 # Data Flow Diagrams
+
 ## jualuma Platform - Intellifide, LLC
 
 ## Overview
 
 This document provides data flow diagrams and descriptions for the jualuma platform, showing how user data flows through the system from collection to display. These diagrams support security architecture, compliance documentation, and development planning.
 
-
 **Review Frequency:** As architecture changes
 
 **Related Documents:**
+
 - `Master App Dev Guide.md` - Technical specification (data storage, architecture)
 - `Security-Architecture.md` - Security architecture (data protection, encryption)
 - `WISP-Framework.md` - Security program framework (data handling requirements)
@@ -26,6 +27,7 @@ User → jualuma Platform → Data Aggregation → Storage → Processing → Di
 ```
 
 **Key Components:**
+
 1. **User Input:** Account linking, preferences, queries
 2. **Data Aggregation:** Plaid, CEX APIs, Web3 wallets
 3. **Storage:** Cloud SQL (ledger + log ledger), Firestore, Cloud Storage (Coldline archive)
@@ -82,21 +84,25 @@ User
 ### 2.2 Data Collection Security Checkpoints
 
 **Checkpoint 1: Authentication**
+
 - User must be authenticated (Firebase Auth)
 - Session validated
 - User permissions checked
 
 **Checkpoint 2: Account Limits**
+
 - Free Tier: Max 2 traditional, 1 Web3, 1 CEX
 - Pro Tier: Max 5 traditional, 5 Web3, 5 CEX
 - Limits enforced before linking
 
 **Checkpoint 3: Read-Only Verification**
+
 - API scopes verified (read-only only)
 - Trade/move/withdraw scopes blocked
 - FinCEN compliance enforced
 
 **Checkpoint 4: Secret Storage**
+
 - Credentials stored in Secret Manager only
 - Never stored in database
 - Secret references stored in Cloud SQL
@@ -444,6 +450,7 @@ User → POST /chat
 ### 5.2 AI Processing Security Checkpoints
 
 **Checkpoint 1: Quota Enforcement**
+
 - Free Tier: 5 cloud queries/day (Vertex AI Gemini 2.5 Flash)
 - Essential Tier: 75 cloud queries/day limit
 - Pro Tier: 75 cloud queries/day limit (shared with Essential Tier)
@@ -451,21 +458,25 @@ User → POST /chat
 - Hard limit: 5 requests/minute (burst protection)
 
 **Checkpoint 2: Feature Flag**
+
 - ENABLE_AI_GATEWAY must be True
 - Kill switch capability
 - Instant shutdown if needed
 
 **Checkpoint 3: PII Redaction**
+
 - All prompts pass through Cloud DLP
 - Account numbers, SSNs, names redacted
 - Redacted version used for LLM
 
 **Checkpoint 4: Encryption**
+
 - Raw prompt encrypted with User DEK
 - Raw response encrypted with User DEK
 - Logs stored encrypted in Cloud SQL (`audit.llm_logs`) and mirrored to Coldline via nightly exports
 
 **Checkpoint 5: Token Limits**
+
 - max_tokens explicitly set (e.g., 1024)
 - Prevents infinite generation loops
 - Cost control measure
@@ -611,6 +622,7 @@ User → GET /transactions
 ### 8.1 Authentication Checkpoints
 
 **Every Request:**
+
 - User authenticated (Firebase Auth token)
 - Token validated
 - User permissions checked
@@ -619,6 +631,7 @@ User → GET /transactions
 ### 8.2 Authorization Checkpoints
 
 **Data Access:**
+
 - User can only access their own data
 - uid verified on all queries
 - Row-level security enforced
@@ -627,11 +640,13 @@ User → GET /transactions
 ### 8.3 Encryption Checkpoints
 
 **Data at Rest:**
+
 - All NPPI encrypted (AES-256)
 - Encryption keys in KMS
 - Database encryption enabled
 
 **Data in Transit:**
+
 - TLS 1.3 for all communications
 - mTLS for API-to-API (where feasible)
 - No unencrypted transmission
@@ -639,11 +654,13 @@ User → GET /transactions
 ### 8.4 Compliance Checkpoints
 
 **FinCEN:**
+
 - Read-only scope verification
 - No transaction initiation
 - No fund movement
 
 **GLBA:**
+
 - NPPI handling documented
 - Access logged
 - Encryption verified
@@ -778,7 +795,6 @@ Daily Budget Calculation
 
 ---
 
-
 **Next Review:** As architecture changes
 
 **Maintained By:** Technical Team / Architecture Team
@@ -787,4 +803,4 @@ Daily Budget Calculation
 
 **Note:** These diagrams should be updated as the architecture evolves. Consider using diagramming tools for visual representations of these flows.
 
-**Last Updated:** December 07, 2025 at 08:39 PM
+**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

@@ -1,6 +1,6 @@
 # Automated Development and Deployment Process Research
-## Intellifide, LLC - jualuma Platform
 
+## Intellifide, LLC - jualuma Platform
 
 ---
 
@@ -9,6 +9,7 @@
 This document presents research findings and recommendations for refining the automated development and deployment process for the jualuma platform. The research focuses on identifying pre-built MCP (Model Context Protocol) servers and tools that provide context/data to Cursor AI or perform actions that Cursor AI cannot execute directly.
 
 **Key Findings:**
+
 - MCP servers that provide data/context enable Cursor AI to make informed decisions
 - Tools that perform actions (testing, security scanning) complement Cursor AI's code generation capabilities
 - Cursor AI can generate code for identified gaps using standard patterns from its training data
@@ -25,35 +26,41 @@ Integrate MCP servers that provide context (PostgreSQL Explorer, GCP MCP Server,
 ### 1.1 Existing Infrastructure
 
 **Development Environment:**
+
 - **IDE:** Cursor IDE (non-negotiable)
 - **Local Hardware:** MacBook M4 Max (32GB RAM)
 - **Containerization:** Docker Desktop
 - **Local Services:** Docker Compose (PostgreSQL, Firestore Emulator, Pub/Sub Emulator)
 
 **Frontend Stack:**
+
 - React (Vite) + TypeScript
 - Tailwind CSS with "Engineered Liquid Glass" design system
 - ECharts for financial charting
 - Progressive Web App (PWA) with Capacitor for native packaging
 
 **Backend Stack:**
+
 - Python 3.11+ (FastAPI)
 - Cloud Run (Serverless Containers)
 - Cloud Functions (Gen2) + Pub/Sub
 - Cloud Run Jobs + Cloud Scheduler
 
 **Database Architecture (Polyglot):**
+
 - Cloud SQL Enterprise Plus (PostgreSQL + pgvector) - Ledger & Metadata
 - Firestore Datastore Mode - Metering & Cache
 - Cloud SQL audit schema + Coldline - Logs (Audit, LLM logs)
 
 **CI/CD:**
+
 - GitHub Actions
 - Google Artifact Registry
 - Cloud Run deployment with traffic splitting
 - Cloud Storage + CDN for frontend
 
 **Planned MCP Servers (from documentation):**
+
 - Stripe (Official Remote Server) - SSE connection
 - Google Cloud Platform (Community/Enesbol) - stdio connection
 - Playwright (Official) - stdio connection for browser automation and accessibility testing
@@ -64,6 +71,7 @@ Integrate MCP servers that provide context (PostgreSQL Explorer, GCP MCP Server,
 
 **Cursor AI Code Generation:**
 Cursor AI can generate code directly using standard patterns from its training data for:
+
 - FastAPI route generation
 - SQLAlchemy model generation
 - Pydantic model generation
@@ -73,6 +81,7 @@ Cursor AI can generate code directly using standard patterns from its training d
 
 **MCP Server Role:**
 MCP servers provide:
+
 - **Context/Data:** Database schemas, infrastructure status, external service data
 - **Actions:** Testing execution, security scanning, browser automation, deployment operations
 
@@ -85,6 +94,7 @@ MCP servers provide:
 **Purpose:** Natural language interaction with PostgreSQL databases, providing schema exploration and table management capabilities to Cursor AI.
 
 **Capabilities:**
+
 - Schema exploration and querying
 - Table structure inspection
 - Natural language database queries
@@ -92,6 +102,7 @@ MCP servers provide:
 - Query execution and result retrieval
 
 **Integration Value:**
+
 - Provides Cursor AI with real-time database schema information
 - Enables informed SQLAlchemy model generation
 - Supports database-aware code generation
@@ -110,6 +121,7 @@ MCP servers provide:
 ```
 
 **Use Cases:**
+
 - Cursor AI queries database schema before generating SQLAlchemy models
 - Validates table structures during migration generation
 - Inspects existing data structures for code generation
@@ -124,6 +136,7 @@ MCP servers provide:
 **Purpose:** Provides structured access to GCP infrastructure status, enabling Cursor AI to make informed decisions about deployments and infrastructure management.
 
 **Capabilities:**
+
 - Cloud Run service status queries
 - Cloud SQL audit schema inspection (log ledger tables)
 - Cloud Build status monitoring
@@ -131,6 +144,7 @@ MCP servers provide:
 - Resource configuration access
 
 **Integration Value:**
+
 - Provides Cursor AI with real-time infrastructure context
 - Enables infrastructure-aware deployment decisions
 - Supports GCP service integration code generation
@@ -153,6 +167,7 @@ MCP servers provide:
 ```
 
 **Use Cases:**
+
 - Cursor AI queries Cloud Run service health before deployment
 - Inspects Cloud SQL `audit.llm_logs` schema for log structure generation
 - Monitors Cloud Build status during CI/CD operations
@@ -167,6 +182,7 @@ MCP servers provide:
 **Purpose:** Direct GitHub integration providing repository context, issue management, and PR operations to Cursor AI.
 
 **Capabilities:**
+
 - GitHub Issues integration
 - Pull request creation and management
 - Repository operations
@@ -174,12 +190,14 @@ MCP servers provide:
 - Code review context
 
 **Integration Value:**
+
 - Provides Cursor AI with repository context
 - Enables automated PR creation from code changes
 - Supports issue-driven development workflows
 - Facilitates CI/CD workflow integration
 
 **Use Cases:**
+
 - Cursor AI creates PRs automatically after code generation
 - Queries issue context for feature development
 - Monitors CI/CD workflow status
@@ -192,6 +210,7 @@ MCP servers provide:
 **Purpose:** Provides access to Stripe test mode dashboard data, enabling Cursor AI to verify payment configurations and debug subscription logic.
 
 **Capabilities:**
+
 - Live test mode dashboard access
 - Product configuration verification
 - Webhook event inspection
@@ -199,6 +218,7 @@ MCP servers provide:
 - Payment configuration validation
 
 **Integration Value:**
+
 - Provides Cursor AI with real-time Stripe configuration context
 - Enables payment-aware code generation
 - Supports subscription service validation
@@ -216,6 +236,7 @@ MCP servers provide:
 ```
 
 **Use Cases:**
+
 - Cursor AI verifies Stripe product tax code configuration
 - Inspects webhook events for debugging
 - Validates subscription service implementation
@@ -224,7 +245,6 @@ MCP servers provide:
 **Recommendation:** **HIGH PRIORITY** - Already planned, essential for payment integration
 
 **Reference:** [Stripe MCP Server](https://mcp.stripe.com)
-
 
 ---
 
@@ -235,6 +255,7 @@ MCP servers provide:
 **Purpose:** Comprehensive browser automation for testing, accessibility audits, and visual regression testing that Cursor AI cannot perform directly.
 
 **Capabilities:**
+
 - Multi-browser support (Chromium, Firefox, WebKit)
 - Real browser automation (headless and headed modes)
 - Navigation, clicking, typing, screenshot capture
@@ -246,6 +267,7 @@ MCP servers provide:
 - Video recording of test sessions
 
 **Integration Value:**
+
 - Performs browser automation that Cursor AI cannot execute
 - Executes accessibility compliance verification
 - Runs visual regression tests
@@ -264,6 +286,7 @@ MCP servers provide:
 ```
 
 **Use Cases:**
+
 - Automated accessibility compliance verification (WCAG 2.1 AA)
 - Visual regression testing for Engineered Liquid Glass components
 - Multi-browser compatibility testing
@@ -273,6 +296,7 @@ MCP servers provide:
 - Performance testing and monitoring
 
 **Advantages over Puppeteer:**
+
 - More reliable browser automation
 - Better cross-browser support
 - Superior network interception capabilities
@@ -289,6 +313,7 @@ MCP servers provide:
 **Purpose:** Comprehensive automated testing in real browsers on every pull request, catching issues that might be missed otherwise.
 
 **Capabilities:**
+
 - Real browser testing on every PR
 - AI-powered test agents
 - Zero-maintenance QA automation
@@ -298,6 +323,7 @@ MCP servers provide:
 - Bug detection and fixing
 
 **Integration Value:**
+
 - Performs comprehensive testing that Cursor AI cannot execute
 - Runs tests in real browser environments
 - Provides automated QA coverage
@@ -305,6 +331,7 @@ MCP servers provide:
 - Automates test creation and maintenance
 
 **Use Cases:**
+
 - Automated testing on every pull request
 - Real browser test execution
 - Comprehensive QA coverage
@@ -323,6 +350,7 @@ MCP servers provide:
 **Purpose:** Real-time security scanning and autonomous vulnerability remediation as code is written or generated by Cursor AI.
 
 **Capabilities:**
+
 - Real-time security scanning (SAST)
 - Autonomous vulnerability remediation
 - AI-generated code security validation
@@ -330,12 +358,14 @@ MCP servers provide:
 - Security best practices enforcement
 
 **Integration Value:**
+
 - Performs security scanning that Cursor AI cannot execute directly
 - Validates security of AI-generated code
 - Automatically fixes security vulnerabilities
 - Ensures secure-by-default code generation
 
 **Use Cases:**
+
 - Real-time security scanning during code generation
 - Vulnerability detection in AI-generated code
 - Automatic security fix application
@@ -356,6 +386,7 @@ MCP servers provide:
 Cursor IDE includes an integrated browser feature that enables real-time testing and debugging directly within the development environment. This eliminates the need for external browser automation MCP servers like BrowserMCP.
 
 **Capabilities:**
+
 - Real-time UI testing within IDE
 - Visual debugging
 - Responsive design testing
@@ -363,6 +394,7 @@ Cursor IDE includes an integrated browser feature that enables real-time testing
 - Reduced context switching
 
 **Setup:**
+
 1. Open Settings (Cmd/Ctrl + ,)
 2. Navigate to "Beta" tab
 3. Enable "Cursor Browser"
@@ -370,6 +402,7 @@ Cursor IDE includes an integrated browser feature that enables real-time testing
 5. Access via sidebar or Cmd/Ctrl + Shift + B
 
 **Use Cases for jualuma Platform:**
+
 1. **Engineered Liquid Glass Testing:**
    - Real-time contrast ratio verification
    - Visual regression testing
@@ -395,6 +428,7 @@ Cursor IDE includes an integrated browser feature that enables real-time testing
    - Loading state verification
 
 **Integration with MCP Servers:**
+
 - Playwright MCP Server can perform automated browser testing beyond manual inspection
 - Combined workflow: Cursor Browser for development, Playwright for automated testing
 
@@ -411,6 +445,7 @@ Cursor IDE includes an integrated browser feature that enables real-time testing
 Cursor AI can generate code directly using standard patterns from its training data for the following development tasks:
 
 **Backend Code Generation:**
+
 - FastAPI route generation with proper dependency injection
 - Pydantic model generation from schemas or database structures
 - SQLAlchemy model generation with relationships and constraints
@@ -419,6 +454,7 @@ Cursor AI can generate code directly using standard patterns from its training d
 - API documentation generation
 
 **Frontend Code Generation:**
+
 - React component scaffolding with TypeScript
 - TypeScript interface generation
 - Tailwind CSS class application
@@ -427,6 +463,7 @@ Cursor AI can generate code directly using standard patterns from its training d
 - React Query hooks for data fetching
 
 **Testing Code Generation:**
+
 - Pytest fixture generation
 - Unit test generation
 - Integration test scaffolding
@@ -434,6 +471,7 @@ Cursor AI can generate code directly using standard patterns from its training d
 - Test data generation
 
 **Infrastructure Code Generation:**
+
 - Docker configuration files
 - GitHub Actions workflow YAML
 - Cloud Run deployment configurations
@@ -444,16 +482,19 @@ Cursor AI can generate code directly using standard patterns from its training d
 While Cursor AI generates code directly, MCP servers provide context that enhances code generation:
 
 **PostgreSQL Explorer MCP Server:**
+
 - Provides database schema context for SQLAlchemy model generation
 - Enables database-aware code generation
 - Validates schema structures during code generation
 
 **GCP MCP Server:**
+
 - Provides infrastructure context for deployment code generation
 - Enables GCP service integration code generation
 - Validates infrastructure configuration
 
 **GitHub MCP Server:**
+
 - Provides repository context for workflow generation
 - Enables issue-driven code generation
 - Supports PR creation from generated code
@@ -487,7 +528,9 @@ Cursor IDE (Primary Development Environment)
 ### 6.2 Parallel Task Execution Scenarios
 
 #### Scenario 1: Feature Development
+
 **Tasks Executed in Parallel:**
+
 1. **Context Gathering:** PostgreSQL Explorer queries schema, GCP MCP Server checks infrastructure
 2. **Code Generation:** Cursor AI generates FastAPI routes, SQLAlchemy models, React components
 3. **Testing:** Bugster generates and executes tests on PR
@@ -495,13 +538,16 @@ Cursor IDE (Primary Development Environment)
 5. **Deployment:** GitHub MCP Server creates PR
 
 **Orchestration:**
+
 - MCP servers provide context to Cursor AI
 - Cursor AI generates code using standard patterns
 - Action-performing tools validate and test code
 - GitHub MCP Server manages workflow integration
 
 #### Scenario 2: UI/UX Development
+
 **Tasks Executed in Parallel:**
+
 1. **Development:** Cursor Browser provides real-time preview
 2. **Code Generation:** Cursor AI generates React components with Engineered Liquid Glass
 3. **Testing:** Playwright MCP Server performs accessibility audits
@@ -509,19 +555,23 @@ Cursor IDE (Primary Development Environment)
 5. **Documentation:** Cursor AI generates component documentation
 
 **Orchestration:**
+
 - Cursor Browser for real-time development
 - Cursor AI generates components using standard patterns
 - Playwright MCP Server performs automated testing
 - Bugster validates component functionality on PR
 
 #### Scenario 3: Bug Fix and Testing
+
 **Tasks Executed in Parallel:**
+
 1. **Code Analysis:** Cursor AI analyzes codebase and generates fix
 2. **Testing:** Bugster generates and executes regression tests on PR
 3. **Security:** Mend.io scans fix for vulnerabilities
 4. **Deployment:** GitHub MCP Server creates PR with fix
 
 **Orchestration:**
+
 - Cursor AI generates fix using standard patterns
 - Action-performing tools validate fix
 - GitHub MCP Server manages deployment
@@ -564,6 +614,7 @@ Cursor IDE (Primary Development Environment)
    - **Impact:** Bugster covers all Testers.ai functionality plus PR integration
 
 **Remaining MCP Servers - No Redundancy:**
+
 - **PostgreSQL Explorer MCP Server** - Unique: Provides database schema context that Cursor AI cannot access directly
 - **GCP MCP Server** - Unique: Provides infrastructure status that Cursor AI cannot query directly
 - **GitHub MCP Server** - Unique: Provides repository operations and workflow integration
@@ -579,18 +630,21 @@ Cursor IDE (Primary Development Environment)
 ### 8.1 Technical Risks
 
 **Risk: MCP Server Stability**
+
 - **Impact:** Medium
 - **Probability:** Low
 - **Mitigation:** Use official/well-maintained MCP servers, monitor for updates
 - **Contingency:** Maintain manual processes as backup
 
 **Risk: Browser Automation Reliability**
+
 - **Impact:** Medium
 - **Probability:** Medium
 - **Mitigation:** Combine Cursor Browser with Playwright MCP Server, manual verification for critical flows
 - **Contingency:** Fallback to manual testing
 
 **Risk: Code Generation Quality**
+
 - **Impact:** Medium
 - **Probability:** Low
 - **Mitigation:** Use MCP servers to provide context, review generated code, automated testing
@@ -599,12 +653,14 @@ Cursor IDE (Primary Development Environment)
 ### 8.2 Security Risks
 
 **Risk: MCP Server Security**
+
 - **Impact:** High
 - **Probability:** Low
 - **Mitigation:** Use official/verified MCP servers, review code, implement access controls
 - **Contingency:** Disable problematic servers, use alternative solutions
 
 **Risk: AI-Generated Code Security**
+
 - **Impact:** High
 - **Probability:** Medium
 - **Mitigation:** Mend.io integration for real-time security scanning, code review
@@ -658,9 +714,9 @@ Cursor IDE (Primary Development Environment)
 ### 9.3 Enhanced Integration
 
 8. **Enable Cursor Browser:**
-    - Configure Cursor Browser in settings
-    - Test with existing React components
-    - Document usage patterns
+  - Configure Cursor Browser in settings
+  - Test with existing React components
+  - Document usage patterns
 
 ---
 
@@ -677,11 +733,13 @@ The research indicates significant opportunities for refining the automated deve
 Integrate context-providing MCP servers (PostgreSQL Explorer, GCP, GitHub, Stripe) and action-performing tools (Playwright, Bugster, Mend.io). Cursor AI handles code generation directly using standard patterns, enhanced by context from MCP servers.
 
 **Removed from Plan:**
+
 - **Sentry MCP Server** - Not free (requires paid subscription)
 - **Vibe Coder MCP Server** - Redundant with Cursor AI's native capabilities
 - **Testers.ai MCP Server** - Redundant with Bugster Integration
 
 **Technical Benefits:**
+
 - Context-aware code generation with real-time data
 - Automated testing and validation
 - Security scanning and remediation
@@ -696,6 +754,7 @@ Integrate context-providing MCP servers (PostgreSQL Explorer, GCP, GitHub, Strip
 This research document relates to the following planning documents:
 
 **App Development Guides:**
+
 - `Master App Dev Guide.md` - Technical specification (MCP integration, development workflows)
 - `Local App Dev Guide.md` - Local development setup (MCP server configuration)
 - `Model Context Protocol Framework.md` - MCP framework documentation
@@ -703,13 +762,15 @@ This research document relates to the following planning documents:
 - `AI Agent Framework.md` - AI agent implementation details
 
 **Technical Documentation:**
+
 - `Security-Architecture.md` - Security architecture (MCP security considerations)
 - `Deployment-Automation.md` - Deployment strategies (automation integration)
 
 **Business Documents:**
+
 - `Product-Roadmap.md` - Timeline for development activities
 - `Operational-Procedures.md` - Operational procedures (development workflows)
 
 ---
 
-**Last Updated:** December 07, 2025 at 08:39 PM
+**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)
