@@ -1,34 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { selectFreePlan } from '../services/auth'
-import { createCheckoutSession } from '../services/billing'
+import { createCheckoutSession, createBillingPortalSession, getPlans, SubscriptionTier } from '../services/billing'
 
 export const Pricing = () => {
-    const { user, refetchProfile } = useAuth()
+    const { user, profile, refetchProfile } = useAuth()
     const navigate = useNavigate()
     const [loading, setLoading] = useState<string | null>(null)
+    const [plans, setPlans] = useState<SubscriptionTier[]>([])
+    const [fetchError, setFetchError] = useState<string | null>(null)
 
-    const handlePlanSelect = async (plan: string) => {
+    useEffect(() => {
+        const fetchPlans = async () => {
+            try {
+                const data = await getPlans()
+                setPlans(data)
+            } catch (err) {
+                console.error('Failed to fetch plans:', err)
+                setFetchError('Failed to load pricing plans.')
+            }
+        }
+        fetchPlans()
+    }, [])
+
+    const handlePlanSelect = async (planCode: string) => {
         if (!user) {
             navigate('/signup')
             return
         }
 
-        setLoading(plan)
+        // If it's already the current plan, maybe we want to go to the portal?
+        // But free plan doesn't have a portal usually.
+        if (profile?.plan === planCode && planCode !== 'free') {
+            await handleManageSubscription()
+            return
+        }
+
+        setLoading(planCode)
         try {
-            if (plan === 'free') {
+            if (planCode === 'free') {
                 await selectFreePlan()
                 await refetchProfile()
                 navigate('/dashboard')
             } else {
-                // Determine actual plan key (defaulting to monthly for now)
-                let planKey = plan
-                if (plan === 'essential') planKey = 'essential_monthly'
-                if (plan === 'pro') planKey = 'pro_monthly'
-                if (plan === 'ultimate') planKey = 'ultimate_monthly'
-
-                const url = await createCheckoutSession(planKey, window.location.origin + '/dashboard')
+                const url = await createCheckoutSession(planCode, window.location.origin + '/dashboard')
                 window.location.href = url
             }
         } catch (error) {
@@ -39,10 +55,29 @@ export const Pricing = () => {
         }
     }
 
+    const handleManageSubscription = async () => {
+        setLoading('portal')
+        try {
+            const url = await createBillingPortalSession(window.location.origin + '/pricing')
+            window.location.href = url
+        } catch (error) {
+            console.error('Failed to open billing portal:', error)
+            alert('Could not open billing portal. Please contact support.')
+        } finally {
+            setLoading(null)
+        }
+    }
+
     const BtnText = ({ plan }: { plan: string }) => {
-        if (loading === plan) return <span>Processing...</span>
+        if (loading === plan || (loading === 'portal' && profile?.plan === plan)) return <span>Processing...</span>
+        if (profile?.plan === plan) {
+            return <span>{plan === 'free' ? 'Current Plan' : 'Manage Subscription'}</span>
+        }
         return <span>{user ? 'Select Plan' : 'Get Started'}</span>
     }
+
+    // Filter to show monthly by default or as primary blocks
+    const primaryPlans = plans.filter(p => p.interval === 'month' || p.code === 'free')
 
     return (
         <div>
@@ -57,154 +92,50 @@ export const Pricing = () => {
                     account access.
                 </p>
 
+                {fetchError && <p className="text-center text-error mb-8">{fetchError}</p>}
+
                 <div className="grid grid-4 mb-12">
-                    {/* Free Tier */}
-                    <div className="card relative">
-                        <div className="card-header">
-                            <h3>Free</h3>
-                            <div className="text-3xl font-bold text-royal-purple my-4">
-                                $0
-                                <span className="text-base font-normal">/month</span>
+                    {primaryPlans.map((plan) => {
+                        const isCurrent = profile?.plan === plan.code;
+                        return (
+                            <div key={plan.code} className={`card relative ${isCurrent ? 'border-2 border-primary' : plan.code.includes('essential') ? 'border-2 border-aqua' : ''}`}>
+                                {isCurrent && (
+                                    <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-1 rounded-xl text-xs font-semibold">
+                                        CURRENT PLAN
+                                    </div>
+                                )}
+                                {!isCurrent && plan.code.includes('essential') && (
+                                    <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-aqua text-white px-4 py-1 rounded-xl text-xs font-semibold">
+                                        POPULAR
+                                    </div>
+                                )}
+                                <div className="card-header">
+                                    <h3>{plan.name}</h3>
+                                    <div className="text-3xl font-bold text-royal-purple my-4">
+                                        ${plan.amount_cents / 100}
+                                        <span className="text-base font-normal">/{plan.interval}</span>
+                                    </div>
+                                    {plan.description && <p className="text-sm text-text-secondary mb-4">{plan.description}</p>}
+                                </div>
+                                <div className="card-body">
+                                    <ul className="list-none p-0">
+                                        {plan.features.map((feature, idx) => (
+                                            <li key={idx} className="mb-2">✓ {feature}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div className="card-footer">
+                                    <button
+                                        onClick={() => handlePlanSelect(plan.code)}
+                                        disabled={!!loading || (isCurrent && plan.code === 'free')}
+                                        className={`btn w-full ${isCurrent ? 'btn-primary' : plan.code === 'free' ? 'btn-outline' : plan.code.includes('essential') ? 'btn-accent' : 'btn-primary'}`}
+                                    >
+                                        <BtnText plan={plan.code} />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        <div className="card-body">
-                            <ul className="list-none p-0">
-                                <li className="mb-2">✓ Link up to 2 Traditional accounts</li>
-                                <li className="mb-2">✓ 1 Investment account</li>
-                                <li className="mb-2">✓ 1 Web3 wallet</li>
-                                <li className="mb-2">✓ 1 CEX account</li>
-                                <li className="mb-2">✓ 20 AI queries/day</li>
-                                <li className="mb-2">✓ Core infographics and AI overviews</li>
-                                <li className="mb-2">✓ 45-day transaction history</li>
-                                <li className="mb-2">✓ Manual refresh</li>
-                                <li className="mb-2">
-                                    ✓ Developer Marketplace preview only (interactions blocked)
-                                </li>
-                            </ul>
-                        </div>
-                        <div className="card-footer">
-                            <button
-                                onClick={() => handlePlanSelect('free')}
-                                disabled={!!loading}
-                                className="btn btn-outline w-full"
-                            >
-                                <BtnText plan="free" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Essential Tier */}
-                    <div className="card relative border-2 border-aqua">
-                        <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-aqua text-white px-4 py-1 rounded-xl text-xs font-semibold">
-                            POPULAR
-                        </div>
-                        <div className="card-header">
-                            <h3>Essential</h3>
-                            <div className="text-3xl font-bold text-[var(--color-primary)] my-4">
-                                $12
-                                <span className="text-base font-normal">/month</span>
-                            </div>
-                        </div>
-                        <div className="card-body">
-                            <ul className="list-none p-0">
-                                <li className="mb-2">✓ Up to 3 Traditional accounts</li>
-                                <li className="mb-2">✓ 2 Investment accounts</li>
-                                <li className="mb-2">✓ 3 CEX accounts</li>
-                                <li className="mb-2">✓ 1 Web3 wallet</li>
-                                <li className="mb-2">✓ 30 AI queries/day</li>
-                                <li className="mb-2">✓ Enhanced infographics and AI overviews</li>
-                                <li className="mb-2">✓ Daily automated refresh</li>
-                                <li className="mb-2">
-                                    ✓ 30-day recent history; older data archived for lookup
-                                </li>
-                                <li className="mb-2">
-                                    ✓ Developer Marketplace preview only (interactions blocked)
-                                </li>
-                            </ul>
-                        </div>
-                        <div className="card-footer">
-                            <button
-                                onClick={() => handlePlanSelect('essential')}
-                                disabled={!!loading}
-                                className="btn btn-accent w-full"
-                            >
-                                <BtnText plan="essential" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Pro Tier */}
-                    <div className="card relative">
-                        <div className="card-header">
-                            <h3>Pro</h3>
-                            <div className="text-3xl font-bold text-[var(--color-primary)] my-4">
-                                $25
-                                <span className="text-base font-normal">/month</span>
-                            </div>
-                            <div className="text-sm text-[var(--text-muted)]">
-                                or $20.83/month annual ($250/year)
-                            </div>
-                        </div>
-                        <div className="card-body">
-                            <ul className="list-none p-0">
-                                <li className="mb-2">✓ Up to 5 Traditional accounts</li>
-                                <li className="mb-2">✓ 5 Investment accounts</li>
-                                <li className="mb-2">✓ 5 Web3 wallets</li>
-                                <li className="mb-2">✓ Up to 10 CEX accounts</li>
-                                <li className="mb-2">✓ 40 AI queries/day</li>
-                                <li className="mb-2">✓ Full transaction history</li>
-                                <li className="mb-2">✓ Faster scheduled refreshes</li>
-                                <li className="mb-2">✓ 7-day free trial</li>
-                                <li className="mb-2">✓ Developer Marketplace access</li>
-                            </ul>
-                        </div>
-                        <div className="card-footer">
-                            <button
-                                onClick={() => handlePlanSelect('pro')}
-                                disabled={!!loading}
-                                className="btn btn-primary w-full"
-                            >
-                                <BtnText plan="pro" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Ultimate Tier */}
-                    <div className="card relative opacity-90">
-                        <div className="card-header">
-                            <h3>Ultimate</h3>
-                            <div className="text-3xl font-bold text-[var(--color-primary)] my-4">
-                                $60
-                                <span className="text-base font-normal">/month</span>
-                            </div>
-                            <div className="text-sm text-[var(--text-muted)]">or $600/year</div>
-                        </div>
-                        <div className="card-body">
-                            <ul className="list-none p-0">
-                                <li className="mb-2">
-                                    ✓ Up to 20 Traditional, Investment, Web3, and CEX accounts
-                                </li>
-                                <li className="mb-2">✓ Advanced AI with smart routing</li>
-                                <li className="mb-2">✓ 200 AI queries/day</li>
-                                <li className="mb-2">✓ Family/Couple features</li>
-                                <li className="mb-2">✓ Individual net worth tracking</li>
-                                <li className="mb-2">✓ Account assignment per family member</li>
-                                <li className="mb-2">✓ Tab-based interface</li>
-                                <li className="mb-2">✓ Combined family dashboard</li>
-                                <li className="mb-2">✓ All Pro Tier features</li>
-                                <li className="mb-2">✓ Developer Marketplace access</li>
-                            </ul>
-                        </div>
-                        <div className="card-footer">
-                            <button
-                                onClick={() => handlePlanSelect('ultimate')}
-                                disabled={!!loading}
-                                className="btn btn-outline w-full"
-                            >
-                                <BtnText plan="ultimate" />
-                            </button>
-                        </div>
-                    </div>
+                        );
+                    })}
                 </div>
 
                 {/* Feature Comparison */}

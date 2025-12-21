@@ -34,7 +34,8 @@ def require_pro_or_ultimate(current_user: User = Depends(get_current_user)) -> U
     Dependency that ensures the user has a Pro or Ultimate subscription.
     """
     sub = get_current_active_subscription(current_user)
-    if not sub or sub.plan not in SubscriptionPlans.DEVELOPER_ELIGIBLE:
+    base_plan = SubscriptionPlans.get_base_tier(sub.plan) if sub else SubscriptionPlans.FREE
+    if base_plan not in SubscriptionPlans.DEVELOPER_ELIGIBLE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Pro or Ultimate subscription required.",
@@ -48,9 +49,10 @@ def enforce_account_limit(user: User, db: Session, account_type: str):
     Raises 403 if limit exceeded.
     """
     sub = get_current_active_subscription(user)
-    plan = sub.plan.lower() if sub else SubscriptionPlans.FREE
+    plan_code = sub.plan if sub else SubscriptionPlans.FREE
+    base_tier = SubscriptionPlans.get_base_tier(plan_code)
 
-    tier_limits = TierLimits.LIMITS_BY_TIER.get(plan, TierLimits.FREE_LIMITS)
+    tier_limits = TierLimits.LIMITS_BY_TIER.get(base_tier, TierLimits.FREE_LIMITS)
     limit = tier_limits.get(account_type, 3)
 
     count = (
@@ -62,5 +64,5 @@ def enforce_account_limit(user: User, db: Session, account_type: str):
     if count >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"{plan.capitalize()} tier is restricted to {limit} {account_type} accounts. Please upgrade to add more.",
+            detail=f"{plan_code.capitalize()} tier is restricted to {limit} {account_type} accounts. Please upgrade to add more.",
         )

@@ -27,13 +27,13 @@ STRIPE_PLANS = {
     "ultimate_annual": "price_1SftXFRQfRSwy2AapSGEb9HA",
 }
 
-# Map Price IDs to the strict Plan Enum (free, essential, pro, ultimate)
+# Map Price IDs to the exact database code in SubscriptionTier table
 STRIPE_PRICE_TO_TIER = {
-    "price_1SftXDRQfRSwy2AaP2V5zy32": "essential",
-    "price_1SftXERQfRSwy2AaoWXBD9Q7": "pro",
-    "price_1SftXERQfRSwy2Aa84D0XrhT": "pro",
-    "price_1SftXFRQfRSwy2Aas3bHnACi": "ultimate",
-    "price_1SftXFRQfRSwy2AapSGEb9HA": "ultimate",
+    "price_1SftXDRQfRSwy2AaP2V5zy32": "essential_monthly",
+    "price_1SftXERQfRSwy2AaoWXBD9Q7": "pro_monthly",
+    "price_1SftXERQfRSwy2Aa84D0XrhT": "pro_annual",
+    "price_1SftXFRQfRSwy2Aas3bHnACi": "ultimate_monthly",
+    "price_1SftXFRQfRSwy2AapSGEb9HA": "ultimate_annual",
 }
 
 # Keeping this for legacy compatibility or reverse lookups if needed, but preferable to use above.

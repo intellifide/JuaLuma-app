@@ -107,6 +107,7 @@ class ProfileUpdateRequest(BaseModel):
 # Structured helpers ---------------------------------------------------------
 def _serialize_profile(user: User) -> dict:
     """Build a complete profile payload."""
+    all_subs = sorted(user.subscriptions or [], key=lambda x: x.created_at, reverse=True)
     subscriptions = [
         {
             "id": str(sub.id),
@@ -117,7 +118,7 @@ def _serialize_profile(user: User) -> dict:
             "created_at": sub.created_at,
             "updated_at": sub.updated_at,
         }
-        for sub in (user.subscriptions or [])
+        for sub in all_subs
     ]
 
     ai_settings = None
@@ -133,6 +134,15 @@ def _serialize_profile(user: User) -> dict:
 
     profile = user.to_dict()
     profile["subscriptions"] = subscriptions
+    
+    # Expose the most recent subscription as the primary plan
+    if all_subs:
+        profile["plan"] = all_subs[0].plan
+        profile["subscription_status"] = all_subs[0].status
+    else:
+        profile["plan"] = "free"
+        profile["subscription_status"] = "active"
+
     profile["ai_settings"] = ai_settings
     profile["is_developer"] = True if user.developer else False
     return profile

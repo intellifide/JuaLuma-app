@@ -16,6 +16,7 @@ from .notification import LocalNotification, NotificationPreference
 from .payment import Payment
 from .payout import DeveloperPayout
 from .subscription import Subscription
+from .subscription_tier import SubscriptionTier
 from .support import (
     SupportAgent,
     SupportTicket,
@@ -35,6 +36,7 @@ __all__ = [
     "User",
     "Developer",
     "Subscription",
+    "SubscriptionTier",
     "Account",
     "Transaction",
     "Payment",
@@ -57,4 +59,5 @@ __all__ = [
     "WidgetRating",
     "CategoryRule",
     "Budget",
+    "SubscriptionTier",
 ]

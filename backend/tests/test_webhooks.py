@@ -80,14 +80,14 @@ def test_webhook_checkout_completed(test_client, test_db: Session):
         test_db.query(Subscription).filter(Subscription.uid == "test_user_123").first()
     )
     assert sub is not None
-    assert sub.plan == "pro"
+    assert sub.plan == "pro_monthly"
 
 
 def test_webhook_subscription_canceled(test_client, test_db: Session):
     settings.stripe_webhook_secret = "whsec_test"
     # Create user with pro sub
     user = User(uid="test_user_123", email="test@example.com")
-    sub = Subscription(uid="test_user_123", plan="pro")
+    sub = Subscription(uid="test_user_123", plan="pro_monthly")
     # Payment record required for webhook handler to find user by customer_id
     payment = Payment(uid="test_user_123", stripe_customer_id="cus_test_123")
 

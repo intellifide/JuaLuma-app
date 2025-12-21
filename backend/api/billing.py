@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
-from backend.models import User
+from backend.models import User, SubscriptionTier
 from backend.services.billing import (
     create_checkout_session,
     create_portal_session,
@@ -21,6 +21,20 @@ class PortalRequest(BaseModel):
 class CheckoutRequest(BaseModel):
     plan_type: str
     return_url: str
+
+
+class SubscriptionPlan(BaseModel):
+    code: str
+    name: str
+    description: str | None
+    price_id: str | None
+    amount_cents: int
+    currency: str
+    interval: str
+    features: list[str]
+
+    class Config:
+        from_attributes = True
 
 
 @router.post("/portal")
@@ -47,6 +61,15 @@ async def create_checkout(
     """
     url = create_checkout_session(db, user.uid, request.plan_type, request.return_url)
     return {"url": url}
+
+
+@router.get("/plans", response_model=list[SubscriptionPlan])
+async def get_plans(db: Session = Depends(get_db)):
+    """
+    List all active subscription plans.
+    """
+    tiers = db.query(SubscriptionTier).filter(SubscriptionTier.is_active.is_(True)).all()
+    return tiers
 
 
 @router.post("/plans/free")
