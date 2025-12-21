@@ -33,3 +33,10 @@ export const createBillingPortalSession = async (returnUrl: string): Promise<str
     const data = await response.json()
     return data.url
 }
+
+export const verifyCheckoutSession = async (sessionId: string): Promise<void> => {
+    await apiFetch('/billing/checkout/verify', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sessionId }),
+    })
+}

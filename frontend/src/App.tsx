@@ -24,7 +24,9 @@ import { About } from './pages/About'
 import { Privacy } from './pages/legal/Privacy'
 import { Terms } from './pages/legal/Terms'
 import { Marketplace } from './pages/Marketplace'
-import { DeveloperMarketplace } from './pages/DeveloperMarketplace'
+import { DeveloperLanding } from './pages/developers/DeveloperLanding'
+import { DeveloperDashboard } from './pages/developers/DeveloperDashboard'
+import { DeveloperAuth } from './pages/developers/DeveloperAuth'
 import { DeveloperSDK } from './pages/DeveloperSDK'
 import AIDisclaimer from './pages/legal/AIDisclaimer'
 import NotFound from './pages/NotFound'
@@ -108,22 +110,31 @@ function App() {
             <Route path="/feature-request" element={<FeatureRequest />} />
             <Route path="/about" element={<About />} />
             <Route path="/marketplace" element={<Marketplace />} />
+            
+            {/* Developer Portal Routes */}
+            <Route path="/developers" element={<DeveloperLanding />} />
+            <Route path="/developers/login" element={<DeveloperAuth mode="login" />} />
+            <Route path="/developers/signup" element={<DeveloperAuth mode="signup" />} />
+            <Route
+              path="/developers/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DeveloperDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/developer-sdk" element={<DeveloperSDK />} />
+            {/* Legacy Redirect / Alias */}
             <Route
               path="/developer-marketplace"
               element={
                 <ProtectedRoute>
-                  <DeveloperMarketplace />
+                   {/* Redirect to dashboard or landing? Let's use Dashboard as it handles auth check */}
+                  <DeveloperDashboard />
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/developer-sdk"
-              element={
-                <ProtectedRoute>
-                  <DeveloperSDK />
-                </ProtectedRoute>
-              }
-            />
+
             <Route path="/legal/privacy" element={<Privacy />} />
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/ai-disclaimer" element={<AIDisclaimer />} />

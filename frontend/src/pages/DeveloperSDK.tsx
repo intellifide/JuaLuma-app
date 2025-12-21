@@ -7,7 +7,7 @@ import { mockClient } from '../sdk/mockClient';
 import { Paywall } from '../components/ui/Paywall';
 
 export const DeveloperSDK = () => {
-    const { profile } = useAuth();
+    const { profile, profileLoading } = useAuth();
     const [activeTab, setActiveTab] = useState('playground');
 
     const hasPro = profile?.subscriptions?.some(s =>
@@ -48,18 +48,14 @@ export const DeveloperSDK = () => {
         setValidationResult({ status: 'success', message: '✓ Manifest validated successfully! Ready for submission.' });
     };
 
-    if (!profile) return <div className="container py-16 text-center">Loading...</div>;
+    // Allow guests to view docs (CLI, Examples) but gate Playground
+    const isGuest = !profile;
 
-    if (!hasPro && !isDeveloper) {
-        return (
-            <div className="container py-16">
-                <Paywall
-                    title="Developer SDK Access"
-                    description="The Developer SDK and Sandbox tools are reserved for our Pro and Ultimate partners. Upgrade your account to start building custom financial widgets today."
-                />
-            </div>
-        );
-    }
+    if (profileLoading) return <div className="container py-16 text-center">Loading...</div>;
+
+    // Remove Paywall block - effectively allow everyone to see the SDK page
+    // We can conditionally limit features inside the tabs
+
 
     return (
         <div className="container py-16">
@@ -92,7 +88,7 @@ export const DeveloperSDK = () => {
                             <label className="block text-sm font-semibold mb-2">Widget Name *</label>
                             <input
                                 type="text"
-                                className="input w-full"
+                                className="input w-full bg-surface-2 text-text-primary border-white/10"
                                 value={manifest.name}
                                 onChange={e => setManifest({ ...manifest, name: e.target.value })}
                             />
@@ -101,7 +97,7 @@ export const DeveloperSDK = () => {
                             <label className="block text-sm font-semibold mb-2">Version *</label>
                             <input
                                 type="text"
-                                className="input w-full"
+                                className="input w-full bg-surface-2 text-text-primary border-white/10"
                                 value={manifest.version}
                                 placeholder="1.0.0"
                                 onChange={e => setManifest({ ...manifest, version: e.target.value })}
@@ -110,7 +106,7 @@ export const DeveloperSDK = () => {
                         <div>
                             <label className="block text-sm font-semibold mb-2">Description *</label>
                             <textarea
-                                className="input w-full h-24"
+                                className="input w-full h-24 bg-surface-2 text-text-primary border-white/10"
                                 value={manifest.description}
                                 onChange={e => setManifest({ ...manifest, description: e.target.value })}
                             />
@@ -150,7 +146,7 @@ export const DeveloperSDK = () => {
                         <div>
                             <label className="block text-sm font-semibold mb-2">Preview Data (JSON)</label>
                             <textarea
-                                className="input w-full h-48 font-mono text-sm"
+                                className="input w-full h-48 font-mono text-sm bg-surface-2 text-text-primary border-white/10"
                                 value={manifest.previewData}
                                 onChange={e => setManifest({ ...manifest, previewData: e.target.value })}
                             />
@@ -257,7 +253,7 @@ jualuma dev sandbox`}
                     </div>
                     <div className="mt-8 p-6 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
                         <p className="text-xl font-bold text-green-400 mb-4">✓ All checks passed! Ready to submit.</p>
-                        <Link to="/developer-marketplace" className="btn btn-primary">Go to Submission Portal</Link>
+                        <Link to="/developers/dashboard" className="btn btn-primary">Go to Submission Portal</Link>
                     </div>
                 </div>
             )}

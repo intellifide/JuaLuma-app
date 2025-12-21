@@ -154,7 +154,6 @@ def list_my_widgets(
 def submit_widget(
     payload: WidgetCreate,
     current_user: User = Depends(require_developer),
-    _: Any = Depends(require_pro_or_ultimate),  # Enforce Pro/Ultimate
     db: Session = Depends(get_db),
 ) -> Widget:
     """Submit a new widget for review. Developer only. (Legacy/Simple)"""
@@ -184,10 +183,9 @@ def create_widget(
     payload: WidgetCreate,
     request: Request,
     current_user: User = Depends(require_developer),
-    _: Any = Depends(require_pro_or_ultimate),
     db: Session = Depends(get_db),
 ) -> Widget:
-    """Create a new widget. Requires Pro/Ultimate and Developer Agreement."""
+    """Create a new widget. Requires Developer Agreement."""
     # Dependencies handle auth checks
 
     _check_submit_rate_limit(current_user.uid)

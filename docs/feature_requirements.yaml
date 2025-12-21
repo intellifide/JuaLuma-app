@@ -58,14 +58,14 @@ features:
 
   # Marketplace Features
   marketplace.preview:
-    tier: free
-    preview_enabled: false
-    description: Preview-only access to marketplace widgets
+    tier: pro
+    preview_enabled: true
+    description: Access to install and use marketplace widgets
 
   marketplace.publish:
-    tier: pro
+    tier: free
     preview_enabled: false
-    description: Ability to publish widgets to marketplace
+    description: Ability to publish widgets to marketplace (Requires Developer Agreement)
 
   # Family Features
   family.tracking:

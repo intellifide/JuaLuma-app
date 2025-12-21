@@ -122,6 +122,77 @@ def create_checkout_session(
         raise HTTPException(status_code=500, detail="Error creating checkout session.") from e
 
 
+def verify_stripe_session(db: Session, session_id: str) -> bool:
+    """
+    Retrieve session from Stripe and update user if paid.
+    Returns True if paid and updated, False otherwise.
+    """
+    if not settings.stripe_secret_key:
+        return False
+
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+        if session.payment_status == "paid":
+             customer = session.customer
+             uid = session.metadata.get("uid")
+             plan_type = session.metadata.get("plan")
+             
+             # Fallback: if metadata is missing/incomplete, try to recover from Customer ID
+             if not uid and customer:
+                 # Ensure customer is a string, not object (API v2020+)
+                 cust_id = customer.id if hasattr(customer, "id") else customer
+                 payment = db.query(Payment).filter(Payment.stripe_customer_id == cust_id).first()
+                 if payment:
+                     uid = payment.uid
+             
+             if not plan_type:
+                 # Try to infer plan from line items if metadata failed (rare)
+                 # We need to expand line_items in retrieve if not present
+                 if session.line_items:
+                     price_id = session.line_items.data[0].price.id
+                 else:
+                     # Check subscription item
+                     sub_id = session.subscription
+                     if sub_id:
+                         # Retrieve sub to get price
+                         sub_obj = stripe.Subscription.retrieve(sub_id)
+                         price_id = sub_obj["items"]["data"][0]["price"]["id"]
+                     else:
+                         price_id = None
+                 
+                 if price_id:
+                     # Reverse lookup plan_type/tier from price_id
+                     plan_type = STRIPE_PRICE_TO_TIER.get(price_id)
+
+             if uid and plan_type:
+                 # Map 'essential_monthly' (if key) or raw price ID to tier code
+                 # Our internal tiers use keys like 'essential_monthly', 'pro_monthly'
+                 # 'plan_type' from metadata matches keys in STRIPE_PLANS
+                 
+                 # If plan_type is actually a Tier Code (e.g. 'essential_monthly')
+                 tier = plan_type
+                 
+                 # If it somehow got mapped to a Price ID, reverse it
+                 if plan_type.startswith("price_"):
+                     tier = STRIPE_PRICE_TO_TIER.get(plan_type, "free")
+
+                 # Normalize for DB (ensure it exists)
+                 # We trust update_user_tier to handle it, but let's be safe
+                 if tier not in STRIPE_PLANS and tier not in STRIPE_PRICE_TO_TIER.values():
+                     logger.warning(f"Verify Session: Unknown tier code {tier}. Defaulting to free.")
+                     return False
+
+                 update_user_tier(db, uid, tier, status="active")
+                 logger.info(f"Verify Session: Successfully updated {uid} to {tier}")
+                 return True
+                 
+        return False
+    except Exception as e:
+        logger.error(f"Error verifying session {session_id}: {e}")
+        # In a real debug scenario, we might want to propagate this, but for now log it.
+        return False
+
+
 def create_portal_session(user_id: str, db: Session, return_url: str) -> str:
     """
     Creates a Stripe Customer Portal session for the user.
@@ -161,6 +232,16 @@ def update_user_tier(
         sub = Subscription(uid=uid, plan=tier, status=status)
         db.add(sub)
     else:
+        # Idempotency Check: if already in desired state, skip write
+        # This handles the race condition between Webhook and Manual Verify
+        if sub.plan == tier and sub.status == status:
+             if end_date and sub.renew_at == end_date:
+                  logger.info(f"User {uid} already on {tier} ({status}). Skipping update.")
+                  return
+             if not end_date:
+                  logger.info(f"User {uid} already on {tier} ({status}). Skipping update.")
+                  return
+
         # Handle downgrade logic if moving from higher to lower
         if tier == "free" and sub.plan != "free":
             handle_downgrade_logic(db, uid)

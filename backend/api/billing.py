@@ -63,6 +63,31 @@ async def create_checkout(
     return {"url": url}
 
 
+class SessionVerifyRequest(BaseModel):
+    session_id: str
+
+
+@router.post("/checkout/verify")
+async def verify_checkout_session(
+    request: SessionVerifyRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Manually verify a checkout session if webhooks are delayed (e.g. local dev).
+    """
+    from backend.services.billing import verify_stripe_session
+    
+    success = verify_stripe_session(db, request.session_id)
+    if not success:
+         # It might just be not paid yet, or invalid
+         return {"verified": False}
+    
+    # Reload user to return updated profile
+    db.refresh(user)
+    return {"verified": True, "plan": user.subscription.plan if user.subscription else "free"}
+
+
 @router.get("/plans", response_model=list[SubscriptionPlan])
 async def get_plans(db: Session = Depends(get_db)):
     """

@@ -310,6 +310,22 @@ def _create_db_user_safe(db: Session, record, is_fresh_firebase_user: bool) -> U
         ) from exc
 
 
+
+def _generate_and_send_otp(user: User, db: Session) -> None:
+    """Helper to generate OTP and send via email."""
+    code = "".join(random.choices(string.digits, k=6))
+    user.email_otp = code
+    user.email_otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    db.commit()
+
+    try:
+        client = get_email_client()
+        client.send_otp(user.email, code)
+    except Exception as e:
+        logger.error(f"Failed to send initial OTP to {user.email}: {e}")
+        # Don't block signup success, user can resend later
+
+
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
     """
@@ -351,6 +367,10 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
 
     # Create DB record
     user = _create_db_user_safe(db, record, is_fresh_firebase_user)
+    
+    # Automatically send verification OTP
+    _generate_and_send_otp(user, db)
+
     return {"uid": user.uid, "email": user.email, "message": "Signup successful."}
 
 
@@ -449,7 +469,6 @@ def reset_password(
 
     return {
         "message": "Reset link sent",
-        **({"debug_link": reset_link} if settings.is_local else {}),
     }
 
 
@@ -566,20 +585,10 @@ def request_email_code(
         # Prevent enumeration
         return {"message": "If account exists, code sent."}
 
-    code = "".join(random.choices(string.digits, k=6))
-    user.email_otp = code
-    user.email_otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
-    db.commit()
+    _generate_and_send_otp(user, db)
 
-    # Send Email
-    client = get_email_client()
-    client.send_otp(user.email, code)
+    return {"message": "Code sent."}
 
-    response = {"message": "Code sent."}
-    if settings.is_local:
-        response["debug_code"] = code
-
-    return response
 
 
 @router.post("/mfa/email/enable")

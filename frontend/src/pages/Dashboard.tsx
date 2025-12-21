@@ -302,6 +302,31 @@ export default function Dashboard() {
   // Analytics Hooks
   const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
 
+
+  React.useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const sessionId = query.get('session_id');
+    if (sessionId) {
+       // Ideally verify via backend
+       import('../services/billing').then(({ verifyCheckoutSession }) => {
+          verifyCheckoutSession(sessionId)
+            .then(() => {
+                toast.show('Subscription confirmed!', 'success');
+                // Remove param from URL
+                const url = new URL(window.location.href);
+                url.searchParams.delete('session_id');
+                window.history.replaceState({}, '', url.toString());
+                // Force reload of user profile
+                // Note: refetchAccounts / refetchTransactions might be needed if features are gated
+                window.location.reload(); // Simple brute force to ensure all state (profile, etc) updates
+            })
+            .catch(() => {
+                toast.show('Payment verification pending...', 'error');
+            });
+       });
+    }
+  }, []);
+
   const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval);
   const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval);
   const { data: spendData, loading: spendLoading } = useSpendingByCategory(start, end);

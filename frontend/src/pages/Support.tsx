@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { supportService, Ticket } from '../services/support';
 import { CreateTicketModal } from '../components/support/CreateTicketModal';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 
 export const Support = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [tickets, setTickets] = useState<Ticket[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const fetchTickets = async () => {
+        if (!user) return;
+        setLoading(true);
         try {
             const data = await supportService.getTickets();
             setTickets(data);
@@ -23,8 +27,10 @@ export const Support = () => {
     };
 
     useEffect(() => {
-        fetchTickets();
-    }, []);
+        if (user) {
+            fetchTickets();
+        }
+    }, [user]);
 
     const handleTicketClick = (ticketId: string) => {
         navigate(`/support/tickets/${ticketId}`);
@@ -48,11 +54,16 @@ export const Support = () => {
                     <div className="glass-panel flex flex-col h-full min-h-[500px]">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="m-0 text-xl font-bold">My Support Tickets</h2>
-                            <Button variant="primary" onClick={() => setIsModalOpen(true)}>Create Ticket</Button>
+                            {user && <Button variant="primary" onClick={() => setIsModalOpen(true)}>Create Ticket</Button>}
                         </div>
 
                         <div className="flex-1 overflow-y-auto pr-2 space-y-3">
-                            {loading ? (
+                            {!user ? (
+                                <div className="text-center p-8 text-text-secondary border border-dashed border-white/10 rounded-lg">
+                                    <p className="mb-2">Sign in to view your tickets</p>
+                                    <Button variant="outline" onClick={() => navigate('/login?returnUrl=/support')}>Sign In</Button>
+                                </div>
+                            ) : loading ? (
                                 <p className="text-center text-text-secondary py-8">Loading tickets...</p>
                             ) : tickets.length === 0 ? (
                                 <div className="text-center p-8 text-text-secondary border border-dashed border-white/10 rounded-lg">

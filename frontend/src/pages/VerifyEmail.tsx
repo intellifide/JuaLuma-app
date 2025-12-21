@@ -27,9 +27,9 @@ export const VerifyEmail = () => {
         setError('')
         try {
             await requestEmailCode(user.email)
-            setMessage('Un code verification a été envoyé à votre email.')
+            setMessage('A verification code has been sent to your email.')
         } catch (err) {
-            setError('Impossible d\'envoyer le code.' + err)
+            setError('Unable to send code.' + err)
         } finally {
             setSending(false)
         }
@@ -60,11 +60,11 @@ export const VerifyEmail = () => {
         <div className="min-h-screen bg-midnight-black flex items-center justify-center p-4">
             <div className="max-w-md w-full glass-panel p-8 rounded-xl space-y-6">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-neon-blue to-purple-500 bg-clip-text text-transparent">
-                    Vérifiez votre email
+                    Verify Your Email
                 </h2>
 
                 <p className="text-slate-300">
-                    Pour sécuriser votre compte, veuillez entrer le code reçu par email :
+                    To secure your account, please enter the verification code sent to your email:
                     <span className="block font-mono text-neon-blue mt-1">{user?.email}</span>
                 </p>
 
@@ -83,7 +83,7 @@ export const VerifyEmail = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-400 mb-1">
-                            Code de vérification (6 chiffres)
+                            Verification Code (6 digits)
                         </label>
                         <input
                             type="text"
@@ -101,7 +101,7 @@ export const VerifyEmail = () => {
                         disabled={loading || code.length < 6}
                         className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'Vérification...' : 'Valider'}
+                        {loading ? 'Verifying...' : 'Validate'}
                     </button>
                 </form>
 
@@ -111,7 +111,7 @@ export const VerifyEmail = () => {
                         disabled={sending}
                         className="text-sm text-slate-400 hover:text-neon-blue transition-colors"
                     >
-                        {sending ? 'Envoi...' : 'Renvoyer le code'}
+                        {sending ? 'Sending...' : 'Resend Code'}
                     </button>
                 </div>
             </div>

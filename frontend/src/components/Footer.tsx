@@ -11,7 +11,6 @@ export const Footer = () => (
             <li><Link to="/features">Features</Link></li>
             <li><Link to="/pricing">Pricing</Link></li>
             <li><Link to="/marketplace">Marketplace</Link></li>
-            <li><Link to="/developer-marketplace">Developer Marketplace</Link></li>
           </ul>
         </div>
         <div className="footer-section">
@@ -27,7 +26,7 @@ export const Footer = () => (
         <div className="footer-section">
           <h3>Developers</h3>
           <ul>
-            <li><Link to="/developer-marketplace">Developer Marketplace</Link></li>
+            <li><Link to="/developers">Developer Home</Link></li>
             <li><Link to="/developer-sdk">Developer SDK</Link></li>
             <li><Link to="/support">Developer Support</Link></li>
           </ul>

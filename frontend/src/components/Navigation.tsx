@@ -38,6 +38,9 @@ export const Navigation = () => {
       <NavLink to="/settings" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Settings
       </NavLink>
+      <NavLink to="/developers/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+        Developer Portal
+      </NavLink>
 
       {/* Notification Bell */}
       <button
@@ -70,8 +73,8 @@ export const Navigation = () => {
       <NavLink to="/about" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         About
       </NavLink>
-      <NavLink to="/developer-marketplace" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
-        Developer Marketplace
+      <NavLink to="/developers" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+         Developers
       </NavLink>
       <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Login
@@ -165,8 +168,8 @@ export const Navigation = () => {
               <NavLink to="/about" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 About
               </NavLink>
-              <NavLink to="/developer-marketplace" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
-                Developer Marketplace
+              <NavLink to="/developers" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+                Developers
               </NavLink>
               <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 Login

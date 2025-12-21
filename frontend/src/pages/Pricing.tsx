@@ -68,6 +68,14 @@ export const Pricing = () => {
         }
     }
 
+    const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month')
+
+    const displayPlans = plans.filter(p => {
+        if (p.code === 'free') return true
+        if (p.code === 'essential_monthly') return true 
+        return p.interval === billingCycle
+    }).sort((a, b) => a.amount_cents - b.amount_cents)
+
     const BtnText = ({ plan }: { plan: string }) => {
         if (loading === plan || (loading === 'portal' && profile?.plan === plan)) return <span>Processing...</span>
         if (profile?.plan === plan) {
@@ -76,55 +84,69 @@ export const Pricing = () => {
         return <span>{user ? 'Select Plan' : 'Get Started'}</span>
     }
 
-    // Filter to show monthly by default or as primary blocks
-    const primaryPlans = plans.filter(p => p.interval === 'month' || p.code === 'free')
-
     return (
         <div>
             <section className="container py-12">
                 <h1 className="text-center mb-4">
                     Choose Your Plan
                 </h1>
-                <p
-                    className="text-center text-lg text-text-secondary mb-12 max-w-[700px] mx-auto"
-                >
+                <p className="text-center text-lg text-text-secondary mb-8 max-w-[700px] mx-auto">
                     Start free and upgrade when you need more features. All plans include bank-level security and read-only
                     account access.
                 </p>
 
+                {/* Toggle */}
+                <div className="flex justify-center items-center gap-4 mb-12">
+                    <span className={`text-sm font-medium ${billingCycle === 'month' ? 'text-primary' : 'text-text-muted'}`}>Monthly</span>
+                    <button 
+                        onClick={() => setBillingCycle(billingCycle === 'month' ? 'year' : 'month')}
+                        className={`w-14 h-7 rounded-full p-1 transition-colors ${billingCycle === 'year' ? 'bg-primary' : 'bg-slate-600'}`}
+                    >
+                        <div className={`w-5 h-5 bg-white rounded-full transition-transform ${billingCycle === 'year' ? 'translate-x-7' : 'translate-x-0'}`} />
+                    </button>
+                    <span className={`text-sm font-medium ${billingCycle === 'year' ? 'text-primary' : 'text-text-muted'}`}>Yearly <span className="text-accent text-xs">(2 Months Free)</span></span>
+                </div>
+
                 {fetchError && <p className="text-center text-error mb-8">{fetchError}</p>}
 
-                <div className="grid grid-4 mb-12">
-                    {primaryPlans.map((plan) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                    {displayPlans.map((plan) => {
                         const isCurrent = profile?.plan === plan.code;
+                        const isMonthlyOnly = billingCycle === 'year' && plan.interval === 'month' && plan.code !== 'free';
+
                         return (
-                            <div key={plan.code} className={`card relative ${isCurrent ? 'border-2 border-primary' : plan.code.includes('essential') ? 'border-2 border-aqua' : ''}`}>
+                            <div key={plan.code} className={`card relative flex flex-col ${isCurrent ? 'border-2 border-primary' : plan.code.includes('essential') ? 'border-2 border-aqua' : ''} ${isMonthlyOnly ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                                 {isCurrent && (
                                     <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-1 rounded-xl text-xs font-semibold">
                                         CURRENT PLAN
                                     </div>
                                 )}
-                                {!isCurrent && plan.code.includes('essential') && (
+                                {!isCurrent && plan.code.includes('essential') && billingCycle === 'month' && (
                                     <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-aqua text-white px-4 py-1 rounded-xl text-xs font-semibold">
                                         POPULAR
                                     </div>
                                 )}
+                                
                                 <div className="card-header">
                                     <h3>{plan.name}</h3>
                                     <div className="text-3xl font-bold text-royal-purple my-4">
                                         ${plan.amount_cents / 100}
                                         <span className="text-base font-normal">/{plan.interval}</span>
                                     </div>
-                                    {plan.description && <p className="text-sm text-text-secondary mb-4">{plan.description}</p>}
+                                    {plan.description && <p className="text-sm text-text-secondary mb-4 min-h-[40px]">{plan.description}</p>}
+                                    {isMonthlyOnly && <p className="text-xs text-orange-400 font-semibold mb-2">Monthly Only (No Annual Discount)</p>}
                                 </div>
-                                <div className="card-body">
-                                    <ul className="list-none p-0">
+                                <div className="card-body flex-grow">
+                                    <ul className="list-none p-0 text-sm space-y-2">
                                         {plan.features.map((feature, idx) => (
-                                            <li key={idx} className="mb-2">✓ {feature}</li>
+                                            <li key={idx} className="flex gap-2">
+                                                <span className="text-primary">✓</span> 
+                                                <span>{feature}</span>
+                                            </li>
                                         ))}
                                     </ul>
                                 </div>
-                                <div className="card-footer">
+                                <div className="card-footer mt-6">
                                     <button
                                         onClick={() => handlePlanSelect(plan.code)}
                                         disabled={!!loading || (isCurrent && plan.code === 'free')}
@@ -144,10 +166,10 @@ export const Pricing = () => {
                         Feature Comparison
                     </h2>
                     <div className="overflow-x-auto">
-                        <table className="table">
+                        <table className="table w-full text-center">
                             <thead>
                                 <tr>
-                                    <th>Feature</th>
+                                    <th className="text-left">Feature</th>
                                     <th>Free</th>
                                     <th>Essential</th>
                                     <th>Pro</th>
@@ -156,101 +178,72 @@ export const Pricing = () => {
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>
-                                        <strong>Traditional Accounts</strong>
-                                    </td>
+                                    <td className="text-left"><strong>Traditional Accounts</strong></td>
                                     <td>2</td>
                                     <td>3</td>
                                     <td>5</td>
                                     <td>20</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>Investment Accounts</strong>
-                                    </td>
+                                    <td className="text-left"><strong>Investment Accounts</strong></td>
                                     <td>1</td>
                                     <td>2</td>
                                     <td>5</td>
                                     <td>20</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>Web3 Wallets</strong>
-                                    </td>
+                                    <td className="text-left"><strong>Web3 Wallets</strong></td>
                                     <td>1</td>
                                     <td>1</td>
                                     <td>5</td>
                                     <td>20</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>CEX Accounts</strong>
-                                    </td>
+                                    <td className="text-left"><strong>CEX Accounts</strong></td>
                                     <td>1</td>
                                     <td>3</td>
                                     <td>10</td>
                                     <td>20</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>AI Queries/Day</strong>
-                                    </td>
+                                    <td className="text-left"><strong>AI Queries/Day</strong></td>
                                     <td>20</td>
                                     <td>30</td>
                                     <td>40</td>
                                     <td>200</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>AI Model</strong>
-                                    </td>
-                                    <td>Gemini 2.5 Flash</td>
-                                    <td>Gemini 2.5 Flash</td>
-                                    <td>Gemini 2.5 Flash</td>
-                                    <td>Gemini 2.5 Flash</td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <strong>Data Retention</strong>
-                                    </td>
+                                    <td className="text-left"><strong>Data Retention</strong></td>
                                     <td>45 days</td>
-                                    <td>30 days hot + archive</td>
+                                    <td>Current + Prev Year</td>
                                     <td>Full history</td>
                                     <td>Full history</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>Sync Cadence</strong>
-                                    </td>
+                                    <td className="text-left"><strong>Sync Cadence</strong></td>
                                     <td>Manual (10/day)</td>
                                     <td>Daily automated</td>
                                     <td>Faster scheduled</td>
                                     <td>Faster scheduled</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>Family Features</strong>
-                                    </td>
+                                    <td className="text-left"><strong>Family Features</strong></td>
                                     <td>—</td>
                                     <td>—</td>
                                     <td>—</td>
                                     <td>✓</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>Free Trial</strong>
-                                    </td>
+                                    <td className="text-left"><strong>Free Trial</strong></td>
                                     <td>—</td>
                                     <td>—</td>
                                     <td>7 days</td>
                                     <td>—</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        <strong>Developer Marketplace</strong>
-                                    </td>
-                                    <td>Preview only (blocked)</td>
-                                    <td>Preview only (blocked)</td>
+                                    <td className="text-left"><strong>Developer Marketplace</strong></td>
+                                    <td>No Access</td>
+                                    <td>No Access</td>
                                     <td>Full access</td>
                                     <td>Full access</td>
                                 </tr>
