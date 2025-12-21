@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy.orm import Session, selectinload
 
+from backend.core.config import settings
 from backend.core.constants import UserStatus
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, Subscription, User
@@ -436,7 +437,10 @@ def reset_password(
         # but we also don't want them waiting for an email that won't come.
         # Returning success (to prevent enumeration) is standard, but internal alerts are needed.
 
-    return {"message": "Reset link sent"}
+    return {
+        "message": "Reset link sent",
+        **({"debug_link": reset_link} if settings.is_local else {}),
+    }
 
 
 @router.post("/change-password")
@@ -561,7 +565,11 @@ def request_email_code(
     client = get_email_client()
     client.send_otp(user.email, code)
 
-    return {"message": "Code sent."}
+    response = {"message": "Code sent."}
+    if settings.is_local:
+        response["debug_code"] = code
+
+    return response
 
 
 @router.post("/mfa/email/enable")

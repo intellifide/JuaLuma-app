@@ -11,42 +11,23 @@
             "item": [
                 {
                     "name": "Signup",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{test_user_email}}\",\n    \"password\": \"{{test_user_password}}\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{base_url}}/signup",
-                            "host": [
-                                "{{base_url}}"
-                            ],
-                            "path": [
-                                "signup"
-                            ]
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Login",
                     "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "pm.environment.set(\"current_email\", \"test-user-\" + Date.now() + \"@example.com\");"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
                         {
                             "listen": "test",
                             "script": {
                                 "exec": [
                                     "var jsonData = pm.response.json();",
-                                    "if (jsonData.user && jsonData.user.uid) {",
-                                    "    // Note: In a real flow, we'd extract a JWT here. For this mocked auth, we might not get a token back directly unless valid.",
-                                    "    // Assuming the backend verifies a token sent in body. For testing, we might need to manually set a token in env if using real firebase.",
-                                    "    // For local dev with mocks, we often bypass or mock the verify_token.",
+                                    "if (jsonData.uid) {",
+                                    "    pm.environment.set(\"test_uid\", jsonData.uid);",
                                     "}"
                                 ],
                                 "type": "text/javascript"
@@ -63,14 +44,106 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"token\": \"valid-test-token-placeholder\"\n}"
+                            "raw": "{\n    \"email\": \"{{current_email}}\",\n    \"password\": \"{{test_user_password}}\"\n}"
                         },
                         "url": {
-                            "raw": "{{base_url}}/login",
+                            "raw": "{{base_url}}/api/auth/signup",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
+                                "api",
+                                "auth",
+                                "signup"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Emulator Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.idToken) {",
+                                    "    pm.environment.set(\"token\", jsonData.idToken);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{current_email}}\",\n    \"password\": \"{{test_user_password}}\",\n    \"returnSecureToken\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "9099",
+                            "path": [
+                                "identitytoolkit.googleapis.com",
+                                "v1",
+                                "accounts:signInWithPassword"
+                            ],
+                            "query": [
+                                {
+                                    "key": "key",
+                                    "value": "fake-api-key"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "// Token is now handled by 'Get Emulator Token' request"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"{{token}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
                                 "login"
                             ]
                         }
@@ -88,11 +161,13 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/profile",
+                            "raw": "{{base_url}}/api/auth/profile",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
+                                "api",
+                                "auth",
                                 "profile"
                             ]
                         }
@@ -118,38 +193,75 @@
                             "raw": "{\n    \"currency_pref\": \"EUR\"\n}"
                         },
                         "url": {
-                            "raw": "{{base_url}}/profile",
+                            "raw": "{{base_url}}/api/auth/profile",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
+                                "api",
+                                "auth",
                                 "profile"
                             ]
                         }
                     },
                     "response": []
                 },
+
                 {
-                    "name": "Logout",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/logout",
-                            "host": [
-                                "{{base_url}}"
+                    "name": "MFA",
+                    "item": [
+                        {
+                            "name": "Request Email Code",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData.debug_code) {",
+                                            "    pm.environment.set(\"debug_code\", jsonData.debug_code);",
+                                            "}"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
                             ],
-                            "path": [
-                                "logout"
-                            ]
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    { "key": "Authorization", "value": "Bearer {{token}}" },
+                                    { "key": "Content-Type", "value": "application/json" }
+                                ],
+                                "body": { "mode": "raw", "raw": "{\n    \"email\": \"{{current_email}}\"\n}" },
+                                "url": {
+                                    "raw": "{{base_url}}/api/auth/mfa/email/request-code",
+                                    "host": [ "{{base_url}}" ],
+                                    "path": [ "api", "auth", "mfa", "email", "request-code" ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Enable Email MFA",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    { "key": "Authorization", "value": "Bearer {{token}}" },
+                                    { "key": "Content-Type", "value": "application/json" }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"code\": \"{{debug_code}}\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/auth/mfa/email/enable",
+                                    "host": [ "{{base_url}}" ],
+                                    "path": [ "api", "auth", "mfa", "email", "enable" ]
+                                }
+                            },
+                            "response": []
                         }
-                    },
-                    "response": []
+                    ]
                 }
             ]
         },
@@ -181,6 +293,20 @@
                 },
                 {
                     "name": "Create Manual Account",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) {",
+                                    "    pm.environment.set(\"account_id\", jsonData.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
                     "request": {
                         "method": "POST",
                         "header": [
@@ -234,7 +360,7 @@
                             "variable": [
                                 {
                                     "key": "account_id",
-                                    "value": ""
+                                    "value": "{{account_id}}"
                                 }
                             ]
                         }
@@ -243,6 +369,18 @@
                 },
                 {
                     "name": "Update Account",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "// Skip Sync Account",
+                                    "postman.setNextRequest(\"Create Manual Transaction\");"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
                     "request": {
                         "method": "PATCH",
                         "header": [
@@ -272,7 +410,7 @@
                             "variable": [
                                 {
                                     "key": "account_id",
-                                    "value": ""
+                                    "value": "{{account_id}}"
                                 }
                             ]
                         }
@@ -303,7 +441,7 @@
                             "variable": [
                                 {
                                     "key": "account_id",
-                                    "value": ""
+                                    "value": "{{account_id}}"
                                 }
                             ]
                         }
@@ -316,7 +454,70 @@
             "name": "Transactions",
             "item": [
                 {
+
+                    "name": "Create Manual Transaction",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) {",
+                                    "    pm.environment.set(\"transaction_id\", jsonData.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"account_id\": \"{{account_id}}\",\n    \"ts\": \"2025-12-10T12:00:00Z\",\n    \"amount\": 50.00,\n    \"currency\": \"USD\",\n    \"merchant_name\": \"Test Merchant\",\n    \"category\": \"Test Category\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/transactions",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "transactions"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
                     "name": "List Transactions",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.items && jsonData.items.length > 0) {",
+                                    "    pm.environment.set(\"transaction_id\", jsonData.items[0].id);",
+                                    "}",
+                                    "else if (Array.isArray(jsonData) && jsonData.length > 0) {",
+                                    "    pm.environment.set(\"transaction_id\", jsonData[0].id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
                     "request": {
                         "method": "GET",
                         "header": [
@@ -409,7 +610,7 @@
                             "variable": [
                                 {
                                     "key": "transaction_id",
-                                    "value": ""
+                                    "value": "{{transaction_id}}"
                                 }
                             ]
                         }
@@ -508,6 +709,20 @@
             "item": [
                 {
                     "name": "Create Ticket",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.id) {",
+                                    "    pm.environment.set(\"ticket_id\", jsonData.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
                     "request": {
                         "method": "POST",
                         "header": [
@@ -595,7 +810,7 @@
                             "variable": [
                                 {
                                     "key": "ticket_id",
-                                    "value": ""
+                                    "value": "{{ticket_id}}"
                                 }
                             ]
                         }
@@ -655,12 +870,61 @@
                     "response": []
                 }
             ]
+        },
+        {
+            "name": "Billing",
+            "item": [
+                {
+                    "name": "Create Checkout Session",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}" },
+                            { "key": "Content-Type", "value": "application/json" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"plan_type\": \"pro_monthly\",\n    \"return_url\": \"http://localhost:3000/settings\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/billing/checkout/session",
+                            "host": [ "{{base_url}}" ],
+                            "path": [ "api", "billing", "checkout", "session" ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Portal Session",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{token}}" },
+                            { "key": "Content-Type", "value": "application/json" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"return_url\": \"http://localhost:3000/settings\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/billing/portal",
+                            "host": [ "{{base_url}}" ],
+                            "path": [ "api", "billing", "portal" ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
         }
     ],
     "variable": [
         {
             "key": "base_url",
             "value": "http://localhost:8001"
+        },
+        {
+            "key": "test_user_password",
+            "value": "password123"
         }
     ]
 }

@@ -96,6 +96,7 @@ describe('Auth Integration', () => {
             // Assuming first two are Terms and Privacy based on render order (Terms first, Privacy second)
             fireEvent.click(checkboxes[0]) // Terms
             fireEvent.click(checkboxes[1]) // Privacy
+            fireEvent.click(checkboxes[2]) // Resident Cert check
 
             const submitButton = screen.getByRole('button', { name: /Create account/i })
             fireEvent.click(submitButton)

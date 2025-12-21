@@ -115,11 +115,11 @@ async def test_net_worth_endpoint(
 async def test_cash_flow_endpoint(client, mock_db_session, override_dependencies):
     # Mock ResultProxy
     row_income = MagicMock()
-    row_income.month = datetime(2023, 1, 1)
+    row_income.period = datetime(2023, 1, 1)
     row_income.total = Decimal("5000")
 
     row_expense = MagicMock()
-    row_expense.month = datetime(2023, 1, 1)
+    row_expense.period = datetime(2023, 1, 1)
     row_expense.total = Decimal("-2000")
 
     mock_result_income = MagicMock()

@@ -6,6 +6,7 @@ import Dashboard from '../../pages/Dashboard'
 import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { useAccounts } from '../../hooks/useAccounts'
 import { useTransactions } from '../../hooks/useTransactions'
+import { ToastProvider } from '../../components/ui/Toast'
 import { User } from 'firebase/auth'
 import { Account, Transaction } from '../../types'
 import userEvent from '@testing-library/user-event'
@@ -116,7 +117,9 @@ describe('Dashboard Integration', () => {
     it('renders user info, accounts and transactions', async () => {
         render(
             <BrowserRouter>
-                <Dashboard />
+                <ToastProvider>
+                    <Dashboard />
+                </ToastProvider>
             </BrowserRouter>
         )
 
@@ -154,7 +157,9 @@ describe('Dashboard Integration', () => {
 
         render(
             <BrowserRouter>
-                <Dashboard />
+                <ToastProvider>
+                    <Dashboard />
+                </ToastProvider>
             </BrowserRouter>
         )
 
@@ -193,7 +198,9 @@ describe('Dashboard Integration', () => {
 
         render(
             <BrowserRouter>
-                <Dashboard />
+                <ToastProvider>
+                    <Dashboard />
+                </ToastProvider>
             </BrowserRouter>
         )
 
@@ -245,7 +252,9 @@ describe('Dashboard Integration', () => {
 
         render(
             <BrowserRouter>
-                <Dashboard />
+                <ToastProvider>
+                    <Dashboard />
+                </ToastProvider>
             </BrowserRouter>
         )
 
@@ -313,7 +322,9 @@ describe('Dashboard Integration', () => {
 
         render(
             <BrowserRouter>
-                <Dashboard />
+                <ToastProvider>
+                    <Dashboard />
+                </ToastProvider>
             </BrowserRouter>
         )
 
@@ -354,7 +365,9 @@ describe('Dashboard Integration', () => {
 
         render(
             <BrowserRouter>
-                <Dashboard />
+                <ToastProvider>
+                    <Dashboard />
+                </ToastProvider>
             </BrowserRouter>
         )
 
