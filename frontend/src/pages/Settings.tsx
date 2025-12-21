@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { changePassword } from '../services/auth';
+import { changePassword, apiFetch } from '../services/auth';
 
 export const Settings = () => {
   const { user, profile } = useAuth();
@@ -96,17 +96,16 @@ export const Settings = () => {
               <h2 className="mb-6">Subscription</h2>
               <div className="card mb-6">
                 <div className="card-header pb-2 border-b border-border mb-4">
-                  <h3 className="text-xl font-bold">Current Plan: {profile?.plan ? profile.plan.charAt(0).toUpperCase() + profile.plan.slice(1) : 'Free'}</h3>
+                  <h3 className="text-xl font-bold">Current Plan: {profile?.plan ? profile.plan.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Free'}</h3>
                 </div>
                 <div className="card-body">
-                  <p className="mb-2"><strong>Billing:</strong> {profile?.plan === 'pro' ? '$20.00/month' : 'Free'}</p>
+                  <p className="mb-2"><strong>Billing:</strong> {profile?.plan && profile.plan !== 'free' ? 'Paid Subscription' : 'Free'}</p>
                   {profile?.subscriptions?.[0]?.renew_at && (
                     <p className="mb-2"><strong>Next Billing Date:</strong> {new Date(profile.subscriptions[0].renew_at).toLocaleDateString()}</p>
                   )}
                   <p className="mb-2"><strong>Status:</strong> <span className={`px-2 py-0.5 rounded text-xs font-semibold ${profile?.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{profile?.subscription_status || 'Inactive'}</span></p>
-                  <p className="mb-2"><strong>AI Queries:</strong> {profile?.subscriptions?.[0]?.ai_quota_used || 0}/75 used today</p>
 
-                  {profile?.plan === 'pro' && (
+                  {profile?.plan?.includes('pro') && (
                     <p className="mt-4 p-2 bg-royal-purple/10 rounded text-sm">
                       <strong>Tax Note:</strong> Billing includes Texas sales tax on 80% of subscription fee (20% exemption for data processing services)
                     </p>
@@ -115,19 +114,13 @@ export const Settings = () => {
                 <div className="card-footer mt-6 flex gap-2">
                   <button onClick={async () => {
                     try {
-                      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
                       if (!user) {
                         alert('You must be signed in to manage billing.');
                         return;
                       }
 
-                      const token = await user.getIdToken();
-                      const response = await fetch(`${apiBase}/api/billing/portal`, {
+                      const response = await apiFetch('/billing/portal', {
                         method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${token}`,
-                          'Content-Type': 'application/json'
-                        },
                         body: JSON.stringify({ return_url: window.location.href })
                       });
 

@@ -18,7 +18,7 @@ export const useBudget = () => {
         if (!user) return;
         setLoading(true);
         try {
-            const res = await apiFetch('/api/budgets/');
+            const res = await apiFetch('/budgets/');
             if (res.ok) {
                 const data = await res.json();
                 setBudgets(data);
@@ -40,12 +40,12 @@ export const useBudget = () => {
         try {
             if (amount === null) {
                 // Delete
-                await apiFetch(`/api/budgets/${category}`, {
+                await apiFetch(`/budgets/${category}`, {
                     method: 'DELETE'
                 });
             } else {
                 // Upsert
-                await apiFetch('/api/budgets/', {
+                await apiFetch('/budgets/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ category, amount, period: 'monthly' })

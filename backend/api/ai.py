@@ -254,13 +254,7 @@ def get_quota_status(
     subscription = db.query(Subscription).filter(Subscription.uid == user_id).first()
     tier = subscription.plan.lower() if subscription else "free"
 
-    # Imports should be at top, but check_rate_limit uses TIER_LIMITS which is in ai.py
-    # Ideally TIER_LIMITS should be exported or we check logic again.
-    # check_rate_limit in ai.py doesn't export TIER_LIMITS.
-    # I'll re-declare or import it if I can.
-    # TIER_LIMITS in backend/services/ai.py is a module-level variable.
-    from backend.services.ai import TIER_LIMITS
-
+    # TIER_LIMITS is imported from backend.services.ai at module level
     limit = TIER_LIMITS.get(tier, 20)
 
     # 2. Check Usage (read-only)

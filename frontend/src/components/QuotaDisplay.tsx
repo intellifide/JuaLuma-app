@@ -33,8 +33,8 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ used, limit, tier, l
                 <span className={`text-sm font-medium ${isExceeded ? 'text-red-500' : 'text-text-primary'}`}>
                     {used} / {limit} queries
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-surface-2 text-text-secondary border border-white/10 uppercase tracking-wider">
-                    {tier}
+                <span className="text-xs px-2 py-0.5 rounded-full bg-surface-2 text-text-secondary border border-white/10 tracking-wider">
+                    {tier.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                 </span>
             </div>
 

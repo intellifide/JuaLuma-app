@@ -160,7 +160,17 @@ def get_ai_client() -> AIClient:
             raise ImportError("google.cloud.aiplatform package is missing.")
 
 
-TIER_LIMITS = {"free": 20, "essential": 30, "pro": 40, "ultimate": 200}
+TIER_LIMITS = {
+    "free": 20,
+    "essential": 75,
+    "essential_monthly": 75,
+    "pro": 75,
+    "pro_monthly": 75,
+    "pro_annual": 75,
+    "ultimate": 200,
+    "ultimate_monthly": 200,
+    "ultimate_annual": 200,
+}
 
 
 # 2025-12-11 14:15 CST - split rate-limit check from usage increment

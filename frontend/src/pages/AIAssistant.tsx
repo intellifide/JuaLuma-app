@@ -297,9 +297,7 @@ export default function AIAssistant() {
         </div>
       </div>
 
-      <div className="alert alert-info mt-12">
-        <strong>Usage Limits:</strong> Free Tier: 20 queries/day. Essential/Pro: 75 queries/day. Ultimate: 200 queries/day. Powered by Gemini 2.5 Flash. Queries reset daily at midnight CT.
-      </div>
+
     </section>
   );
 }
