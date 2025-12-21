@@ -2,17 +2,21 @@
 import logging
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import Lock
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
-from backend.middleware.auth import get_current_user
-from backend.core.dependencies import require_developer, require_pro_or_ultimate, get_current_active_subscription
 from backend.core.constants import SubscriptionPlans
+from backend.core.dependencies import (
+    get_current_active_subscription,
+    require_developer,
+    require_pro_or_ultimate,
+)
+from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, User, Widget, WidgetRating
 from backend.utils import get_db
 
@@ -24,29 +28,39 @@ logger = logging.getLogger(__name__)
 
 # --- Schemas ---
 
+
 class WidgetBase(BaseModel):
     name: str = Field(..., min_length=3, max_length=128)
-    description: Optional[str] = Field(None, max_length=1024)
-    category: Optional[str] = Field("general", max_length=64)
-    scopes: List[str] = Field(default_factory=list)
-    preview_data: Dict[str, Any] = Field(default_factory=dict)
+    description: str | None = Field(None, max_length=1024)
+    category: str | None = Field("general", max_length=64)
+    scopes: list[str] = Field(default_factory=list)
+    preview_data: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("scopes")
-    def validate_scopes(cls, v: List[str]) -> List[str]:
+    def validate_scopes(cls, v: list[str]) -> list[str]:
         """Ensure scopes are read-only."""
         for scope in v:
-            if "write" in scope.lower() or "delete" in scope.lower() or "update" in scope.lower():
-                raise ValueError(f"Scope '{scope}' is not allowed. Only read-only scopes are permitted.")
+            if (
+                "write" in scope.lower()
+                or "delete" in scope.lower()
+                or "update" in scope.lower()
+            ):
+                raise ValueError(
+                    f"Scope '{scope}' is not allowed. Only read-only scopes are permitted."
+                )
         return v
+
 
 class WidgetCreate(WidgetBase):
     pass
 
+
 class WidgetUpdate(BaseModel):
-    description: Optional[str] = Field(None, max_length=1024)
-    category: Optional[str] = Field(None, max_length=64)
-    version: Optional[str] = Field(None, pattern=r"^\d+\.\d+\.\d+$")
-    preview_data: Optional[Dict[str, Any]] = None
+    description: str | None = Field(None, max_length=1024)
+    category: str | None = Field(None, max_length=64)
+    version: str | None = Field(None, pattern=r"^\d+\.\d+\.\d+$")
+    preview_data: dict[str, Any] | None = None
+
 
 class WidgetResponse(WidgetBase):
     id: str
@@ -65,23 +79,26 @@ class WidgetResponse(WidgetBase):
 
 class WidgetRatingCreate(BaseModel):
     rating: int = Field(..., ge=1, le=5)
-    review: Optional[str] = Field(None, max_length=2000)
+    review: str | None = Field(None, max_length=2000)
+
 
 class PaginatedWidgetResponse(BaseModel):
-    data: List[WidgetResponse]
+    data: list[WidgetResponse]
     total: int
     page: int
     page_size: int
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # --- Endpoints ---
 
 # Simple in-memory rate limiter for submissions
-_submit_attempts: Dict[str, Deque[float]] = defaultdict(deque)
+_submit_attempts: dict[str, deque[float]] = defaultdict(deque)
 _submit_lock = Lock()
 _SUBMIT_WINDOW = 3600  # 1 hour
 _SUBMIT_LIMIT = 5
+
 
 def _check_submit_rate_limit(uid: str) -> None:
     now = time.time()
@@ -90,62 +107,61 @@ def _check_submit_rate_limit(uid: str) -> None:
         # Cleanup old attempts
         while attempts and attempts[0] <= now - _SUBMIT_WINDOW:
             attempts.popleft()
-        
+
         if len(attempts) >= _SUBMIT_LIMIT:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Submission limit reached. Try again later."
+                detail="Submission limit reached. Try again later.",
             )
         attempts.append(now)
 
+
 @router.get("/", response_model=PaginatedWidgetResponse)
 def list_widgets(
-    category: Optional[str] = None,
-    search: Optional[str] = None,
+    category: str | None = None,
+    search: str | None = None,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List available widgets with optional filtering and pagination."""
     query = db.query(Widget).filter(Widget.status == "approved")
-    
+
     if category:
         query = query.filter(Widget.category == category)
     if search:
         # Simple case-insensitive search on name
         query = query.filter(Widget.name.ilike(f"%{search}%"))
-        
+
     total = query.count()
     widgets = query.offset((page - 1) * page_size).limit(page_size).all()
-    
-    return {
-        "data": widgets,
-        "total": total,
-        "page": page,
-        "page_size": page_size
-    }
 
-@router.get("/mine", response_model=List[WidgetResponse])
+    return {"data": widgets, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/mine", response_model=list[WidgetResponse])
 def list_my_widgets(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> List[Widget]:
+) -> list[Widget]:
     """List widgets owned by the current user."""
     return db.query(Widget).filter(Widget.developer_uid == current_user.uid).all()
 
 
-@router.post("/submit", response_model=WidgetResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/submit", response_model=WidgetResponse, status_code=status.HTTP_201_CREATED
+)
 def submit_widget(
     payload: WidgetCreate,
     current_user: User = Depends(require_developer),
-    _: Any = Depends(require_pro_or_ultimate), # Enforce Pro/Ultimate
+    _: Any = Depends(require_pro_or_ultimate),  # Enforce Pro/Ultimate
     db: Session = Depends(get_db),
 ) -> Widget:
     """Submit a new widget for review. Developer only. (Legacy/Simple)"""
     # Developer check handled by dependency
-        
+
     _check_submit_rate_limit(current_user.uid)
-    
+
     widget = Widget(
         developer_uid=current_user.uid,
         name=payload.name,
@@ -153,14 +169,15 @@ def submit_widget(
         category=payload.category,
         scopes=payload.scopes,
         preview_data=payload.preview_data,
-        status="pending"
+        status="pending",
     )
-    
+
     db.add(widget)
     db.commit()
     db.refresh(widget)
-    
+
     return widget
+
 
 @router.post("/", response_model=WidgetResponse, status_code=status.HTTP_201_CREATED)
 def create_widget(
@@ -172,7 +189,7 @@ def create_widget(
 ) -> Widget:
     """Create a new widget. Requires Pro/Ultimate and Developer Agreement."""
     # Dependencies handle auth checks
-    
+
     _check_submit_rate_limit(current_user.uid)
 
     # 3. Create Widget
@@ -183,26 +200,26 @@ def create_widget(
         category=payload.category,
         scopes=payload.scopes,
         preview_data=payload.preview_data,
-        status="pending_review"
+        status="pending_review",
     )
     db.add(widget)
-    
+
     # 4. Audit Log
-    
-    from backend.models import AuditLog # Deferred import to avoid circular if any
-    
+
+    from backend.models import AuditLog  # Deferred import to avoid circular if any
+
     metadata = {
         "ip": request.client.host if request.client else None,
         "widget_id": widget.id,
         "widget_name": widget.name,
         "user_agent": request.headers.get("user-agent"),
     }
-    
+
     # We need to flush widget to get ID for audit? UUID is generated in app or DB?
     # Model says: default=lambda: str(uuid.uuid4()). It's client-side generated in python.
     # But usually we need to flush to be safe if DB triggers modify it.
     db.flush()
-    
+
     log_entry = AuditLog(
         actor_uid=current_user.uid,
         target_uid=widget.developer_uid,
@@ -211,12 +228,12 @@ def create_widget(
         metadata_json=metadata,
     )
     db.add(log_entry)
-    
+
     db.commit()
     db.refresh(widget)
-    
-    
+
     return widget
+
 
 @router.patch("/{widget_id}", response_model=WidgetResponse)
 def update_widget(
@@ -230,10 +247,12 @@ def update_widget(
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
-        
+
     if widget.developer_uid != current_user.uid:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this widget")
-        
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this widget"
+        )
+
     updated = False
     if payload.description is not None:
         widget.description = payload.description
@@ -244,32 +263,33 @@ def update_widget(
     if payload.preview_data is not None:
         widget.preview_data = payload.preview_data
         updated = True
-        
+
     # If version changes, reset to pending_review
     if payload.version is not None and payload.version != widget.version:
         widget.version = payload.version
         widget.status = "pending_review"
         updated = True
-        
+
     if updated:
         metadata = {
             "ip": request.client.host if request.client else None,
             "widget_id": widget.id,
-            "updates": payload.model_dump(exclude_unset=True)
+            "updates": payload.model_dump(exclude_unset=True),
         }
         log_entry = AuditLog(
             actor_uid=current_user.uid,
             target_uid=widget.developer_uid,
             action="update_widget",
             source="backend",
-            metadata_json=metadata
+            metadata_json=metadata,
         )
         db.add(log_entry)
-        
+
         db.commit()
         db.refresh(widget)
-        
+
     return widget
+
 
 @router.delete("/{widget_id}")
 def delete_widget(
@@ -277,32 +297,35 @@ def delete_widget(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Soft delete a widget. Owner only."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
 
     if widget.developer_uid != current_user.uid:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this widget")
-        
+        raise HTTPException(
+            status_code=403, detail="Not authorized to delete this widget"
+        )
+
     widget.status = "removed"
-    
+
     metadata = {
         "ip": request.client.host if request.client else None,
-        "widget_id": widget.id
+        "widget_id": widget.id,
     }
     log_entry = AuditLog(
         actor_uid=current_user.uid,
         target_uid=widget.developer_uid,
         action="delete_widget",
         source="backend",
-        metadata_json=metadata
+        metadata_json=metadata,
     )
     db.add(log_entry)
 
     db.commit()
     return {"message": "Widget removed"}
+
 
 @router.post("/{widget_id}/download")
 def download_widget(
@@ -310,51 +333,52 @@ def download_widget(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Download a widget. Increments download count."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
-        
+
     if widget.status != "approved" and widget.developer_uid != current_user.uid:
-         # Only owner can download non-approved widgets
-         raise HTTPException(status_code=404, detail="Widget not found or not available")
+        # Only owner can download non-approved widgets
+        raise HTTPException(status_code=404, detail="Widget not found or not available")
 
     # Enforce Pro/Ultimate Subscription for downloading
     sub = get_current_active_subscription(current_user)
     has_pro = sub and sub.plan in SubscriptionPlans.DEVELOPER_ELIGIBLE
-    
+
     if not has_pro and widget.developer_uid != current_user.uid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Pro or Ultimate subscription required to download widgets."
+            detail="Pro or Ultimate subscription required to download widgets.",
         )
 
     # Increment downloads
     widget.downloads += 1
-    
+
     # Audit
     metadata = {
         "ip": request.client.host if request.client else None,
-        "widget_id": widget.id
+        "widget_id": widget.id,
     }
     log_entry = AuditLog(
         actor_uid=current_user.uid,
         target_uid=widget.developer_uid,
         action="download_widget",
         source="backend",
-        metadata_json=metadata
+        metadata_json=metadata,
     )
     db.add(log_entry)
-    
+
     # Firestore: Widget Engagement
     try:
+        from firebase_admin import firestore  # type: ignore
+
         from backend.utils.firestore import get_firestore_client
-        from firebase_admin import firestore # type: ignore
-        
+
         db_fs = get_firestore_client()
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+
         # Structure: widget_engagement/{widget_id}/daily/{date}
         doc_ref = (
             db_fs.collection("widget_engagement")
@@ -362,20 +386,20 @@ def download_widget(
             .collection("daily")
             .document(today)
         )
-        
+
         # Atomic Increment
         if not doc_ref.get().exists:
-             doc_ref.set({"downloads": 1, "date": today})
+            doc_ref.set({"downloads": 1, "date": today})
         else:
-             doc_ref.update({"downloads": firestore.Increment(1)})
-             
+            doc_ref.update({"downloads": firestore.Increment(1)})
+
     except Exception as e:
         # Don't fail the download if metrics fail, just log it
         logger.error(f"Failed to record widget engagement stats: {e}")
-    
+
     db.commit()
     db.refresh(widget)
-    
+
     # Return Manifest JSON
     manifest = {
         "id": widget.id,
@@ -385,9 +409,9 @@ def download_widget(
         "category": widget.category,
         "scopes": widget.scopes,
         "developer_id": widget.developer_uid,
-        "generated_at": datetime.now(timezone.utc).isoformat()
+        "generated_at": datetime.now(UTC).isoformat(),
     }
-    
+
     return manifest
 
 
@@ -397,7 +421,7 @@ def record_widget_run(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Log a widget execution to the audit log for payout calculations."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
@@ -427,6 +451,7 @@ def record_widget_run(
 
     return {"message": "Widget run recorded"}
 
+
 @router.post("/{widget_id}/rate")
 def rate_widget(
     widget_id: str,
@@ -434,54 +459,59 @@ def rate_widget(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Rate a widget. 1-5 stars."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
-        
+
     if widget.developer_uid == current_user.uid:
-        raise HTTPException(status_code=400, detail="Developer cannot rate their own widget")
-        
+        raise HTTPException(
+            status_code=400, detail="Developer cannot rate their own widget"
+        )
+
     # Check existing rating
-    existing = db.query(WidgetRating).filter(
-        WidgetRating.widget_id == widget_id,
-        WidgetRating.user_uid == current_user.uid
-    ).first()
-    
+    existing = (
+        db.query(WidgetRating)
+        .filter(
+            WidgetRating.widget_id == widget_id,
+            WidgetRating.user_uid == current_user.uid,
+        )
+        .first()
+    )
+
     if existing:
-        raise HTTPException(status_code=400, detail="You have already rated this widget")
-        
+        raise HTTPException(
+            status_code=400, detail="You have already rated this widget"
+        )
+
     rating = WidgetRating(
         widget_id=widget_id,
         user_uid=current_user.uid,
         rating=payload.rating,
-        review=payload.review
+        review=payload.review,
     )
     db.add(rating)
-    
+
     # Update aggregates
     old_total = widget.rating_avg * widget.rating_count
     widget.rating_count += 1
     widget.rating_avg = (old_total + payload.rating) / widget.rating_count
-    
+
     # Audit
     metadata = {
         "ip": request.client.host if request.client else None,
         "widget_id": widget.id,
-        "rating": payload.rating
+        "rating": payload.rating,
     }
     log_entry = AuditLog(
         actor_uid=current_user.uid,
         target_uid=widget.developer_uid,
         action="rate_widget",
         source="backend",
-        metadata_json=metadata
+        metadata_json=metadata,
     )
     db.add(log_entry)
-    
+
     db.commit()
     return {"message": "Rating submitted"}
-
-
-

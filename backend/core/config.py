@@ -26,7 +26,9 @@ class AppSettings(BaseSettings):
     frontend_url: str = Field(default="http://localhost:5175", alias="FRONTEND_URL")
     cors_origins_raw: str | None = Field(default=None, alias="BACKEND_CORS_ORIGINS")
     rate_limit_max_requests: int = Field(default=100, alias="RATE_LIMIT_MAX_REQUESTS")
-    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
+    rate_limit_window_seconds: int = Field(
+        default=60, alias="RATE_LIMIT_WINDOW_SECONDS"
+    )
 
     database_url: str = Field(..., alias="DATABASE_URL")
 
@@ -34,7 +36,9 @@ class AppSettings(BaseSettings):
     plaid_secret: str = Field(..., alias="PLAID_SECRET")
     plaid_env: str = Field(default="sandbox", alias="PLAID_ENV")
 
-    firebase_project_id: str = Field(default="jualuma-local", alias="FIREBASE_PROJECT_ID")
+    firebase_project_id: str = Field(
+        default="jualuma-local", alias="FIREBASE_PROJECT_ID"
+    )
     firebase_api_key: str | None = Field(default=None, alias="VITE_FIREBASE_API_KEY")
     firebase_auth_emulator_host: str | None = Field(
         default=None, alias="FIREBASE_AUTH_EMULATOR_HOST"
@@ -48,8 +52,12 @@ class AppSettings(BaseSettings):
     pubsub_emulator_host: str | None = Field(default=None, alias="PUBSUB_EMULATOR_HOST")
 
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
-    stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
-    stripe_publishable_key: str | None = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
+    stripe_webhook_secret: str | None = Field(
+        default=None, alias="STRIPE_WEBHOOK_SECRET"
+    )
+    stripe_publishable_key: str | None = Field(
+        default=None, alias="STRIPE_PUBLISHABLE_KEY"
+    )
 
     ai_studio_api_key: str | None = Field(default=None, alias="AI_STUDIO_API_KEY")
     ai_model_local: str = Field(default="gemini-2.5-flash", alias="AI_MODEL_LOCAL")
@@ -64,7 +72,9 @@ class AppSettings(BaseSettings):
     smtp_port: int | None = Field(default=587, alias="SMTP_PORT")
     smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
     smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
-    smtp_from_email: str | None = Field(default="no-reply@jualuma.com", alias="SMTP_FROM_EMAIL")
+    smtp_from_email: str | None = Field(
+        default="no-reply@jualuma.com", alias="SMTP_FROM_EMAIL"
+    )
 
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod

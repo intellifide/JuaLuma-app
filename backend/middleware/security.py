@@ -1,11 +1,12 @@
 """Security and observability middleware."""
+
 from __future__ import annotations
 
 import time
 import uuid
 from collections import deque
+from collections.abc import Iterable
 from threading import Lock
-from typing import Deque, Dict, Iterable
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -13,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.core.logging import get_request_id, set_request_id
 
-ACTIVE_RATE_LIMITER: "RateLimitMiddleware | None" = None
+ACTIVE_RATE_LIMITER: RateLimitMiddleware | None = None
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -71,7 +72,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.path_prefixes = tuple(path_prefixes)
-        self._attempts: Dict[str, Deque[float]] = {}
+        self._attempts: dict[str, deque[float]] = {}
         self._lock = Lock()
         # Expose the limiter for tests/administration
         global ACTIVE_RATE_LIMITER

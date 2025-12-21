@@ -1,15 +1,15 @@
 # Updated 2025-12-19 02:30 CST
-import stripe
 import logging
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any
 
+import stripe
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from backend.core import settings
 from backend.core.constants import UserStatus
-from backend.models import User, Subscription, Payment
+from backend.models import Payment, Subscription, User
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ STRIPE_PLANS = {
     "pro_monthly": "price_1SftXERQfRSwy2AaoWXBD9Q7",
     "pro_annual": "price_1SftXERQfRSwy2Aa84D0XrhT",
     "ultimate_monthly": "price_1SftXFRQfRSwy2Aas3bHnACi",
-    "ultimate_annual": "price_1SftXFRQfRSwy2AapSGEb9HA"
+    "ultimate_annual": "price_1SftXFRQfRSwy2AapSGEb9HA",
 }
 
 # Map Price IDs to the strict Plan Enum (free, essential, pro, ultimate)
@@ -33,11 +33,12 @@ STRIPE_PRICE_TO_TIER = {
     "price_1SftXERQfRSwy2AaoWXBD9Q7": "pro",
     "price_1SftXERQfRSwy2Aa84D0XrhT": "pro",
     "price_1SftXFRQfRSwy2Aas3bHnACi": "ultimate",
-    "price_1SftXFRQfRSwy2AapSGEb9HA": "ultimate"
+    "price_1SftXFRQfRSwy2AapSGEb9HA": "ultimate",
 }
 
 # Keeping this for legacy compatibility or reverse lookups if needed, but preferable to use above.
 STRIPE_PRICE_TO_PLAN = STRIPE_PRICE_TO_TIER
+
 
 def create_stripe_customer(db: Session, uid: str, email: str) -> str:
     """
@@ -60,10 +61,7 @@ def create_stripe_customer(db: Session, uid: str, email: str) -> str:
             customer_id = customers.data[0].id
             logger.info(f"Found existing Stripe customer {customer_id} for {email}")
         else:
-            customer = stripe.Customer.create(
-                email=email,
-                metadata={"uid": uid}
-            )
+            customer = stripe.Customer.create(email=email, metadata={"uid": uid})
             customer_id = customer.id
             logger.info(f"Created new Stripe customer {customer_id} for user {uid}")
 
@@ -73,7 +71,7 @@ def create_stripe_customer(db: Session, uid: str, email: str) -> str:
             db.add(payment_record)
         else:
             payment_record.stripe_customer_id = customer_id
-        
+
         db.commit()
         db.refresh(payment_record)
         return customer_id
@@ -82,9 +80,14 @@ def create_stripe_customer(db: Session, uid: str, email: str) -> str:
         logger.error(f"Stripe error creating customer: {e}")
         # Validate if we should raise or return None. For sign-up flow, maybe log and continue?
         # But if this is called explicitly, we might want to raise.
-        raise HTTPException(status_code=500, detail="Error communicating with payment provider.")
+        raise HTTPException(
+            status_code=500, detail="Error communicating with payment provider."
+        ) from e
 
-def create_checkout_session(db: Session, uid: str, plan_type: str, return_url: str) -> str:
+
+def create_checkout_session(
+    db: Session, uid: str, plan_type: str, return_url: str
+) -> str:
     """
     Creates a Stripe Checkout Session for a subscription.
     """
@@ -110,13 +113,14 @@ def create_checkout_session(db: Session, uid: str, plan_type: str, return_url: s
             success_url=return_url + "?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=return_url,
             allow_promotion_codes=True,
-            metadata={"uid": uid, "plan": plan_type}
+            metadata={"uid": uid, "plan": plan_type},
         )
         return session.url
 
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error creating checkout session: {e}")
-        raise HTTPException(status_code=500, detail="Error creating checkout session.")
+        raise HTTPException(status_code=500, detail="Error creating checkout session.") from e
+
 
 def create_portal_session(user_id: str, db: Session, return_url: str) -> str:
     """
@@ -131,7 +135,7 @@ def create_portal_session(user_id: str, db: Session, return_url: str) -> str:
 
     try:
         customer_id = create_stripe_customer(db, user_id, user.email)
-            
+
         session = stripe.billing_portal.Session.create(
             customer=customer_id,
             return_url=return_url,
@@ -140,9 +144,14 @@ def create_portal_session(user_id: str, db: Session, return_url: str) -> str:
 
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error creating portal session: {e}")
-        raise HTTPException(status_code=500, detail="Error communicating with payment provider.")
+        raise HTTPException(
+            status_code=500, detail="Error communicating with payment provider."
+        ) from e
 
-def update_user_tier(db: Session, uid: str, tier: str, status: str = "active", end_date: datetime = None):
+
+def update_user_tier(
+    db: Session, uid: str, tier: str, status: str = "active", end_date: datetime = None
+):
     """
     Updates the user's subscription tier/plan.
     """
@@ -155,15 +164,15 @@ def update_user_tier(db: Session, uid: str, tier: str, status: str = "active", e
         # Handle downgrade logic if moving from higher to lower
         if tier == "free" and sub.plan != "free":
             handle_downgrade_logic(db, uid)
-            
+
         sub.plan = tier
         sub.status = status
         if end_date:
             sub.renew_at = end_date
-    
+
     db.commit()
     db.refresh(sub)
-    
+
     # Ensure user status is active if they have a valid plan
     user = db.query(User).filter(User.uid == uid).first()
     if user and user.status == UserStatus.PENDING_PLAN_SELECTION:
@@ -174,6 +183,7 @@ def update_user_tier(db: Session, uid: str, tier: str, status: str = "active", e
 
     logger.info(f"Updated user {uid} tier to {tier} ({status})")
 
+
 def handle_downgrade_logic(db: Session, uid: str):
     """
     Specific logic when a user moves from Pro to Free.
@@ -183,13 +193,14 @@ def handle_downgrade_logic(db: Session, uid: str):
     # Example: Mark usage as archived or send notification
     pass
 
+
 async def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session):
     """
     Handles incoming Stripe webhooks.
     """
     if not settings.stripe_webhook_secret:
-         # Use configured secret or fallback to None which will fail validation if not set
-         raise HTTPException(status_code=500, detail="Webhook secret not configured.")
+        # Use configured secret or fallback to None which will fail validation if not set
+        raise HTTPException(status_code=500, detail="Webhook secret not configured.")
 
     try:
         event = stripe.Webhook.construct_event(
@@ -197,14 +208,14 @@ async def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session):
         )
     except ValueError as e:
         logger.error(f"Webhook error: Invalid payload: {e}")
-        raise HTTPException(status_code=400, detail="Invalid payload")
+        raise HTTPException(status_code=400, detail="Invalid payload") from e
     except stripe.error.SignatureVerificationError as e:
         logger.error(f"Webhook error: Invalid signature: {e}")
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        raise HTTPException(status_code=400, detail="Invalid signature") from e
 
     event_type = event["type"]
     data_object = event["data"]["object"]
-    
+
     logger.info(f"Received Stripe webhook: {event_type}")
 
     if event_type == "invoice.payment_succeeded":
@@ -215,15 +226,18 @@ async def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session):
         await _handle_subscription_deleted(data_object, db)
     elif event_type == "checkout.session.completed":
         await _handle_checkout_session_completed(data_object, db)
-    
+
     return {"status": "success"}
 
-async def _handle_invoice_paid(invoice: Dict[str, Any], db: Session):
+
+async def _handle_invoice_paid(invoice: dict[str, Any], db: Session):
     customer_id = invoice.get("customer")
     # Find user by customer_id (Need to query Payment table)
     # Since Payment table is new, we need to ensure we have it hooked up.
     # For now, let's look up via Payment table
-    payment = db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+    payment = (
+        db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+    )
     if not payment:
         logger.warning(f"Webhook: No user found for customer {customer_id}")
         return
@@ -232,32 +246,37 @@ async def _handle_invoice_paid(invoice: Dict[str, Any], db: Session):
     # For now, just logging
     logger.info(f"Invoice paid for user {payment.uid}")
 
-async def _handle_subscription_updated(subscription: Dict[str, Any], db: Session):
+
+async def _handle_subscription_updated(subscription: dict[str, Any], db: Session):
     customer_id = subscription.get("customer")
     status = subscription.get("status")
     current_period_end = subscription.get("current_period_end")
-    
+
     items = subscription.get("items", {}).get("data", [])
     price_id = items[0]["price"]["id"] if items else None
-    
+
     # Identify the paid plan associated with this webhook
     # STRIPE_PRICE_TO_PLAN is now aliased to STRIPE_PRICE_TO_TIER, so this works,
     # but let's be explicit and strictly use the tier map.
     paid_plan = STRIPE_PRICE_TO_TIER.get(price_id)
-    
-    payment = db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+
+    payment = (
+        db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+    )
     if not payment:
         logger.warning(f"Webhook: No user found for customer {customer_id}")
         return
 
-    renew_at = datetime.fromtimestamp(current_period_end) if current_period_end else None
+    renew_at = (
+        datetime.fromtimestamp(current_period_end) if current_period_end else None
+    )
 
     # Logic:
-    # 1. If status is NOT 'active' or 'trialing', treat as effectively free/expired immediately 
+    # 1. If status is NOT 'active' or 'trialing', treat as effectively free/expired immediately
     #    (unless past_due grace period logic is desired, but let's be strict as requested).
     # 2. If active but cancel_at_period_end is True, they stay on the paid plan until renew_at.
     # 3. If active and NOT canceling, they are on the paid plan.
-    
+
     if status in ["active", "trialing"]:
         # User has a valid paid session
         if paid_plan:
@@ -276,9 +295,11 @@ async def _handle_subscription_updated(subscription: Dict[str, Any], db: Session
         handle_downgrade_logic(db, payment.uid)
 
 
-async def _handle_subscription_deleted(subscription: Dict[str, Any], db: Session):
+async def _handle_subscription_deleted(subscription: dict[str, Any], db: Session):
     customer_id = subscription.get("customer")
-    payment = db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+    payment = (
+        db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+    )
     if not payment:
         return
 
@@ -287,7 +308,8 @@ async def _handle_subscription_deleted(subscription: Dict[str, Any], db: Session
     update_user_tier(db, payment.uid, "free", "canceled", None)
     handle_downgrade_logic(db, payment.uid)
 
-async def _handle_checkout_session_completed(session: Dict[str, Any], db: Session):
+
+async def _handle_checkout_session_completed(session: dict[str, Any], db: Session):
     """
     Handles successful checkout session.
     Transitions user from PENDING_PLAN_SELECTION (or Free) to the paid plan.
@@ -299,11 +321,15 @@ async def _handle_checkout_session_completed(session: Dict[str, Any], db: Sessio
 
     if not uid:
         # Try to find by customer_id
-        payment = db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+        payment = (
+            db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+        )
         if payment:
             uid = payment.uid
         else:
-            logger.warning(f"Webhook: Checkout completed but no UID found in metadata or payment record. Customer: {customer_id}")
+            logger.warning(
+                f"Webhook: Checkout completed but no UID found in metadata or payment record. Customer: {customer_id}"
+            )
             return
 
     logger.info(f"Webhook: Checkout session completed for user {uid}, plan {plan_type}")
@@ -311,22 +337,22 @@ async def _handle_checkout_session_completed(session: Dict[str, Any], db: Sessio
     # If we have a subscription ID in the session, we can fetch details,
     # but the subscription.updated webhook will likely follow and handle details (renew_at, etc).
     # However, we should explicitly set the state here to ensure immediate access.
-    
-    # Check if we have subscription info in the session object
-    subscription_id = session.get("subscription")
-    
-    if plan_type:
-         # Map the plan string (e.g. 'pro_monthly') to the tier (e.g. 'pro')
-         # We need a reverse lookup or just checking the string structure.
-         # STRIPE_PLANS maps 'pro_monthly' -> price_ID
-         # STRIPE_PRICE_TO_TIER maps price_ID -> 'pro'
-         # So:
-         price_id = STRIPE_PLANS.get(plan_type)
-         tier = STRIPE_PRICE_TO_TIER.get(price_id, "free")
-         
-         if tier:
-             update_user_tier(db, uid, tier, status="active")
-             logger.info(f"Webhook: User {uid} activated on {tier} via checkout.")
-         else:
-             logger.warning(f"Webhook: Unknown plan type {plan_type} in checkout metadata.")
 
+    # Check if we have subscription info in the session object
+
+    if plan_type:
+        # Map the plan string (e.g. 'pro_monthly') to the tier (e.g. 'pro')
+        # We need a reverse lookup or just checking the string structure.
+        # STRIPE_PLANS maps 'pro_monthly' -> price_ID
+        # STRIPE_PRICE_TO_TIER maps price_ID -> 'pro'
+        # So:
+        price_id = STRIPE_PLANS.get(plan_type)
+        tier = STRIPE_PRICE_TO_TIER.get(price_id, "free")
+
+        if tier:
+            update_user_tier(db, uid, tier, status="active")
+            logger.info(f"Webhook: User {uid} activated on {tier} via checkout.")
+        else:
+            logger.warning(
+                f"Webhook: Unknown plan type {plan_type} in checkout metadata."
+            )

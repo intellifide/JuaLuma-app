@@ -8,11 +8,11 @@ Respects optional GEMINI_MODEL and AI_STUDIO_BASE_URL overrides.
 from __future__ import annotations
 
 import os
-from typing import Any
 import time
+from typing import Any
 
-from dotenv import load_dotenv
 import httpx
+from dotenv import load_dotenv
 
 
 def main() -> None:
@@ -60,13 +60,17 @@ def main() -> None:
             if status == 429 and attempt < attempts:
                 time.sleep(2 * attempt)
                 continue
-            raise SystemExit(f"AI Studio connectivity failed after {attempt} attempt(s): {last_error}")
+            raise SystemExit(
+                f"AI Studio connectivity failed after {attempt} attempt(s): {last_error}"
+            ) from exc
         except Exception as exc:  # pragma: no cover - defensive
             last_error = str(exc)
             if attempt < attempts:
                 time.sleep(2 * attempt)
                 continue
-            raise SystemExit(f"AI Studio connectivity failed after {attempt} attempt(s): {last_error}")
+            raise SystemExit(
+                f"AI Studio connectivity failed after {attempt} attempt(s): {last_error}"
+            ) from exc
 
     text = (
         data.get("candidates", [{}])[0]

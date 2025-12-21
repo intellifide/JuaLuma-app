@@ -2,15 +2,13 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Float
-from sqlalchemy import func
+from sqlalchemy import DateTime, Float, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .user import User
@@ -43,5 +41,6 @@ class Budget(Base):
 
     def __repr__(self) -> str:
         return f"Budget(uid={self.uid!r}, category={self.category!r}, amount={self.amount!r})"
+
 
 __all__ = ["Budget"]

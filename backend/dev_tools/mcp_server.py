@@ -1,18 +1,21 @@
-from fastmcp import FastMCP
-from backend.core import settings
-from backend.models import SessionLocal
-from backend.models.user import User
-from backend.models.subscription import Subscription
-from backend.core.constants import SubscriptionPlans
-from backend.models.transaction import Transaction
-from uuid import uuid4
-import httpx
 import logging
 import subprocess
+from uuid import uuid4
+
+import httpx
+from fastmcp import FastMCP
+
+from backend.core import settings
+from backend.core.constants import SubscriptionPlans
+from backend.models import SessionLocal
+from backend.models.subscription import Subscription
+from backend.models.transaction import Transaction
+from backend.models.user import User
 
 # Initialize the Dev Tools MCP server
 dev_mcp = FastMCP("jualuma Dev Tools")
 logger = logging.getLogger(__name__)
+
 
 @dev_mcp.tool()
 async def verify_integrations() -> dict:
@@ -35,7 +38,7 @@ async def verify_integrations() -> dict:
     firestore_host = settings.firestore_emulator_host
     if firestore_host:
         try:
-            # Simple check if authorized or reachable. 
+            # Simple check if authorized or reachable.
             # Note: Emulator HTTP interface is usually at the port.
             # We'll just check if the host is set for now as a proxy for "configured"
             # Actual HTTP connectivity check:
@@ -57,7 +60,7 @@ async def verify_integrations() -> dict:
     pubsub_host = settings.pubsub_emulator_host
     if pubsub_host:
         try:
-             async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient() as client:
                 url = f"http://{pubsub_host}"
                 resp = await client.head(url, timeout=2.0)
                 results["pubsub"] = f"reachable ({resp.status_code})"
@@ -68,6 +71,7 @@ async def verify_integrations() -> dict:
 
     return results
 
+
 @dev_mcp.tool()
 def seed_database(tier: str = "free") -> str:
     """Seed the database with a test user, subscription, and transactions."""
@@ -77,24 +81,22 @@ def seed_database(tier: str = "free") -> str:
         user_id = uuid4()
         test_email = f"test_{tier}_{user_id.hex[:8]}@example.com"
         auth_uid = f"test_{tier}_{user_id.hex[:8]}"
-        
+
         user = User(
             id=user_id,
             email=test_email,
             auth_uid=auth_uid,
             full_name=f"Test User {tier.title()}",
-            is_active=True
+            is_active=True,
         )
         session.add(user)
         session.flush()
 
         # Create Subscription
-        plan = SubscriptionPlans.PRO if tier.lower() == "pro" else SubscriptionPlans.FREE
-        subscription = Subscription(
-            user_id=user.id,
-            plan=plan,
-            is_active=True
+        plan = (
+            SubscriptionPlans.PRO if tier.lower() == "pro" else SubscriptionPlans.FREE
         )
+        subscription = Subscription(user_id=user.id, plan=plan, is_active=True)
         session.add(subscription)
 
         # Create Transactions
@@ -103,7 +105,7 @@ def seed_database(tier: str = "free") -> str:
                 user_id=user.id,
                 amount=10.0 + i,
                 description=f"Test Transaction {i+1}",
-                date="2024-01-01" # Simplified date
+                date="2024-01-01",  # Simplified date
             )
             session.add(tx)
 
@@ -115,6 +117,7 @@ def seed_database(tier: str = "free") -> str:
         return f"Error seeding database: {str(e)}"
     finally:
         session.close()
+
 
 @dev_mcp.tool()
 def reset_local_state() -> str:
@@ -132,6 +135,7 @@ def reset_local_state() -> str:
     except subprocess.CalledProcessError as e:
         return f"Error resetting state: {str(e)}"
 
+
 @dev_mcp.tool()
 async def verify_crypto_config() -> dict:
     """
@@ -141,13 +145,18 @@ async def verify_crypto_config() -> dict:
     2. CCXT library availability and exchange loading.
     """
     results = {}
-    
+
     # 1. Web3 RPC
     rpc_url = settings.eth_rpc_url or "https://cloudflare-eth.com"
     try:
         async with httpx.AsyncClient() as client:
             # simple JSON-RPC ping: eth_blockNumber
-            payload = {"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1}
+            payload = {
+                "jsonrpc": "2.0",
+                "method": "eth_blockNumber",
+                "params": [],
+                "id": 1,
+            }
             resp = await client.post(rpc_url, json=payload, timeout=5.0)
             if resp.status_code == 200 and "result" in resp.json():
                 results["web3_rpc"] = f"reachable ({rpc_url})"
@@ -159,6 +168,7 @@ async def verify_crypto_config() -> dict:
     # 2. CCXT
     try:
         import ccxt
+
         # Try loading a common exchange class to verify library integrity
         _ = ccxt.binanceus()
         results["ccxt"] = "installed and loadable (binanceus)"
@@ -169,6 +179,7 @@ async def verify_crypto_config() -> dict:
 
     return results
 
+
 @dev_mcp.tool()
 def trigger_test_email(to_email: str) -> str:
     """
@@ -177,11 +188,13 @@ def trigger_test_email(to_email: str) -> str:
     """
     try:
         from backend.services.email import get_email_client
+
         client = get_email_client()
         client.send_generic_alert(to_email, "Test Email from Dev Tools")
         return f"Email dispatch triggered to {to_email}. Check logs or inbox."
     except Exception as e:
         return f"Failed to trigger email: {str(e)}"
+
 
 @dev_mcp.tool()
 def seed_support_tickets(email: str) -> str:
@@ -196,29 +209,29 @@ def seed_support_tickets(email: str) -> str:
             return f"User with email {email} not found."
 
         from backend.models.support import SupportTicket
-        
+
         tickets = [
             {
                 "subject": "Login Issue",
                 "description": "I cannot login to my account.",
                 "category": "account",
                 "status": "open",
-                "priority": "High"
+                "priority": "High",
             },
             {
                 "subject": "Billing Question",
                 "description": "Why was I charged twice?",
                 "category": "billing",
                 "status": "in_progress",
-                "priority": "Normal"
+                "priority": "Normal",
             },
             {
                 "subject": "Feature Request",
                 "description": "Please add dark mode.",
                 "category": "general",
                 "status": "resolved",
-                "priority": "Low"
-            }
+                "priority": "Low",
+            },
         ]
 
         for t in tickets:
@@ -227,13 +240,13 @@ def seed_support_tickets(email: str) -> str:
                 subject=t["subject"],
                 description=t["description"],
                 category=t["category"],
-                status=t["status"]
+                status=t["status"],
                 # We can't set it in constructor if it's not a column.
                 # But we patched the model to have a Priority property.
                 # Wait, 'status' IS a column (lowercase).
             )
             session.add(ticket)
-        
+
         session.commit()
         return f"Seeded {len(tickets)} support tickets for {email}."
 

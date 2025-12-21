@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -74,11 +74,13 @@ class SupportTicketRating(Base):
     )
     ticket_id: Mapped[str] = mapped_column(String(128), nullable=False)
     agent_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("support_agents.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("support_agents.id", ondelete="CASCADE"),
+        nullable=False,
     )
     customer_uid: Mapped[str] = mapped_column(String(128), nullable=False)
     rating: Mapped[int] = mapped_column(nullable=False)
-    feedback_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    feedback_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -105,7 +107,9 @@ class SupportTicket(Base):
     )
     subject: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[Text] = mapped_column(Text, nullable=False)
-    category: Mapped[str] = mapped_column(String(32), nullable=False)  # account, billing, etc.
+    category: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )  # account, billing, etc.
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="open"
     )  # open, resolved, closed
@@ -126,8 +130,6 @@ class SupportTicket(Base):
     @Status.setter
     def Status(self, value: str):
         self.status = value
-
-
 
     messages: Mapped[list["SupportTicketMessage"]] = relationship(
         "SupportTicketMessage",

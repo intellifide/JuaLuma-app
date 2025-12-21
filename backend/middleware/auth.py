@@ -1,7 +1,7 @@
 # Updated 2025-12-08 17:53 CST by ChatGPT
 from collections import deque
 from threading import Lock
-from typing import Annotated, Deque, Dict, List
+from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -19,6 +19,7 @@ async def get_current_user(
 ) -> User:
     """Validate bearer token and load the current user."""
     import logging
+
     logger = logging.getLogger("backend.middleware.auth")
 
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -49,7 +50,9 @@ async def get_current_user(
 
     user = db.query(User).filter(User.uid == uid).first()
     if not user:
-        logger.warning(f"Auth Middleware: User {uid} not found in DB. Checking for email match...")
+        logger.warning(
+            f"Auth Middleware: User {uid} not found in DB. Checking for email match..."
+        )
         # JIT Healing: Check if user exists by email (common in dev/reset scenarios)
         email = decoded.get("email")
         if email:
@@ -59,7 +62,9 @@ async def get_current_user(
                 # User exists but UID mismatched. Trust the fresh Firebase token.
                 # Attempt to update the DB record to match the new UID.
                 try:
-                    logger.info(f"Auth Middleware: Healing user {email}. Updating UID {user_by_email.uid} -> {uid}")
+                    logger.info(
+                        f"Auth Middleware: Healing user {email}. Updating UID {user_by_email.uid} -> {uid}"
+                    )
                     user_by_email.uid = uid
                     db.commit()
                     db.refresh(user_by_email)
@@ -69,7 +74,7 @@ async def get_current_user(
                     # If PK update fails (e.g. FK constraints without cascade), rollback
                     db.rollback()
                     pass
-        
+
         logger.error(f"Auth Middleware: User {uid} not found in DB and healing failed.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -79,7 +84,7 @@ async def get_current_user(
     return user
 
 
-def require_role(allowed_roles: List[str]):
+def require_role(allowed_roles: list[str]):
     """Factory that enforces allowed roles."""
 
     async def dependency(user: User = Depends(get_current_user)) -> User:
@@ -93,15 +98,21 @@ def require_role(allowed_roles: List[str]):
     return dependency
 
 
-async def require_user(user: User = Depends(require_role(["user", "support_agent", "support_manager"]))) -> User:  # type: ignore[arg-type]
+async def require_user(
+    user: User = Depends(require_role(["user", "support_agent", "support_manager"])),
+) -> User:  # type: ignore[arg-type]
     return user
 
 
-async def require_support_agent(user: User = Depends(require_role(["support_agent", "support_manager"]))) -> User:  # type: ignore[arg-type]
+async def require_support_agent(
+    user: User = Depends(require_role(["support_agent", "support_manager"])),
+) -> User:  # type: ignore[arg-type]
     return user
 
 
-async def require_support_manager(user: User = Depends(require_role(["support_manager"]))) -> User:  # type: ignore[arg-type]
+async def require_support_manager(
+    user: User = Depends(require_role(["support_manager"])),
+) -> User:  # type: ignore[arg-type]
     return user
 
 
@@ -137,7 +148,7 @@ async def require_tier(
     return subscription
 
 
-LOGIN_RATE_LIMIT: Dict[str, Deque[float]] = {}
+LOGIN_RATE_LIMIT: dict[str, deque[float]] = {}
 LOGIN_LOCK = Lock()
 LOGIN_WINDOW_SECONDS = 60
 LOGIN_MAX_ATTEMPTS = 10

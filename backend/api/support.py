@@ -1,13 +1,14 @@
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import List, Literal, Optional
+from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import desc
 from sqlalchemy.orm import Session, selectinload
 
+from backend.core.events import publish_event
 from backend.middleware.auth import (
     get_current_user,
     require_support_agent,
@@ -19,15 +20,15 @@ from backend.models.support import (
     SupportTicketMessage,
     SupportTicketRating,
 )
-from backend.core.events import publish_event
-from backend.utils import get_db
 from backend.services.notifications import NotificationService
+from backend.utils import get_db
 
 router = APIRouter(prefix="/api/support", tags=["support"])
 logger = logging.getLogger(__name__)
 
 
 # --- Schemas ---
+
 
 class TicketCreate(BaseModel):
     subject: str = Field(..., min_length=5, max_length=256)
@@ -36,7 +37,7 @@ class TicketCreate(BaseModel):
 
 
 class TicketUpdate(BaseModel):
-    status: Optional[Literal["open", "resolved", "closed"]] = None
+    status: Literal["open", "resolved", "closed"] | None = None
 
 
 class TicketMessageCreate(BaseModel):
@@ -64,7 +65,7 @@ class TicketResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
-    messages: List[TicketMessageResponse] = Field(default_factory=list)
+    messages: list[TicketMessageResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -72,7 +73,7 @@ class TicketResponse(BaseModel):
 
 class TicketRatingCreate(BaseModel):
     rating: int = Field(..., ge=1, le=5)
-    feedback_text: Optional[str] = None
+    feedback_text: str | None = None
 
 
 class TicketRatingResponse(BaseModel):
@@ -81,7 +82,7 @@ class TicketRatingResponse(BaseModel):
     agent_id: uuid.UUID
     customer_uid: str
     rating: int
-    feedback_text: Optional[str] = None
+    feedback_text: str | None = None
     created_at: datetime
 
     class Config:
@@ -93,7 +94,7 @@ class TicketRatingResponse(BaseModel):
 
 def _get_ticket_for_actor(
     db: Session, ticket_id: uuid.UUID, current_user: User
-) -> Optional[SupportTicket]:
+) -> SupportTicket | None:
     """Fetch a ticket scoped by role."""
     query = (
         db.query(SupportTicket)
@@ -109,11 +110,11 @@ def _get_ticket_for_actor(
 
 def _create_resolution_notification_if_needed(
     db: Session, ticket: SupportTicket
-) -> Optional[LocalNotification]:
+) -> LocalNotification | None:
     """Idempotently record a local notification for ticket resolution."""
     # Use the new service
     service = NotificationService(db)
-    
+
     # Check for existing idempotent key
     existing = (
         db.query(LocalNotification)
@@ -131,21 +132,21 @@ def _create_resolution_notification_if_needed(
     user = db.query(User).filter(User.uid == ticket.user_id).first()
     if not user:
         return None
-        
+
     return service.create_notification(
         user=user,
         title="Ticket Resolved",
         message=f"Your ticket '{ticket.subject}' has been resolved.",
-        send_email=True
+        send_email=True,
     )
-
-
 
 
 # --- Endpoints ---
 
 
-@router.post("/tickets", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/tickets", response_model=TicketResponse, status_code=status.HTTP_201_CREATED
+)
 def create_ticket(
     payload: TicketCreate,
     current_user: User = Depends(get_current_user),
@@ -173,7 +174,7 @@ def create_ticket(
                 "user_id": current_user.uid,
                 "subject": ticket.subject,
                 "category": ticket.category,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
             attributes={"event_type": "ticket_created"},
         )
@@ -185,7 +186,7 @@ def create_ticket(
     return ticket
 
 
-@router.get("/tickets", response_model=List[TicketResponse])
+@router.get("/tickets", response_model=list[TicketResponse])
 def get_tickets(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -203,13 +204,11 @@ def get_tickets(
 
 @router.get(
     "/agent/tickets",
-    response_model=List[TicketResponse],
+    response_model=list[TicketResponse],
     dependencies=[Depends(require_support_agent)],
 )
 def get_tickets_for_support(
-    customer_uid: Optional[str] = Query(
-        None, description="Optional customer uid filter"
-    ),
+    customer_uid: str | None = Query(None, description="Optional customer uid filter"),
     db: Session = Depends(get_db),
 ):
     """List tickets for support agents/managers, optionally filtered by customer."""
@@ -235,7 +234,9 @@ def get_ticket_detail(
     ticket = (
         db.query(SupportTicket)
         .options(selectinload(SupportTicket.messages))
-        .filter(SupportTicket.id == ticket_id, SupportTicket.user_id == current_user.uid)
+        .filter(
+            SupportTicket.id == ticket_id, SupportTicket.user_id == current_user.uid
+        )
         .first()
     )
     if not ticket:
@@ -258,18 +259,20 @@ def update_ticket_status(
             status_code=status.HTTP_400_BAD_REQUEST, detail="status is required"
         )
 
-    ticket = _get_ticket_for_actor(db=db, ticket_id=ticket_id, current_user=current_user)
+    ticket = _get_ticket_for_actor(
+        db=db, ticket_id=ticket_id, current_user=current_user
+    )
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
         )
 
     old_status = ticket.status
-    notification: Optional[LocalNotification] = None
+    notification: LocalNotification | None = None
 
     if payload.status != ticket.status:
         ticket.status = payload.status
-        ticket.updated_at = datetime.now(timezone.utc)
+        ticket.updated_at = datetime.now(UTC)
 
         if old_status == "open" and payload.status == "resolved":
             notification = _create_resolution_notification_if_needed(db, ticket)
@@ -293,7 +296,9 @@ def add_message(
     db: Session = Depends(get_db),
 ):
     """Add a message to a ticket (reply)."""
-    ticket = _get_ticket_for_actor(db=db, ticket_id=ticket_id, current_user=current_user)
+    ticket = _get_ticket_for_actor(
+        db=db, ticket_id=ticket_id, current_user=current_user
+    )
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
@@ -314,7 +319,7 @@ def add_message(
         message=payload.message,
     )
     db.add(message)
-    ticket.updated_at = datetime.now(timezone.utc)  # Force update updated_at
+    ticket.updated_at = datetime.now(UTC)  # Force update updated_at
     db.commit()
     db.refresh(message)
 
@@ -327,7 +332,7 @@ def add_message(
                 "ticket_id": str(ticket.id),
                 "user_id": current_user.uid,
                 "message_id": str(message.id),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
             attributes={"event_type": "ticket_updated"},
         )
@@ -337,14 +342,14 @@ def add_message(
     # Notify user if agent replied (outside event try/catch to ensure it runs even if event bus fails, or wrap in its own try)
     try:
         if message.sender_type == "support":
-             user_to_notify = db.query(User).filter(User.uid == ticket.user_id).first()
-             if user_to_notify:
-                 NotificationService(db).create_notification(
-                     user=user_to_notify,
-                     title="New Support Message",
-                     message=f"Agent replied to ticket '{ticket.subject}'.",
-                     send_email=True
-                 )
+            user_to_notify = db.query(User).filter(User.uid == ticket.user_id).first()
+            if user_to_notify:
+                NotificationService(db).create_notification(
+                    user=user_to_notify,
+                    title="New Support Message",
+                    message=f"Agent replied to ticket '{ticket.subject}'.",
+                    send_email=True,
+                )
     except Exception as e:
         logger.error(f"Failed to notify user of reply: {e}")
 
@@ -360,7 +365,9 @@ def close_ticket(
     db: Session = Depends(get_db),
 ):
     """Close a ticket."""
-    ticket = _get_ticket_for_actor(db=db, ticket_id=ticket_id, current_user=current_user)
+    ticket = _get_ticket_for_actor(
+        db=db, ticket_id=ticket_id, current_user=current_user
+    )
     if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
@@ -369,7 +376,7 @@ def close_ticket(
     ticket.status = "closed"
     db.commit()
     db.refresh(ticket)
-    
+
     # Publish 'ticket_closed' event
     try:
         publish_event(
@@ -378,7 +385,7 @@ def close_ticket(
                 "event_type": "ticket_closed",
                 "ticket_id": str(ticket.id),
                 "user_id": current_user.uid,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
             attributes={"event_type": "ticket_closed"},
         )
@@ -399,7 +406,9 @@ def rate_ticket(
     # Ensure ticket exists and belongs to user
     ticket = (
         db.query(SupportTicket)
-        .filter(SupportTicket.id == ticket_id, SupportTicket.user_id == current_user.uid)
+        .filter(
+            SupportTicket.id == ticket_id, SupportTicket.user_id == current_user.uid
+        )
         .first()
     )
     if not ticket:

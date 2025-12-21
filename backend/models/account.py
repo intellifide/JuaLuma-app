@@ -5,20 +5,18 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
-from sqlalchemy import func
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .user import User
+    from .ledger import LedgerHotEssential, LedgerHotFree
     from .transaction import Transaction
-    from .ledger import LedgerHotFree, LedgerHotEssential
+    from .user import User
 
 
 class Account(Base):
@@ -30,20 +28,22 @@ class Account(Base):
     uid: Mapped[str] = mapped_column(
         String(128), ForeignKey("users.uid"), nullable=False
     )
-    account_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    provider: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    account_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
-    account_number_masked: Mapped[Optional[str]] = mapped_column(
-        String(32), nullable=True
-    )
-    balance: Mapped[Optional[Decimal]] = mapped_column(
+    account_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    account_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    account_number_masked: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    balance: Mapped[Decimal | None] = mapped_column(
         Numeric(18, 2), nullable=True, default=0
     )
-    currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
-    secret_ref: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    plaid_next_cursor: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    sync_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, default="active")
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    secret_ref: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    plaid_next_cursor: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    sync_status: Mapped[str | None] = mapped_column(
+        String(32), nullable=True, default="active"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -54,16 +54,27 @@ class Account(Base):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="accounts", lazy="selectin")
+    user: Mapped["User"] = relationship(
+        "User", back_populates="accounts", lazy="selectin"
+    )
     transactions: Mapped[list["Transaction"]] = relationship(
-        "Transaction", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
+        "Transaction",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     ledger_hot_free: Mapped[list["LedgerHotFree"]] = relationship(
-        "LedgerHotFree", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
+        "LedgerHotFree",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     ledger_hot_essential: Mapped[list["LedgerHotEssential"]] = relationship(
-        "LedgerHotEssential", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
+        "LedgerHotEssential",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     def __repr__(self) -> str:

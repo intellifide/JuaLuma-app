@@ -5,17 +5,19 @@ Revises: b3e1f2c4d5a6
 Create Date: 2025-12-09 21:32:25.926017
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 # revision identifiers, used by Alembic.
-revision: str = 'eb8b37b8b170'
-down_revision: Union[str, None] = 'b3e1f2c4d5a6'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "eb8b37b8b170"
+down_revision: str | None = "b3e1f2c4d5a6"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -73,65 +75,112 @@ def upgrade() -> None:
     # sa.PrimaryKeyConstraint('id'),
     # schema='audit'
     # )
-    op.create_table('support_tickets',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('user_id', sa.String(length=128), nullable=False),
-    sa.Column('subject', sa.String(length=256), nullable=False),
-    sa.Column('description', sa.Text(), nullable=False),
-    sa.Column('category', sa.String(length=32), nullable=False),
-    sa.Column('status', sa.String(length=32), nullable=False),
-    sa.Column('priority', sa.String(length=32), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.uid'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    op.create_table(
+        "support_tickets",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("subject", sa.String(length=256), nullable=False),
+        sa.Column("description", sa.Text(), nullable=False),
+        sa.Column("category", sa.String(length=32), nullable=False),
+        sa.Column("status", sa.String(length=32), nullable=False),
+        sa.Column("priority", sa.String(length=32), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.uid"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table('support_ticket_messages',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('ticket_id', sa.UUID(), nullable=False),
-    sa.Column('sender_type', sa.String(length=32), nullable=False),
-    sa.Column('sender_id', sa.String(length=128), nullable=False),
-    sa.Column('message', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['ticket_id'], ['support_tickets.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    op.create_table(
+        "support_ticket_messages",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("ticket_id", sa.UUID(), nullable=False),
+        sa.Column("sender_type", sa.String(length=32), nullable=False),
+        sa.Column("sender_id", sa.String(length=128), nullable=False),
+        sa.Column("message", sa.Text(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["ticket_id"], ["support_tickets.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table('widgets',
-    sa.Column('id', sa.String(length=36), nullable=False),
-    sa.Column('developer_uid', sa.String(length=128), nullable=False),
-    sa.Column('name', sa.String(length=128), nullable=False),
-    sa.Column('description', sa.String(length=1024), nullable=True),
-    sa.Column('version', sa.String(length=32), nullable=False),
-    sa.Column('category', sa.String(length=64), nullable=False),
-    sa.Column('status', sa.String(length=32), nullable=False),
-    sa.Column('scopes', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-    sa.Column('preview_data', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-    sa.Column('downloads', sa.Integer(), nullable=False),
-    sa.Column('rating_avg', sa.Float(), nullable=False),
-    sa.Column('rating_count', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['developer_uid'], ['developers.uid'], ),
-    sa.PrimaryKeyConstraint('id')
+    op.create_table(
+        "widgets",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("developer_uid", sa.String(length=128), nullable=False),
+        sa.Column("name", sa.String(length=128), nullable=False),
+        sa.Column("description", sa.String(length=1024), nullable=True),
+        sa.Column("version", sa.String(length=32), nullable=False),
+        sa.Column("category", sa.String(length=64), nullable=False),
+        sa.Column("status", sa.String(length=32), nullable=False),
+        sa.Column("scopes", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "preview_data", postgresql.JSONB(astext_type=sa.Text()), nullable=False
+        ),
+        sa.Column("downloads", sa.Integer(), nullable=False),
+        sa.Column("rating_avg", sa.Float(), nullable=False),
+        sa.Column("rating_count", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["developer_uid"],
+            ["developers.uid"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
     )
-    op.create_table('widget_ratings',
-    sa.Column('id', sa.String(length=36), nullable=False),
-    sa.Column('widget_id', sa.String(length=36), nullable=False),
-    sa.Column('user_uid', sa.String(length=128), nullable=False),
-    sa.Column('rating', sa.Integer(), nullable=False),
-    sa.Column('review', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['user_uid'], ['users.uid'], ),
-    sa.ForeignKeyConstraint(['widget_id'], ['widgets.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    op.create_table(
+        "widget_ratings",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("widget_id", sa.String(length=36), nullable=False),
+        sa.Column("user_uid", sa.String(length=128), nullable=False),
+        sa.Column("rating", sa.Integer(), nullable=False),
+        sa.Column("review", sa.Text(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_uid"],
+            ["users.uid"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["widget_id"],
+            ["widgets.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
     )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_table('widget_ratings')
-    op.drop_table('widgets')
-    op.drop_table('support_ticket_messages')
-    op.drop_table('support_tickets')
+    op.drop_table("widget_ratings")
+    op.drop_table("widgets")
+    op.drop_table("support_ticket_messages")
+    op.drop_table("support_tickets")
     # ### end Alembic commands ###

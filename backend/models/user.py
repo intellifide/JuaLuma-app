@@ -4,27 +4,25 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import DateTime, String
-from sqlalchemy import func
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .account import Account
-    from .transaction import Transaction
-    from .subscription import Subscription
-    from .payment import Payment
     from .ai_settings import AISettings
-    from .notification import NotificationPreference
-    from .manual_asset import ManualAsset
-    from .payout import DeveloperPayout
     from .developer import Developer
+    from .manual_asset import ManualAsset
+    from .notification import NotificationPreference
+    from .payment import Payment
+    from .payout import DeveloperPayout
+    from .subscription import Subscription
     from .support import SupportTicket
+    from .transaction import Transaction
 
 
 class User(Base):
@@ -32,18 +30,27 @@ class User(Base):
 
     uid: Mapped[str] = mapped_column(String(128), primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending_verification", server_default="pending_verification")
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="pending_verification",
+        server_default="pending_verification",
+    )
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
-    theme_pref: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    currency_pref: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
-    developer_payout_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    theme_pref: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    currency_pref: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    developer_payout_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True
     )
-    mfa_secret: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    mfa_secret: Mapped[str | None] = mapped_column(String(32), nullable=True)
     mfa_enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
-    mfa_method: Mapped[Optional[str]] = mapped_column(String(16), default="totp",  nullable=True, comment="totp|email|sms")
-    email_otp: Mapped[Optional[str]] = mapped_column(String(6), nullable=True)
-    email_otp_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    mfa_method: Mapped[str | None] = mapped_column(
+        String(16), default="totp", nullable=True, comment="totp|email|sms"
+    )
+    email_otp: Mapped[str | None] = mapped_column(String(6), nullable=True)
+    email_otp_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -55,7 +62,10 @@ class User(Base):
     )
 
     developer: Mapped[Optional["Developer"]] = relationship(
-        "Developer", back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+        "Developer",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     subscriptions: Mapped[list["Subscription"]] = relationship(
         "Subscription",
@@ -117,7 +127,7 @@ class User(Base):
     def __repr__(self) -> str:
         return f"User(uid={self.uid!r}, email={self.email!r}, role={self.role!r})"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "uid": self.uid,
             "email": self.email,

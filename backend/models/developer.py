@@ -3,10 +3,9 @@
 # Updated 2025-12-08 17:37 CST by ChatGPT
 
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String
-from sqlalchemy import func
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,8 +21,8 @@ class Developer(Base):
     uid: Mapped[str] = mapped_column(
         String(128), ForeignKey("users.uid"), primary_key=True
     )
-    payout_method: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    payout_frequency: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    payout_method: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    payout_frequency: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -39,7 +38,9 @@ class Developer(Base):
     )
 
     def __repr__(self) -> str:
-        return f"Developer(uid={self.uid!r}, payout_frequency={self.payout_frequency!r})"
+        return (
+            f"Developer(uid={self.uid!r}, payout_frequency={self.payout_frequency!r})"
+        )
 
 
 __all__ = ["Developer"]

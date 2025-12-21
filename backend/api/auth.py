@@ -1,31 +1,30 @@
 # Updated 2025-12-10 16:46 CST by ChatGPT
 import logging
+import random
+import string
 from collections import defaultdict, deque
+from datetime import datetime, timedelta
 from threading import Lock
-from typing import Deque, Dict, Optional
-import pyotp
 
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy.orm import Session, selectinload
 
-from backend.middleware.auth import get_current_user
 from backend.core.constants import UserStatus
+from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, Subscription, User
 from backend.services.auth import (
     _get_firebase_app,
     create_user_record,
     generate_password_reset_link,
     revoke_refresh_tokens,
-    verify_token,
-    verify_password,
     update_user_password,
+    verify_password,
+    verify_token,
 )
-from backend.utils import get_db
 from backend.services.email import get_email_client
-from datetime import datetime, timedelta
-import random
-import string
+from backend.utils import get_db
 
 router = APIRouter(tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -46,11 +45,15 @@ class SignupRequest(BaseModel):
 
 class TokenRequest(BaseModel):
     token: str = Field(min_length=10, example="eyJhbGciOiJSUzI1NiIsImtpZCI6...")
-    mfa_code: Optional[str] = Field(default=None, min_length=6, max_length=6, example="123456")
+    mfa_code: str | None = Field(
+        default=None, min_length=6, max_length=6, example="123456"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
-            "examples": [{"token": "eyJhbGciOiJSUzI1NiIsImtpZCI6...sample", "mfa_code": "123456"}]
+            "examples": [
+                {"token": "eyJhbGciOiJSUzI1NiIsImtpZCI6...sample", "mfa_code": "123456"}
+            ]
         }
     )
 
@@ -61,22 +64,26 @@ class MFAVerifyRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     email: EmailStr = Field(example="user@example.com")
-    mfa_code: Optional[str] = Field(default=None, min_length=6, max_length=6, example="123456")
+    mfa_code: str | None = Field(
+        default=None, min_length=6, max_length=6, example="123456"
+    )
 
     model_config = ConfigDict(
-        json_schema_extra={"examples": [{"email": "forgot@example.com", "mfa_code": "123456"}]}
+        json_schema_extra={
+            "examples": [{"email": "forgot@example.com", "mfa_code": "123456"}]
+        }
     )
 
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=8, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
-    mfa_code: Optional[str] = Field(default=None, min_length=6, max_length=6)
+    mfa_code: str | None = Field(default=None, min_length=6, max_length=6)
 
 
 class ProfileUpdateRequest(BaseModel):
-    theme_pref: Optional[str] = Field(default=None, max_length=32, example="dark")
-    currency_pref: Optional[str] = Field(
+    theme_pref: str | None = Field(default=None, max_length=32, example="dark")
+    currency_pref: str | None = Field(
         default=None, min_length=3, max_length=3, example="USD"
     )
 
@@ -131,7 +138,7 @@ def _serialize_profile(user: User) -> dict:
 
 
 # Simple in-memory rate limiter keyed by client IP
-_login_attempts: Dict[str, Deque[float]] = defaultdict(deque)
+_login_attempts: dict[str, deque[float]] = defaultdict(deque)
 _login_lock = Lock()
 _login_window_seconds = 60
 _login_max_attempts = 10
@@ -155,7 +162,7 @@ def _rate_limit(request: Request) -> None:
         attempts.append(now)
 
 
-def _verify_mfa(user: User, mfa_code: Optional[str], db: Session) -> None:
+def _verify_mfa(user: User, mfa_code: str | None, db: Session) -> None:
     """Helper to verify MFA code for a user."""
     if not user.mfa_enabled:
         return
@@ -221,48 +228,58 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
     try:
         # 2025-12-10 16:46 CST - ensure emulator/SDK is initialized before create_user
         _get_firebase_app()
-        record = auth.create_user(
-            email=payload.email, password=payload.password
-        )
+        record = auth.create_user(email=payload.email, password=payload.password)
         is_fresh_firebase_user = True
     except firebase_exceptions.AlreadyExistsError:
         # 2025-12-12: Complete handling for "Zombie" users and "Desync" users
         try:
             # 1. Fetch existing Auth record to get the authoritative UID
             existing_user = auth.get_user_by_email(payload.email)
-            
+
             # 2. Check DB by authoritative UID
-            db_user_by_uid = db.query(User).filter(User.uid == existing_user.uid).first()
+            db_user_by_uid = (
+                db.query(User).filter(User.uid == existing_user.uid).first()
+            )
             if db_user_by_uid:
-                 # Truly a duplicate (User exists in both with same UID)
-                 raise HTTPException(
+                # Truly a duplicate (User exists in both with same UID)
+                raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email already exists.",
-                 )
-            
+                )
+
             # 3. Check DB by Email (Potential Desync)
-            db_user_by_email = db.query(User).filter(User.email == payload.email).first()
+            db_user_by_email = (
+                db.query(User).filter(User.email == payload.email).first()
+            )
             if db_user_by_email:
                 # User exists in DB but with different UID. Heal it.
-                logger.info(f"Healing desynced user {payload.email}. DB UID {db_user_by_email.uid} -> Auth UID {existing_user.uid}")
+                logger.info(
+                    f"Healing desynced user {payload.email}. DB UID {db_user_by_email.uid} -> Auth UID {existing_user.uid}"
+                )
                 try:
                     db_user_by_email.uid = existing_user.uid
                     db.commit()
                     db.refresh(db_user_by_email)
-                    return {"uid": db_user_by_email.uid, "email": db_user_by_email.email, "message": "Account synced successfully."}
+                    return {
+                        "uid": db_user_by_email.uid,
+                        "email": db_user_by_email.email,
+                        "message": "Account synced successfully.",
+                    }
                 except Exception as e:
                     logger.error(f"Failed to heal user {payload.email}: {e}")
                     db.rollback()
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail="Account sync failed.",
-                    )
+                    ) from e
 
             # 4. Truly "Zombie" (Exists in Auth, missing in DB)
-            logger.info(f"Healing zombie user account for {payload.email} ({existing_user.uid})")
+            logger.info(
+                f"Healing zombie user account for {payload.email} ({existing_user.uid})"
+            )
             # Proceed to create logic below using existing record
-            record = existing_user 
-            
+            record = existing_user
+
         except Exception as e:
             # If we returned above, we won't get here.
             # If we raised HTTPException, it propagates.
@@ -272,7 +289,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already exists.",
-            )
+            ) from e
 
     except firebase_exceptions.InvalidArgumentError as exc:
         raise HTTPException(
@@ -287,29 +304,35 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
 
     try:
         # Create DB record if we didn't return early (Zombie case or New user)
-        if 'record' not in locals():
-             # Should not happen unless logic above is flawed, but safe fallback
-             raise RuntimeError("User record creation failed unexpectedly.")
+        if "record" not in locals():
+            # Should not happen unless logic above is flawed, but safe fallback
+            raise RuntimeError("User record creation failed unexpectedly.")
 
         user = create_user_record(db, uid=record.uid, email=record.email)
     except Exception as exc:
-        logger.error(f"DB creation failed for {record.email} (UID: {record.uid}): {exc}")
+        logger.error(
+            f"DB creation failed for {record.email} (UID: {record.uid}): {exc}"
+        )
 
         # If we just created this user in Firebase, we MUST delete them to prevent zombie state.
         if is_fresh_firebase_user:
             try:
-                logger.warning(f"Rolling back Firebase user {record.uid} due to DB failure.")
+                logger.warning(
+                    f"Rolling back Firebase user {record.uid} due to DB failure."
+                )
                 auth.delete_user(record.uid)
             except Exception as cleanup_exc:
-                 # Critical Error: We failed to create DB AND failed to rollback Firebase.
-                 logger.critical(f"CRITICAL: Failed to rollback Firebase user {record.uid} after DB failure: {cleanup_exc}")
-        
-        if isinstance(exc, ValueError): # Catches IntegrityError wrapper
+                # Critical Error: We failed to create DB AND failed to rollback Firebase.
+                logger.critical(
+                    f"CRITICAL: Failed to rollback Firebase user {record.uid} after DB failure: {cleanup_exc}"
+                )
+
+        if isinstance(exc, ValueError):  # Catches IntegrityError wrapper
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="User already exists.",
             ) from exc
-        
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Account creation failed. Please try again.",
@@ -351,10 +374,9 @@ def login(
 
     user = (
         db.query(User)
-        .options(
-             selectinload(User.developer)
-        )
-        .filter(User.uid == uid).first()
+        .options(selectinload(User.developer))
+        .filter(User.uid == uid)
+        .first()
     )
     if not user:
         raise HTTPException(
@@ -365,15 +387,13 @@ def login(
     if user.mfa_enabled:
         _verify_mfa(user, payload.mfa_code, db)
 
-    subscription = (
-        db.query(Subscription).filter(Subscription.uid == uid).first()
-    )
+    subscription = db.query(Subscription).filter(Subscription.uid == uid).first()
 
     profile = user.to_dict()
     if subscription:
         profile["plan"] = subscription.plan
         profile["subscription_status"] = subscription.status
-    
+
     profile["status"] = user.status
     profile["is_developer"] = True if user.developer else False
 
@@ -381,7 +401,9 @@ def login(
 
 
 @router.post("/reset-password")
-def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)) -> dict:
+def reset_password(
+    payload: ResetPasswordRequest, db: Session = Depends(get_db)
+) -> dict:
     """Generate and dispatch a password reset link. Enforces MFA if enabled."""
     user = db.query(User).filter(User.email == payload.email).first()
     if not user:
@@ -403,8 +425,8 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
         ) from exc
 
     logger.info("Password reset link for %s: %s", payload.email, reset_link)
-    
-    # If using Email client, we should actually send it. 
+
+    # If using Email client, we should actually send it.
     # For now, we assume the frontend/service handles the dispatch or it's logged.
     return {"message": "Reset link sent"}
 
@@ -434,7 +456,7 @@ def change_password(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
-        )
+        ) from exc
 
     # Optional: Log the event
     log_entry = AuditLog(
@@ -442,7 +464,7 @@ def change_password(
         target_uid=current_user.uid,
         action="password_change",
         source="backend",
-        metadata_json={"ip": "..." } # should get from request
+        metadata_json={"ip": "..."},  # should get from request
     )
     db.add(log_entry)
     db.commit()
@@ -513,7 +535,7 @@ def update_profile(
 
 @router.post("/mfa/email/request-code")
 def request_email_code(
-    payload: ResetPasswordRequest, # reusing email field
+    payload: ResetPasswordRequest,  # reusing email field
     db: Session = Depends(get_db),
 ) -> dict:
     """Request an Email OTP for login or setup."""
@@ -521,16 +543,16 @@ def request_email_code(
     if not user:
         # Prevent enumeration
         return {"message": "If account exists, code sent."}
-    
-    code = ''.join(random.choices(string.digits, k=6))
+
+    code = "".join(random.choices(string.digits, k=6))
     user.email_otp = code
     user.email_otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
     db.commit()
-    
+
     # Send Email
     client = get_email_client()
     client.send_otp(user.email, code)
-    
+
     return {"message": "Code sent."}
 
 
@@ -543,24 +565,25 @@ def enable_email_mfa(
     """Enable Email MFA by verifying a sent code."""
     if not current_user.email_otp or not current_user.email_otp_expires_at:
         raise HTTPException(status_code=400, detail="Request a code first.")
-        
+
     # Timezone naive vs aware fix using utcnow/native
     if datetime.utcnow() > current_user.email_otp_expires_at.replace(tzinfo=None):
-         raise HTTPException(status_code=400, detail="Code expired.")
-         
+        raise HTTPException(status_code=400, detail="Code expired.")
+
     if payload.code != current_user.email_otp:
         raise HTTPException(status_code=401, detail="Invalid code.")
-        
+
     current_user.mfa_enabled = True
     current_user.mfa_method = "email"
     current_user.email_otp = None
-    
+
     if current_user.status == UserStatus.PENDING_VERIFICATION:
         current_user.status = UserStatus.PENDING_PLAN_SELECTION
-        
+
     db.commit()
-    
+
     return {"message": "Email MFA enabled."}
+
 
 # Placeholder for SMS (Commented Out logic)
 # @router.post("/mfa/sms/request-code")
@@ -581,12 +604,12 @@ def mfa_setup(
     uri = pyotp.totp.TOTP(secret).provisioning_uri(
         name=current_user.email, issuer_name="JuaLuma"
     )
-    
-    # Store secret temporarily (or overwrite existing). 
+
+    # Store secret temporarily (or overwrite existing).
     # Not enabled until verified.
     current_user.mfa_secret = secret
     db.commit()
-    
+
     return {"secret": secret, "otpauth_url": uri}
 
 
@@ -612,7 +635,7 @@ def mfa_enable(
 
     current_user.mfa_enabled = True
     db.commit()
-    
+
     return {"message": "MFA enabled successfully."}
 
 
@@ -625,7 +648,7 @@ def mfa_disable(
     """Disable MFA (requires valid code as confirmation)."""
     if not current_user.mfa_enabled:
         return {"message": "MFA is already disabled."}
-        
+
     totp = pyotp.TOTP(current_user.mfa_secret)
     if not totp.verify(payload.code):
         raise HTTPException(

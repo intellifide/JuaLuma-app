@@ -1,10 +1,9 @@
 # Updated 2025-12-18 20:25 CST by Antigravity
+import json
 import logging
 import uuid
-import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -13,15 +12,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from web3 import Web3  # For address validation
 
-from backend.middleware.auth import get_current_user
 from backend.core.dependencies import enforce_account_limit
+from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, Subscription, Transaction, User
-from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
-from backend.services.connectors import build_connector
 from backend.services.categorization import predict_category
+from backend.services.connectors import build_connector
+from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.utils import get_db
+from backend.utils.encryption import decrypt_secret, encrypt_secret
 from backend.utils.firestore import get_firestore_client
-from backend.utils.encryption import encrypt_secret, decrypt_secret
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ _ALLOWED_ACCOUNT_TYPES = {"traditional", "investment", "web3", "cex", "manual"}
 
 class AccountCreate(BaseModel):
     account_type: str = Field(description="Type of account to create.")
-    provider: Optional[str] = Field(default=None, max_length=64)
+    provider: str | None = Field(default=None, max_length=64)
     account_name: str = Field(max_length=256, description="Human-friendly name.")
 
     model_config = ConfigDict(
@@ -86,8 +85,8 @@ class CexLinkRequest(BaseModel):
 
 
 class AccountUpdate(BaseModel):
-    account_name: Optional[str] = Field(default=None, max_length=256)
-    balance: Optional[Decimal] = Field(default=None, ge=0)
+    account_name: str | None = Field(default=None, max_length=256)
+    balance: Decimal | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "AccountUpdate":
@@ -110,9 +109,9 @@ class TransactionSummary(BaseModel):
     ts: datetime
     amount: Decimal
     currency: str
-    category: Optional[str] = None
-    merchant_name: Optional[str] = None
-    description: Optional[str] = None
+    category: str | None = None
+    merchant_name: str | None = None
+    description: str | None = None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -135,13 +134,13 @@ class TransactionSummary(BaseModel):
 class AccountResponse(BaseModel):
     id: uuid.UUID
     uid: str
-    account_type: Optional[str] = None
-    provider: Optional[str] = None
-    account_name: Optional[str] = None
-    account_number_masked: Optional[str] = None
-    balance: Optional[Decimal] = None
-    currency: Optional[str] = None
-    secret_ref: Optional[str] = None
+    account_type: str | None = None
+    provider: str | None = None
+    account_name: str | None = None
+    account_number_masked: str | None = None
+    balance: Decimal | None = None
+    currency: str | None = None
+    secret_ref: str | None = None
     created_at: datetime
     updated_at: datetime
     transactions: list[TransactionSummary] = Field(default_factory=list)
@@ -209,11 +208,11 @@ def _enforce_sync_limit(db: Session, uid: str, plan: str) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Manual sync is disabled for Essential tier. Your accounts update automatically every 24 hours.",
         )
-    
+
     if plan != "free":
         return
 
-    since = datetime.now(timezone.utc) - timedelta(days=1)
+    since = datetime.now(UTC) - timedelta(days=1)
     sync_count = (
         db.query(AuditLog)
         .filter(
@@ -234,7 +233,7 @@ def _serialize_account(
     account: Account,
     *,
     include_balance: bool = True,
-    transactions: Optional[list[Transaction]] = None,
+    transactions: list[Transaction] | None = None,
 ) -> AccountResponse:
     """Convert an Account ORM object into a response schema."""
     txns = transactions or []
@@ -257,7 +256,7 @@ def _serialize_account(
 
 @router.get("", response_model=list[AccountResponse])
 def list_accounts(
-    account_type: Optional[str] = Query(
+    account_type: str | None = Query(
         default=None, description="Optional filter by account_type."
     ),
     include_balance: bool = Query(
@@ -330,9 +329,7 @@ def get_account_details(
 
 
 @router.post(
-    "/link/web3",
-    response_model=AccountResponse,
-    status_code=status.HTTP_201_CREATED
+    "/link/web3", response_model=AccountResponse, status_code=status.HTTP_201_CREATED
 )
 def link_web3_account(
     payload: Web3LinkRequest,
@@ -348,17 +345,18 @@ def link_web3_account(
     # Since secret_ref is text, we can do a ILIKE or JSON exact match.
     # For now, let's just fetch all web3 accounts and check in python to handle JSON parsing safely,
     # or rely on a simple string check if we ensure stored format is consistent.
-    
+
     # Simple consistent storage format:
     secret_data = {"address": payload.address, "chain_id": payload.chain_id}
     secret_ref_str = json.dumps(secret_data, sort_keys=True)
 
     # Check for duplicates using Python iteration to be safe against JSON variations if not strict,
     # or just checking the address field inside.
-    existing_accounts = db.query(Account).filter(
-        Account.uid == current_user.uid,
-        Account.account_type == "web3"
-    ).all()
+    existing_accounts = (
+        db.query(Account)
+        .filter(Account.uid == current_user.uid, Account.account_type == "web3")
+        .all()
+    )
 
     for acc in existing_accounts:
         if not acc.secret_ref:
@@ -368,7 +366,7 @@ def link_web3_account(
             if stored.get("address") == payload.address:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Wallet address {payload.address} is already linked."
+                    detail=f"Wallet address {payload.address} is already linked.",
                 )
         except json.JSONDecodeError:
             continue
@@ -402,9 +400,7 @@ def link_web3_account(
 
 
 @router.post(
-    "/link/cex",
-    response_model=AccountResponse,
-    status_code=status.HTTP_201_CREATED
+    "/link/cex", response_model=AccountResponse, status_code=status.HTTP_201_CREATED
 )
 def link_cex_account(
     payload: CexLinkRequest,
@@ -423,7 +419,7 @@ def link_cex_account(
             kind="cex",
             exchange_id=payload.exchange_id,
             api_key=payload.api_key,
-            api_secret=payload.api_secret
+            api_secret=payload.api_secret,
         )
         # Attempt to fetch transactions (or just a basic check if available) to validate keys.
         # Since fetch_transactions pulls up to 50, it's a reasonable connectivity check.
@@ -435,14 +431,11 @@ def link_cex_account(
         # If it's a specific credential error, raise 400.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to validate CEX credentials: {str(e)}"
-        )
+            detail=f"Failed to validate CEX credentials: {str(e)}",
+        ) from e
 
     # 2. Encrypt secrets
-    secret_data = {
-        "apiKey": payload.api_key,
-        "secret": payload.api_secret
-    }
+    secret_data = {"apiKey": payload.api_key, "secret": payload.api_secret}
     secret_json = json.dumps(secret_data)
     encrypted_ref = encrypt_secret(secret_json, current_user.uid)
 
@@ -453,7 +446,7 @@ def link_cex_account(
         account_type="cex",
         provider=payload.exchange_id,
         account_name=payload.account_name,
-        currency="USD", # Default for CEX until synced
+        currency="USD",  # Default for CEX until synced
         secret_ref=encrypted_ref,
         balance=Decimal("0.0"),
     )
@@ -481,10 +474,10 @@ def link_cex_account(
 )
 def sync_account_transactions(
     account_id: uuid.UUID,
-    start_date: Optional[date] = Query(
+    start_date: date | None = Query(
         default=None, description="Start date (inclusive) for the sync window."
     ),
-    end_date: Optional[date] = Query(
+    end_date: date | None = Query(
         default=None, description="End date (inclusive) for the sync window."
     ),
     initial_sync: bool = Query(
@@ -530,7 +523,7 @@ def sync_account_transactions(
         )
 
     plan = _get_subscription_plan(db, current_user.uid)
-    
+
     if not initial_sync:
         _enforce_sync_limit(db, current_user.uid, plan)
 
@@ -545,7 +538,7 @@ def sync_account_transactions(
 
     # Sync Logic Dispatch
     fetched_txns = []
-    
+
     # 1. Traditional (Plaid)
     if account.account_type == "traditional":
         try:
@@ -569,27 +562,33 @@ def sync_account_transactions(
             address = conn_data.get("address")
             if not address:
                 raise ValueError("Invalid Web3 configuration")
-            
+
             # Use Connector Service
-            connector = build_connector(kind="web3", rpc_url=None) # Uses public fallback or mock
-            
+            connector = build_connector(
+                kind="web3", rpc_url=None
+            )  # Uses public fallback or mock
+
             normalized_txns = connector.fetch_transactions(account_id=address)
-            
+
             fetched_txns = []
             for t in normalized_txns:
-                fetched_txns.append({
-                    "date": t.timestamp.date(),
-                    "transaction_id": t.tx_id,
-                    "amount": float(t.amount),
-                    "currency": t.currency_code,
-                    "category": ["Transfer"] if t.type == 'transfer' else ["Trade"],
-                    "merchant_name": t.merchant_name,
-                    "name": t.merchant_name or t.tx_id[:8],
-                })
+                fetched_txns.append(
+                    {
+                        "date": t.timestamp.date(),
+                        "transaction_id": t.tx_id,
+                        "amount": float(t.amount),
+                        "currency": t.currency_code,
+                        "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
+                        "merchant_name": t.merchant_name,
+                        "name": t.merchant_name or t.tx_id[:8],
+                    }
+                )
 
         except Exception as e:
             logger.error(f"Web3 sync error: {e}")
-            raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}")
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}"
+            ) from e
 
     # 3. CEX
     elif account.account_type == "cex":
@@ -597,31 +596,36 @@ def sync_account_transactions(
             # Decrypt
             decrypted_json = decrypt_secret(account.secret_ref, current_user.uid)
             creds = json.loads(decrypted_json)
-            
+
             connector = build_connector(
                 kind="cex",
                 exchange_id=account.provider,
                 api_key=creds.get("apiKey"),
-                api_secret=creds.get("secret")
+                api_secret=creds.get("secret"),
             )
-            
+
             normalized_txns = connector.fetch_transactions(account_id=str(account.id))
-            
+
             fetched_txns = []
             for t in normalized_txns:
-                fetched_txns.append({
-                    "date": t.timestamp.date(),
-                    "transaction_id": t.tx_id,
-                    "amount": float(t.amount),
-                    "currency": t.currency_code,
-                    "category": ["Trade"] if t.type == 'trade' else ["Transfer"],
-                    "merchant_name": t.merchant_name,
-                    "name": f"{t.counterparty} {t.type}",
-                })
-                
+                fetched_txns.append(
+                    {
+                        "date": t.timestamp.date(),
+                        "transaction_id": t.tx_id,
+                        "amount": float(t.amount),
+                        "currency": t.currency_code,
+                        "category": ["Trade"] if t.type == "trade" else ["Transfer"],
+                        "merchant_name": t.merchant_name,
+                        "name": f"{t.counterparty} {t.type}",
+                    }
+                )
+
         except Exception as e:
             logger.error(f"CEX sync error: {e}")
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to decrypt credentials or sync CEX")
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "Failed to decrypt credentials or sync CEX",
+            ) from e
 
     # Common normalization (Plaid serves as the schema reference)
     plaid_transactions = fetched_txns
@@ -650,11 +654,13 @@ def sync_account_transactions(
                     or current_user.currency_pref
                     or "USD"
                 )
-                
+
                 # Filter transactions to only those belonging to this specific account
                 if plaid_account_id:
                     plaid_transactions = [
-                        t for t in fetched_txns if t.get("account_id") == plaid_account_id
+                        t
+                        for t in fetched_txns
+                        if t.get("account_id") == plaid_account_id
                     ]
         except Exception as e:
             logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
@@ -680,11 +686,9 @@ def sync_account_transactions(
         d = txn["date"]
         # Ensure d is a date object
         if isinstance(d, str):
-             d = date.fromisoformat(d)
-        
-        txn_ts = datetime.combine(
-            d, datetime.min.time(), tzinfo=timezone.utc
-        )
+            d = date.fromisoformat(d)
+
+        txn_ts = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
         existing = (
             db.query(Transaction)
             .filter(
@@ -698,9 +702,15 @@ def sync_account_transactions(
         # Auto-categorization
         merchant_key = txn.get("merchant_name") or txn.get("name")
         predicted_category = predict_category(db, current_user.uid, merchant_key)
-        
-        final_category = predicted_category if predicted_category else (
-            txn.get("category")[0] if isinstance(txn.get("category"), list) and txn.get("category") else None
+
+        final_category = (
+            predicted_category
+            if predicted_category
+            else (
+                txn.get("category")[0]
+                if isinstance(txn.get("category"), list) and txn.get("category")
+                else None
+            )
         )
 
         if existing:
@@ -745,12 +755,12 @@ def sync_account_transactions(
 
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Conflict while syncing transactions; please retry.",
-        )
+        ) from e
 
     audit = AuditLog(
         actor_uid=current_user.uid,
@@ -778,7 +788,9 @@ def sync_account_transactions(
     )
 
 
-@router.post("/manual", response_model=AccountResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/manual", response_model=AccountResponse, status_code=status.HTTP_201_CREATED
+)
 def create_manual_account(
     payload: AccountCreate,
     current_user: User = Depends(get_current_user),
@@ -877,16 +889,20 @@ def delete_account(
             account.secret_ref,
         )
         try:
-             remove_item(account.secret_ref)
+            remove_item(account.secret_ref)
         except Exception as e:
-             logger.error("Failed to remove Plaid item: %s", e)
+            logger.error("Failed to remove Plaid item: %s", e)
 
     # Invalidate Analytics Cache
     try:
         db_fs = get_firestore_client()
         # Query for all cache docs belonging to this user
         # Note: older cache entries without 'uid' will expire naturally in 1h
-        for doc in db_fs.collection("analytics_cache").where("uid", "==", current_user.uid).stream():
+        for doc in (
+            db_fs.collection("analytics_cache")
+            .where("uid", "==", current_user.uid)
+            .stream()
+        ):
             doc.reference.delete()
     except Exception as e:
         logger.warning(f"Failed to invalidate analytics cache: {e}")
@@ -896,7 +912,10 @@ def delete_account(
         target_uid=current_user.uid,
         action="account_deleted",
         source="backend",
-        metadata_json={"account_id": str(account.id), "account_type": account.account_type},
+        metadata_json={
+            "account_id": str(account.id),
+            "account_type": account.account_type,
+        },
     )
     db.add(audit)
     db.delete(account)

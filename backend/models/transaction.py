@@ -5,7 +5,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -23,11 +23,10 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .user import User
     from .account import Account
+    from .user import User
 
 
 class Transaction(Base):
@@ -52,19 +51,21 @@ class Transaction(Base):
         String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
     )
     account_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
     )
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
-    category: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    merchant_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    external_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    merchant_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     is_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    raw_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    embedding: Mapped[Optional[Vector]] = mapped_column(Vector(768), nullable=True)
+    raw_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    embedding: Mapped[Vector | None] = mapped_column(Vector(768), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

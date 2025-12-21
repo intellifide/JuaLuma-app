@@ -1,12 +1,12 @@
-from typing import Any, Dict, List
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
-from backend.models import Budget, User
 from backend.middleware.auth import get_current_user
+from backend.models import Budget, User
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/budgets", tags=["Budgets"])
@@ -22,7 +22,7 @@ class BudgetResponse(BudgetSchema):
     id: str
 
 
-@router.get("/", response_model=List[BudgetResponse])
+@router.get("/", response_model=list[BudgetResponse])
 def list_budgets(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -32,11 +32,9 @@ def list_budgets(
     result = db.execute(stmt)
     return [
         BudgetResponse(
-            id=str(row.id),
-            category=row.category,
-            amount=row.amount,
-            period=row.period
-        ) for row in result.scalars().all()
+            id=str(row.id), category=row.category, amount=row.amount, period=row.period
+        )
+        for row in result.scalars().all()
     ]
 
 
@@ -49,8 +47,7 @@ def upsert_budget(
     """Create or update a budget for a specific category."""
     # Check if exists
     stmt = select(Budget).where(
-        Budget.uid == current_user.uid,
-        Budget.category == budget_in.category
+        Budget.uid == current_user.uid, Budget.category == budget_in.category
     )
     result = db.execute(stmt)
     existing_budget = result.scalars().first()
@@ -64,14 +61,14 @@ def upsert_budget(
             id=str(existing_budget.id),
             category=existing_budget.category,
             amount=existing_budget.amount,
-            period=existing_budget.period
+            period=existing_budget.period,
         )
     else:
         new_budget = Budget(
             uid=current_user.uid,
             category=budget_in.category,
             amount=budget_in.amount,
-            period=budget_in.period
+            period=budget_in.period,
         )
         db.add(new_budget)
         db.commit()
@@ -80,8 +77,9 @@ def upsert_budget(
             id=str(new_budget.id),
             category=new_budget.category,
             amount=new_budget.amount,
-            period=new_budget.period
+            period=new_budget.period,
         )
+
 
 @router.delete("/{category}")
 def delete_budget(
@@ -91,8 +89,7 @@ def delete_budget(
 ) -> Any:
     """Delete a budget for a category."""
     stmt = select(Budget).where(
-        Budget.uid == current_user.uid,
-        Budget.category == category
+        Budget.uid == current_user.uid, Budget.category == category
     )
     result = db.execute(stmt)
     existing_budget = result.scalars().first()

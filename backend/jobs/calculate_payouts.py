@@ -2,10 +2,11 @@
 Job to calculate developer payouts based on widget engagement.
 Run monthly.
 """
+
 # 2025-12-11 17:23 CST - derive payouts from widget run events with KYC guard and audit trail
 import logging
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from backend.models import AuditLog, Developer, DeveloperPayout, SessionLocal, Widget
@@ -20,7 +21,7 @@ RATE_PER_RUN = Decimal("0.05")
 def _aggregate_widget_run_revenue(session):
     """Aggregate widget run events into revenue per developer for the current month."""
     start_of_month = date.today().replace(day=1)
-    month_floor = datetime.combine(start_of_month, datetime.min.time(), tzinfo=timezone.utc)
+    month_floor = datetime.combine(start_of_month, datetime.min.time(), tzinfo=UTC)
 
     revenue_map: dict[str, dict[str, Decimal | int]] = defaultdict(
         lambda: {"amount": Decimal(0), "runs": 0}
@@ -47,7 +48,9 @@ def _aggregate_widget_run_revenue(session):
             dev_uid = widget.developer_uid if widget else None
 
         if not dev_uid:
-            logger.warning("Skipping widget_run event with no developer context: %s", metadata)
+            logger.warning(
+                "Skipping widget_run event with no developer context: %s", metadata
+            )
             continue
 
         revenue_map[dev_uid]["amount"] += RATE_PER_RUN
@@ -107,7 +110,10 @@ def calculate_payouts():
 
             if existing:
                 logger.info(
-                    "Updating payout for %s in %s to %s", dev_uid, current_month, stats["amount"]
+                    "Updating payout for %s in %s to %s",
+                    dev_uid,
+                    current_month,
+                    stats["amount"],
                 )
                 existing.gross_revenue = stats["amount"]
             else:

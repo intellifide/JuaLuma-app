@@ -6,30 +6,34 @@ These helpers intentionally keep side effects narrow and raise informative error
 when credentials are missing so local developers can diagnose setup issues.
 """
 
+import logging
+import time
+from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from functools import lru_cache
-import time
-from typing import Dict, Iterable, List, Tuple
-import logging
 
 from plaid import ApiClient, Configuration, Environment
 from plaid.api import plaid_api
+from plaid.exceptions import ApiException
 from plaid.model.accounts_get_request import AccountsGetRequest
 from plaid.model.country_code import CountryCode
 from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
-from plaid.model.investments_transactions_get_request import InvestmentsTransactionsGetRequest
+from plaid.model.investments_transactions_get_request import (
+    InvestmentsTransactionsGetRequest,
+)
 from plaid.model.investments_transactions_get_request_options import (
     InvestmentsTransactionsGetRequestOptions,
 )
-from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.item_public_token_exchange_request import (
+    ItemPublicTokenExchangeRequest,
+)
 from plaid.model.item_remove_request import ItemRemoveRequest
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.products import Products
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
-from plaid.exceptions import ApiException
 
 from backend.core import settings
 
@@ -50,7 +54,7 @@ def _get_environment() -> Environment:
     return Environment.Sandbox
 
 
-def _get_credentials() -> Tuple[str, str]:
+def _get_credentials() -> tuple[str, str]:
     return settings.plaid_client_id, settings.plaid_secret
 
 
@@ -79,7 +83,7 @@ def _pick_currency(iso_code: str | None, unofficial_code: str | None) -> str | N
     return iso_code or unofficial_code
 
 
-def create_link_token(user_id: str, products: Iterable[str]) -> Tuple[str, str]:
+def create_link_token(user_id: str, products: Iterable[str]) -> tuple[str, str]:
     """
     Generate a link_token for the Link flow and return its expiration.
     """
@@ -97,7 +101,7 @@ def create_link_token(user_id: str, products: Iterable[str]) -> Tuple[str, str]:
     try:
         response = client.link_token_create(request)
     except ApiException as exc:
-        raise _wrap_plaid_error("link_token creation", exc)
+        raise _wrap_plaid_error("link_token creation", exc) from exc
 
     expiration = (
         response.expiration
@@ -107,7 +111,7 @@ def create_link_token(user_id: str, products: Iterable[str]) -> Tuple[str, str]:
     return response.link_token, expiration or ""
 
 
-def exchange_public_token(public_token: str) -> Tuple[str, str]:
+def exchange_public_token(public_token: str) -> tuple[str, str]:
     """
     Exchange a public_token for an access_token and item_id.
     """
@@ -117,7 +121,7 @@ def exchange_public_token(public_token: str) -> Tuple[str, str]:
     try:
         response = client.item_public_token_exchange(request)
     except ApiException as exc:
-        raise _wrap_plaid_error("token exchange", exc)
+        raise _wrap_plaid_error("token exchange", exc) from exc
 
     return response.access_token, response.item_id
 
@@ -137,10 +141,10 @@ def remove_item(access_token: str) -> None:
         if "ITEM_NOT_FOUND" in str(err_body):
             logger.warning("Plaid remove_item: Item not found (already removed?)")
             return
-        raise _wrap_plaid_error("item_remove", exc)
+        raise _wrap_plaid_error("item_remove", exc) from exc
 
 
-def fetch_accounts(access_token: str) -> List[Dict[str, object]]:
+def fetch_accounts(access_token: str) -> list[dict[str, object]]:
     """
     Retrieve accounts for a given access token.
 
@@ -152,9 +156,9 @@ def fetch_accounts(access_token: str) -> List[Dict[str, object]]:
     try:
         response = client.accounts_get(request)
     except ApiException as exc:
-        raise _wrap_plaid_error("accounts_get", exc)
+        raise _wrap_plaid_error("accounts_get", exc) from exc
 
-    accounts: List[Dict[str, object]] = []
+    accounts: list[dict[str, object]] = []
     for account in response.accounts:
         balances = account.balances
         currency = _pick_currency(
@@ -185,7 +189,7 @@ def fetch_transactions(
     *,
     page_size: int = 500,
     max_pages: int = 10,
-) -> List[Dict[str, object]]:
+) -> list[dict[str, object]]:
     """
     Retrieve transactions within a date window, honoring Plaid pagination limits.
 
@@ -195,7 +199,7 @@ def fetch_transactions(
         raise ValueError("start_date must be before or equal to end_date.")
 
     client = get_plaid_client()
-    all_transactions: List[Dict[str, object]] = []
+    all_transactions: list[dict[str, object]] = []
     offset = 0
     pages = 0
 
@@ -218,11 +222,15 @@ def fetch_transactions(
 
                 # Handle PRODUCT_NOT_READY gracefully for fresh items
                 error_body = getattr(exc, "body", "")
-                if "PRODUCT_NOT_READY" in str(error_body) or "PRODUCT_NOT_READY" in str(exc):
-                    logger.warning(f"Plaid product not ready, returning empty transactions: {exc}")
+                if "PRODUCT_NOT_READY" in str(error_body) or "PRODUCT_NOT_READY" in str(
+                    exc
+                ):
+                    logger.warning(
+                        f"Plaid product not ready, returning empty transactions: {exc}"
+                    )
                     return []
-                
-                raise _wrap_plaid_error("transactions_get", exc)
+
+                raise _wrap_plaid_error("transactions_get", exc) from exc
 
         for txn in response.transactions:
             currency = _pick_currency(
@@ -261,7 +269,7 @@ def fetch_investments(
     *,
     start_date: date | None = None,
     end_date: date | None = None,
-) -> Dict[str, List[Dict[str, object]]]:
+) -> dict[str, list[dict[str, object]]]:
     """
     Retrieve holdings and investment transactions for Pro/Ultimate tiers.
 
@@ -281,12 +289,16 @@ def fetch_investments(
             InvestmentsHoldingsGetRequest(access_token=access_token)
         )
     except ApiException as exc:
-        raise _wrap_plaid_error("investments_holdings_get", exc)
+        raise _wrap_plaid_error("investments_holdings_get", exc) from exc
 
-    holdings: List[Dict[str, object]] = []
+    holdings: list[dict[str, object]] = []
     for holding in holdings_response.holdings:
         security = next(
-            (s for s in holdings_response.securities if s.security_id == holding.security_id),
+            (
+                s
+                for s in holdings_response.securities
+                if s.security_id == holding.security_id
+            ),
             None,
         )
         currency = _pick_currency(
@@ -301,11 +313,13 @@ def fetch_investments(
                 "cost_basis": holding.cost_basis,
                 "currency": currency,
                 "name": getattr(security, "name", None) if security else None,
-                "ticker": getattr(security, "ticker_symbol", None) if security else None,
+                "ticker": getattr(security, "ticker_symbol", None)
+                if security
+                else None,
             }
         )
 
-    investment_transactions: List[Dict[str, object]] = []
+    investment_transactions: list[dict[str, object]] = []
     offset = 0
     max_pages = 5
     page = 0
@@ -321,7 +335,7 @@ def fetch_investments(
         try:
             txn_response = client.investments_transactions_get(txn_request)
         except ApiException as exc:
-            raise _wrap_plaid_error("investments_transactions_get", exc)
+            raise _wrap_plaid_error("investments_transactions_get", exc) from exc
 
         for txn in txn_response.investment_transactions:
             currency = _pick_currency(

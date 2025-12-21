@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime, time
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -20,7 +20,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .user import User
@@ -28,7 +27,9 @@ if TYPE_CHECKING:
 
 class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
-    __table_args__ = (UniqueConstraint("uid", "event_key", name="uq_notification_event"),)
+    __table_args__ = (
+        UniqueConstraint("uid", "event_key", name="uq_notification_event"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -39,8 +40,8 @@ class NotificationPreference(Base):
     event_key: Mapped[str] = mapped_column(String(64), nullable=False)
     channel_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     channel_sms: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    quiet_hours_start: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
-    quiet_hours_end: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    quiet_hours_start: Mapped[time | None] = mapped_column(Time, nullable=True)
+    quiet_hours_end: Mapped[time | None] = mapped_column(Time, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -86,18 +87,18 @@ class LocalNotification(Base):
         String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
     )
     # Generic notifications don't need a ticket.
-    ticket_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    ticket_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("support_tickets.id", ondelete="CASCADE"),
         nullable=True,
     )
     # event_key can be a unique dedup key or generic ID
-    event_key: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    
-    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    event_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

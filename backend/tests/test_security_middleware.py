@@ -1,7 +1,7 @@
+from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from backend.middleware.security import ACTIVE_RATE_LIMITER
-from fastapi.testclient import TestClient
 
 
 def test_request_id_and_security_headers(test_client: TestClient):

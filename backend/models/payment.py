@@ -4,14 +4,13 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .user import User
@@ -26,10 +25,8 @@ class Payment(Base):
     uid: Mapped[str] = mapped_column(
         String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
     )
-    stripe_customer_id: Mapped[Optional[str]] = mapped_column(
-        String(128), nullable=True
-    )
-    stripe_sub_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    stripe_sub_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

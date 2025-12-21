@@ -1,6 +1,7 @@
 import asyncio
-import sys
 import logging
+import sys
+
 from backend.dev_tools.mcp_server import dev_mcp
 
 # Reconfigure logging to write to stderr

@@ -8,29 +8,29 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from backend.api.accounts import router as accounts_router
+from backend.api.ai import router as ai_router
+from backend.api.analytics import router as analytics_router
+from backend.api.auth import router as auth_router
+from backend.api.billing import router as billing_router
+from backend.api.budgets import router as budgets_router
+from backend.api.developers import router as developers_router
+from backend.api.notifications import router as notifications_router
+from backend.api.plaid import router as plaid_router
+from backend.api.support import router as support_router
+from backend.api.support_portal import router as support_portal_router
+from backend.api.transactions import router as transactions_router
+from backend.api.users import router as users_router
+from backend.api.webhooks import router as webhooks_router
+from backend.api.widgets import router as widgets_router
+from backend.core import configure_logging, settings
+from backend.core.events import initialize_events
 
 # MCP Imports
 from backend.mcp_server import mcp
-
-from backend.core import configure_logging, settings
-from backend.core.events import initialize_events
-from backend.api.auth import router as auth_router
-from backend.api.accounts import router as accounts_router
-from backend.api.plaid import router as plaid_router
-from backend.api.transactions import router as transactions_router
-from backend.api.analytics import router as analytics_router
-from backend.api.ai import router as ai_router
-from backend.api.widgets import router as widgets_router
-from backend.api.developers import router as developers_router
-from backend.api.support import router as support_router
-from backend.api.users import router as users_router
-from backend.api.billing import router as billing_router
-from backend.api.budgets import router as budgets_router
-from backend.api.webhooks import router as webhooks_router
-from backend.api.notifications import router as notifications_router
-from backend.api.support_portal import router as support_portal_router
 from backend.middleware import (
     RateLimitMiddleware,
     RequestContextMiddleware,
@@ -54,8 +54,9 @@ async def lifespan(app: FastAPI):
         await asyncio.to_thread(initialize_events)
     except Exception as e:
         logger.error(f"Failed to initialize event bus: {e}")
-    
+
     yield
+
 
 app = FastAPI(
     title="jualuma API",
@@ -101,7 +102,7 @@ app.include_router(billing_router)
 app.include_router(budgets_router)
 app.include_router(webhooks_router)
 app.include_router(notifications_router)
-app.include_router(support_portal_router) # New router inclusion
+app.include_router(support_portal_router)  # New router inclusion
 
 # Initialize and Mount Main MCP Server (Phase 3)
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI
@@ -116,10 +117,10 @@ else:
 # Only mount dangerous dev tools in LOCAL environment
 if settings.app_env.lower() == "local":
     from backend.dev_tools.mcp_server import dev_mcp  # noqa: E402
+
     dev_app = getattr(dev_mcp, "sse_app", getattr(dev_mcp, "http_app", None))
     if dev_app:
         app.mount("/mcp-dev", dev_app)
-
 
 
 # Structured error handlers ----------------------------------------------------
@@ -203,7 +204,6 @@ async def unhandled_exception_handler(
         message="An unexpected error occurred.",
         request=request,
     )
-
 
 
 @app.get("/")

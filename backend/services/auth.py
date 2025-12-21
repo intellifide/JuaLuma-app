@@ -1,10 +1,10 @@
 # Updated 2025-12-19 12:20 CST by Antigravity
-import os
 import logging
-import requests
-from typing import Any, Dict
+import os
+from typing import Any
 
 import firebase_admin
+import requests
 from firebase_admin import auth
 from firebase_admin.auth import (
     ExpiredIdTokenError,
@@ -19,11 +19,13 @@ from sqlalchemy.orm import Session
 from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.models import AISettings, Subscription, User
+
 # Import from billing service to sync Stripe
 from backend.services.billing import create_stripe_customer
 
 _firebase_app: firebase_admin.App | None = None
 logger = logging.getLogger(__name__)
+
 
 def _get_firebase_app() -> firebase_admin.App:
     """Initialize (or reuse) the Firebase app, honoring the emulator when present."""
@@ -61,7 +63,7 @@ def _get_firebase_app() -> firebase_admin.App:
     return _firebase_app
 
 
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str) -> dict[str, Any]:
     """Verify an ID token via Firebase Admin SDK."""
     try:
         return auth.verify_id_token(token, app=_get_firebase_app())
@@ -99,7 +101,7 @@ def create_user_record(db: Session, *, uid: str, email: str) -> User:
     # Given the task sequence: Signup (Pending Verification) -> Verify (Pending Plan Selection) -> Select Plan (Active).
     # Setting subscription to "free" immediately might be premature if they might choose "pro".
     # But for now, let's just focus on User.status.
-    
+
     subscription = Subscription(uid=uid, plan="free", status="active", ai_quota_used=0)
     ai_settings = AISettings(uid=uid)
 
@@ -118,13 +120,13 @@ def create_user_record(db: Session, *, uid: str, email: str) -> User:
     try:
         create_stripe_customer(db, uid, email)
     except Exception as exc:
-         # Log but don't fail user creation
+        # Log but don't fail user creation
         logger.error(f"Failed to sync new user {uid} to Stripe: {exc}")
 
     return user
 
 
-def refresh_custom_claims(uid: str, claims: Dict[str, Any]) -> None:
+def refresh_custom_claims(uid: str, claims: dict[str, Any]) -> None:
     """Update Firebase custom claims for a given user."""
     try:
         auth.set_custom_user_claims(uid, claims, app=_get_firebase_app())
@@ -146,12 +148,12 @@ def _get_auth_url(action: str) -> str:
     """Return the Firebase Auth REST API URL."""
     api_key = settings.firebase_api_key or "fake-key"
     base = "https://identitytoolkit.googleapis.com/v1"
-    
+
     if settings.is_local and settings.resolved_auth_emulator_host:
         # Emulator override
         host = settings.resolved_auth_emulator_host
         return f"http://{host}/identitytoolkit.googleapis.com/v1/accounts:{action}?key={api_key}"
-    
+
     return f"{base}/accounts:{action}?key={api_key}"
 
 
@@ -161,12 +163,8 @@ def verify_password(email: str, password: str) -> bool:
     Returns True if valid, False otherwise.
     """
     url = _get_auth_url("signInWithPassword")
-    payload = {
-        "email": email,
-        "password": password,
-        "returnSecureToken": True
-    }
-    
+    payload = {"email": email, "password": password, "returnSecureToken": True}
+
     try:
         response = requests.post(url, json=payload, timeout=10)
         return response.status_code == 200

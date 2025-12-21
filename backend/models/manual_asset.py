@@ -3,16 +3,24 @@
 # Updated 2025-12-08 17:45 CST by ChatGPT
 
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .user import User
@@ -36,8 +44,8 @@ class ManualAsset(Base):
     asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     value: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
-    purchase_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

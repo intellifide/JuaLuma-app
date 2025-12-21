@@ -1,9 +1,8 @@
 # Updated 2025-12-18 20:25 CST by Antigravity
 import logging
 from calendar import monthrange
-from datetime import datetime, timedelta, timezone, date
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import List
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -18,27 +17,33 @@ from backend.utils.firestore import get_firestore_client
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 logger = logging.getLogger(__name__)
 
+
 # Schemas
 class DataPoint(BaseModel):
     date: date
     value: float
 
+
 class NetWorthResponse(BaseModel):
-    data: List[DataPoint]
+    data: list[DataPoint]
+
 
 class CashFlowResponse(BaseModel):
-    income: List[DataPoint]
-    expenses: List[DataPoint]
+    income: list[DataPoint]
+    expenses: list[DataPoint]
+
 
 class CategorySpend(BaseModel):
     category: str
     amount: float
 
+
 class SpendingByCategoryResponse(BaseModel):
-    data: List[CategorySpend]
+    data: list[CategorySpend]
+
 
 # Helper to generate date range
-def _get_date_range(start_date: date, end_date: date, interval: str) -> List[date]:
+def _get_date_range(start_date: date, end_date: date, interval: str) -> list[date]:
     if start_date > end_date:
         return []
 
@@ -70,6 +75,7 @@ def _get_date_range(start_date: date, end_date: date, interval: str) -> List[dat
 
     return dates
 
+
 @router.get("/net-worth", response_model=NetWorthResponse)
 def get_net_worth(
     start_date: date,
@@ -81,23 +87,23 @@ def get_net_worth(
     # Cache key
     # Simple formatting for cache key
     cache_key = f"net_worth:{current_user.uid}:{start_date.isoformat()}:{end_date.isoformat()}:{interval}"
-    
+
     # 2025-12-11 02:12 CST - guard cache reference when Firestore init fails
     doc_ref = None
     try:
         db_fs = get_firestore_client()
         doc_ref = db_fs.collection("analytics_cache").document(cache_key)
-        
+
         # Try cache
         doc = doc_ref.get()
         if doc.exists:
             data = doc.to_dict()
             # check expiry
-            if data.get("expires_at", 0) > datetime.now(timezone.utc).timestamp():
-                 return NetWorthResponse(**data["payload"])
+            if data.get("expires_at", 0) > datetime.now(UTC).timestamp():
+                return NetWorthResponse(**data["payload"])
     except Exception as e:
         logger.warning(f"Firestore cache read failed: {e}")
-        db_fs = None # Prevent write later if init failed
+        db_fs = None  # Prevent write later if init failed
 
     # Calculate
     # 1. Get current balance of all accounts
@@ -106,11 +112,17 @@ def get_net_worth(
     current_total = sum(((acc.balance or Decimal(0)) for acc in accounts), Decimal(0))
 
     # 2. Get all transactions > start_date
-    all_txns = db.query(Transaction).filter(
-        Transaction.uid == current_user.uid,
-        Transaction.ts >= datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
-        Transaction.archived.is_(False) 
-    ).order_by(Transaction.ts.desc()).all()
+    all_txns = (
+        db.query(Transaction)
+        .filter(
+            Transaction.uid == current_user.uid,
+            Transaction.ts
+            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
+            Transaction.archived.is_(False),
+        )
+        .order_by(Transaction.ts.desc())
+        .all()
+    )
 
     dates = _get_date_range(start_date, end_date, interval)
     if not dates:
@@ -118,39 +130,48 @@ def get_net_worth(
 
     # 3. Calculate Balance(end_date)
     # Get transactions AFTER end_date to find Balance at end_date
-    recent_txns = db.query(Transaction).filter(
-        Transaction.uid == current_user.uid,
-        Transaction.ts > datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc),
-        Transaction.archived.is_(False)
-    ).all()
-    
+    recent_txns = (
+        db.query(Transaction)
+        .filter(
+            Transaction.uid == current_user.uid,
+            Transaction.ts
+            > datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+            Transaction.archived.is_(False),
+        )
+        .all()
+    )
+
     # 2025-12-10 21:21 CST - roll back post-period transactions correctly.
     # Updated 2025-12-10 22:45 CST - parenthesize generator for Decimal sum
     future_delta = sum(((t.amount or Decimal(0)) for t in recent_txns), Decimal(0))
     balance_at_end = current_total - future_delta
-    
+
     # 4. Filter transactions for the range and sort desc
-    txns_in_range = [t for t in all_txns if t.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)]
+    txns_in_range = [
+        t
+        for t in all_txns
+        if t.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
+    ]
     txns_in_range.sort(key=lambda x: x.ts, reverse=True)
-    
+
     # 5. Populate buckets
     res_list = []
     dates_desc = sorted(dates, reverse=True)
-    
+
     t_idx = 0
-    running_balance = balance_at_end 
-    
+    running_balance = balance_at_end
+
     for i, d in enumerate(dates_desc):
         # Store current running balance for this date
         res_list.append(DataPoint(date=d, value=float(running_balance)))
-        
+
         # Prepare for next date (move backwards in time)
         if i + 1 < len(dates_desc):
-            prev_date = dates_desc[i+1]
-            
+            prev_date = dates_desc[i + 1]
+
             # d_end_dt = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
-            prev_d_end_dt = datetime.combine(prev_date, datetime.max.time(), tzinfo=timezone.utc)
-            
+            prev_d_end_dt = datetime.combine(prev_date, datetime.max.time(), tzinfo=UTC)
+
             # Consume transactions in window (prev_d_end_dt, d_end_dt]
             # Since txns_in_range are sorted desc (newest first), we iterate
             period_delta = Decimal(0)
@@ -161,27 +182,30 @@ def get_net_worth(
                     t_idx += 1
                 else:
                     break
-            
+
             # 2025-12-11 15:20 CST - move backwards by subtracting forward-period deltas
             # Move balance backwards: Bal(prev) = Bal(curr) - Delta
             running_balance -= period_delta
 
     res_list.reverse()
-    
+
     resp = NetWorthResponse(data=res_list)
-    
+
     # Cache write
     if db_fs and doc_ref:
         try:
-            doc_ref.set({
-                "uid": current_user.uid,
-                "payload": resp.model_dump(mode='json'),
-                "expires_at": datetime.now(timezone.utc).timestamp() + 3600
-            })
+            doc_ref.set(
+                {
+                    "uid": current_user.uid,
+                    "payload": resp.model_dump(mode="json"),
+                    "expires_at": datetime.now(UTC).timestamp() + 3600,
+                }
+            )
         except Exception as e:
             logger.warning(f"Firestore cache write failed: {e}")
 
     return resp
+
 
 @router.get("/cash-flow", response_model=CashFlowResponse)
 def get_cash_flow(
@@ -196,43 +220,52 @@ def get_cash_flow(
     income_query = (
         select(
             func.date_trunc(interval, Transaction.ts).label("period"),
-            func.sum(Transaction.amount).label("total")
+            func.sum(Transaction.amount).label("total"),
         )
         .where(
             Transaction.uid == current_user.uid,
-            Transaction.ts >= datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
-            Transaction.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc),
+            Transaction.ts
+            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
+            Transaction.ts
+            <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
             Transaction.amount > 0,
-            Transaction.archived.is_(False)
+            Transaction.archived.is_(False),
         )
         .group_by("period")
         .order_by("period")
     )
-    
+
     # Expenses
     expense_query = (
         select(
             func.date_trunc(interval, Transaction.ts).label("period"),
-            func.sum(Transaction.amount).label("total")
+            func.sum(Transaction.amount).label("total"),
         )
         .where(
             Transaction.uid == current_user.uid,
-            Transaction.ts >= datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
-            Transaction.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc),
+            Transaction.ts
+            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
+            Transaction.ts
+            <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
             Transaction.amount < 0,
-            Transaction.archived.is_(False)
+            Transaction.archived.is_(False),
         )
         .group_by("period")
         .order_by("period")
     )
-    
+
     income_res = db.execute(income_query).all()
     expense_res = db.execute(expense_query).all()
-    
-    income_data = [DataPoint(date=row.period.date(), value=float(row.total)) for row in income_res]
-    expense_data = [DataPoint(date=row.period.date(), value=float(row.total)) for row in expense_res]
-    
+
+    income_data = [
+        DataPoint(date=row.period.date(), value=float(row.total)) for row in income_res
+    ]
+    expense_data = [
+        DataPoint(date=row.period.date(), value=float(row.total)) for row in expense_res
+    ]
+
     return CashFlowResponse(income=income_data, expenses=expense_data)
+
 
 @router.get("/spending-by-category", response_model=SpendingByCategoryResponse)
 def get_spending_by_category(
@@ -242,42 +275,48 @@ def get_spending_by_category(
     db: Session = Depends(get_db),
 ):
     # 2025-12-11 14:05 CST - align date filtering with tz-aware datetimes
-    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
-    end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
+    end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
 
     # Updated to pick up ALL categories (except explicit non-spending) regardless of sign
     # as some users might have mis-signed imports or positive 'expenses' (unusual but requested behavior).
     # We sum the ABS(amount) for magnitude of flow in that category.
 
-    exclude_cats = ["Income", "Transfer", "Credit Card Payment", "Investment"] # Exclude non-spending
+    exclude_cats = [
+        "Income",
+        "Transfer",
+        "Credit Card Payment",
+        "Investment",
+    ]  # Exclude non-spending
 
     query = (
         select(
-            Transaction.category,
-            func.sum(func.abs(Transaction.amount)).label("total")
+            Transaction.category, func.sum(func.abs(Transaction.amount)).label("total")
         )
         .where(
             Transaction.uid == current_user.uid,
             Transaction.ts >= start_dt,
             Transaction.ts <= end_dt,
             # Transaction.amount < 0, # REMOVED: Capture both signs
-            Transaction.category.not_in(exclude_cats), # Exclude generic income/transfer types
-            Transaction.archived.is_(False)
+            Transaction.category.not_in(
+                exclude_cats
+            ),  # Exclude generic income/transfer types
+            Transaction.archived.is_(False),
         )
         .group_by(Transaction.category)
     )
-    
+
     res = db.execute(query).all()
-    
+
     data = [
         CategorySpend(
-            category=row.category or "Uncategorized", 
-            amount=abs(float(row.total))
-        ) 
+            category=row.category or "Uncategorized", amount=abs(float(row.total))
+        )
         for row in res
     ]
     data.sort(key=lambda x: x.amount, reverse=True)
-    
+
     return SpendingByCategoryResponse(data=data)
+
 
 __all__ = ["router"]

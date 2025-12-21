@@ -10,11 +10,12 @@ Responsibilities:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from decimal import Decimal
 import importlib
-from typing import Callable, Iterable, Literal, Protocol
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Literal, Protocol
 
 from backend.core import settings
 
@@ -44,11 +45,14 @@ class NormalizedTransaction:
 class ConnectorClient(Protocol):
     """Minimal connector contract to fetch normalized transactions."""
 
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
-        ...
+    def fetch_transactions(
+        self, account_id: str
+    ) -> Iterable[NormalizedTransaction]: ...
 
 
-def _resolve_env(app_env: str | None = None) -> Literal["local", "sandbox", "production"]:
+def _resolve_env(
+    app_env: str | None = None,
+) -> Literal["local", "sandbox", "production"]:
     env = (app_env or settings.app_env).lower()
     if env in {"prod", "production"}:
         return "production"
@@ -59,8 +63,8 @@ def _resolve_env(app_env: str | None = None) -> Literal["local", "sandbox", "pro
 
 def _ensure_timezone(ts: datetime) -> datetime:
     if ts.tzinfo is None:
-        return ts.replace(tzinfo=timezone.utc)
-    return ts.astimezone(timezone.utc)
+        return ts.replace(tzinfo=UTC)
+    return ts.astimezone(UTC)
 
 
 def normalize_transaction(
@@ -98,7 +102,9 @@ def normalize_transaction(
         timestamp=timestamp,
         merchant_name=payload.get("merchant_name"),
         counterparty=payload.get("counterparty"),
-        tx_id=str(payload.get("tx_id") or payload.get("transaction_id") or payload.get("hash")),
+        tx_id=str(
+            payload.get("tx_id") or payload.get("transaction_id") or payload.get("hash")
+        ),
         account_id=str(payload.get("account_id") or payload.get("wallet") or "unknown"),
         type=payload.get("type", "deposit"),
         direction=payload.get("direction", "inflow"),
@@ -168,7 +174,9 @@ class MockConnectorClient:
                 }
             )
 
-        return [normalize_transaction(p, converter=self.converter) for p in base_payloads]
+        return [
+            normalize_transaction(p, converter=self.converter) for p in base_payloads
+        ]
 
 
 class CcxtConnectorClient:
@@ -214,7 +222,9 @@ class CcxtConnectorClient:
             ) from exc
 
         if not self.api_key or not self.api_secret:
-            raise RuntimeError("CEX connector requires API credentials for private transaction history.")
+            raise RuntimeError(
+                "CEX connector requires API credentials for private transaction history."
+            )
 
         trades = exchange.fetch_my_trades(limit=50)
         payloads = []
@@ -224,8 +234,12 @@ class CcxtConnectorClient:
                     "tx_id": trade.get("id"),
                     "account_id": account_id,
                     "amount": trade.get("cost") or trade.get("amount"),
-                    "currency_code": trade.get("symbol", "USD").split("/")[1] if trade.get("symbol") else "USD",
-                    "timestamp": datetime.fromtimestamp(trade["timestamp"] / 1000.0, tz=timezone.utc),
+                    "currency_code": trade.get("symbol", "USD").split("/")[1]
+                    if trade.get("symbol")
+                    else "USD",
+                    "timestamp": datetime.fromtimestamp(
+                        trade["timestamp"] / 1000.0, tz=UTC
+                    ),
                     "counterparty": trade.get("side"),
                     "type": "trade",
                     "direction": "inflow" if trade.get("side") == "buy" else "outflow",
@@ -254,7 +268,9 @@ class Web3RpcConnectorClient:
 
     def _load_web3(self):
         web3 = importlib.import_module("web3")
-        return web3.Web3(web3.HTTPProvider(self.rpc_url, request_kwargs={"timeout": 10}))
+        return web3.Web3(
+            web3.HTTPProvider(self.rpc_url, request_kwargs={"timeout": 10})
+        )
 
     def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
         try:
@@ -273,15 +289,21 @@ class Web3RpcConnectorClient:
             block = w3.eth.get_block(block_number, full_transactions=True)
             for tx in block.transactions:
                 if tx["from"] == account_id or tx["to"] == account_id:
-                    direction: Direction = "outflow" if tx["from"] == account_id else "inflow"
+                    direction: Direction = (
+                        "outflow" if tx["from"] == account_id else "inflow"
+                    )
                     payloads.append(
                         {
                             "tx_id": tx["hash"].hex(),
                             "account_id": account_id,
                             "amount": w3.from_wei(tx["value"], "ether"),
                             "currency_code": "ETH",
-                            "timestamp": datetime.fromtimestamp(block.timestamp, tz=timezone.utc),
-                            "counterparty": tx["to"] if direction == "outflow" else tx["from"],
+                            "timestamp": datetime.fromtimestamp(
+                                block.timestamp, tz=UTC
+                            ),
+                            "counterparty": tx["to"]
+                            if direction == "outflow"
+                            else tx["from"],
                             "type": "transfer",
                             "direction": direction,
                             "on_chain_units": tx["value"],
@@ -315,13 +337,16 @@ def build_connector(
 
     if kind == "cex":
         return CcxtConnectorClient(
-            exchange_id=exchange_id, api_key=api_key, api_secret=api_secret, converter=converter
+            exchange_id=exchange_id,
+            api_key=api_key,
+            api_secret=api_secret,
+            converter=converter,
         )
 
     if rpc_url is None:
         # Fallback to a public RPC for read-only if not provided
         rpc_url = "https://cloudflare-eth.com"
-        
+
     return Web3RpcConnectorClient(rpc_url=rpc_url, converter=converter)
 
 

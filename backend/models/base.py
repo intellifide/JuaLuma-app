@@ -3,7 +3,8 @@
 Updated 2025-12-11 01:28 CST by ChatGPT
 """
 
-from typing import Any, Dict, Generator
+from collections.abc import Generator
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -13,7 +14,7 @@ from backend.core import settings
 
 DATABASE_URL = settings.database_url
 
-engine_kwargs: Dict[str, Any] = {
+engine_kwargs: dict[str, Any] = {
     "pool_size": 5,
     "max_overflow": 10,
     "future": True,

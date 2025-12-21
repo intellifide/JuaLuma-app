@@ -1,14 +1,13 @@
-
 # Updated 2025-12-08 21:10 CST by ChatGPT
-from decimal import Decimal
 import uuid
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from backend.middleware.auth import get_current_user
 from backend.core.dependencies import enforce_account_limit
+from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, User
 from backend.services.plaid import (
     create_link_token,
@@ -102,11 +101,7 @@ def exchange_token_endpoint(
         mask = account_data.get("mask")
         balance_raw = account_data.get("balance_current")
         balance = Decimal(str(balance_raw)) if balance_raw is not None else None
-        currency = (
-            account_data.get("currency")
-            or current_user.currency_pref
-            or "USD"
-        )
+        currency = account_data.get("currency") or current_user.currency_pref or "USD"
         account_name = account_data.get("official_name") or account_data.get("name")
 
         existing = (

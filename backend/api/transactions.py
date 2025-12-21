@@ -3,9 +3,8 @@
 # Updated 2025-12-10 14:58 CST by ChatGPT
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -16,7 +15,6 @@ from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, Transaction, User
 from backend.utils import get_db
 
-
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
 
@@ -26,14 +24,14 @@ class TransactionResponse(BaseModel):
     ts: datetime
     amount: Decimal
     currency: str
-    category: Optional[str] = None
-    merchant_name: Optional[str] = None
-    description: Optional[str] = None
+    category: str | None = None
+    merchant_name: str | None = None
+    description: str | None = None
     account_id: uuid.UUID
-    external_id: Optional[str] = None
+    external_id: str | None = None
     is_manual: bool
     archived: bool
-    raw_json: Optional[dict] = None
+    raw_json: dict | None = None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -59,8 +57,8 @@ class TransactionResponse(BaseModel):
 
 
 class TransactionUpdate(BaseModel):
-    category: Optional[str] = Field(default=None, max_length=64)
-    description: Optional[str] = Field(default=None, max_length=512)
+    category: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=512)
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "TransactionUpdate":
@@ -113,7 +111,10 @@ class BulkUpdateRequest(BaseModel):
                         "0c50b2ec-4c41-4ad0-8e01-2e0c9dc15642",
                         "e5b96b66-7822-4b79-a98e-857a3ef91c2e",
                     ],
-                    "updates": {"category": "travel", "description": "Vacation booking"},
+                    "updates": {
+                        "category": "travel",
+                        "description": "Vacation booking",
+                    },
                 }
             ]
         }
@@ -134,10 +135,10 @@ def _paginate(query, page: int, page_size: int):
 def _apply_filters(
     db_query,
     *,
-    account_id: Optional[uuid.UUID],
-    category: Optional[str],
-    start_date: Optional[date],
-    end_date: Optional[date],
+    account_id: uuid.UUID | None,
+    category: str | None,
+    start_date: date | None,
+    end_date: date | None,
 ):
     if account_id:
         db_query = db_query.filter(Transaction.account_id == account_id)
@@ -146,27 +147,25 @@ def _apply_filters(
     if start_date:
         db_query = db_query.filter(
             Transaction.ts
-            >= datetime.combine(
-                start_date, datetime.min.time(), tzinfo=timezone.utc
-            )
+            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
         )
     if end_date:
         db_query = db_query.filter(
             Transaction.ts
-            <= datetime.combine(
-                end_date, datetime.max.time(), tzinfo=timezone.utc
-            )
+            <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
         )
     return db_query
 
 
 @router.get("", response_model=TransactionListResponse)
 def list_transactions(
-    account_id: Optional[uuid.UUID] = Query(default=None),
-    category: Optional[str] = Query(default=None),
-    start_date: Optional[date] = Query(default=None),
-    end_date: Optional[date] = Query(default=None),
-    search: Optional[str] = Query(default=None, description="Search merchant or description."),
+    account_id: uuid.UUID | None = Query(default=None),
+    category: str | None = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    search: str | None = Query(
+        default=None, description="Search merchant or description."
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     current_user: User = Depends(get_current_user),
@@ -186,12 +185,21 @@ def list_transactions(
         Transaction.uid == current_user.uid,
         Transaction.archived.is_(False),
     )
-    query = _apply_filters(query, account_id=account_id, category=category, start_date=start_date, end_date=end_date)
+    query = _apply_filters(
+        query,
+        account_id=account_id,
+        category=category,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     if search:
         pattern = f"%{search}%"
         query = query.filter(
-            or_(Transaction.merchant_name.ilike(pattern), Transaction.description.ilike(pattern))
+            or_(
+                Transaction.merchant_name.ilike(pattern),
+                Transaction.description.ilike(pattern),
+            )
         )
 
     total, items = _paginate(query, page, page_size)
@@ -206,10 +214,10 @@ def list_transactions(
 @router.get("/search", response_model=TransactionListResponse)
 def search_transactions(
     q: str = Query(min_length=1, description="Search term"),
-    account_id: Optional[uuid.UUID] = Query(default=None),
-    category: Optional[str] = Query(default=None),
-    start_date: Optional[date] = Query(default=None),
-    end_date: Optional[date] = Query(default=None),
+    account_id: uuid.UUID | None = Query(default=None),
+    category: str | None = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     current_user: User = Depends(get_current_user),
@@ -221,7 +229,13 @@ def search_transactions(
         Transaction.uid == current_user.uid,
         Transaction.archived.is_(False),
     )
-    query = _apply_filters(query, account_id=account_id, category=category, start_date=start_date, end_date=end_date)
+    query = _apply_filters(
+        query,
+        account_id=account_id,
+        category=category,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     ts_vector = func.to_tsvector(
         "english",
@@ -370,6 +384,7 @@ def update_transaction(
     # Auto-categorization learning
     if payload.category and txn.merchant_name:
         from backend.services.categorization import learn_rule
+
         learn_rule(db, current_user.uid, txn.merchant_name, payload.category)
 
     return txn

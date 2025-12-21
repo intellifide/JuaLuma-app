@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -32,7 +32,7 @@ class AISettings(Base):
     model_id: Mapped[str] = mapped_column(
         String(64), nullable=False, default="gemini-2.5-flash"
     )
-    user_dek_ref: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    user_dek_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

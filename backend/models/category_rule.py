@@ -2,13 +2,13 @@
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .user import User
@@ -25,7 +25,9 @@ class CategoryRule(Base):
     )
     merchant_name: Mapped[str] = mapped_column(String(256), nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False)
-    match_type: Mapped[str] = mapped_column(String(32), default="exact")  # exact, contains
+    match_type: Mapped[str] = mapped_column(
+        String(32), default="exact"
+    )  # exact, contains
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

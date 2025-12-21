@@ -2,18 +2,16 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Integer, Text
-from sqlalchemy import func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .widget import Widget
     from .user import User
+    from .widget import Widget
 
 
 class WidgetRating(Base):
@@ -28,10 +26,10 @@ class WidgetRating(Base):
     user_uid: Mapped[str] = mapped_column(
         String(128), ForeignKey("users.uid"), nullable=False
     )
-    
-    rating: Mapped[int] = mapped_column(Integer, nullable=False) # 1-5
-    review: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    
+
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5
+    review: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

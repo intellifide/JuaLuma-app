@@ -1,6 +1,7 @@
 import asyncio
-import sys
 import logging
+import sys
+
 from backend.mcp_server import mcp
 
 # Reconfigure logging to write to stderr so stdout is clean for MCP

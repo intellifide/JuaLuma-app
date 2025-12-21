@@ -45,9 +45,7 @@ class AuditLog(Base):
 
 class FeaturePreview(Base):
     __tablename__ = "feature_preview"
-    __table_args__ = (
-        {"schema": "audit"},
-    )
+    __table_args__ = ({"schema": "audit"},)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -68,9 +66,7 @@ class FeaturePreview(Base):
 
 class LLMLog(Base):
     __tablename__ = "llm_logs"
-    __table_args__ = (
-        {"schema": "audit"},
-    )
+    __table_args__ = ({"schema": "audit"},)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -92,9 +88,7 @@ class LLMLog(Base):
 
 class SupportPortalAction(Base):
     __tablename__ = "support_portal_actions"
-    __table_args__ = (
-        {"schema": "audit"},
-    )
+    __table_args__ = ({"schema": "audit"},)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
