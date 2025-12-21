@@ -18,6 +18,10 @@ class EmailClient(Protocol):
         """Send specific 2FA OTP code."""
         ...
 
+    def send_password_reset(self, to_email: str, link: str) -> None:
+        """Send password reset link."""
+        ...
+
 
 class MockEmailClient:
     def send_generic_alert(self, to_email: str, title: str) -> None:
@@ -26,7 +30,12 @@ class MockEmailClient:
         )
 
     def send_otp(self, to_email: str, code: str) -> None:
+        """Log the OTP code for local dev."""
         logger.info(f"[MOCK EMAIL OTP] To: {to_email} | Code: {code}")
+
+    def send_password_reset(self, to_email: str, link: str) -> None:
+        """Log the reset link for local dev."""
+        logger.info(f"[MOCK EMAIL RESET] To: {to_email} | Link: {link}")
 
 
 class SmtpEmailClient:
@@ -102,6 +111,37 @@ class SmtpEmailClient:
             logger.info(f"Sent OTP to {to_email}")
         except Exception as e:
             logger.error(f"Failed to send OTP: {e}")
+
+    def send_password_reset(self, to_email: str, link: str) -> None:
+        """
+        Sends the password reset email.
+        """
+        msg = MIMEMultipart()
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        msg["Subject"] = "jualuma Password Reset"
+
+        body = (
+            "You requested a password reset for your jualuma account.\n\n"
+            f"Click the link below to reset your password:\n{link}\n\n"
+            "If you did not request this change, please ignore this email or contact support."
+        )
+        msg.attach(MIMEText(body, "plain"))
+
+        try:
+            if self.host == "mock":
+                # Fallback to logger in local if no real SMTP
+                logger.info(f"[SMTP-RESET] To: {to_email} | Link: {link}")
+                return
+
+            with smtplib.SMTP(self.host, self.port) as server:
+                server.starttls()
+                server.login(self.username, self.password)
+                server.send_message(msg)
+
+            logger.info(f"Sent password reset link to {to_email}")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {e}")
 
 
 def get_email_client() -> EmailClient:

@@ -34,6 +34,7 @@ from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUse
 from plaid.model.products import Products
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
+from plaid.model.transactions_get_response import TransactionsGetResponse
 
 from backend.core import settings
 
@@ -182,6 +183,70 @@ def fetch_accounts(access_token: str) -> list[dict[str, object]]:
     return accounts
 
 
+
+
+
+def _fetch_transaction_page(
+    client: plaid_api.PlaidApi, request: TransactionsGetRequest
+) -> tuple[TransactionsGetResponse | None, list[dict[str, object]]]:
+    """
+    Fetch and parse a single page of transactions, handling retries and errors.
+    Returns (response_object, list_of_parsed_txns).
+    If PRODUCT_NOT_READY, returns (None, []).
+    """
+    response = None
+    for attempt in range(3):
+        try:
+            response = client.transactions_get(request)
+            break
+        except ApiException as exc:
+            if getattr(exc, "status", None) == 429 and attempt < 2:
+                time.sleep(2**attempt)
+                continue
+
+            # Handle PRODUCT_NOT_READY gracefully
+            error_body = getattr(exc, "body", "")
+            if "PRODUCT_NOT_READY" in str(error_body) or "PRODUCT_NOT_READY" in str(
+                exc
+            ):
+                logger.warning(
+                    f"Plaid product not ready, returning empty transactions: {exc}"
+                )
+                return None, []
+
+            raise _wrap_plaid_error("transactions_get", exc) from exc
+    else:
+        # Loop finished without breaking -> rate limit persisted
+        raise RuntimeError("Plaid rate limit exceeded after retries")
+
+    parsed_txns: list[dict[str, object]] = []
+    for txn in response.transactions:
+        currency = _pick_currency(
+            getattr(txn, "iso_currency_code", None),
+            getattr(txn, "unofficial_currency_code", None),
+        )
+        txn_date = txn.date
+        if isinstance(txn_date, str):
+            txn_date = datetime.strptime(txn_date, "%Y-%m-%d").date()
+        elif isinstance(txn_date, datetime):
+            txn_date = txn_date.date()
+
+        parsed_txns.append(
+            {
+                "transaction_id": txn.transaction_id,
+                "account_id": txn.account_id,
+                "name": txn.name,
+                "amount": Decimal(str(txn.amount)),
+                "date": txn_date,
+                "category": (txn.category or [None])[0] if txn.category else None,
+                "merchant_name": txn.merchant_name,
+                "currency": currency,
+            }
+        )
+
+    return response, parsed_txns
+
+
 def fetch_transactions(
     access_token: str,
     start_date: date,
@@ -211,53 +276,15 @@ def fetch_transactions(
             options=TransactionsGetRequestOptions(count=page_size, offset=offset),
         )
 
-        for attempt in range(3):
-            try:
-                response = client.transactions_get(request)
-                break
-            except ApiException as exc:
-                if getattr(exc, "status", None) == 429 and attempt < 2:
-                    time.sleep(2**attempt)
-                    continue
+        response, page_txns = _fetch_transaction_page(client, request)
+        if response is None:
+            # PRODUCT_NOT_READY case
+            return []
 
-                # Handle PRODUCT_NOT_READY gracefully for fresh items
-                error_body = getattr(exc, "body", "")
-                if "PRODUCT_NOT_READY" in str(error_body) or "PRODUCT_NOT_READY" in str(
-                    exc
-                ):
-                    logger.warning(
-                        f"Plaid product not ready, returning empty transactions: {exc}"
-                    )
-                    return []
-
-                raise _wrap_plaid_error("transactions_get", exc) from exc
-
-        for txn in response.transactions:
-            currency = _pick_currency(
-                getattr(txn, "iso_currency_code", None),
-                getattr(txn, "unofficial_currency_code", None),
-            )
-            # Plaid may return date as string or datetime.date; normalize to date.
-            txn_date = txn.date
-            if isinstance(txn_date, str):
-                txn_date = datetime.strptime(txn_date, "%Y-%m-%d").date()
-            elif isinstance(txn_date, datetime):
-                txn_date = txn_date.date()
-            all_transactions.append(
-                {
-                    "transaction_id": txn.transaction_id,
-                    "account_id": txn.account_id,
-                    "name": txn.name,
-                    "amount": Decimal(str(txn.amount)),
-                    "date": txn_date,
-                    "category": (txn.category or [None])[0] if txn.category else None,
-                    "merchant_name": txn.merchant_name,
-                    "currency": currency,
-                }
-            )
-
+        all_transactions.extend(page_txns)
         offset += len(response.transactions)
         pages += 1
+
         if offset >= response.total_transactions or pages >= max_pages:
             break
 

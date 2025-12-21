@@ -467,6 +467,222 @@ def link_cex_account(
     return _serialize_account(account)
 
 
+def _sync_traditional(account: Account, start: date, end: date) -> list[dict]:
+    try:
+        return fetch_transactions(account.secret_ref, start, end)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Plaid sync failed: {exc}"
+        ) from exc
+
+
+def _sync_web3(account: Account) -> list[dict]:
+    try:
+        conn_data = json.loads(account.secret_ref)
+        address = conn_data.get("address")
+        if not address:
+            raise ValueError("Invalid Web3 configuration")
+
+        connector = build_connector(kind="web3", rpc_url=None)
+        normalized_txns = connector.fetch_transactions(account_id=address)
+
+        return [
+            {
+                "date": t.timestamp.date(),
+                "transaction_id": t.tx_id,
+                "amount": float(t.amount),
+                "currency": t.currency_code,
+                "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
+                "merchant_name": t.merchant_name,
+                "name": t.merchant_name or t.tx_id[:8],
+            }
+            for t in normalized_txns
+        ]
+    except Exception as e:
+        logger.error(f"Web3 sync error: {e}")
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}") from e
+
+
+def _sync_cex(account: Account, uid: str) -> list[dict]:
+    try:
+        decrypted_json = decrypt_secret(account.secret_ref, uid)
+        creds = json.loads(decrypted_json)
+
+        connector = build_connector(
+            kind="cex",
+            exchange_id=account.provider,
+            api_key=creds.get("apiKey"),
+            api_secret=creds.get("secret"),
+        )
+        normalized_txns = connector.fetch_transactions(account_id=str(account.id))
+
+        return [
+            {
+                "date": t.timestamp.date(),
+                "transaction_id": t.tx_id,
+                "amount": float(t.amount),
+                "currency": t.currency_code,
+                "category": ["Trade"] if t.type == "trade" else ["Transfer"],
+                "merchant_name": t.merchant_name,
+                "name": f"{t.counterparty} {t.type}",
+            }
+            for t in normalized_txns
+        ]
+    except Exception as e:
+        logger.error(f"CEX sync error: {e}")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Failed to decrypt credentials or sync CEX",
+        ) from e
+
+
+def _refresh_traditional_balance(
+    account: Account, user_pref: str | None
+) -> str | None:
+    """Updates account balance from Plaid and returns the Plaid account ID if found."""
+    if account.account_type != "traditional":
+        return None
+    try:
+        plaid_accounts = fetch_accounts(account.secret_ref)
+        match = next(
+            (
+                acct
+                for acct in plaid_accounts
+                if acct.get("mask") == account.account_number_masked
+            ),
+            None,
+        )
+        if match:
+            if match.get("balance_current") is not None:
+                account.balance = Decimal(str(match.get("balance_current")))
+            account.currency = (
+                match.get("currency") or account.currency or user_pref or "USD"
+            )
+            return match.get("account_id")
+    except Exception as e:
+        logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
+    return None
+
+
+def _clean_raw(txn_dict: dict) -> dict:
+    clean = {}
+    for k, v in txn_dict.items():
+        if isinstance(v, Decimal):
+            clean[k] = float(v)
+        elif isinstance(v, datetime | date):
+            clean[k] = v.isoformat()
+        else:
+            clean[k] = v
+    return clean
+
+
+def _process_single_transaction(
+    db: Session, uid: str, account_id: uuid.UUID, txn: dict, currency_fallback: str
+) -> bool:
+    """Returns True if a new transaction was created, False if updated."""
+    d = txn["date"]
+    if isinstance(d, str):
+        d = date.fromisoformat(d)
+    txn_ts = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
+
+    existing = (
+        db.query(Transaction)
+        .filter(
+            Transaction.uid == uid,
+            Transaction.account_id == account_id,
+            Transaction.external_id == txn.get("transaction_id"),
+        )
+        .first()
+    )
+
+    # Auto categorization
+    merchant_key = txn.get("merchant_name") or txn.get("name")
+    predicted_category = predict_category(db, uid, merchant_key)
+    final_category = predicted_category
+    if not final_category:
+        cats = txn.get("category")
+        if isinstance(cats, list) and cats:
+            final_category = cats[0]
+
+    if existing:
+        existing.ts = txn_ts
+        existing.amount = txn["amount"]
+        existing.currency = txn.get("currency") or existing.currency
+        existing.category = final_category
+        existing.merchant_name = txn.get("merchant_name")
+        existing.description = txn.get("name") or txn.get("merchant_name")
+        existing.raw_json = _clean_raw(txn)
+        db.add(existing)
+        return False
+
+    new_txn = Transaction(
+        uid=uid,
+        account_id=account_id,
+        ts=txn_ts,
+        amount=txn["amount"],
+        currency=txn.get("currency") or currency_fallback,
+        category=final_category,
+        merchant_name=txn.get("merchant_name"),
+        description=txn.get("name") or txn.get("merchant_name"),
+        external_id=txn.get("transaction_id"),
+        is_manual=False,
+        archived=False,
+        raw_json=_clean_raw(txn),
+    )
+    db.add(new_txn)
+    return True
+
+
+
+def _resolve_sync_dates(start_date: date | None, end_date: date | None) -> tuple[date, date]:
+    today = date.today()
+    resolved_start = start_date or (today - timedelta(days=30))
+    resolved_end = end_date or today
+    if resolved_start > resolved_end:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_date must be before or equal to end_date.",
+        )
+    return resolved_start, resolved_end
+
+
+def _execute_provider_sync(
+    account: Account, start: date, end: date, user: User
+) -> list[dict]:
+    fetched = []
+    if account.account_type == "traditional":
+        fetched = _sync_traditional(account, start, end)
+        pid = _refresh_traditional_balance(account, user.currency_pref)
+        if pid:
+            fetched = [t for t in fetched if t.get("account_id") == pid]
+    elif account.account_type == "web3":
+        fetched = _sync_web3(account)
+    elif account.account_type == "cex":
+        fetched = _sync_cex(account, user.uid)
+    return fetched
+
+
+def _save_sync_batch(
+    db: Session,
+    uid: str,
+    account_id: uuid.UUID,
+    txns: list[dict],
+    currency_fallback: str,
+) -> tuple[int, int]:
+    synced = 0
+    new_count = 0
+    for txn in txns:
+        is_new = _process_single_transaction(
+            db, uid, account_id, txn, currency_fallback
+        )
+        synced += 1
+        if is_new:
+            new_count += 1
+    return synced, new_count
+
+
 @router.post(
     "/{account_id}/sync",
     response_model=AccountSyncResponse,
@@ -498,16 +714,12 @@ def sync_account_transactions(
     """
     account = (
         db.query(Account)
-        .filter(
-            Account.id == account_id,
-            Account.uid == current_user.uid,
-        )
+        .filter(Account.id == account_id, Account.uid == current_user.uid)
         .first()
     )
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found.",
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
         )
 
     if account.account_type not in ["traditional", "web3", "cex"]:
@@ -523,235 +735,20 @@ def sync_account_transactions(
         )
 
     plan = _get_subscription_plan(db, current_user.uid)
-
     if not initial_sync:
         _enforce_sync_limit(db, current_user.uid, plan)
 
-    today = date.today()
-    resolved_start = start_date or (today - timedelta(days=30))
-    resolved_end = end_date or today
-    if resolved_start > resolved_end:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="start_date must be before or equal to end_date.",
-        )
+    resolved_start, resolved_end = _resolve_sync_dates(start_date, end_date)
 
-    # Sync Logic Dispatch
-    fetched_txns = []
+    # Dispatch Sync & process
+    fetched_txns = _execute_provider_sync(
+        account, resolved_start, resolved_end, current_user
+    )
 
-    # 1. Traditional (Plaid)
-    if account.account_type == "traditional":
-        try:
-            fetched_txns = fetch_transactions(
-                account.secret_ref, resolved_start, resolved_end
-            )
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
-        except RuntimeError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Plaid sync failed: {exc}",
-            ) from exc
-
-    # 2. Web3
-    elif account.account_type == "web3":
-        try:
-            conn_data = json.loads(account.secret_ref)
-            address = conn_data.get("address")
-            if not address:
-                raise ValueError("Invalid Web3 configuration")
-
-            # Use Connector Service
-            connector = build_connector(
-                kind="web3", rpc_url=None
-            )  # Uses public fallback or mock
-
-            normalized_txns = connector.fetch_transactions(account_id=address)
-
-            fetched_txns = []
-            for t in normalized_txns:
-                fetched_txns.append(
-                    {
-                        "date": t.timestamp.date(),
-                        "transaction_id": t.tx_id,
-                        "amount": float(t.amount),
-                        "currency": t.currency_code,
-                        "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
-                        "merchant_name": t.merchant_name,
-                        "name": t.merchant_name or t.tx_id[:8],
-                    }
-                )
-
-        except Exception as e:
-            logger.error(f"Web3 sync error: {e}")
-            raise HTTPException(
-                status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}"
-            ) from e
-
-    # 3. CEX
-    elif account.account_type == "cex":
-        try:
-            # Decrypt
-            decrypted_json = decrypt_secret(account.secret_ref, current_user.uid)
-            creds = json.loads(decrypted_json)
-
-            connector = build_connector(
-                kind="cex",
-                exchange_id=account.provider,
-                api_key=creds.get("apiKey"),
-                api_secret=creds.get("secret"),
-            )
-
-            normalized_txns = connector.fetch_transactions(account_id=str(account.id))
-
-            fetched_txns = []
-            for t in normalized_txns:
-                fetched_txns.append(
-                    {
-                        "date": t.timestamp.date(),
-                        "transaction_id": t.tx_id,
-                        "amount": float(t.amount),
-                        "currency": t.currency_code,
-                        "category": ["Trade"] if t.type == "trade" else ["Transfer"],
-                        "merchant_name": t.merchant_name,
-                        "name": f"{t.counterparty} {t.type}",
-                    }
-                )
-
-        except Exception as e:
-            logger.error(f"CEX sync error: {e}")
-            raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "Failed to decrypt credentials or sync CEX",
-            ) from e
-
-    # Common normalization (Plaid serves as the schema reference)
-    plaid_transactions = fetched_txns
-
-    # Optionally refresh balance if Plaid provides it.
-    plaid_account_id = None
-    if account.account_type == "traditional":
-        try:
-            plaid_accounts = fetch_accounts(account.secret_ref)
-            match = next(
-                (
-                    acct
-                    for acct in plaid_accounts
-                    if acct.get("mask") == account.account_number_masked
-                ),
-                None,
-            )
-            if match:
-                plaid_account_id = match.get("account_id")
-                balance_raw = match.get("balance_current")
-                if balance_raw is not None:
-                    account.balance = Decimal(str(balance_raw))
-                account.currency = (
-                    match.get("currency")
-                    or account.currency
-                    or current_user.currency_pref
-                    or "USD"
-                )
-
-                # Filter transactions to only those belonging to this specific account
-                if plaid_account_id:
-                    plaid_transactions = [
-                        t
-                        for t in fetched_txns
-                        if t.get("account_id") == plaid_account_id
-                    ]
-        except Exception as e:
-            logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
-            pass
-
-    synced = 0
-    new_count = 0
-
-    def _clean_raw(txn_dict: dict) -> dict:
-        clean = {}
-        for k, v in txn_dict.items():
-            if isinstance(v, Decimal):
-                clean[k] = float(v)
-            elif isinstance(v, datetime):
-                clean[k] = v.isoformat()
-            elif isinstance(v, date):
-                clean[k] = v.isoformat()
-            else:
-                clean[k] = v
-        return clean
-
-    for txn in plaid_transactions:
-        d = txn["date"]
-        # Ensure d is a date object
-        if isinstance(d, str):
-            d = date.fromisoformat(d)
-
-        txn_ts = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
-        existing = (
-            db.query(Transaction)
-            .filter(
-                Transaction.uid == current_user.uid,
-                Transaction.account_id == account.id,
-                Transaction.external_id == txn.get("transaction_id"),
-            )
-            .first()
-        )
-
-        # Auto-categorization
-        merchant_key = txn.get("merchant_name") or txn.get("name")
-        predicted_category = predict_category(db, current_user.uid, merchant_key)
-
-        final_category = (
-            predicted_category
-            if predicted_category
-            else (
-                txn.get("category")[0]
-                if isinstance(txn.get("category"), list) and txn.get("category")
-                else None
-            )
-        )
-
-        if existing:
-            existing.ts = txn_ts
-            existing.amount = txn["amount"]
-            existing.currency = txn.get("currency") or existing.currency
-            # Only update category if it was NOT manually set by user previously?
-            # Current logic: overwrite if it's a sync. But if user manually set it, we shouldn't overwrite?
-            # We don't track "manually_set_category" vs "plaid_category" well yet.
-            # But the 'predicted_category' comes from manual rules. So it's safe to apply.
-            # If the user changed it manually on THIS transaction, `update_transaction` would have handled it.
-            # If we overwrite it here, we might undo manual changes if sync runs again?
-            # Sync runs usually update pending -> posted.
-            # Let's assume prediction > plaid, but maybe existing manual override > prediction?
-            # We don't have a flag for "user edited this specific transaction's category".
-            # For now, let's apply prediction if it exists, otherwise fall back to Plaid.
-            existing.category = final_category
-            existing.merchant_name = txn.get("merchant_name")
-            existing.description = txn.get("name") or txn.get("merchant_name")
-            existing.raw_json = _clean_raw(txn)
-            db.add(existing)
-            synced += 1
-            continue
-
-        new_txn = Transaction(
-            uid=current_user.uid,
-            account_id=account.id,
-            ts=txn_ts,
-            amount=txn["amount"],
-            currency=txn.get("currency") or account.currency or "USD",
-            category=final_category,
-            merchant_name=txn.get("merchant_name"),
-            description=txn.get("name") or txn.get("merchant_name"),
-            external_id=txn.get("transaction_id"),
-            is_manual=False,
-            archived=False,
-            raw_json=_clean_raw(txn),
-        )
-        db.add(new_txn)
-        synced += 1
-        new_count += 1
+    currency_fallback = account.currency or "USD"
+    synced, new_count = _save_sync_batch(
+        db, current_user.uid, account.id, fetched_txns, currency_fallback
+    )
 
     try:
         db.commit()
@@ -762,21 +759,23 @@ def sync_account_transactions(
             detail="Conflict while syncing transactions; please retry.",
         ) from e
 
-    audit = AuditLog(
-        actor_uid=current_user.uid,
-        target_uid=current_user.uid,
-        action="account_sync_initial" if initial_sync else "account_sync_manual",
-        source="backend",
-        metadata_json={
-            "account_id": str(account.id),
-            "plan": plan,
-            "synced_count": synced,
-            "new_transactions": new_count,
-            "start_date": resolved_start.isoformat(),
-            "end_date": resolved_end.isoformat(),
-        },
+    # Audit Log
+    db.add(
+        AuditLog(
+            actor_uid=current_user.uid,
+            target_uid=current_user.uid,
+            action="account_sync_initial" if initial_sync else "account_sync_manual",
+            source="backend",
+            metadata_json={
+                "account_id": str(account.id),
+                "plan": plan,
+                "synced_count": synced,
+                "new_transactions": new_count,
+                "start_date": resolved_start.isoformat(),
+                "end_date": resolved_end.isoformat(),
+            },
+        )
     )
-    db.add(audit)
     db.commit()
 
     return AccountSyncResponse(

@@ -40,6 +40,19 @@ Maintenance tasks are handled via the **jualuma Dev Tools MCP Server**, running 
   - `reset_local_state()`: Safe wrapper for Alembic migrations (Reset).
 - **Constraint:** Do not run manual Python scripts (e.g., `python scripts/verify.py`). Use the Agent Tools.
 
+### 1.4 Code Quality & Standards
+
+To maintain longterm maintainability and reliability, specific code quality standards are enforced via CI/CD.
+
+- **Linter & Formatter:** `ruff` (v0.8.4+) is the single source of truth.
+  - **Check:** `ruff check .` must pass.
+  - **Format:** `ruff format .` must pass.
+- **Complexity:**
+  - **Cyclomatic Complexity (C901):** Strictly enforced (limit: 10).
+  - **No Ignores:** Ignoring C901 in `pyproject.toml` or via inline `# noqa` for complexity is **PROHIBITED**. Complex functions must be refactored into smaller helpers.
+- **Type Checking:** `mypy` must pass on backend code.
+- **Workflow:** All PRs must pass these checks before merge. Committing directly to `Dev` or `main` without these checks is a protocol violation.
+
 ### 2\.0 Product Definition & Detailed Scope
 
 #### 2\.0\.0 Unified Product Scope

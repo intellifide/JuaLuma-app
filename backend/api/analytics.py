@@ -76,104 +76,56 @@ def _get_date_range(start_date: date, end_date: date, interval: str) -> list[dat
     return dates
 
 
-@router.get("/net-worth", response_model=NetWorthResponse)
-def get_net_worth(
-    start_date: date,
-    end_date: date,
-    interval: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    # Cache key
-    # Simple formatting for cache key
-    cache_key = f"net_worth:{current_user.uid}:{start_date.isoformat()}:{end_date.isoformat()}:{interval}"
-
-    # 2025-12-11 02:12 CST - guard cache reference when Firestore init fails
-    doc_ref = None
+def _get_cached_net_worth(db_fs, cache_key: str) -> NetWorthResponse | None:
+    if not db_fs:
+        return None
     try:
-        db_fs = get_firestore_client()
         doc_ref = db_fs.collection("analytics_cache").document(cache_key)
-
-        # Try cache
         doc = doc_ref.get()
         if doc.exists:
             data = doc.to_dict()
-            # check expiry
             if data.get("expires_at", 0) > datetime.now(UTC).timestamp():
                 return NetWorthResponse(**data["payload"])
     except Exception as e:
         logger.warning(f"Firestore cache read failed: {e}")
-        db_fs = None  # Prevent write later if init failed
+    return None
 
-    # Calculate
-    # 1. Get current balance of all accounts
-    accounts = db.query(Account).filter(Account.uid == current_user.uid).all()
-    # 2025-12-11 02:23 CST - keep Decimal accumulator neutral
+
+def _calculate_balance_at_end(db: Session, uid: str, end_date: date) -> Decimal:
+    accounts = db.query(Account).filter(Account.uid == uid).all()
     current_total = sum(((acc.balance or Decimal(0)) for acc in accounts), Decimal(0))
 
-    # 2. Get all transactions > start_date
-    all_txns = (
-        db.query(Transaction)
-        .filter(
-            Transaction.uid == current_user.uid,
-            Transaction.ts
-            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
-            Transaction.archived.is_(False),
-        )
-        .order_by(Transaction.ts.desc())
-        .all()
-    )
-
-    dates = _get_date_range(start_date, end_date, interval)
-    if not dates:
-        return NetWorthResponse(data=[])
-
-    # 3. Calculate Balance(end_date)
-    # Get transactions AFTER end_date to find Balance at end_date
     recent_txns = (
         db.query(Transaction)
         .filter(
-            Transaction.uid == current_user.uid,
+            Transaction.uid == uid,
             Transaction.ts
             > datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
             Transaction.archived.is_(False),
         )
         .all()
     )
-
-    # 2025-12-10 21:21 CST - roll back post-period transactions correctly.
-    # Updated 2025-12-10 22:45 CST - parenthesize generator for Decimal sum
     future_delta = sum(((t.amount or Decimal(0)) for t in recent_txns), Decimal(0))
-    balance_at_end = current_total - future_delta
+    return current_total - future_delta
 
-    # 4. Filter transactions for the range and sort desc
-    txns_in_range = [
-        t
-        for t in all_txns
-        if t.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
-    ]
-    txns_in_range.sort(key=lambda x: x.ts, reverse=True)
 
-    # 5. Populate buckets
+def _generate_net_worth_series(
+    dates: list[date], balance_at_end: Decimal, txns_in_range: list[Transaction]
+) -> list[DataPoint]:
     res_list = []
     dates_desc = sorted(dates, reverse=True)
-
-    t_idx = 0
     running_balance = balance_at_end
+    t_idx = 0
 
     for i, d in enumerate(dates_desc):
-        # Store current running balance for this date
         res_list.append(DataPoint(date=d, value=float(running_balance)))
 
-        # Prepare for next date (move backwards in time)
         if i + 1 < len(dates_desc):
             prev_date = dates_desc[i + 1]
+            prev_d_end_dt = datetime.combine(
+                prev_date, datetime.max.time(), tzinfo=UTC
+            )
 
-            # d_end_dt = datetime.combine(d, datetime.max.time(), tzinfo=timezone.utc)
-            prev_d_end_dt = datetime.combine(prev_date, datetime.max.time(), tzinfo=UTC)
-
-            # Consume transactions in window (prev_d_end_dt, d_end_dt]
-            # Since txns_in_range are sorted desc (newest first), we iterate
             period_delta = Decimal(0)
             while t_idx < len(txns_in_range):
                 txn = txns_in_range[t_idx]
@@ -182,28 +134,70 @@ def get_net_worth(
                     t_idx += 1
                 else:
                     break
-
-            # 2025-12-11 15:20 CST - move backwards by subtracting forward-period deltas
-            # Move balance backwards: Bal(prev) = Bal(curr) - Delta
             running_balance -= period_delta
 
     res_list.reverse()
+    return res_list
 
-    resp = NetWorthResponse(data=res_list)
 
-    # Cache write
-    if db_fs and doc_ref:
-        try:
-            doc_ref.set(
-                {
-                    "uid": current_user.uid,
-                    "payload": resp.model_dump(mode="json"),
-                    "expires_at": datetime.now(UTC).timestamp() + 3600,
-                }
-            )
-        except Exception as e:
-            logger.warning(f"Firestore cache write failed: {e}")
+def _cache_result(db_fs, cache_key: str, uid: str, resp: NetWorthResponse):
+    if not db_fs:
+        return
+    try:
+        db_fs.collection("analytics_cache").document(cache_key).set(
+            {
+                "uid": uid,
+                "payload": resp.model_dump(mode="json"),
+                "expires_at": datetime.now(UTC).timestamp() + 3600,
+            }
+        )
+    except Exception as e:
+        logger.warning(f"Firestore cache write failed: {e}")
 
+
+@router.get("/net-worth", response_model=NetWorthResponse)
+def get_net_worth(
+    start_date: date,
+    end_date: date,
+    interval: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    cache_key = f"net_worth:{current_user.uid}:{start_date.isoformat()}:{end_date.isoformat()}:{interval}"
+    db_fs = None
+    try:
+        db_fs = get_firestore_client()
+    except Exception:
+        pass  # Handle gracefully
+
+    cached = _get_cached_net_worth(db_fs, cache_key)
+    if cached:
+        return cached
+
+    dates = _get_date_range(start_date, end_date, interval)
+    if not dates:
+        return NetWorthResponse(data=[])
+
+    balance_at_end = _calculate_balance_at_end(db, current_user.uid, end_date)
+
+    all_txns_in_range = (
+        db.query(Transaction)
+        .filter(
+            Transaction.uid == current_user.uid,
+            Transaction.ts
+            <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+            Transaction.ts
+            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
+            Transaction.archived.is_(False),
+        )
+        .order_by(Transaction.ts.desc())
+        .all()
+    )
+
+    series = _generate_net_worth_series(dates, balance_at_end, all_txns_in_range)
+    resp = NetWorthResponse(data=series)
+
+    _cache_result(db_fs, cache_key, current_user.uid, resp)
     return resp
 
 

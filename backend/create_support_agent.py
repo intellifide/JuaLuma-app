@@ -15,23 +15,8 @@ from backend.utils import get_db  # noqa: E402
 DEFAULT_STRONG_PASSWORD = "SupportAgentSecure!2025"
 
 
-def create_support_agent(email, password, verbose=True):
-    if verbose:
-        print(f"DTO Creating support agent: {email}")
-
-    # 1. Init Firebase (with retry for emulator connection)
+def _ensure_firebase_user(email, password, verbose):
     try:
-        _get_firebase_app()
-    except Exception as e:
-        print(f"Error initializing Firebase app: {e}")
-        return
-
-    db = next(get_db())
-
-    # 2. Check/Create in Firebase
-    user_record = None
-    try:
-        # Check if user exists
         try:
             user_record = auth.get_user_by_email(email)
             if verbose:
@@ -39,6 +24,7 @@ def create_support_agent(email, password, verbose=True):
                     f"User {email} found in Firebase (uid: {user_record.uid}). Updating password..."
                 )
             auth.update_user(user_record.uid, password=password)
+            return user_record
         except auth.UserNotFoundError:
             if verbose:
                 print(f"User {email} not found in Firebase. Creating...")
@@ -47,12 +33,13 @@ def create_support_agent(email, password, verbose=True):
             )
             if verbose:
                 print(f"Firebase user created: {user_record.uid}")
+            return user_record
     except Exception as e:
         print(f"Error managing Firebase user: {e}")
-        # If we can't talk to Firebase, we can't proceed effectively
-        return
+        return None
 
-    # 3. Create/Update in Postgres
+
+def _ensure_db_user(db, email, user_record, verbose):
     try:
         user = db.query(User).filter(User.email == email).first()
         if not user:
@@ -81,8 +68,30 @@ def create_support_agent(email, password, verbose=True):
     except Exception as e:
         print(f"Error updating database: {e}")
         db.rollback()
-    finally:
-        db.close()
+
+
+def create_support_agent(email, password, verbose=True):
+    if verbose:
+        print(f"DTO Creating support agent: {email}")
+
+    # 1. Init Firebase (with retry for emulator connection)
+    try:
+        _get_firebase_app()
+    except Exception as e:
+        print(f"Error initializing Firebase app: {e}")
+        return
+
+    db = next(get_db())
+
+    # 2. Check/Create in Firebase
+    user_record = _ensure_firebase_user(email, password, verbose)
+    if not user_record:
+        return
+
+    # 3. Create/Update in Postgres
+    _ensure_db_user(db, email, user_record, verbose)
+
+    db.close()
 
 
 if __name__ == "__main__":

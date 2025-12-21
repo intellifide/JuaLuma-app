@@ -162,6 +162,42 @@ def _rate_limit(request: Request) -> None:
         attempts.append(now)
 
 
+def _verify_totp(user: User, mfa_code: str) -> None:
+    if not user.mfa_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MFA setup incomplete.",
+        )
+    totp = pyotp.TOTP(user.mfa_secret)
+    if not totp.verify(mfa_code):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid MFA code",
+        )
+
+
+def _verify_email_otp(user: User, mfa_code: str, db: Session) -> None:
+    if not user.email_otp or not user.email_otp_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No OTP generated. Request a code first.",
+        )
+    # Simple timezone-naive comparison if tzinfo is mixed, relying on utcnow assumption
+    if datetime.now(user.email_otp_expires_at.tzinfo) > user.email_otp_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OTP expired.",
+        )
+    if mfa_code != user.email_otp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid MFA code",
+        )
+    # Consume OTP
+    user.email_otp = None
+    db.commit()
+
+
 def _verify_mfa(user: User, mfa_code: str | None, db: Session) -> None:
     """Helper to verify MFA code for a user."""
     if not user.mfa_enabled:
@@ -176,38 +212,91 @@ def _verify_mfa(user: User, mfa_code: str | None, db: Session) -> None:
     method = user.mfa_method or "totp"
 
     if method == "totp":
-        if not user.mfa_secret:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="MFA setup incomplete.",
-            )
-        totp = pyotp.TOTP(user.mfa_secret)
-        if not totp.verify(mfa_code):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid MFA code",
-            )
+        _verify_totp(user, mfa_code)
     elif method == "email":
-        if not user.email_otp or not user.email_otp_expires_at:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No OTP generated. Request a code first.",
-            )
-        if datetime.now(user.email_otp_expires_at.tzinfo) > user.email_otp_expires_at:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OTP expired.",
-            )
-        if mfa_code != user.email_otp:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid MFA code",
-            )
-        # Consume OTP
-        user.email_otp = None
-        db.commit()
+        _verify_email_otp(user, mfa_code, db)
     elif method == "sms":
         raise HTTPException(status_code=501, detail="SMS MFA not implemented")
+
+
+def _handle_existing_firebase_user(email: str, db: Session):
+    """
+    Handle logic when a user already exists in Firebase.
+    Returns (record, is_synced_user_obj).
+    If is_synced_user_obj is returned, it means we healed a desync and should return early.
+    """
+    from firebase_admin import auth
+
+    existing_user = auth.get_user_by_email(email)
+
+    # Check DB by authoritative UID
+    db_user_by_uid = db.query(User).filter(User.uid == existing_user.uid).first()
+    if db_user_by_uid:
+        # Truly a duplicate
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already exists.",
+        )
+
+    # Check DB by Email (Potential Desync)
+    db_user_by_email = db.query(User).filter(User.email == email).first()
+    if db_user_by_email:
+        # Heal it
+        logger.info(
+            f"Healing desynced user {email}. DB UID {db_user_by_email.uid} -> Auth UID {existing_user.uid}"
+        )
+        try:
+            db_user_by_email.uid = existing_user.uid
+            db.commit()
+            db.refresh(db_user_by_email)
+            return existing_user, db_user_by_email
+        except Exception as e:
+            logger.error(f"Failed to heal user {email}: {e}")
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Account sync failed.",
+            ) from e
+
+    # Truly Zombie
+    logger.info(
+        f"Healing zombie user account for {email} ({existing_user.uid})"
+    )
+    return existing_user, None
+
+
+def _create_db_user_safe(db: Session, record, is_fresh_firebase_user: bool) -> User:
+    from firebase_admin import auth
+
+    try:
+        user = create_user_record(db, uid=record.uid, email=record.email)
+        return user
+    except Exception as exc:
+        logger.error(
+            f"DB creation failed for {record.email} (UID: {record.uid}): {exc}"
+        )
+        # Rollback Firebase if we just created it
+        if is_fresh_firebase_user:
+            try:
+                logger.warning(
+                    f"Rolling back Firebase user {record.uid} due to DB failure."
+                )
+                auth.delete_user(record.uid)
+            except Exception as cleanup_exc:
+                logger.critical(
+                    f"CRITICAL: Failed to rollback Firebase user {record.uid} after DB failure: {cleanup_exc}"
+                )
+
+        if isinstance(exc, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User already exists.",
+            ) from exc
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Account creation failed. Please try again.",
+        ) from exc
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
@@ -224,73 +313,20 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
     from firebase_admin import exceptions as firebase_exceptions
 
     is_fresh_firebase_user = False
+    record = None
 
     try:
-        # 2025-12-10 16:46 CST - ensure emulator/SDK is initialized before create_user
         _get_firebase_app()
         record = auth.create_user(email=payload.email, password=payload.password)
         is_fresh_firebase_user = True
     except firebase_exceptions.AlreadyExistsError:
-        # 2025-12-12: Complete handling for "Zombie" users and "Desync" users
-        try:
-            # 1. Fetch existing Auth record to get the authoritative UID
-            existing_user = auth.get_user_by_email(payload.email)
-
-            # 2. Check DB by authoritative UID
-            db_user_by_uid = (
-                db.query(User).filter(User.uid == existing_user.uid).first()
-            )
-            if db_user_by_uid:
-                # Truly a duplicate (User exists in both with same UID)
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already exists.",
-                )
-
-            # 3. Check DB by Email (Potential Desync)
-            db_user_by_email = (
-                db.query(User).filter(User.email == payload.email).first()
-            )
-            if db_user_by_email:
-                # User exists in DB but with different UID. Heal it.
-                logger.info(
-                    f"Healing desynced user {payload.email}. DB UID {db_user_by_email.uid} -> Auth UID {existing_user.uid}"
-                )
-                try:
-                    db_user_by_email.uid = existing_user.uid
-                    db.commit()
-                    db.refresh(db_user_by_email)
-                    return {
-                        "uid": db_user_by_email.uid,
-                        "email": db_user_by_email.email,
-                        "message": "Account synced successfully.",
-                    }
-                except Exception as e:
-                    logger.error(f"Failed to heal user {payload.email}: {e}")
-                    db.rollback()
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Account sync failed.",
-                    ) from e
-
-            # 4. Truly "Zombie" (Exists in Auth, missing in DB)
-            logger.info(
-                f"Healing zombie user account for {payload.email} ({existing_user.uid})"
-            )
-            # Proceed to create logic below using existing record
-            record = existing_user
-
-        except Exception as e:
-            # If we returned above, we won't get here.
-            # If we raised HTTPException, it propagates.
-            if isinstance(e, HTTPException):
-                raise e
-            logger.error(f"Error checking user state: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already exists.",
-            ) from e
-
+        record, synced_user = _handle_existing_firebase_user(payload.email, db)
+        if synced_user:
+            return {
+                "uid": synced_user.uid,
+                "email": synced_user.email,
+                "message": "Account synced successfully.",
+            }
     except firebase_exceptions.InvalidArgumentError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -302,42 +338,8 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
             detail="Firebase unavailable. Try again shortly.",
         ) from exc
 
-    try:
-        # Create DB record if we didn't return early (Zombie case or New user)
-        if "record" not in locals():
-            # Should not happen unless logic above is flawed, but safe fallback
-            raise RuntimeError("User record creation failed unexpectedly.")
-
-        user = create_user_record(db, uid=record.uid, email=record.email)
-    except Exception as exc:
-        logger.error(
-            f"DB creation failed for {record.email} (UID: {record.uid}): {exc}"
-        )
-
-        # If we just created this user in Firebase, we MUST delete them to prevent zombie state.
-        if is_fresh_firebase_user:
-            try:
-                logger.warning(
-                    f"Rolling back Firebase user {record.uid} due to DB failure."
-                )
-                auth.delete_user(record.uid)
-            except Exception as cleanup_exc:
-                # Critical Error: We failed to create DB AND failed to rollback Firebase.
-                logger.critical(
-                    f"CRITICAL: Failed to rollback Firebase user {record.uid} after DB failure: {cleanup_exc}"
-                )
-
-        if isinstance(exc, ValueError):  # Catches IntegrityError wrapper
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="User already exists.",
-            ) from exc
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Account creation failed. Please try again.",
-        ) from exc
-
+    # Create DB record
+    user = _create_db_user_safe(db, record, is_fresh_firebase_user)
     return {"uid": user.uid, "email": user.email, "message": "Signup successful."}
 
 
@@ -424,10 +426,16 @@ def reset_password(
             detail="Unable to send reset link right now.",
         ) from exc
 
-    logger.info("Password reset link for %s: %s", payload.email, reset_link)
+    # Securely dispatch the link via email
+    try:
+        email_client = get_email_client()
+        email_client.send_password_reset(payload.email, reset_link)
+    except Exception as e:
+        logger.error(f"Failed to dispatch password reset email: {e}")
+        # We generally do not want to expose email infrastructure failures to the user,
+        # but we also don't want them waiting for an email that won't come.
+        # Returning success (to prevent enumeration) is standard, but internal alerts are needed.
 
-    # If using Email client, we should actually send it.
-    # For now, we assume the frontend/service handles the dispatch or it's logged.
     return {"message": "Reset link sent"}
 
 
