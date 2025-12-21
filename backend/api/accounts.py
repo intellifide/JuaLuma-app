@@ -471,7 +471,9 @@ def _sync_traditional(account: Account, start: date, end: date) -> list[dict]:
     try:
         return fetch_transactions(account.secret_ref, start, end)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Plaid sync failed: {exc}"
@@ -502,7 +504,9 @@ def _sync_web3(account: Account) -> list[dict]:
         ]
     except Exception as e:
         logger.error(f"Web3 sync error: {e}")
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}") from e
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}"
+        ) from e
 
 
 def _sync_cex(account: Account, uid: str) -> list[dict]:
@@ -538,9 +542,7 @@ def _sync_cex(account: Account, uid: str) -> list[dict]:
         ) from e
 
 
-def _refresh_traditional_balance(
-    account: Account, user_pref: str | None
-) -> str | None:
+def _refresh_traditional_balance(account: Account, user_pref: str | None) -> str | None:
     """Updates account balance from Plaid and returns the Plaid account ID if found."""
     if account.account_type != "traditional":
         return None
@@ -635,8 +637,9 @@ def _process_single_transaction(
     return True
 
 
-
-def _resolve_sync_dates(start_date: date | None, end_date: date | None) -> tuple[date, date]:
+def _resolve_sync_dates(
+    start_date: date | None, end_date: date | None
+) -> tuple[date, date]:
     today = date.today()
     resolved_start = start_date or (today - timedelta(days=30))
     resolved_end = end_date or today

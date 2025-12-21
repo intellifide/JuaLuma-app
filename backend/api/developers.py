@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
-from backend.core.dependencies import require_developer, require_pro_or_ultimate
+from backend.core.dependencies import require_developer
 from backend.middleware.auth import get_current_user
 from backend.models import DeveloperPayout, User
 from backend.utils import get_db
@@ -96,7 +96,9 @@ class DeveloperCreate(BaseModel):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def register_developer(
     payload: DeveloperCreate,
-    current_user: User = Depends(get_current_user), # Any authenticated user can register
+    current_user: User = Depends(
+        get_current_user
+    ),  # Any authenticated user can register
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Register as a developer. Requires Pro/Ultimate."""

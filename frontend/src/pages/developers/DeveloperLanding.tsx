@@ -1,8 +1,11 @@
+/**
+ * CORE PURPOSE: Landing page for the Developer Portal.
+ * LAST MODIFIED: 2025-12-21 17:15 CST
+ */
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 export const DeveloperLanding = () => {
-    const navigate = useNavigate();
 
     return (
         <div className="min-h-screen bg-bg-primary">

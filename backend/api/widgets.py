@@ -14,7 +14,6 @@ from backend.core.constants import SubscriptionPlans
 from backend.core.dependencies import (
     get_current_active_subscription,
     require_developer,
-    require_pro_or_ultimate,
 )
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, User, Widget, WidgetRating

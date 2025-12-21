@@ -163,7 +163,7 @@ export const Settings = () => {
                     <tbody>
                       <tr>
                         <td colSpan={5} className="py-6 text-center text-text-muted">
-                          Billing history is available providing you have an active subscription. Click "Manage Subscription" above to view invoices in the secure customer portal.
+                          Billing history is available providing you have an active subscription. Click &quot;Manage Subscription&quot; above to view invoices in the secure customer portal.
                         </td>
                       </tr>
                     </tbody>

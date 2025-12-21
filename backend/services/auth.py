@@ -65,7 +65,9 @@ def _get_firebase_app() -> firebase_admin.App:
 
 def verify_token(token: str) -> dict[str, Any]:
     """Verify an ID token via Firebase Admin SDK."""
-    print(f"DEBUG: verify_token called with token={token}, is_local={settings.is_local}")
+    print(
+        f"DEBUG: verify_token called with token={token}, is_local={settings.is_local}"
+    )
     try:
         return auth.verify_id_token(token, app=_get_firebase_app())
     except (ExpiredIdTokenError, InvalidIdTokenError, RevokedIdTokenError) as exc:

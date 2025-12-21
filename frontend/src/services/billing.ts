@@ -35,8 +35,13 @@ export const createBillingPortalSession = async (returnUrl: string): Promise<str
 }
 
 export const verifyCheckoutSession = async (sessionId: string): Promise<void> => {
-    await apiFetch('/billing/checkout/verify', {
+    const response = await apiFetch('/billing/checkout/verify', {
         method: 'POST',
         body: JSON.stringify({ session_id: sessionId }),
     })
+    const data = await response.json()
+
+    if (!data.verified) {
+        throw new Error('Payment verification failed. Your payment may still be processing. Please contact support if you were charged.')
+    }
 }

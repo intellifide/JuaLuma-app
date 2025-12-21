@@ -1,19 +1,17 @@
+/**
+ * CORE PURPOSE: Developer SDK and Sandbox documentation/playground.
+ * LAST MODIFIED: 2025-12-21 17:45 CST
+ */
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { HelloWorldWidget } from '../sdk/examples/HelloWorldWidget';
 import { DataFetcherWidget } from '../sdk/examples/DataFetcherWidget';
 import { mockClient } from '../sdk/mockClient';
-import { Paywall } from '../components/ui/Paywall';
 
 export const DeveloperSDK = () => {
-    const { profile, profileLoading } = useAuth();
+    const { profileLoading } = useAuth();
     const [activeTab, setActiveTab] = useState('playground');
-
-    const hasPro = profile?.subscriptions?.some(s =>
-        s.status === 'active' && ['pro', 'ultimate'].includes(s.plan || '')
-    );
-    const isDeveloper = (profile as unknown as Record<string, unknown>)?.is_developer;
 
     // Playground State
     const [manifest, setManifest] = useState({
@@ -47,9 +45,6 @@ export const DeveloperSDK = () => {
         }
         setValidationResult({ status: 'success', message: '✓ Manifest validated successfully! Ready for submission.' });
     };
-
-    // Allow guests to view docs (CLI, Examples) but gate Playground
-    const isGuest = !profile;
 
     if (profileLoading) return <div className="container py-16 text-center">Loading...</div>;
 

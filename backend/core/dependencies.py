@@ -34,7 +34,9 @@ def require_pro_or_ultimate(current_user: User = Depends(get_current_user)) -> U
     Dependency that ensures the user has a Pro or Ultimate subscription.
     """
     sub = get_current_active_subscription(current_user)
-    base_plan = SubscriptionPlans.get_base_tier(sub.plan) if sub else SubscriptionPlans.FREE
+    base_plan = (
+        SubscriptionPlans.get_base_tier(sub.plan) if sub else SubscriptionPlans.FREE
+    )
     if base_plan not in SubscriptionPlans.DEVELOPER_ELIGIBLE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

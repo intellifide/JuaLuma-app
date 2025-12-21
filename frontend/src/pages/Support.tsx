@@ -1,4 +1,8 @@
-import React, { useEffect, useState } from 'react';
+/**
+ * CORE PURPOSE: Support page for managing tickets and viewing contact info/FAQ.
+ * LAST MODIFIED: 2025-12-21 17:35 CST
+ */
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supportService, Ticket } from '../services/support';
@@ -13,7 +17,7 @@ export const Support = () => {
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const fetchTickets = async () => {
+    const fetchTickets = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
@@ -24,13 +28,13 @@ export const Support = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
 
     useEffect(() => {
         if (user) {
             fetchTickets();
         }
-    }, [user]);
+    }, [user, fetchTickets]);
 
     const handleTicketClick = (ticketId: string) => {
         navigate(`/support/tickets/${ticketId}`);

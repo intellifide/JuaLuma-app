@@ -7,6 +7,7 @@ import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { Account } from '../types';
 import { DataPoint } from '../services/analytics';
 import { useToast } from '../components/ui/Toast';
+import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 
 // Removed static BUDGET_CAP
 
@@ -302,6 +303,10 @@ export default function Dashboard() {
   // Analytics Hooks
   const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
 
+  // Track when user reaches dashboard (final step of signup funnel)
+  React.useEffect(() => {
+    eventTracking.trackSignupFunnel(SignupFunnelEvent.DASHBOARD_REACHED)
+  }, [])
 
   React.useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -325,7 +330,7 @@ export default function Dashboard() {
             });
        });
     }
-  }, []);
+  }, [toast]);
 
   const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval);
   const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval);

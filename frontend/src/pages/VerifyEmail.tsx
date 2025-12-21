@@ -1,7 +1,12 @@
+/**
+ * CORE PURPOSE: Email verification page for user onboarding.
+ * LAST MODIFIED: 2025-12-21 17:05 CST
+ */
 import { useState, FormEvent, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { requestEmailCode, verifyEmailCode } from '../services/auth'
+import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 
 export const VerifyEmail = () => {
     const { user, profile, refetchProfile } = useAuth()
@@ -12,12 +17,20 @@ export const VerifyEmail = () => {
     const [loading, setLoading] = useState(false)
     const [sending, setSending] = useState(false)
 
+    // Track when user lands on email verification page
     useEffect(() => {
-        // If user is already verified (based on profile status), go to dashboard (or next step)
-        if (profile?.status !== 'pending_verification') {
-            // Assume ProtectedRoute or Dashboard logic will handle 'pending_plan_selection' or 'active'
-            navigate('/dashboard')
+        eventTracking.trackSignupFunnel(SignupFunnelEvent.EMAIL_VERIFICATION_STARTED)
+    }, [])
+
+    useEffect(() => {
+        // If user has completed verification, redirect to pricing or dashboard
+        // ProtectedRoute will handle the final destination based on status
+        if (profile?.status === 'pending_plan_selection') {
+            navigate('/pricing', { replace: true })
+        } else if (profile?.status === 'active') {
+            navigate('/dashboard', { replace: true })
         }
+        // If status is 'pending_verification', stay on this page
     }, [profile, navigate])
 
     const handleSendCode = async () => {
@@ -27,9 +40,10 @@ export const VerifyEmail = () => {
         setError('')
         try {
             await requestEmailCode(user.email)
-            setMessage('A verification code has been sent to your email.')
+            setMessage('A new verification code has been sent to your email. Please check your inbox and spam folder. The code will expire in 10 minutes.')
         } catch (err) {
-            setError('Unable to send code.' + err)
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+            setError(`Unable to send verification code: ${errorMessage}. Please try again or contact support if the issue persists.`)
         } finally {
             setSending(false)
         }
@@ -42,14 +56,19 @@ export const VerifyEmail = () => {
         try {
             await verifyEmailCode(code)
             await refetchProfile()
+            // Track successful verification
+            eventTracking.trackSignupFunnel(SignupFunnelEvent.EMAIL_VERIFICATION_COMPLETED)
             // Navigation will be handled by the effect or ProtectedRoute once profile updates,
             // but we can force it or let it settle.
             // Profile status should update to 'pending_plan_selection'.
         } catch (err) {
             if (err instanceof Error) {
-                setError(err.message)
+                setError(err.message.includes('Invalid') || err.message.includes('expired')
+                    ? 'Invalid or expired code. Please request a new code and try again.'
+                    : err.message
+                )
             } else {
-                setError('Verification failed.')
+                setError('Verification failed. Please check your code and try again.')
             }
         } finally {
             setLoading(false)
@@ -67,6 +86,16 @@ export const VerifyEmail = () => {
                     To secure your account, please enter the verification code sent to your email:
                     <span className="block font-mono text-neon-blue mt-1">{user?.email}</span>
                 </p>
+
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm">
+                    <strong>Haven&apos;t received your code?</strong>
+                    <ul className="mt-2 ml-4 space-y-1 list-disc text-xs">
+                        <li>Check your spam/junk folder</li>
+                        <li>Ensure {user?.email} is correct</li>
+                        <li>Wait 1-2 minutes for delivery</li>
+                        <li>Click &quot;Resend Code&quot; below if needed</li>
+                    </ul>
+                </div>
 
                 {error && (
                     <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">

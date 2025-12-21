@@ -1,9 +1,10 @@
-// Updated 2025-12-08 20:31 CST by ChatGPT
+/**
+ * CORE PURPOSE: Authentication service using Firebase Client SDK and custom Backend API.
+ * LAST MODIFIED: 2025-12-21 17:15 CST
+ */
 import { FirebaseError } from 'firebase/app'
 import {
   User,
-
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth'

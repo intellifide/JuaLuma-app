@@ -1,7 +1,8 @@
 // Updated 2025-12-09 16:45 CST by ChatGPT
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useMemo, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -28,6 +29,11 @@ export const Signup = () => {
     () => passwordChecks.every((check) => check.test(password)),
     [password],
   )
+
+  // Track when user lands on signup page
+  useEffect(() => {
+    eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_STARTED)
+  }, [])
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -56,7 +62,11 @@ export const Signup = () => {
     setSubmitting(true)
     try {
       await signup(email, password)
-      navigate('/dashboard', { replace: true })
+      // Track successful signup
+      eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_COMPLETED, { email })
+      // After signup, user status is 'pending_verification'
+      // Navigate to verify-email page where they'll enter the OTP
+      navigate('/verify-email', { replace: true })
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to sign up at the moment.'

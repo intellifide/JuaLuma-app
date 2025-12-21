@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
-from backend.models import User, SubscriptionTier
+from backend.models import SubscriptionTier, User
 from backend.services.billing import (
     create_checkout_session,
     create_portal_session,
@@ -77,15 +77,19 @@ async def verify_checkout_session(
     Manually verify a checkout session if webhooks are delayed (e.g. local dev).
     """
     from backend.services.billing import verify_stripe_session
-    
+
     success = verify_stripe_session(db, request.session_id)
     if not success:
-         # It might just be not paid yet, or invalid
-         return {"verified": False}
-    
-    # Reload user to return updated profile
-    db.refresh(user)
-    return {"verified": True, "plan": user.subscription.plan if user.subscription else "free"}
+        # It might just be not paid yet, or invalid
+        return {"verified": False}
+
+    # Query subscription separately to avoid lazy loading issues
+    from backend.models import Subscription
+
+    subscription = db.query(Subscription).filter(Subscription.uid == user.uid).first()
+    plan = subscription.plan if subscription else "free"
+
+    return {"verified": True, "plan": plan}
 
 
 @router.get("/plans", response_model=list[SubscriptionPlan])
@@ -93,7 +97,9 @@ async def get_plans(db: Session = Depends(get_db)):
     """
     List all active subscription plans.
     """
-    tiers = db.query(SubscriptionTier).filter(SubscriptionTier.is_active.is_(True)).all()
+    tiers = (
+        db.query(SubscriptionTier).filter(SubscriptionTier.is_active.is_(True)).all()
+    )
     return tiers
 
 

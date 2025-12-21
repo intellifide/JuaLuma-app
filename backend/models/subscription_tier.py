@@ -1,4 +1,3 @@
-
 import uuid
 from datetime import datetime
 from typing import Any
@@ -16,7 +15,9 @@ class SubscriptionTier(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, index=True)
+    code: Mapped[str] = mapped_column(
+        String(32), unique=True, nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     price_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -25,7 +26,7 @@ class SubscriptionTier(Base):
     interval: Mapped[str] = mapped_column(String(16), default="month", nullable=False)
     features: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -52,5 +53,6 @@ class SubscriptionTier(Base):
             "features": self.features,
             "is_active": self.is_active,
         }
+
 
 __all__ = ["SubscriptionTier"]

@@ -183,9 +183,6 @@ def fetch_accounts(access_token: str) -> list[dict[str, object]]:
     return accounts
 
 
-
-
-
 def _fetch_transaction_page(
     client: plaid_api.PlaidApi, request: TransactionsGetRequest
 ) -> tuple[TransactionsGetResponse | None, list[dict[str, object]]]:

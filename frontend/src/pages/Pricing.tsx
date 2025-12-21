@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { selectFreePlan } from '../services/auth'
 import { createCheckoutSession, createBillingPortalSession, getPlans, SubscriptionTier } from '../services/billing'
+import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 
 export const Pricing = () => {
     const { user, profile, refetchProfile } = useAuth()
@@ -22,7 +23,12 @@ export const Pricing = () => {
             }
         }
         fetchPlans()
-    }, [])
+
+        // Track when user views the pricing page (plan selection)
+        if (profile?.status === 'pending_plan_selection') {
+            eventTracking.trackSignupFunnel(SignupFunnelEvent.PLAN_SELECTION_VIEWED)
+        }
+    }, [profile?.status])
 
     const handlePlanSelect = async (planCode: string) => {
         if (!user) {
@@ -40,11 +46,16 @@ export const Pricing = () => {
         setLoading(planCode)
         try {
             if (planCode === 'free') {
+                // Track free plan selection
+                eventTracking.trackSignupFunnel(SignupFunnelEvent.FREE_PLAN_SELECTED)
                 await selectFreePlan()
                 await refetchProfile()
                 navigate('/dashboard')
             } else {
-                const url = await createCheckoutSession(planCode, window.location.origin + '/dashboard')
+                // Track paid plan checkout initiation
+                eventTracking.trackSignupFunnel(SignupFunnelEvent.PAID_PLAN_SELECTED, { plan: planCode })
+                eventTracking.trackSignupFunnel(SignupFunnelEvent.CHECKOUT_STARTED, { plan: planCode })
+                const url = await createCheckoutSession(planCode, window.location.origin + '/checkout/success')
                 window.location.href = url
             }
         } catch (error) {

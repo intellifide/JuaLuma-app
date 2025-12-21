@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy.orm import Session, selectinload
 
-from backend.core.config import settings
 from backend.core.constants import UserStatus
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, Subscription, User
@@ -107,7 +106,9 @@ class ProfileUpdateRequest(BaseModel):
 # Structured helpers ---------------------------------------------------------
 def _serialize_profile(user: User) -> dict:
     """Build a complete profile payload."""
-    all_subs = sorted(user.subscriptions or [], key=lambda x: x.created_at, reverse=True)
+    all_subs = sorted(
+        user.subscriptions or [], key=lambda x: x.created_at, reverse=True
+    )
     subscriptions = [
         {
             "id": str(sub.id),
@@ -134,7 +135,7 @@ def _serialize_profile(user: User) -> dict:
 
     profile = user.to_dict()
     profile["subscriptions"] = subscriptions
-    
+
     # Expose the most recent subscription as the primary plan
     if all_subs:
         profile["plan"] = all_subs[0].plan
@@ -270,9 +271,7 @@ def _handle_existing_firebase_user(email: str, db: Session):
             ) from e
 
     # Truly Zombie
-    logger.info(
-        f"Healing zombie user account for {email} ({existing_user.uid})"
-    )
+    logger.info(f"Healing zombie user account for {email} ({existing_user.uid})")
     return existing_user, None
 
 
@@ -308,7 +307,6 @@ def _create_db_user_safe(db: Session, record, is_fresh_firebase_user: bool) -> U
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Account creation failed. Please try again.",
         ) from exc
-
 
 
 def _generate_and_send_otp(user: User, db: Session) -> None:
@@ -367,7 +365,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
 
     # Create DB record
     user = _create_db_user_safe(db, record, is_fresh_firebase_user)
-    
+
     # Automatically send verification OTP
     _generate_and_send_otp(user, db)
 
@@ -588,7 +586,6 @@ def request_email_code(
     _generate_and_send_otp(user, db)
 
     return {"message": "Code sent."}
-
 
 
 @router.post("/mfa/email/enable")

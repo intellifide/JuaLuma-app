@@ -122,9 +122,7 @@ def _generate_net_worth_series(
 
         if i + 1 < len(dates_desc):
             prev_date = dates_desc[i + 1]
-            prev_d_end_dt = datetime.combine(
-                prev_date, datetime.max.time(), tzinfo=UTC
-            )
+            prev_d_end_dt = datetime.combine(prev_date, datetime.max.time(), tzinfo=UTC)
 
             period_delta = Decimal(0)
             while t_idx < len(txns_in_range):

@@ -14,6 +14,7 @@ async def test_widget_submission_rate_limit(test_db):
     Test rate limiting for widget submission.
     Uses shared `test_db` fixture which handles table creation (including 'developers').
     """
+
     # Override get_db to use the test database
     def override_get_db():
         try:
@@ -33,6 +34,7 @@ async def test_widget_submission_rate_limit(test_db):
 
     # Mock Auth
     from backend.middleware.auth import get_current_user
+
     app.dependency_overrides[get_current_user] = lambda: dev_user
 
     try:
@@ -61,7 +63,9 @@ async def test_widget_submission_rate_limit(test_db):
                     "preview_data": {},
                 }
                 response = await client.post("/api/widgets/", json=payload)
-                assert response.status_code == 201, f"Failed to create widget {i}: {response.text}"
+                assert (
+                    response.status_code == 201
+                ), f"Failed to create widget {i}: {response.text}"
 
             # 3. Submit 6th widget (should fail)
             payload = {

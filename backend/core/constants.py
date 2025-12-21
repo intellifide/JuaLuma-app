@@ -50,6 +50,7 @@ class SubscriptionPlans:
     ALL = [FREE, ESSENTIAL, PRO, ULTIMATE]
     PAID = [ESSENTIAL, PRO, ULTIMATE]
     DEVELOPER_ELIGIBLE = [PRO, ULTIMATE]
+
     @classmethod
     def get_base_tier(cls, plan_code: str) -> str:
         """Normalize 'pro_monthly' -> 'pro', 'ultimate_annual' -> 'ultimate' etc."""

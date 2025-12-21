@@ -1,3 +1,7 @@
+/**
+ * CORE PURPOSE: Developer dashboard for managing widgets and payouts.
+ * LAST MODIFIED: 2025-12-21 17:15 CST
+ */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { widgetService } from '../../services/widgets';
@@ -6,7 +10,7 @@ import { Widget, PaginatedResponse } from '../../types';
 import { Link, useNavigate } from 'react-router-dom';
 
 export const DeveloperDashboard = () => {
-    const { profile, refetchProfile } = useAuth();
+    const { profile } = useAuth();
     const navigate = useNavigate();
     const [myWidgets, setMyWidgets] = useState<Widget[]>([]);
     const [payouts, setPayouts] = useState<DeveloperPayout[]>([]);

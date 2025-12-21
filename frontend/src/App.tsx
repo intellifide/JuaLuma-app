@@ -17,6 +17,7 @@ import { ConnectAccounts } from './pages/ConnectAccounts'
 import { Transactions } from './pages/Transactions'
 import { Features } from './pages/Features'
 import { Pricing } from './pages/Pricing'
+import { CheckoutSuccess } from './pages/CheckoutSuccess'
 import { Support } from './pages/Support'
 import { TicketDetail } from './pages/TicketDetail'
 import { FeatureRequest } from './pages/FeatureRequest'
@@ -98,6 +99,7 @@ function App() {
             />
             <Route path="/features" element={<Features />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/checkout/success" element={<CheckoutSuccess />} />
             <Route path="/support" element={<Support />} />
             <Route
               path="/support/tickets/:ticketId"
