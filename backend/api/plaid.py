@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from backend.core.dependencies import enforce_account_limit
 from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, User
+from backend.services.analytics import invalidate_analytics_cache
 from backend.services.plaid import (
     create_link_token,
     exchange_public_token,
@@ -152,6 +153,9 @@ def exchange_token_endpoint(
     )
     db.add(audit)
     db.commit()
+
+    # Invalidate analytics cache so dashboard reflects new data
+    invalidate_analytics_cache(current_user.uid)
 
     return ExchangeTokenResponse(item_id=item_id, accounts=linked_accounts)
 

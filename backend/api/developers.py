@@ -40,8 +40,9 @@ class PayoutResponse(BaseModel):
     gross_revenue: Decimal
     payout_status: str
 
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 class PaginatedPayoutResponse(BaseModel):

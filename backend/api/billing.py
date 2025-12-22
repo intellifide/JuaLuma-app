@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
@@ -33,8 +33,9 @@ class SubscriptionPlan(BaseModel):
     interval: str
     features: list[str]
 
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 @router.post("/portal")

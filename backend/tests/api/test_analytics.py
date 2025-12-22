@@ -52,7 +52,7 @@ def override_dependencies(mock_get_db):
 
 
 @pytest.mark.asyncio
-@patch("backend.api.analytics.get_firestore_client")
+@patch("backend.services.analytics.get_firestore_client")
 async def test_net_worth_endpoint(
     mock_fs, client, mock_db_session, override_dependencies
 ):
@@ -172,3 +172,120 @@ async def test_spending_by_category_endpoint(
     # Should be positive and sorted desc
     assert data["data"][0]["category"] == "Rent"
     assert data["data"][0]["amount"] == 1500.0
+
+@pytest.mark.asyncio
+@patch("backend.services.analytics.get_firestore_client")
+async def test_net_worth_flat_line_repro(mock_fs, client, mock_db_session, override_dependencies):
+    # Setup Mock Firestore (empty cache)
+    mock_doc = MagicMock()
+    mock_doc.exists = False
+    mock_col = MagicMock()
+    mock_col.document.return_value.get.return_value = mock_doc
+    mock_fs.return_value.collection.return_value = mock_col
+
+    # Scenario: Account has 1000 balance. No transactions in last 30 days.
+    acc = Account(uid="test_user_123", balance=Decimal("1000.00"))
+
+    # Mock DB Queries
+    def query_side_effect(model):
+        m = MagicMock()
+        if model == Account:
+            m.filter.return_value.all.return_value = [acc]
+        elif model == Transaction:
+            # No transactions in range
+            m.filter.return_value.order_by.return_value.all.return_value = []
+            # No future transactions
+            m.filter.return_value.all.return_value = []
+        return m
+
+    mock_db_session.query.side_effect = query_side_effect
+
+    start_date = date.today() - timedelta(days=30)
+    end_date = date.today()
+    
+    response = await client.get(
+        "/api/analytics/net-worth",
+        params={
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "interval": "daily",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    points = data["data"]
+    
+    assert len(points) >= 30
+    # All points should be 1000
+    for p in points:
+        assert p["value"] == 1000.0, f"Point {p['date']} has value {p['value']}, expected 1000.0"
+
+@pytest.mark.asyncio
+@patch("backend.services.analytics.get_firestore_client")
+async def test_net_worth_one_transaction(mock_fs, client, mock_db_session, override_dependencies):
+    # Setup Mock Firestore (empty cache)
+    mock_doc = MagicMock()
+    mock_doc.exists = False
+    mock_col = MagicMock()
+    mock_col.document.return_value.get.return_value = mock_doc
+    mock_fs.return_value.collection.return_value = mock_col
+
+    # Scenario: Account has 1000 balance currently.
+    # One transaction of -100 yesterday (so balance was 1100 before that).
+    acc = Account(uid="test_user_123", balance=Decimal("1000.00"))
+    
+    yesterday = datetime.now(UTC) - timedelta(days=1)
+    t1 = Transaction(uid="test_user_123", amount=Decimal("-100.00"), ts=yesterday)
+
+    # Mock DB Queries
+    def query_side_effect_smart(model):
+        m = MagicMock()
+        
+        if model == Account:
+            # accounts query
+            m.filter.return_value.all.return_value = [acc]
+        elif model == Transaction:
+            # We need to distinguish between "future txns" and "range txns"
+            
+            filter_mock = MagicMock()
+            m.filter.return_value = filter_mock
+            
+            # Future txns
+            filter_mock.all.return_value = [] 
+            
+            # Range txns
+            order_by_mock = MagicMock()
+            filter_mock.order_by.return_value = order_by_mock
+            order_by_mock.all.return_value = [t1]
+            
+        return m
+
+    mock_db_session.query.side_effect = query_side_effect_smart
+
+    start_date = date.today() - timedelta(days=30)
+    end_date = date.today()
+    
+    response = await client.get(
+        "/api/analytics/net-worth",
+        params={
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "interval": "daily",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    points = data["data"]
+    
+    # Mapping dates:
+    today_str = date.today().isoformat()
+    yst_str = (date.today() - timedelta(days=1)).isoformat()
+    day_before_str = (date.today() - timedelta(days=2)).isoformat()
+    
+    val_map = {d['date']: d['value'] for d in points}
+    
+    assert val_map[today_str] == 1000.0
+    assert val_map[yst_str] == 1000.0
+    assert val_map[day_before_str] == 1100.0

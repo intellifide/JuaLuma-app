@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, Transaction, User
 from backend.utils import get_db
+from backend.services.analytics import invalidate_analytics_cache
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
@@ -334,6 +335,9 @@ def bulk_update_transactions(
     )
     db.add(audit)
     db.commit()
+
+    invalidate_analytics_cache(current_user.uid)
+
     return {"updated_count": len(txns)}
 
 
@@ -381,6 +385,8 @@ def update_transaction(
     db.commit()
     db.refresh(txn)
 
+    invalidate_analytics_cache(current_user.uid)
+
     # Auto-categorization learning
     if payload.category and txn.merchant_name:
         from backend.services.categorization import learn_rule
@@ -424,6 +430,8 @@ def delete_transaction(
     )
     db.add(audit)
     db.commit()
+
+    invalidate_analytics_cache(current_user.uid)
 
     return {"message": "Transaction deleted"}
 

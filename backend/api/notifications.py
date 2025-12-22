@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
@@ -21,8 +21,9 @@ class NotificationResponse(BaseModel):
     is_read: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 @router.get("", response_model=list[NotificationResponse])

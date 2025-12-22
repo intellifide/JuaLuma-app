@@ -20,7 +20,7 @@ from backend.services.connectors import build_connector
 from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.utils import get_db
 from backend.utils.encryption import decrypt_secret, encrypt_secret
-from backend.utils.firestore import get_firestore_client
+from backend.services.analytics import invalidate_analytics_cache
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -780,6 +780,7 @@ def sync_account_transactions(
         )
     )
     db.commit()
+    invalidate_analytics_cache(current_user.uid)
 
     return AccountSyncResponse(
         synced_count=synced,
@@ -860,6 +861,7 @@ def update_account(
 
     db.add(account)
     db.commit()
+    invalidate_analytics_cache(current_user.uid)
     db.refresh(account)
 
     return _serialize_account(account)
@@ -896,18 +898,7 @@ def delete_account(
             logger.error("Failed to remove Plaid item: %s", e)
 
     # Invalidate Analytics Cache
-    try:
-        db_fs = get_firestore_client()
-        # Query for all cache docs belonging to this user
-        # Note: older cache entries without 'uid' will expire naturally in 1h
-        for doc in (
-            db_fs.collection("analytics_cache")
-            .where("uid", "==", current_user.uid)
-            .stream()
-        ):
-            doc.reference.delete()
-    except Exception as e:
-        logger.warning(f"Failed to invalidate analytics cache: {e}")
+    invalidate_analytics_cache(current_user.uid)
 
     audit = AuditLog(
         actor_uid=current_user.uid,

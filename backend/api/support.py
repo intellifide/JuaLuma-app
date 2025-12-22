@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import desc
 from sqlalchemy.orm import Session, selectinload
 
@@ -52,8 +52,9 @@ class TicketMessageResponse(BaseModel):
     message: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 class TicketResponse(BaseModel):
@@ -67,8 +68,9 @@ class TicketResponse(BaseModel):
     updated_at: datetime
     messages: list[TicketMessageResponse] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 class TicketRatingCreate(BaseModel):
@@ -85,8 +87,9 @@ class TicketRatingResponse(BaseModel):
     feedback_text: str | None = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 # --- Helpers ---
