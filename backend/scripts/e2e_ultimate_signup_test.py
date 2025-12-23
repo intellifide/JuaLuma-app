@@ -13,6 +13,10 @@ import requests
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
+
 # Configuration
 API_BASE = os.getenv("API_BASE", "http://localhost:8000/api")
 TESTMAIL_NS = os.getenv("TESTMAIL_NAMESPACE", "jualuma")
