@@ -182,7 +182,7 @@ def list_transactions(
 ) -> TransactionListResponse:
     """
     List transactions with filters.
-    
+
     - **scope**: 'personal' (default) or 'household' (requires Ultimate/Household membership).
     """
     # 1. Determine Target UIDs

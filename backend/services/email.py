@@ -18,10 +18,6 @@ class EmailClient(Protocol):
         """Send welcome email for new subscription."""
         ...
 
-    def send_subscription_welcome(self, to_email: str, plan_name: str) -> None:
-        """Send welcome email for new subscription."""
-        ...
-
     def send_otp(self, to_email: str, code: str) -> None:
         """Send specific 2FA OTP code."""
         ...

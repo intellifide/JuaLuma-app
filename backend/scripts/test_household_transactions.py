@@ -4,6 +4,7 @@ import sys
 import uuid
 from datetime import date
 
+import httpx
 from fastapi.testclient import TestClient
 
 # Add project root to path
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Monkeypatch httpx.Client to ignore 'app' argument passed by older starlette versions
 # This is needed because local env might have mismatching versions
-import httpx
+
 
 _orig_client_init = httpx.Client.__init__
 

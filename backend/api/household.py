@@ -61,7 +61,7 @@ def create_household(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create household.",
-        )
+        ) from e
 
 
 @router.get("/me", response_model=HouseholdOut)
@@ -113,7 +113,7 @@ def create_invite(
         raise e
     except Exception as e:
         logger.error(f"Error sending invite: {e}")
-        raise HTTPException(status_code=500, detail="Failed to send invite.")
+        raise HTTPException(status_code=500, detail="Failed to send invite.") from e
 
 
 @router.post("/invites/accept")
@@ -132,7 +132,7 @@ def accept_invite_endpoint(
         raise e
     except Exception as e:
         logger.error(f"Error accepting invite: {e}")
-        raise HTTPException(status_code=500, detail="Failed to join household.")
+        raise HTTPException(status_code=500, detail="Failed to join household.") from e
 
 
 @router.delete("/members/me")
@@ -150,7 +150,7 @@ def leave_household_endpoint(
         raise e
     except Exception as e:
         logger.error(f"Error leaving household: {e}")
-        raise HTTPException(status_code=500, detail="Failed to leave household.")
+        raise HTTPException(status_code=500, detail="Failed to leave household.") from e
 
 
 # --- Helpers ---

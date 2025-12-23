@@ -57,8 +57,8 @@ describe('PlaidLinkButton', () => {
         public_token: 'public-token',
         institution_name: 'Bank',
       })
-      expect(syncAccountMock).toHaveBeenCalledWith('acc-1')
-      expect(syncAccountMock).toHaveBeenCalledWith('acc-2')
+      expect(syncAccountMock).toHaveBeenCalledWith('acc-1', true)
+      expect(syncAccountMock).toHaveBeenCalledWith('acc-2', true)
       expect(onSuccess).toHaveBeenCalledTimes(1)
     })
   })

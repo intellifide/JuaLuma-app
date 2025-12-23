@@ -155,7 +155,6 @@ def simulate_stripe_upgrade(uid, plan_type="ultimate_monthly"):
     if not STRIPE_WEBHOOK_SECRET:
         return False
 
-    url = f"{API_BASE}/webhooks/webhook"
     # Try alternate URL if needed (logic from before)
 
     event_payload = {
@@ -211,7 +210,8 @@ def main():
     email, tag = get_test_email()
     password = "TestUser123!"
     uid, _ = signup_user(email, password)
-    if not uid: return
+    if not uid:
+        return
 
     # 2. Poll for OTP
     logger.info("Waiting for OTP email...")
@@ -228,13 +228,16 @@ def main():
 
     # 3. Login to get Token
     id_token = firebase_login(email, password)
-    if not id_token: return
+    if not id_token:
+        return
 
     # 4. Verify OTP
-    if not enable_mfa(id_token, otp_code): return
+    if not enable_mfa(id_token, otp_code):
+        return
 
     # 5. Upgrade
-    if not simulate_stripe_upgrade(uid): return
+    if not simulate_stripe_upgrade(uid):
+        return
 
     # 6. Poll for Welcome Email (using same tag, might need to wait/poll next)
     logger.info("Waiting for Welcome email...")
