@@ -1,15 +1,17 @@
-import sys
 import os
+import sys
+
 # Add project root to path
 sys.path.append(os.getcwd())
 
+from backend.models import Payment, Subscription, User
 from backend.utils import get_db
-from backend.models import User, Subscription, Payment
+
 
 def debug_user(email):
     db = next(get_db())
     print(f"--- Debugging User: {email} ---")
-    
+
     user = db.query(User).filter(User.email == email).first()
     if not user:
         print("User not found!")
@@ -18,7 +20,7 @@ def debug_user(email):
     print(f"User UID: {user.uid}")
     print(f"Status: {user.status}")
     print(f"Is Developer: {user.developer}")
-    
+
     # Check Subscription
     subs = db.query(Subscription).filter(Subscription.uid == user.uid).all()
     print(f"\nSubscriptions ({len(subs)}):")

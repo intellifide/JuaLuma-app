@@ -15,12 +15,12 @@ from web3 import Web3  # For address validation
 from backend.core.dependencies import enforce_account_limit
 from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, Subscription, Transaction, User
+from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
 from backend.services.connectors import build_connector
 from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.utils import get_db
 from backend.utils.encryption import decrypt_secret, encrypt_secret
-from backend.services.analytics import invalidate_analytics_cache
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)

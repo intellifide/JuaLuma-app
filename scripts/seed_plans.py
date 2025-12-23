@@ -1,10 +1,12 @@
 from sqlalchemy.orm import Session
-from backend.utils import get_db
+
 from backend.models import SubscriptionTier
+from backend.utils import get_db
+
 
 def seed_plans():
     db: Session = next(get_db())
-    
+
     plans = [
         {
             "code": "free",
@@ -118,7 +120,7 @@ def seed_plans():
             tier.price_id = plan_data["price_id"]
             tier.features = plan_data["features"]
             print(f"Updated: {plan_data['name']}")
-            
+
     db.commit()
     print("Seeding Complete.")
 

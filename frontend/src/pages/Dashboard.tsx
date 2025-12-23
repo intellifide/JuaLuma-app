@@ -281,9 +281,12 @@ const CATEGORIES = [
 ];
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { accounts, refetch: refetchAccounts } = useAccounts();
-  const { transactions, refetch: refetchTransactions, updateOne } = useTransactions();
+  const [transactionScope, setTransactionScope] = useState<'personal' | 'household'>('personal');
+  const { transactions, refetch: refetchTransactions, updateOne } = useTransactions({
+    filters: { scope: transactionScope }
+  });
   const { budgets } = useBudget();
   const [accountsExpanded, setAccountsExpanded] = useState(false);
   const toast = useToast();
@@ -344,6 +347,9 @@ export default function Dashboard() {
     () => [...transactions].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 10),
     [transactions]
   );
+
+
+
 
   // Spending Stats
   const { totalExpense, topCategories } = useMemo(() => {
@@ -729,6 +735,36 @@ export default function Dashboard() {
       <div className="glass-panel mb-10">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Recent Transactions</h2>
+          
+          <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
+            <button
+              onClick={() => setTransactionScope('personal')}
+              className={`px-3 py-1 text-sm rounded-md transition-all ${
+                transactionScope === 'personal'
+                  ? 'bg-royal-purple text-white shadow font-medium'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              Personal
+            </button>
+            <button
+              onClick={() => {
+                const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
+                if (!isUltimate) {
+                  toast.show("Upgrade to Ultimate to view Family transactions.", "error");
+                  return;
+                }
+                setTransactionScope('household');
+              }}
+              className={`px-3 py-1 text-sm rounded-md transition-all ${
+                transactionScope === 'household'
+                  ? 'bg-royal-purple text-white shadow font-medium'
+                  : 'text-text-muted hover:text-text-secondary'
+              } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50' : ''}`}
+            >
+              Family
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="table w-full">

@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 import stripe
 
 # Add project root to path
@@ -20,7 +21,7 @@ def check_sub_price(sub_id: str):
             print(f"Price ID: {price.id}")
             print(f"Product ID: {price.product}")
             print(f"Recurring: {price.recurring}")
-            
+
     except Exception as e:
         print(f"Error: {e}")
 

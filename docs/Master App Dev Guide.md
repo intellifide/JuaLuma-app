@@ -4,18 +4,18 @@
 
 All engineering decisions must strictly adhere to these six non\-negotiable pillars\.
 
-- __Privacy by Design & Default \(GDPR Art\. 25\):__ Data minimization is enforced at the schema level\. PII is never collected unless critical\. "Right to be Forgotten" is handled via cryptographic erasure and scheduled physical purging\.
-- __Security by Design \(Zero Trust\):__ No internal service trusts another\. All access is authenticated and authorized\. Secrets are never stored in code, environment variables, or databases\.
-- __Regulatory Compliance Alignment:__
-	- __GLBA Safeguards:__ Security program aligns with the Gramm\-Leach\-Bliley Act \(Encryption, Access Control, Audit\)\.
-	- __Non\-Custodial Mandate:__ The platform never executes write\-access transfers or withdrawals\. All integrations are strictly Read\-Only to maintain non\-MSB \(Money Services Business\) status under FinCEN\.
-	- __Cookie Consent:__ A "Glassmorphism" consent banner is mandatory for all visitors, blocking non-essential cookies until affirmative "Accept" action.
-	- __US Residency Restriction:__ To mitigate international liability (GDPR etc.), service is strictly contractually limited to US residents. All signup flows must require US residency certification.
-- __Accessibility via Engineered Vibrancy:__ The platform utilizes an "Engineered Liquid Glass" framework\. The default UI uses advanced compositing \(blur, saturation, luminance clamping\) to ensure all text/interactive elements maintain WCAG 2\.1 AA \(4\.5:1\) contrast dynamically\.
-- __Legal\-First Product Lifecycle:__ Legal is a mandatory stakeholder\. No features regarding "sending," "swapping," or "rebalancing" assets may be prototyped without specific counsel approval \(FinCEN MSB trigger\)\. All user\-facing disclaimers, Terms of Service, Privacy Policies, and legal documentation must be reviewed and approved by qualified legal counsel before publication\. All developer agreements, contractor agreements, and third\-party development contracts must be reviewed and approved by qualified legal counsel before execution\.
-- __Intellectual Property Ownership:__ All property developed on, for, or in connection with the jualuma application is the exclusive property of Intellifide, LLC\. This includes all source code, features, designs, algorithms, documentation, and derivative works\. All developer agreements must explicitly include intellectual property assignment clauses that assign all rights, title, and interest to Intellifide, LLC\. This provision is non\-negotiable\.
-- __Operational Resilience \(Circuit Breakers\):__ The system must fail safely and cheaply\. Automated kill switches and hard budget caps are architected into the codebase to prevent "runaway" API costs or infinite loops\.
-- __Developer Payout Integrity:__ Mandate the tracking of __Downloads__ and __Ratings__ must be __immutable__ \(written to the Cloud SQL log ledger plus Firestore `widget_engagement`\) to ensure accurate and auditable developer payouts\.
+- **Privacy by Design & Default \(GDPR Art\. 25\):** Data minimization is enforced at the schema level\. PII is never collected unless critical\. "Right to be Forgotten" is handled via cryptographic erasure and scheduled physical purging\.
+- **Security by Design \(Zero Trust\):** No internal service trusts another\. All access is authenticated and authorized\. Secrets are never stored in code, environment variables, or databases\.
+- **Regulatory Compliance Alignment:**
+  - **GLBA Safeguards:** Security program aligns with the Gramm\-Leach\-Bliley Act \(Encryption, Access Control, Audit\)\.
+  - **Non\-Custodial Mandate:** The platform never executes write\-access transfers or withdrawals\. All integrations are strictly Read\-Only to maintain non\-MSB \(Money Services Business\) status under FinCEN\.
+  - **Cookie Consent:** A "Glassmorphism" consent banner is mandatory for all visitors, blocking non-essential cookies until affirmative "Accept" action.
+  - **US Residency Restriction:** To mitigate international liability (GDPR etc.), service is strictly contractually limited to US residents. All signup flows must require US residency certification.
+- **Accessibility via Engineered Vibrancy:** The platform utilizes an "Engineered Liquid Glass" framework\. The default UI uses advanced compositing \(blur, saturation, luminance clamping\) to ensure all text/interactive elements maintain WCAG 2\.1 AA \(4\.5:1\) contrast dynamically\.
+- **Legal\-First Product Lifecycle:** Legal is a mandatory stakeholder\. No features regarding "sending," "swapping," or "rebalancing" assets may be prototyped without specific counsel approval \(FinCEN MSB trigger\)\. All user\-facing disclaimers, Terms of Service, Privacy Policies, and legal documentation must be reviewed and approved by qualified legal counsel before publication\. All developer agreements, contractor agreements, and third\-party development contracts must be reviewed and approved by qualified legal counsel before execution\.
+- **Intellectual Property Ownership:** All property developed on, for, or in connection with the jualuma application is the exclusive property of Intellifide, LLC\. This includes all source code, features, designs, algorithms, documentation, and derivative works\. All developer agreements must explicitly include intellectual property assignment clauses that assign all rights, title, and interest to Intellifide, LLC\. This provision is non\-negotiable\.
+- **Operational Resilience \(Circuit Breakers\):** The system must fail safely and cheaply\. Automated kill switches and hard budget caps are architected into the codebase to prevent "runaway" API costs or infinite loops\.
+- **Developer Payout Integrity:** Mandate the tracking of **Downloads** and **Ratings** must be **immutable** \(written to the Cloud SQL log ledger plus Firestore `widget_engagement`\) to ensure accurate and auditable developer payouts\.
 
 ### 1\.1 Local Docker Layout (GCP-Portability)
 
@@ -122,89 +122,111 @@ The jualuma application delivers a complete financial aggregation and AI-powered
 
 The product goal is to abstract financial complexity and provide a simple, automated, and visual platform for the mass\-market consumer\. The engineering focus must be on simplicity, automation, and immediate value to serve a broad audience, not just financial experts\.
 
-- __Primary Value:__ Automation of financial tracking to save users time and provide a clear, holistic view of their financial health\.
-- __Target Personas:__
-	- __The Beginner \(Free Tier\):__ This user \(1\-2 bank accounts\) requires an immediate "Aha\!" moment\. Engineering priority is on flawless automated categorization, budget visualization, and recurring subscription detection\. The system must provide value within minutes of linking one account\.
-	- __The Overwhelmed \(Pro Tier\):__ This user \(multiple accounts, spreadsheets, crypto\) requires a robust aggregation engine\. Engineering priority is on reliable multi\-source data ingestion \(Plaid, CEX APIs, Web3\) and a unified feed that consolidates all activity into a single, clean interface\.
+- **Primary Value:** Automation of financial tracking to save users time and provide a clear, holistic view of their financial health\.
+- **Target Personas:**
+  - **The Beginner \(Free Tier\):** This user \(1\-2 bank accounts\) requires an immediate "Aha\!" moment\. Engineering priority is on flawless automated categorization, budget visualization, and recurring subscription detection\. The system must provide value within minutes of linking one account\.
+  - **The Overwhelmed \(Pro Tier\):** This user \(multiple accounts, spreadsheets, crypto\) requires a robust aggregation engine\. Engineering priority is on reliable multi\-source data ingestion \(Plaid, CEX APIs, Web3\) and a unified feed that consolidates all activity into a single, clean interface\.
 
 #### 2\.1 User Roles & Logic
 
-- __Authentication:__ Managed via Firebase Auth \(Email/Password, Google\)\.
-- __Role Taxonomy:__ Roles are separated into four categories: App Users, Marketplace Developers, Internal Staff, and Automation Identities\. App roles are distinct from GCP IAM roles \(which are used for infrastructure permissions only\)\.
-- __users\.role \(App User Roles\):__
-	- 'user': Standard customer access\.
-	- 'support_agent': Customer service representative access \(separate support portal service\)\.
-	- 'support_manager': Customer service manager access \(separate support portal service with additional permissions\)\.
-	- Note: Support agents are managed separately in the `support_agents` table with Company IDs for tracking and accountability\.
-- __Marketplace Developer Role:__
-	- Users with `developer_payout_id` set are marketplace developers who can publish widgets and earn revenue\.
-	- Developer status is determined by presence of a record in the `developers` table \(linked via `uid`\)\.
-	- Developers must execute a Developer Agreement with IP assignment clauses before publishing\.
-	- Marketplace access is tier-gated: Pro/Ultimate tiers can publish; Free/Essential tiers have preview-only access\.
-- __Internal Staff Roles \(Not App-Facing\):__
-	- Internal team members \(engineering, devops, security, compliance, finance, product, operations\) are managed via IdP/SSO and GCP IAM service accounts\.
-	- Access follows least-privilege principles with role-based permissions for specific functions\.
-	- Internal staff do not use app-facing roles; they access systems via service accounts and IAM policies\.
-- __Automation & AI Identities:__
-	- AI support agents and other automation services use dedicated service accounts with scoped permissions\.
-	- AI support agents can read tickets, post responses, and access knowledge bases but cannot modify payouts, secrets, or user financial data\.
-	- Service account identities are managed separately from app user roles\.
-- __users \(Updated Schema Logic\):__
-	- developer\_payout\_id \(FK to a new Payouts ledger\): Required to link users who are developers to the new payment system\. When set, indicates marketplace developer status\.
-- __subscriptions\.plan:__
-	- Managed by SubscriptionService\.
-	- Determines feature gates \(account limits, AI models\)\.
-- __Customer Support Portal:__ A separate frontend/service with its own authentication, designed for customer service representatives to manage support tickets, view user account status, and handle customer inquiries\. The portal integrates with Google Workspace \(Google Chat\) for team notifications and uses GCP workflow automation \(Cloud Workflows \+ Cloud Run\) for automated ticket management\. Designed for non\-technical users\. The user\-facing application does not contain any admin links or references; users access support through the standard support page\.
+- **Authentication:** Managed via Firebase Auth \(Email/Password, Google\)\.
+- **Role Taxonomy:** Roles are separated into four categories: App Users, Marketplace Developers, Internal Staff, and Automation Identities\. App roles are distinct from GCP IAM roles \(which are used for infrastructure permissions only\)\.
+- **users\.role \(App User Roles\):**
+  - 'user': Standard customer access\.
+  - 'support_agent': Customer service representative access \(separate support portal service\)\.
+  - 'support_manager': Customer service manager access \(separate support portal service with additional permissions\)\.
+  - Note: Support agents are managed separately in the `support_agents` table with Company IDs for tracking and accountability\.
+- **Marketplace Developer Role:**
+  - Users with `developer_payout_id` set are marketplace developers who can publish widgets and earn revenue\.
+  - Developer status is determined by presence of a record in the `developers` table \(linked via `uid`\)\.
+  - Developers must execute a Developer Agreement with IP assignment clauses before publishing\.
+  - Marketplace access is tier-gated: Pro/Ultimate tiers can publish; Free/Essential tiers have preview-only access\.
+- **Internal Staff Roles \(Not App-Facing\):**
+  - Internal team members \(engineering, devops, security, compliance, finance, product, operations\) are managed via IdP/SSO and GCP IAM service accounts\.
+  - Access follows least-privilege principles with role-based permissions for specific functions\.
+  - Internal staff do not use app-facing roles; they access systems via service accounts and IAM policies\.
+- **Automation & AI Identities:**
+  - AI support agents and other automation services use dedicated service accounts with scoped permissions\.
+  - AI support agents can read tickets, post responses, and access knowledge bases but cannot modify payouts, secrets, or user financial data\.
+  - Service account identities are managed separately from app user roles\.
+- **users \(Updated Schema Logic\):**
+  - developer_payout_id \(FK to a new Payouts ledger\): Required to link users who are developers to the new payment system\. When set, indicates marketplace developer status\.
+- **subscriptions\.plan:**
+  - Managed by SubscriptionService\.
+  - Determines feature gates \(account limits, AI models\)\.
+- **Customer Support Portal:** A separate frontend/service with its own authentication, designed for customer service representatives to manage support tickets, view user account status, and handle customer inquiries\. The portal integrates with Google Workspace \(Google Chat\) for team notifications and uses GCP workflow automation \(Cloud Workflows \+ Cloud Run\) for automated ticket management\. Designed for non\-technical users\. The user\-facing application does not contain any admin links or references; users access support through the standard support page\.
 
 #### 2\.2 Tiers & Limits
 
-- __Free Tier:__
-	- __Aggregator:__ Link up to 2 Traditional accounts / 1 Investment account / 1 Web3 wallet / 1 CEX account\.
-	- __AI Model:__ Cloud AI model: Vertex AI Gemini 2\.5 Flash (Production), limited to 20 queries/day. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
-	- __Features:__ Standard infographics, holistic balance sheet, notifications\.
-	- __Data Retention:__ Rolling 45-day ledger stored in Cloud SQL table `ledger_hot_free`; the nightly `free-ledger-pruner` Cloud Run Job deletes data older than 45 days (no archive retained). AI chat history has no retention limits; all transactions remain fully visible.
-	- __Sync Controls:__ Manual "Sync Now" available but throttled to 10 uses/day per user via Cloud Tasks; background sync relies on Plaid/CEX webhooks plus scheduled jobs.
-- __Essential Tier ($12/month):__
-	- __Aggregator:__ Link up to 3 Traditional accounts / 2 investment accounts / 1 Web3 wallet / 3 CEX accounts.
-- __AI Model:__ Cloud AI model: Vertex AI Gemini 2.5 Flash (Production) with encrypted RAG prompts. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
-	- __Sync Cadence:__ Webhook-driven deltas plus guaranteed 24-hour Cloud Scheduler refresh (`essential-ledger-refresh`); manual "Sync Now" is disabled to keep aggregator/API costs predictable.
-	- __Data Retention:__ 30-day Cloud SQL hot window (`ledger_hot_essential`). The `essential-ledger-archiver` job moves data older than 30 days to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only retrieval. AI chat history has no retention limits; all transactions remain fully visible.
-	- __Quota:__ 30 Cloud AI queries/day (Metered, resets daily; shared with Pro tier via Firestore enforcement).
-- __Pro Tier \($25/month or $20.83/month annual - $250/year\):__
-	- __Aggregator:__ Link up to 5 Traditional accounts / 5 investment accounts \(via Plaid Investments API\) / 5 Web3 wallets\.
-	- __CEX Support:__ Up to 10 CEX accounts \(API/OAuth support for Coinbase, Kraken, etc\.\)
-- __AI Model:__ Access to Vertex AI Gemini 2.5 Flash (cloud AI) with encrypted RAG prompts.
-	- __Quota:__ 40 Cloud AI queries/day \(Metered, resets daily\)\.
-	- __Trial:__ 7\-day free trial with full Pro features\.
-	- __Tax Compliance:__ Billing logic applies Texas SaaS Tax rules: Tax is applied to only 80% of the subscription fee \(20% exemption for data processing services\)\.
-	- __Data Retention:__ AI chat history has no retention limits; all transactions remain fully visible.
-	- __Note:__ Investment accounts count separately from traditional accounts\.
-- __Ultimate Tier \($60/month or $600/year\):__
-	- __All Pro Tier Features:__ Includes all Pro Tier aggregation and CEX support\.
-	- __AI Model:__ Vertex AI Gemini 2.5 Pro (Production) with routing (Flash for simple, Pro for complex). For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
-	- __Quota:__ 200 Cloud AI queries/day \(Metered, resets daily\)\.
-	- __Account Limits:__ Up to 20 account connections \(Traditional, Investment, Web3 wallets, CEX\)\.
-	- __Data Retention:__ AI chat history has no retention limits; all transactions remain fully visible.
-	- __Family/Couple Features:__
-		- Net worth tracking per individual \(assign accounts to specific family members\)\.
-		- Individual account assignment and organization\.
-		- Tab\-based interface to toggle between individual views or holistic family dashboard\.
-		- Combined net worth calculation across all assigned accounts\.
-	- __Target Users:__ Power users, married couples, families managing multiple accounts\.
+- **Free Tier:**
+  - **Aggregator:** Link up to 2 Traditional accounts / 1 Investment account / 1 Web3 wallet / 1 CEX account\.
+  - **AI Model:** Cloud AI model: Vertex AI Gemini 2\.5 Flash (Production), limited to 20 queries/day. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
+  - **Features:** Standard infographics, holistic balance sheet, notifications\.
+  - **Data Retention:** Rolling 45-day ledger stored in Cloud SQL table `ledger_hot_free`; the nightly `free-ledger-pruner` Cloud Run Job deletes data older than 45 days (no archive retained). AI chat history has no retention limits; all transactions remain fully visible.
+  - **Sync Controls:** Manual "Sync Now" available but throttled to 10 uses/day per user via Cloud Tasks; background sync relies on Plaid/CEX webhooks plus scheduled jobs.
+- **Essential Tier ($12/month):**
+  - **Aggregator:** Link up to 3 Traditional accounts / 2 investment accounts / 1 Web3 wallet / 3 CEX accounts.
+- **AI Model:** Cloud AI model: Vertex AI Gemini 2.5 Flash (Production) with encrypted RAG prompts. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
+  - **Sync Cadence:** Webhook-driven deltas plus guaranteed 24-hour Cloud Scheduler refresh (`essential-ledger-refresh`); manual "Sync Now" is disabled to keep aggregator/API costs predictable.
+  - **Data Retention:** 30-day Cloud SQL hot window (`ledger_hot_essential`). The `essential-ledger-archiver` job moves data older than 30 days to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only retrieval. AI chat history has no retention limits; all transactions remain fully visible.
+  - **Quota:** 30 Cloud AI queries/day (Metered, resets daily; shared with Pro tier via Firestore enforcement).
+- **Pro Tier \($25/month or $20.83/month annual - $250/year\):**
+  - **Aggregator:** Link up to 5 Traditional accounts / 5 investment accounts \(via Plaid Investments API\) / 5 Web3 wallets\.
+  - **CEX Support:** Up to 10 CEX accounts \(API/OAuth support for Coinbase, Kraken, etc\.\)
+- **AI Model:** Access to Vertex AI Gemini 2.5 Flash (cloud AI) with encrypted RAG prompts.
+  - **Quota:** 40 Cloud AI queries/day \(Metered, resets daily\)\.
+  - **Trial:** 7\-day free trial with full Pro features\.
+  - **Tax Compliance:** Billing logic applies Texas SaaS Tax rules: Tax is applied to only 80% of the subscription fee \(20% exemption for data processing services\)\.
+  - **Data Retention:** AI chat history has no retention limits; all transactions remain fully visible.
+  - **Note:** Investment accounts count separately from traditional accounts\.
+- **Ultimate Tier \($60/month or $600/year\):**
+  - **All Pro Tier Features:** Includes all Pro Tier capabilities.
+  - **AI Model:** Vertex AI Gemini 2.5 Pro (Production) with smart routing. local dev uses Flash.
+  - **Quota:** 200 Cloud AI queries/day \(Metered, shared across household\).
+  - **Account Limits:** Up to 20 account connections total for the household.
+  - **Household Architecture (Family Plan):**
+    - **Structure:** One "Administrator" (Head of Household) holds the subscription. Other members link to this account via an invite system.
+    - **Roles:**
+      - _Administrator:_ Full control. Pays the bill. Can view all linked accounts (if permission permitted) and manage member access.
+      - _Member (Spouse/Partner):_ Connects own accounts. default view is "My Data" with toggle to "Household View" (Combined Net Worth).
+      - _Restricted Member (Teen/Dependent):_ Connects own accounts (e.g., Greenlight card). View is strictly limited to "My Data" only. No access to parent/household financials.
+    - **Minor Policy (<18 Only):**
+      - Minors cannot sign up independently. They must be invited by an Administrator.
+      - Administrator assumes legal liability and verifies age/consent via the invite flow.
+      - **Safety Restriction:** Minors (<18) are **strictly prohibited** from accessing the AI Assistant. The feature is disabled at the role level.
+    - **Breakup/Departure Protocol:**
+      - Any member 18+ can "Leave Household".
+      - **Automatic Downgrade:** Upon leaving, the user's account is automatically downgraded to the **Free Tier**.
+      - **Data Preservation:** All personal data (accounts, transactions, ledger history) is fully preserved; nothing is deleted. The user simply loses access to Ultimate Tier features (e.g., unlimited AI, extra accounts) until they choose to upgrade locally.
+      - **Upgrade Path:** The decoupled user can then choose to upgrade their singular account to Essential or Pro tiers individually.
+  - **Target Users:** Families, Couples, Fiduciary relationships.
+
+#### 2\.2\.1 Household Access & Visibility Logic
+
+To ensure privacy within a family unit while enabling holistic planning:
+
+1. **Default State:** "My Data". Every user sees their own accounts first.
+2. **Household Mode:** Members (Non-Restricted) can toggle "Household View". This aggregates:
+   - All Admin Accounts.
+   - All "Shared" Accounts (Joint Checking).
+   - All Member Accounts _that have explicitly opted-in to sharing_.
+3. **Permissions:**
+   - Admin can _force_ Restricted status on any member (e.g., revoking a spouse's view of total assets).
+   - Members can _revoke_ sharing of specific personal accounts from the Household View (e.g., private credit card).
 
 #### 2\.3 Core Features
 
-- __Unified Feed:__ Aggregated transactions from all sources\. Features: Search, Filter \(Date/Category/Account\), Bulk Edit, Undo\.
-- __Smart Categorization:__ Auto\-categorization via ML\. "Review Queue" for low\-confidence tags\. System learns from user manual edits\.
-- __Budgets:__ Set limits per category\. Rollover logic \(unused budget moves to next month\)\. Threshold alerts \(e\.g\., "You've hit 80% of Dining"\)\. Budget\-vs\-Actual visualization\.
-- __Financial Health:__ Cash\-Flow: Inflow/Outflow summary \+ 30–90 day forecast\. Net Worth: Assets vs\. Liabilities delta tracking\.
-- __Recurring Engine:__ Automated detection of bills, income, and subscriptions\. Flagging workflow for "forgotten" subscriptions\.
-- __Investment Account Aggregation:__ Investment account aggregation via Plaid Investments API\. Holdings tracking, portfolio value, investment transactions\. Supports multiple brokerages via Plaid's aggregation service\.
-- __Manual Asset Tracking:__ Manual Asset Tracking module for non\-API assets \(House, Car, Collectibles\)\.
-- __Web3 Wallet Connections:__ Web3 wallet connections include token balances and NFTs\.
-- __Reporting:__ Homepage holistic balance sheet; dynamic infographics\.
-- __Dashboard Chart Sync:__ All charts automatically sync to the currently selected view period\. Users can select a custom date range \(start and end dates\) or use preset periods \(1W, 1M, 3M, 6M, 1Y, YTD\)\. When a period is selected, all charts and tables update automatically\. No manual "Sync all charts" toggle is provided\.
-- __AI Assistant Access:__ All tiers can view the AI Assistant interface\. For subscribed users, a privacy/user agreement modal is shown immediately on page load\. Access is granted after acceptance; denying the agreement keeps the chat interface blocked\. The AI Assistant disclaimer remains visible, but AI chat retention notices are removed \(no retention limits apply to AI chat history\)\.
+- **Unified Feed:** Aggregated transactions from all sources\. Features: Search, Filter \(Date/Category/Account\), Bulk Edit, Undo\.
+- **Smart Categorization:** Auto\-categorization via ML\. "Review Queue" for low\-confidence tags\. System learns from user manual edits\.
+- **Budgets:** Set limits per category\. Rollover logic \(unused budget moves to next month\)\. Threshold alerts \(e\.g\., "You've hit 80% of Dining"\)\. Budget\-vs\-Actual visualization\.
+- **Financial Health:** Cash\-Flow: Inflow/Outflow summary \+ 30–90 day forecast\. Net Worth: Assets vs\. Liabilities delta tracking\.
+- **Recurring Engine:** Automated detection of bills, income, and subscriptions\. Flagging workflow for "forgotten" subscriptions\.
+- **Investment Account Aggregation:** Investment account aggregation via Plaid Investments API\. Holdings tracking, portfolio value, investment transactions\. Supports multiple brokerages via Plaid's aggregation service\.
+- **Manual Asset Tracking:** Manual Asset Tracking module for non\-API assets \(House, Car, Collectibles\)\.
+- **Web3 Wallet Connections:** Web3 wallet connections include token balances and NFTs\.
+- **Reporting:** Homepage holistic balance sheet; dynamic infographics\.
+- **Dashboard Chart Sync:** All charts automatically sync to the currently selected view period\. Users can select a custom date range \(start and end dates\) or use preset periods \(1W, 1M, 3M, 6M, 1Y, YTD\)\. When a period is selected, all charts and tables update automatically\. No manual "Sync all charts" toggle is provided\.
+- **AI Assistant Access:** All tiers can view the AI Assistant interface\. For subscribed users, a privacy/user agreement modal is shown immediately on page load\. Access is granted after acceptance; denying the agreement keeps the chat interface blocked\. The AI Assistant disclaimer remains visible, but AI chat retention notices are removed \(no retention limits apply to AI chat history\)\.
 
 #### 2\.4 Third\-Party Widget Marketplace
 
@@ -221,53 +243,53 @@ The static website template (`website_template/`) includes mock Developer Market
 
 The jualuma platform provides a Model Context Protocol (MCP) server as the single capability surface for marketplace widgets and the Developer SDK. This architecture enhances security by preventing direct API access and provides a standardized, typed interface for all developer interactions.
 
-*Note: This "Public Widget MCP" is distinct from the "Internal jualuma App MCP" used by the AI Agent for backend operations.*
+_Note: This "Public Widget MCP" is distinct from the "Internal jualuma App MCP" used by the AI Agent for backend operations._
 
 **MCP Server Architecture:**
 
-- __Synthetic Test Datasets:__ Multiple deterministic customer profiles \(Beginner, Power User, Family, Crypto-heavy\) selectable via SDK for testing\. Each dataset includes realistic ledgers, holdings, budgets, and recurring transactions\. Preview datasets provided for every premium feature to enable comprehensive widget testing\.
-- __Observability:__ Per-widget usage metrics and audit logs \(tool called, scope, latency, result code\) drive payouts, abuse detection, and support\. Strict input/output schemas and tool versioning with deprecation windows ensure API stability\.
-- __Security Benefits:__ Developers cannot directly access internal APIs or provider credentials\. All access is authenticated, authorized, and logged\. Rate limiting and cost caps enforced at the MCP layer\. Non-custodial/read-only mandates enforced before requests reach core services\.
+- **Synthetic Test Datasets:** Multiple deterministic customer profiles \(Beginner, Power User, Family, Crypto-heavy\) selectable via SDK for testing\. Each dataset includes realistic ledgers, holdings, budgets, and recurring transactions\. Preview datasets provided for every premium feature to enable comprehensive widget testing\.
+- **Observability:** Per-widget usage metrics and audit logs \(tool called, scope, latency, result code\) drive payouts, abuse detection, and support\. Strict input/output schemas and tool versioning with deprecation windows ensure API stability\.
+- **Security Benefits:** Developers cannot directly access internal APIs or provider credentials\. All access is authenticated, authorized, and logged\. Rate limiting and cost caps enforced at the MCP layer\. Non-custodial/read-only mandates enforced before requests reach core services\.
 
 #### 2\.5 Visual Design & Branding
 
-- __Default Theme:__ Engineered Liquid Glass\.
-	- __Specs:__ backdrop\-filter: blur\(24px\) saturate\(150%\), background\-color: rgba\(255, 255, 255, 0\.65\)\.
-	- __Contrast:__ Dynamic clamping to ensure >4\.5:1 ratio\.
-- __Secondary Theme:__ High\-Contrast Opaque \(Opt\-in\)\.
-- __Palette:__ Royal Purple, Deep Indigo, Aqua\.
-- __Modes:__ System\-based Light/Dark\.
-- __Intellifide Corporate Logo:__ Business logo naming matches the entity \("Intellifide"\). Deliver vector-first lockups \(primary horizontal, stacked, monochrome\), provide SVG + PNG exports, define clear-space/usage specs, and include trademark briefing notes for `Trademark-Filing-Strategy.md`\.
-- __jualuma Product Icon System:__ Refresh the jualuma app logo/icon, produce a 1024x1024 master asset, and export platform-specific slices \(PWA manifest, iOS @1x/@3x, Android adaptive foreground/background\) while documenting gradient stops and elevation rules for the Engineered Liquid Glass aesthetic\.
-- __App Store Creative Kit:__ Create six-screenshot storytelling sets for Apple and Google, hero/feature graphics \(Google Play 1024x500\) and App Store promotional artwork \(4320x1080\)\. Each frame must highlight budgeting, AI chat, and aggregation, with caption overlays driven by `Marketing-Content-Guidelines.md`\.
+- **Default Theme:** Engineered Liquid Glass\.
+  - **Specs:** backdrop\-filter: blur\(24px\) saturate\(150%\), background\-color: rgba\(255, 255, 255, 0\.65\)\.
+  - **Contrast:** Dynamic clamping to ensure >4\.5:1 ratio\.
+- **Secondary Theme:** High\-Contrast Opaque \(Opt\-in\)\.
+- **Palette:** Royal Purple, Deep Indigo, Aqua\.
+- **Modes:** System\-based Light/Dark\.
+- **Intellifide Corporate Logo:** Business logo naming matches the entity \("Intellifide"\). Deliver vector-first lockups \(primary horizontal, stacked, monochrome\), provide SVG + PNG exports, define clear-space/usage specs, and include trademark briefing notes for `Trademark-Filing-Strategy.md`\.
+- **jualuma Product Icon System:** Refresh the jualuma app logo/icon, produce a 1024x1024 master asset, and export platform-specific slices \(PWA manifest, iOS @1x/@3x, Android adaptive foreground/background\) while documenting gradient stops and elevation rules for the Engineered Liquid Glass aesthetic\.
+- **App Store Creative Kit:** Create six-screenshot storytelling sets for Apple and Google, hero/feature graphics \(Google Play 1024x500\) and App Store promotional artwork \(4320x1080\)\. Each frame must highlight budgeting, AI chat, and aggregation, with caption overlays driven by `Marketing-Content-Guidelines.md`\.
 
 #### 2\.6 Notifications
 
-- __Channels:__ In\-app \(Badge/List\), Email \(SendGrid\), SMS \(Twilio\)\.
-- __Triggers:__ Low balance, Large transaction \(>$X\), Budget threshold hit, Recurring bill upcoming, Sync failure, New device login, Web3 large transfer\.
-- __Controls:__ Per\-event toggles, Quiet Hours, Weekly Digest\.
+- **Channels:** In\-app \(Badge/List\), Email \(SendGrid\), SMS \(Twilio\)\.
+- **Triggers:** Low balance, Large transaction \(>$X\), Budget threshold hit, Recurring bill upcoming, Sync failure, New device login, Web3 large transfer\.
+- **Controls:** Per\-event toggles, Quiet Hours, Weekly Digest\.
 
 ### 3\.0 Technical Architecture \(GCP Polyglot\)
 
 #### 3\.1 Frontend \(PWA\)
 
-- __Framework:__ React \(Vite\) \+ TypeScript\.
-- __Styling:__ Tailwind CSS with custom "Glass" utility classes defined in design\-tokens\.json\.
-- __Viz:__ ECharts \(Financial charting\)\.
-- __Mobile:__ Progressive Web App \(PWA\) with Service Worker and Manifest for installability, packaged via Capacitor for Apple App Store and Google Play distribution\.
-- __Hosting:__ Cloud Storage \+ Cloud CDN \(HTTPS/HSTS\)\.
+- **Framework:** React \(Vite\) \+ TypeScript\.
+- **Styling:** Tailwind CSS with custom "Glass" utility classes defined in design\-tokens\.json\.
+- **Viz:** ECharts \(Financial charting\)\.
+- **Mobile:** Progressive Web App \(PWA\) with Service Worker and Manifest for installability, packaged via Capacitor for Apple App Store and Google Play distribution\.
+- **Hosting:** Cloud Storage \+ Cloud CDN \(HTTPS/HSTS\)\.
 
 ##### 3\.1\.1 Feature Preview Paywall Subsystem
 
-- __Purpose:__ Give Free Tier users a pixel-identical preview of premium workflows while keeping inputs inert and guiding them toward upgrade flows\.
-- __Core Components:__
-	- `FeaturePreview.tsx`: Wraps any premium region \(`featureKey`, `previewContent`, `showPreviewBadge`, `onInteractionBlocked`\)\. Uses `useAuth\(\)` \+ `useSubscription\(\)` to derive the current `Tier` and consults the shared `featureRequirements` registry\.
-	- `FeaturePreviewWrapper.tsx`: Adds overlay, focus trap, translucent blur, and intercepts pointer/keyboard events on actionable nodes \(`button`, `input`, `select`, `textarea`, `[role="button"]`, `.fc-event`, `.fc-daygrid-day`, `.fc-timegrid-slot`\)\. Emits `feature_preview.blocked_interaction` analytics\.
-	- `PaywallModal.tsx`: Renders tier comparison cards using `FEATURE_BENEFITS` \+ `TIER_COMPARISON`, deep-links to `/userSettings?tab=subscription`, and exposes `onUpgrade`, `onContactSales`\.
-	- `previewData.ts`: Houses synthetic ledger snapshots, AI transcripts, budgeting recommendations, automation templates; every record carries `isPreview: true`\.
-- __Shared Tier Registry:__
-	- `packages/shared/accessControl.ts` exports a single `enum Tier { FREE = 0, PRO = 1, ULTIMATE = 2 }`, `featureRequirements: Record<FeatureKey, Tier>`, and helpers `canUseFeature\(\)`, `isPremiumFeature\(\)`, `canPreviewFeature\(\)`\.
-	- Frontend imports the module directly; FastAPI imports its Python equivalent from `services/access_control/registry.py`. Keep both files generated from the same YAML source \(`scripts/sync_feature_registry.py`\) to prevent drift\.
+- **Purpose:** Give Free Tier users a pixel-identical preview of premium workflows while keeping inputs inert and guiding them toward upgrade flows\.
+- **Core Components:**
+  - `FeaturePreview.tsx`: Wraps any premium region \(`featureKey`, `previewContent`, `showPreviewBadge`, `onInteractionBlocked`\)\. Uses `useAuth\(\)` \+ `useSubscription\(\)` to derive the current `Tier` and consults the shared `featureRequirements` registry\.
+  - `FeaturePreviewWrapper.tsx`: Adds overlay, focus trap, translucent blur, and intercepts pointer/keyboard events on actionable nodes \(`button`, `input`, `select`, `textarea`, `[role="button"]`, `.fc-event`, `.fc-daygrid-day`, `.fc-timegrid-slot`\)\. Emits `feature_preview.blocked_interaction` analytics\.
+  - `PaywallModal.tsx`: Renders tier comparison cards using `FEATURE_BENEFITS` \+ `TIER_COMPARISON`, deep-links to `/userSettings?tab=subscription`, and exposes `onUpgrade`, `onContactSales`\.
+  - `previewData.ts`: Houses synthetic ledger snapshots, AI transcripts, budgeting recommendations, automation templates; every record carries `isPreview: true`\.
+- **Shared Tier Registry:**
+  - `packages/shared/accessControl.ts` exports a single `enum Tier { FREE = 0, PRO = 1, ULTIMATE = 2 }`, `featureRequirements: Record<FeatureKey, Tier>`, and helpers `canUseFeature\(\)`, `isPremiumFeature\(\)`, `canPreviewFeature\(\)`\.
+  - Frontend imports the module directly; FastAPI imports its Python equivalent from `services/access_control/registry.py`. Keep both files generated from the same YAML source \(`scripts/sync_feature_registry.py`\) to prevent drift\.
 
 ##### 3\.1\.1\.1 Feature Registry Generation & Enforcement
 
@@ -291,6 +313,7 @@ features:
 **Generation Script:** `scripts/sync_feature_registry.py` reads `feature_requirements.yaml` and generates:
 
 1. **TypeScript Module** (`packages/shared/accessControl.ts`):
+
    - Exports `enum Tier`, `featureRequirements` map, and helper functions
    - Used by React components and frontend middleware
 
@@ -313,47 +336,50 @@ features:
 
 **Critical:** Never manually edit `accessControl.ts` or `registry.py`—always update `feature_requirements.yaml` and regenerate\. This ensures frontend and backend cannot drift out of sync\.
 
-- __Usage Pattern \(Dashboard Example\):__
+- **Usage Pattern \(Dashboard Example\):**
 
 ```tsx
 // Wraps Cloud AI chat panel with FeaturePreview and preview transcript content
-<FeaturePreview featureKey="ai.cloud" previewContent={<PreviewChatTranscript />}>
+<FeaturePreview
+  featureKey="ai.cloud"
+  previewContent={<PreviewChatTranscript />}
+>
   <AIChatPanel />
 </FeaturePreview>
 ```
 
-- __MCP Agent Guard Rails:__ MCP orchestrators call `FeatureAccessService.assert\(feature_key, user_tier\)` before executing workflows. Agents that support preview mode \(e.g., Investment Storyboard\) must fetch preview payloads via `GET /preview/<feature_key>` endpoints instead of touching production ledgers\.
-- __Interaction Handling:__
-	- All click, keydown \(Enter/Space\), form submit, and drag events originating inside the wrapper are canceled and routed to `openPaywallModal\(featureKey\)`\.
-	- Read-only behaviors \(scroll, select text, copy, tooltip hover\) remain enabled to preserve the discovery experience\.
-- __Accessibility \+ Engineered Liquid Glass:__
-	- Overlay uses `backdrop-filter: blur(14px)` capped to maintain 4\.5:1 contrast, `aria-live="polite"` for the upgrade banner, focus is moved into the modal with `aria-modal="true"`, and Esc closes without mutating original components\.
-- __Telemetry & Flags:__
-	- Log `feature_preview.blocked_interaction`, `feature_preview.preview_loaded`, and `feature_preview.cta_clicked` events via `LogLedgerService`, which writes to Cloud SQL (`audit.feature_preview`) and mirrors the rows into the Coldline archive \(see Monitoring & Evaluation KPIs\)\.
-	- Expose Remote Config toggles: `feature_preview.enabled`, `feature_preview.<featureKey>.enabled`, and define a kill switch consumed by Support Ops\.
-- __Preview Content Contract:__
-	- Each premium widget accepts `previewEnabled` \+ `previewEntity` props. When `FeaturePreview` runs in preview mode it injects curated data via render props \(`previewContent`\) or via a context provider to keep layout parity without leaking NPPI\.
-	- Authoring, validation, and marketing copy workflows are defined in `Preview-Content-Playbook.md`; engineering may not ship preview datasets that have not cleared that checklist\.
+- **MCP Agent Guard Rails:** MCP orchestrators call `FeatureAccessService.assert\(feature_key, user_tier\)` before executing workflows. Agents that support preview mode \(e.g., Investment Storyboard\) must fetch preview payloads via `GET /preview/<feature_key>` endpoints instead of touching production ledgers\.
+- **Interaction Handling:**
+  - All click, keydown \(Enter/Space\), form submit, and drag events originating inside the wrapper are canceled and routed to `openPaywallModal\(featureKey\)`\.
+  - Read-only behaviors \(scroll, select text, copy, tooltip hover\) remain enabled to preserve the discovery experience\.
+- **Accessibility \+ Engineered Liquid Glass:**
+  - Overlay uses `backdrop-filter: blur(14px)` capped to maintain 4\.5:1 contrast, `aria-live="polite"` for the upgrade banner, focus is moved into the modal with `aria-modal="true"`, and Esc closes without mutating original components\.
+- **Telemetry & Flags:**
+  - Log `feature_preview.blocked_interaction`, `feature_preview.preview_loaded`, and `feature_preview.cta_clicked` events via `LogLedgerService`, which writes to Cloud SQL (`audit.feature_preview`) and mirrors the rows into the Coldline archive \(see Monitoring & Evaluation KPIs\)\.
+  - Expose Remote Config toggles: `feature_preview.enabled`, `feature_preview.<featureKey>.enabled`, and define a kill switch consumed by Support Ops\.
+- **Preview Content Contract:**
+  - Each premium widget accepts `previewEnabled` \+ `previewEntity` props. When `FeaturePreview` runs in preview mode it injects curated data via render props \(`previewContent`\) or via a context provider to keep layout parity without leaking NPPI\.
+  - Authoring, validation, and marketing copy workflows are defined in `Preview-Content-Playbook.md`; engineering may not ship preview datasets that have not cleared that checklist\.
 
 ##### 3.1.2 Native Packaging & Store Distribution
 
-- __Wrapper:__ Capacitor 6 wraps the PWA build output (`dist/pwa`) into native shells. `capacitor.config.ts` holds the shared app id `com.intellifide.jualuma` plus platform metadata; never fork the React codebase.
-- __iOS Build:__ Generate the Xcode 16 project via `npx cap add ios`. Automatic signing uses the Intellifide Apple Developer Program team ID with App Store Connect API keys stored in Secret Manager. CI runs `xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -allowProvisioningUpdates` to create the `.ipa`.
-- __Android Build:__ Generate the Android Studio/Gradle 8 project via `npx cap add android`. Produce Android App Bundles (`.aab`) with Play App Signing enabled, Play Integrity API configured, and Firebase Crashlytics wired through the Capacitor Firebase plugin.
-- __CI/CD:__ Pipeline `mobile-release.yaml` executes after tagging `release/*`. Steps: install dependencies, `pnpm build:pwa`, `npx cap sync`, run Detox smoke tests, package iOS/Android artifacts, and upload to TestFlight/Play Console using service accounts. Artifacts are stored in Cloud Storage for audit.
-- __Store Assets:__ Automatically pull the jualuma icon system and App Store creative kit (Section 2.5) during build via `scripts/export_store_assets.ts`. Pipeline fails if required dimensions or counts (iOS 6 screenshots, Android 8, Play feature graphic) are missing.
-- __Privacy Declarations:__ Generate App Store Privacy Nutrition Label metadata from `compliance/privacy_manifest.json`, configure ATT prompt messaging sourced from `Marketing-Content-Guidelines.md`, and maintain Google Play Data Safety + Permissions declarations in `android/play-data-safety.yaml`.
-- __Testing Tracks:__ Maintain TestFlight Internal + Beta groups and Google Play Internal + Closed testing tracks. Build numbers map to Git commit SHAs to simplify rollback.
-- __Release Gates:__ Store submissions require sign-off from Engineering, Compliance, and Marketing. App Store release remains Manual until launch readiness criteria are met; Google Play uses staged rollout (10% -> 100%) with automated rollback if crash-free sessions drop below 97%.
-- __Documentation:__ Store listing copy, localized strings, and screenshot captions live in `Marketing-Content-Guidelines.md` to keep legal-approved messaging centralized.
+- **Wrapper:** Capacitor 6 wraps the PWA build output (`dist/pwa`) into native shells. `capacitor.config.ts` holds the shared app id `com.intellifide.jualuma` plus platform metadata; never fork the React codebase.
+- **iOS Build:** Generate the Xcode 16 project via `npx cap add ios`. Automatic signing uses the Intellifide Apple Developer Program team ID with App Store Connect API keys stored in Secret Manager. CI runs `xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -allowProvisioningUpdates` to create the `.ipa`.
+- **Android Build:** Generate the Android Studio/Gradle 8 project via `npx cap add android`. Produce Android App Bundles (`.aab`) with Play App Signing enabled, Play Integrity API configured, and Firebase Crashlytics wired through the Capacitor Firebase plugin.
+- **CI/CD:** Pipeline `mobile-release.yaml` executes after tagging `release/*`. Steps: install dependencies, `pnpm build:pwa`, `npx cap sync`, run Detox smoke tests, package iOS/Android artifacts, and upload to TestFlight/Play Console using service accounts. Artifacts are stored in Cloud Storage for audit.
+- **Store Assets:** Automatically pull the jualuma icon system and App Store creative kit (Section 2.5) during build via `scripts/export_store_assets.ts`. Pipeline fails if required dimensions or counts (iOS 6 screenshots, Android 8, Play feature graphic) are missing.
+- **Privacy Declarations:** Generate App Store Privacy Nutrition Label metadata from `compliance/privacy_manifest.json`, configure ATT prompt messaging sourced from `Marketing-Content-Guidelines.md`, and maintain Google Play Data Safety + Permissions declarations in `android/play-data-safety.yaml`.
+- **Testing Tracks:** Maintain TestFlight Internal + Beta groups and Google Play Internal + Closed testing tracks. Build numbers map to Git commit SHAs to simplify rollback.
+- **Release Gates:** Store submissions require sign-off from Engineering, Compliance, and Marketing. App Store release remains Manual until launch readiness criteria are met; Google Play uses staged rollout (10% -> 100%) with automated rollback if crash-free sessions drop below 97%.
+- **Documentation:** Store listing copy, localized strings, and screenshot captions live in `Marketing-Content-Guidelines.md` to keep legal-approved messaging centralized.
 
 #### 3.2 Backend
 
-- __Runtime:__ Python 3\.11\+ \(FastAPI\)\.
-- __Compute:__ Cloud Run \(Serverless Containers\)\.
-- __Async Glue:__ Cloud Functions \(Gen2\) \+ Pub/Sub\.
-- __Jobs:__ Cloud Run Jobs \+ Cloud Scheduler \(Sync tasks\)\.
-- __Configuration:__ Firebase Remote Config \(for global Feature Flags\)\.
+- **Runtime:** Python 3\.11\+ \(FastAPI\)\.
+- **Compute:** Cloud Run \(Serverless Containers\)\.
+- **Async Glue:** Cloud Functions \(Gen2\) \+ Pub/Sub\.
+- **Jobs:** Cloud Run Jobs \+ Cloud Scheduler \(Sync tasks\)\.
+- **Configuration:** Firebase Remote Config \(for global Feature Flags\)\.
 
 ##### 3\.2\.1 Feature Access Enforcement & Preview Endpoints
 
@@ -460,15 +486,15 @@ Cloud SQL Enterprise Plus + Firestore Datastore Mode is the permanent, rightsize
 
 The "One\-Size\-Fits\-All" DB is prohibited\.
 
-__Store__
+**Store**
 
-__Technology__
+**Technology**
 
-__Workload__
+**Workload**
 
-__Rationale__
+**Rationale**
 
-__Unified Ledger & Metadata__
+**Unified Ledger & Metadata**
 
 Cloud SQL (PostgreSQL + pgvector)
 
@@ -476,7 +502,7 @@ Transactions, Balances, Users, Subscriptions, **Vector Embeddings**.
 
 Relational integrity, RAG support via `pgvector`. Cost-optimized for batch sync.
 
-__Metering & Cache__
+**Metering & Cache**
 
 Firestore (Datastore Mode)
 
@@ -484,7 +510,7 @@ API Usage, Market Ticks, Caches, **Widget Engagement**.
 
 Serverless, scales to zero, cost-effective for bursty sync jobs.
 
-__Logs__
+**Logs**
 
 Cloud SQL (`audit` schema) + Coldline archive
 
@@ -492,7 +518,7 @@ Audit events, encrypted LLM logs, widget download/rating ledger.
 
 Append-only tables keep costs predictable while nightly `log-ledger-archiver` exports Parquet copies to `gs://jualuma-log-vault/<table>/<YYYY>/<MM>/<DD>/` for 7-year retention without introducing a separate analytics warehouse.
 
-__Secrets__
+**Secrets**
 
 Secret Manager
 
@@ -513,9 +539,9 @@ Zero secrets in DB\.
 3\. **Serving (Vertex AI Prediction):** Production endpoint `categorization-prod` (us-central1) exposes the latest model. CategorizationService calls the endpoint with a 300 ms latency budget; traffic splitting enables blue/green deploys.
 4\. **RAG Pipeline (New):**
 
-   - **Embeddings:** `Vertex AI Embeddings` (text-embedding-004) converts transactions/budgets to vectors.
-   - **Store:** Vectors stored in Cloud SQL `transactions` table (column `embedding vector(768)`).
-   - **Retrieval:** Queries use `pgvector` cosine similarity (`<=>`) to fetch relevant financial context for the AI Assistant.
+- **Embeddings:** `Vertex AI Embeddings` (text-embedding-004) converts transactions/budgets to vectors.
+- **Store:** Vectors stored in Cloud SQL `transactions` table (column `embedding vector(768)`).
+- **Retrieval:** Queries use `pgvector` cosine similarity (`<=>`) to fetch relevant financial context for the AI Assistant.
 
 5\. **Monitoring & Retraining:** Vertex AI Model Monitoring tracks per-category precision; alerts trigger when precision < 90% or review queue volume doubles week over week, automatically launching a new training run.
 6\. **Rollback:** If degradation persists, reroute endpoint traffic to the previous model version via `ml/pipelines/promote_model.py --rollback`.
@@ -524,6 +550,7 @@ Zero secrets in DB\.
 **AI Model Development vs Production Pathways:**
 
 - **Local Development:** The codebase uses Google AI Studio Gemini 2.5 Flash API for local development. Configuration includes:
+
   - Base URL: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
   - Authentication: API key via `AI_STUDIO_API_KEY` environment variable
   - Model: `gemini-2.5-flash` (configurable via `GEMINI_MODEL` environment variable)
@@ -532,6 +559,7 @@ Zero secrets in DB\.
   - RAG Context: Uses local pgvector search for RAG injection (Vertex AI Vector Search not available in local dev)
 
 - **Production Deployment:** The codebase switches to Vertex AI Gemini endpoints for production:
+
   - Base URL: `https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:generateContent`
   - Authentication: Service account credentials (Application Default Credentials or workload identity)
   - Model: Same model identifiers (`gemini-2.5-flash`, `gemini-2.5-pro`) but accessed via Vertex AI publisher endpoints
@@ -547,154 +575,174 @@ Zero secrets in DB\.
 
 #### A\. Cloud SQL \(PostgreSQL\) \- Unified Ledger & Metadata
 
-- __users__
-	- uid \(PK, VARCHAR\): Firebase UID\.
-	- email \(VARCHAR\)\.
-	- role \(ENUM\): \{user, support_agent, support_manager\} DEFAULT user\.
-	- theme\_pref \(VARCHAR\): Defaults to 'glass'\.
-	- currency\_pref \(VARCHAR\): ISO 4217 currency code \(e\.g\., 'USD', 'EUR', 'GBP'\)\. Defaults to 'USD'\. Used by CurrencyConversionService for display conversion\.
-	- created\_at \(TIMESTAMP\)\.
-- __developers \(New/Updated Table\)__
-	- uid \(PK, FK \-> users\.uid\): Links to users table\. Presence of this record indicates marketplace developer status\.
-	- payout\_method \(JSON\): Tracks developer payment preferences\.
-	- payout\_frequency \(ENUM\): \{monthly, quarterly\}\.
-	- link\_to\_payouts\_ledger \(FK \-> developer\_payouts\.month/dev\_uid\)\.
-	- Note: Developer status is determined by presence of a record in this table\. The `users.developer_payout_id` field links to the payout system\.
-- __developer\_payouts \(New Table\)__
-	- month \(PK, DATE\): Payout period\.
-	- dev\_uid \(PK, FK \-> users\.uid\): Developer UID\.
-	- gross\_revenue \(NUMERIC\): Total calculated earnings before fees\.
-	- payout\_status \(VARCHAR\): e\.g\., 'pending', 'paid', 'failed'\.
-- __subscriptions__
-	- id \(PK, UUID\)\.
-	- uid \(FK \-> users\.uid\)\.
-	- plan \(ENUM\): \{free, essential, pro, ultimate\}\.
-	- status \(VARCHAR\): Stripe status \(active, past\_due\)\.
-	- renew\_at \(TIMESTAMP\)\.
-	- ai\_quota\_used \(INT\): DEFAULT 0\. Resets on webhook\.
-- __ai\_settings__
-	- id \(PK, UUID\)\.
-	- uid \(FK\)\.
-	- provider \(VARCHAR\): 'vertex\-ai' \(cloud\), 'local'\. \('vertex\-ai' primary for cloud AI; local used for Free tier and development\)\.
-	- model\_id \(VARCHAR\): 'gemini\-2\.5\-flash' \(primary cloud model\), 'gemini\-2\.5\-pro' \(Ultimate tier\), 'gemini\-3\-\*' \(future models\)\.
-	- user\_dek\_ref \(VARCHAR\): Crucial\. Reference to KMS Key Version for crypto\-erasure\.
-- __notification\_preferences__
-	- uid \(FK\)\.
-	- event\_key \(VARCHAR\)\.
-	- channel\_email \(BOOL\)\.
-	- channel\_sms \(BOOL\)\.
-	- quiet\_hours\_start \(TIME\)\.
-	- quiet\_hours\_end \(TIME\)\.
-- __payments__
-	- id \(PK\)\.
-	- uid \(FK\)\.
-	- stripe\_customer\_id \(VARCHAR\)\.
-	- stripe\_sub\_id \(VARCHAR\)\.
-- __manual\_assets__
-	- id \(PK, UUID\)\.
-	- uid \(FK \-> users\.uid\)\.
-	- asset\_type \(VARCHAR\): \{house, car, collectible\}\.
-	- name \(VARCHAR\)\.
-	- value \(NUMERIC\)\.
-	- purchase\_date \(DATE, NULLABLE\)\.
-	- notes \(TEXT, NULLABLE\)\.
-	- created\_at \(TIMESTAMP\)\.
-	- updated\_at \(TIMESTAMP\)\.
-- __support\_agents__
-	- id \(PK, UUID\)\.
-	- company\_id \(VARCHAR, UNIQUE\): Format `INT-AGENT-YYYY-###` \(e\.g\., `INT-AGENT-2024-001`\)\.
-	- name \(VARCHAR\): Agent's full name\.
-	- email \(VARCHAR, UNIQUE\): Agent's email address \(for authentication\)\.
-	- role \(ENUM\): \{support_agent, support_manager\}\.
-	- active \(BOOLEAN\): Whether the agent is currently active\.
-	- created\_at \(TIMESTAMP\)\.
-	- updated\_at \(TIMESTAMP\)\.
+- **users**
+  - uid \(PK, VARCHAR\): Firebase UID\.
+  - email \(VARCHAR\)\.
+  - role \(ENUM\): \{user, support_agent, support_manager\} DEFAULT user\.
+  - theme_pref \(VARCHAR\): Defaults to 'glass'\.
+  - currency_pref \(VARCHAR\): ISO 4217 currency code \(e\.g\., 'USD', 'EUR', 'GBP'\)\. Defaults to 'USD'\. Used by CurrencyConversionService for display conversion\.
+  - created_at \(TIMESTAMP\)\.
+- **developers \(New/Updated Table\)**
+  - uid \(PK, FK \-> users\.uid\): Links to users table\. Presence of this record indicates marketplace developer status\.
+  - payout_method \(JSON\): Tracks developer payment preferences\.
+  - payout_frequency \(ENUM\): \{monthly, quarterly\}\.
+  - link_to_payouts_ledger \(FK \-> developer_payouts\.month/dev_uid\)\.
+  - Note: Developer status is determined by presence of a record in this table\. The `users.developer_payout_id` field links to the payout system\.
+- **developer_payouts \(New Table\)**
+  - month \(PK, DATE\): Payout period\.
+  - dev_uid \(PK, FK \-> users\.uid\): Developer UID\.
+  - gross_revenue \(NUMERIC\): Total calculated earnings before fees\.
+  - payout_status \(VARCHAR\): e\.g\., 'pending', 'paid', 'failed'\.
+- **subscriptions**
+  - id \(PK, UUID\)\.
+  - uid \(FK \-> users\.uid\)\.
+  - plan \(ENUM\): \{free, essential, pro, ultimate\}\.
+  - status \(VARCHAR\): Stripe status \(active, past_due\)\.
+  - renew_at \(TIMESTAMP\)\.
+  - ai_quota_used \(INT\): DEFAULT 0\. Resets on webhook\.
+- **ai_settings**
+  - id \(PK, UUID\)\.
+  - uid \(FK\)\.
+  - provider \(VARCHAR\): 'vertex\-ai' \(cloud\), 'local'\. \('vertex\-ai' primary for cloud AI; local used for Free tier and development\)\.
+  - model_id \(VARCHAR\): 'gemini\-2\.5\-flash' \(primary cloud model\), 'gemini\-2\.5\-pro' \(Ultimate tier\), 'gemini\-3\-\*' \(future models\)\.
+  - user_dek_ref \(VARCHAR\): Crucial\. Reference to KMS Key Version for crypto\-erasure\.
+- **notification_preferences**
+  - uid \(FK\)\.
+  - event_key \(VARCHAR\)\.
+  - channel_email \(BOOL\)\.
+  - channel_sms \(BOOL\)\.
+  - quiet_hours_start \(TIME\)\.
+  - quiet_hours_end \(TIME\)\.
+- **payments**
+  - id \(PK\)\.
+  - uid \(FK\)\.
+  - stripe_customer_id \(VARCHAR\)\.
+  - stripe_sub_id \(VARCHAR\)\.
+- **manual_assets**
+  - id \(PK, UUID\)\.
+  - uid \(FK \-> users\.uid\)\.
+  - asset_type \(VARCHAR\): \{house, car, collectible\}\.
+  - name \(VARCHAR\)\.
+  - value \(NUMERIC\)\.
+  - purchase_date \(DATE, NULLABLE\)\.
+  - notes \(TEXT, NULLABLE\)\.
+  - created_at \(TIMESTAMP\)\.
+  - updated_at \(TIMESTAMP\)\.
+- **support_agents**
+  - id \(PK, UUID\)\.
+  - company_id \(VARCHAR, UNIQUE\): Format `INT-AGENT-YYYY-###` \(e\.g\., `INT-AGENT-2024-001`\)\.
+  - name \(VARCHAR\): Agent's full name\.
+  - email \(VARCHAR, UNIQUE\): Agent's email address \(for authentication\)\.
+  - role \(ENUM\): \{support_agent, support_manager\}\.
+  - active \(BOOLEAN\): Whether the agent is currently active\.
+  - created_at \(TIMESTAMP\)\.
+  - updated_at \(TIMESTAMP\)\.
+- **households (New Table)**
+  - id (PK, UUID).
+  - owner_uid (FK -> users.uid): The billing admin.
+  - name (VARCHAR): e.g., "The Smith Family".
+  - created_at (TIMESTAMP).
+- **household_members (New Table)**
+  - household_id (FK -> households.id).
+  - uid (FK -> users.uid).
+  - role (ENUM): {admin, member, restricted_member}.
+  - joined_at (TIMESTAMP).
+  - can_view_household (BOOL): Permission flag.
+  - ai_access_enabled (BOOL): False for minors (enforced by age/role).
+- **household_invites (New Table)**
+  - id (PK, UUID).
+  - household_id (FK).
+  - email (VARCHAR).
+  - created_by (FK -> users.uid).
+  - token (VARCHAR): Signed JWT/Secret.
+  - expires_at (TIMESTAMP).
+  - status (ENUM): {pending, accepted, expired, revoked}.
 
 #### A\.1 Cloud SQL \- Tier Hot Windows \(Free & Essential\)
 
-- __ledger\_hot\_free__
-	- id \(PK, UUID\)
-	- uid \(INDEX\)
-	- account\_id \(UUID\): mirrors `accounts.id` from Cloud SQL
-	- ts \(TIMESTAMP\)
-	- amount \(NUMERIC(18,2)\)
-	- currency \(STRING(3)\)
-	- category \(STRING\)
-	- raw\_json \(JSONB\)
-	- indexes: `idx_ledger_hot_free_uid_ts`, `idx_ledger_hot_free_account`
-	- retention: nightly `free-ledger-pruner` job deletes rows older than 45 days; no archive copy is retained
-- __ledger\_hot\_essential__
-	- id \(PK, UUID\)
-	- uid \(INDEX\)
-	- account\_id \(UUID\)
-	- ts \(TIMESTAMP\)
-	- amount \(NUMERIC(18,2)\)
-	- currency \(STRING(3)\)
-	- category \(STRING\)
-	- raw\_json \(JSONB\)
-	- indexes: `idx_ledger_hot_ess_uid_ts`, `idx_ledger_hot_ess_account`
-	- retention: `essential-ledger-archiver` streams rows older than 30 days to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table
-	- archive format: partitioned Parquet files with per-user manifests
+- **ledger_hot_free**
+  - id \(PK, UUID\)
+  - uid \(INDEX\)
+  - account_id \(UUID\): mirrors `accounts.id` from Cloud SQL
+  - ts \(TIMESTAMP\)
+  - amount \(NUMERIC(18,2)\)
+  - currency \(STRING(3)\)
+  - category \(STRING\)
+  - raw_json \(JSONB\)
+  - indexes: `idx_ledger_hot_free_uid_ts`, `idx_ledger_hot_free_account`
+  - retention: nightly `free-ledger-pruner` job deletes rows older than 45 days; no archive copy is retained
+- **ledger_hot_essential**
+  - id \(PK, UUID\)
+  - uid \(INDEX\)
+  - account_id \(UUID\)
+  - ts \(TIMESTAMP\)
+  - amount \(NUMERIC(18,2)\)
+  - currency \(STRING(3)\)
+  - category \(STRING\)
+  - raw_json \(JSONB\)
+  - indexes: `idx_ledger_hot_ess_uid_ts`, `idx_ledger_hot_ess_account`
+  - retention: `essential-ledger-archiver` streams rows older than 30 days to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table
+  - archive format: partitioned Parquet files with per-user manifests
 
 #### B\. Firestore \(Datastore Mode\) \- High\-Velocity Metering
 
-- __api\_usage__
-	- __Key:__ uid\#YYYYMM \(e\.g\., user123\#202511\)\.
-	- __Properties:__ request\_count \(int\), ai\_tokens \(int\), endpoint\_hits \(map\)\.
-- __enrich\_cache__
-	- __Key:__ merchant\_hash \(SHA256 of Normalized Name\)\.
-	- __Properties:__ logo\_url, clean\_name, category\_hint\.
-	- __Note:__ Normalization \(stripping store IDs\) is critical for cache hit rate\.
-- __widget\_engagement \(New Collection\)__
-	- __Key:__ widget\_id\#uid \(for individual ratings\) __AND__ widget\_id\#daily\_summary \(for aggregate stats\)\.
-	- __Properties:__ downloads\_count, avg\_rating\_score\.
+- **api_usage**
+  - **Key:** uid\#YYYYMM \(e\.g\., user123\#202511\)\.
+  - **Properties:** request_count \(int\), ai_tokens \(int\), endpoint_hits \(map\)\.
+- **enrich_cache**
+  - **Key:** merchant_hash \(SHA256 of Normalized Name\)\.
+  - **Properties:** logo_url, clean_name, category_hint\.
+  - **Note:** Normalization \(stripping store IDs\) is critical for cache hit rate\.
+- **widget_engagement \(New Collection\)**
+  - **Key:** widget_id\#uid \(for individual ratings\) **AND** widget_id\#daily_summary \(for aggregate stats\)\.
+  - **Properties:** downloads_count, avg_rating_score\.
 
 #### C. Cloud SQL Log Ledger & Coldline Archive
 
-- __audit.audit_log__
-	- id (UUID, PK).
-	- ts (TIMESTAMPTZ DEFAULT now()).
-	- actor_uid (STRING).
-	- target_uid (STRING, nullable).
-	- action (STRING).
-	- source (STRING): `frontend`, `backend`, `workflow`.
-	- metadata_json (JSONB). PII scrubbed.
-	- **Constraints:** Insert-only via Row Level Security; UPDATE/DELETE allowed only by `log-ledger-shredder` during legal erasure events.
-- __audit.llm_logs__
-	- id (UUID, PK).
-	- ts (TIMESTAMPTZ).
-	- uid (STRING).
-	- model (STRING).
-	- encrypted_prompt (BYTEA). Encrypted with User DEK.
-	- encrypted_response (BYTEA). Encrypted with User DEK.
-	- tokens (INT).
-	- user_dek_ref (STRING). Required for cryptographic erasure workflows.
-- __audit.support_portal_actions__
-	- id (UUID, PK).
-	- ts (TIMESTAMPTZ DEFAULT now()).
-	- agent_id (UUID, FK -> support_agents.id).
-	- agent_company_id (VARCHAR): Agent's Company ID for quick reference.
-	- agent_name (VARCHAR): Agent's name at time of action.
-	- ticket_id (VARCHAR): Ticket identifier.
-	- customer_uid (VARCHAR, nullable): Customer UID (masked in logs).
-	- action_type (VARCHAR): Action type (view_ticket, respond, reassign, escalate, resolve, add_note, etc.).
-	- action_details (JSONB): Action-specific details (response text, status changes, etc.).
-	- ip_address (VARCHAR, nullable): IP address for security audit.
-	- archived (BOOL DEFAULT FALSE).
-	- **Constraints:** Insert-only via Row Level Security; UPDATE/DELETE allowed only by `log-ledger-shredder` during legal erasure events.
-- __support_ticket_ratings__
-	- id (UUID, PK).
-	- ticket_id (VARCHAR, UNIQUE).
-	- agent_id (UUID, FK -> support_agents.id).
-	- customer_uid (VARCHAR): Customer who provided the rating.
-	- rating (INT): 1-5 star rating.
-	- feedback_text (TEXT, nullable): Optional customer feedback.
-	- created_at (TIMESTAMPTZ DEFAULT now()).
-- __Export & Retention__
-	- Cloud Run Job `log-ledger-archiver` runs daily to export the previous 24 hours of `audit_log`, `feature_preview`, `developer_payout_events`, `llm_logs`, and `support_portal_actions` rows to Parquet files in `gs://jualuma-log-vault/<table>/<YYYY>/<MM>/<DD>/`.
-	- Each export is encrypted with CMEK, emits a manifest + checksum, and marks the corresponding Cloud SQL rows as archived.
-	- After a successful export, Cloud SQL rows older than 90 days are pruned; Coldline objects store the encrypted 7-year retention copy (GLBA).
-	- Cryptographic erasure destroys a user’s DEK, making encrypted payloads unreadable instantly. `log-ledger-shredder` deletes impacted rows from Cloud SQL and issues lifecycle delete markers for corresponding Parquet files within 24 hours.
+- **audit.audit_log**
+  - id (UUID, PK).
+  - ts (TIMESTAMPTZ DEFAULT now()).
+  - actor_uid (STRING).
+  - target_uid (STRING, nullable).
+  - action (STRING).
+  - source (STRING): `frontend`, `backend`, `workflow`.
+  - metadata_json (JSONB). PII scrubbed.
+  - **Constraints:** Insert-only via Row Level Security; UPDATE/DELETE allowed only by `log-ledger-shredder` during legal erasure events.
+- **audit.llm_logs**
+  - id (UUID, PK).
+  - ts (TIMESTAMPTZ).
+  - uid (STRING).
+  - model (STRING).
+  - encrypted_prompt (BYTEA). Encrypted with User DEK.
+  - encrypted_response (BYTEA). Encrypted with User DEK.
+  - tokens (INT).
+  - user_dek_ref (STRING). Required for cryptographic erasure workflows.
+- **audit.support_portal_actions**
+  - id (UUID, PK).
+  - ts (TIMESTAMPTZ DEFAULT now()).
+  - agent_id (UUID, FK -> support_agents.id).
+  - agent_company_id (VARCHAR): Agent's Company ID for quick reference.
+  - agent_name (VARCHAR): Agent's name at time of action.
+  - ticket_id (VARCHAR): Ticket identifier.
+  - customer_uid (VARCHAR, nullable): Customer UID (masked in logs).
+  - action_type (VARCHAR): Action type (view_ticket, respond, reassign, escalate, resolve, add_note, etc.).
+  - action_details (JSONB): Action-specific details (response text, status changes, etc.).
+  - ip_address (VARCHAR, nullable): IP address for security audit.
+  - archived (BOOL DEFAULT FALSE).
+  - **Constraints:** Insert-only via Row Level Security; UPDATE/DELETE allowed only by `log-ledger-shredder` during legal erasure events.
+- **support_ticket_ratings**
+  - id (UUID, PK).
+  - ticket_id (VARCHAR, UNIQUE).
+  - agent_id (UUID, FK -> support_agents.id).
+  - customer_uid (VARCHAR): Customer who provided the rating.
+  - rating (INT): 1-5 star rating.
+  - feedback_text (TEXT, nullable): Optional customer feedback.
+  - created_at (TIMESTAMPTZ DEFAULT now()).
+- **Export & Retention**
+  - Cloud Run Job `log-ledger-archiver` runs daily to export the previous 24 hours of `audit_log`, `feature_preview`, `developer_payout_events`, `llm_logs`, and `support_portal_actions` rows to Parquet files in `gs://jualuma-log-vault/<table>/<YYYY>/<MM>/<DD>/`.
+  - Each export is encrypted with CMEK, emits a manifest + checksum, and marks the corresponding Cloud SQL rows as archived.
+  - After a successful export, Cloud SQL rows older than 90 days are pruned; Coldline objects store the encrypted 7-year retention copy (GLBA).
+  - Cryptographic erasure destroys a user’s DEK, making encrypted payloads unreadable instantly. `log-ledger-shredder` deletes impacted rows from Cloud SQL and issues lifecycle delete markers for corresponding Parquet files within 24 hours.
 
 ##### Log Ledger DDL (Migration Snippet)
 
@@ -784,7 +832,7 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 #### Financial Data
 
-- GET /transactions: Search, filter, sort transactions\. \(Utilizes Idx\_Transactions\_Uid\_Ts\_Desc\)\.
+- GET /transactions: Search, filter, sort transactions\. \(Utilizes Idx_Transactions_Uid_Ts_Desc\)\.
 - PATCH /transactions/\{id\}: Update category/notes\.
 - GET /budgets: Get current budget status vs actuals\.
 - POST /budgets: Set/Update category limits\.
@@ -795,13 +843,13 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 #### Widget & Developer Endpoints \(New\)
 
 - GET /widgets/\{id\}/stats: Retrieve average rating, total downloads \(For display in the App Store UI\)\.
-- POST /widgets/\{id\}/rating: User submits score \(1\-5\) and feedback\_text \(Required for the rating system\)\.
+- POST /widgets/\{id\}/rating: User submits score \(1\-5\) and feedback_text \(Required for the rating system\)\.
 - GET /dev/payouts: Developer retrieves their payment history and current earnings \(Required for the developer portal interface\)\.
 
 #### AI & Intelligence
 
 - POST /chat: Send prompt\.
-- __Middleware:__ Checks quota $\\rightarrow$ Checks Feature Flag $\\rightarrow$ Injects RAG Context $\\rightarrow$ Encrypts $\\rightarrow$ Calls LLM $\\rightarrow$ Streams response\.
+- **Middleware:** Checks quota $\\rightarrow$ Checks Feature Flag $\\rightarrow$ Injects RAG Context $\\rightarrow$ Encrypts $\\rightarrow$ Calls LLM $\\rightarrow$ Streams response\.
 
 #### Billing
 
@@ -825,19 +873,19 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 ### 6\.0 Services Layer \(Business Logic\)
 
-- __SubscriptionService:__ Enforces Free vs\. Pro limits\. Resets quotas on billing cycle\. Applies Texas Tax Logic \(80% taxable basis\) on invoice generation via Stripe API\.
-- __DataSyncService:__ Orchestrates Plaid/CCXT/Ethers\.js fetchers\. Validates "Read\-Only" scopes \(FinCEN\)\. Publishes raw data to Pub/Sub\. Adds Plaid Investments API integration for investment account sync\. Handles holdings and positions data via Plaid\. Adds Manual Asset Tracking service for non\-API assets\.
-- __CategorizationService:__ Consumes Pub/Sub events\. Applies ML rules\. Writes to Cloud SQL transactions\.
-- __EnrichmentService:__ Checks Firestore enrich\_cache for logos/names\. Updates cache on miss using normalized keys\.
-- __RecurringService:__ Analyzes transaction history to identify patterns \(Series ID\)\.
-- __NotificationService:__ Checks notification\_preferences\. Dispatches to Twilio/SendGrid\.
-- __LogLedgerService (New):__ Accepts append-only events from API/services, writes to Cloud SQL `audit.*` tables, enforces row-level security, runs `log-ledger-archiver` to push encrypted Parquet copies to Coldline, and handles cryptographic-erasure purge tickets.
-- __CurrencyConversionService:__ Converts transaction amounts to user's preferred display currency\. Uses ExchangeRate\-API or similar service for real\-time rates\. Caches rates in Firestore (collection: `fx_rates`) with a 1\-hour TTL so the caching layer aligns with the metering stack\. Base currency is USD for all calculations; conversion is display\-only\. User preference stored in users\.currency\_pref \(ISO 4217 code\)\. Handles multi\-currency transactions from CEX and Web3 sources\. Note: Full international compliance \(GDPR, country\-specific regulations\) is a backlog item for future implementation\.
-- __AI Orchestrator Service:__ Flag Check: Must check ENABLE\_AI\_CHAT before processing\. RAG Engine: Pre\-fetches user financial context \(Sum of Spend, Budget Status\) via `pgvector` search to prepend to system prompt\. Note: No sanitization or content filtering is applied\. The service is a direct pass\-through to the configured LLM provider\.
-- __Payout Calculation Service \(New\):__ Executes monthly \(or subject to change\) to calculate the Engagement Score \($\\text\{Engagement Score\} = \\text\{Downloads\} \\times \\text\{Average Rating Score\}$\), determines the revenue share, and creates a ledger entry in the developer\_payouts table\.
-- __Support Ticket Service:__ Orchestrates support ticket automation using Cloud Workflows and Cloud Run\. Handles ticket creation, categorization, routing, and auto-responses\. Integrates with FastAPI backend for user data lookup\.
-- __Agent Tracking Service:__ Logs all agent actions to `audit.support_portal_actions` table with agent_id, company_id, name, action type, ticket_id, and action details\. Ensures immutable audit trail for accountability and quality assurance\.
-- __Quality Metrics Service:__ Aggregates customer ratings and internal management reviews to calculate agent performance metrics \(average response time, customer satisfaction score, tickets resolved, escalation rate\)\. Provides dashboard data for management review\.
+- **SubscriptionService:** Enforces Free vs\. Pro limits\. Resets quotas on billing cycle\. Applies Texas Tax Logic \(80% taxable basis\) on invoice generation via Stripe API\.
+- **DataSyncService:** Orchestrates Plaid/CCXT/Ethers\.js fetchers\. Validates "Read\-Only" scopes \(FinCEN\)\. Publishes raw data to Pub/Sub\. Adds Plaid Investments API integration for investment account sync\. Handles holdings and positions data via Plaid\. Adds Manual Asset Tracking service for non\-API assets\.
+- **CategorizationService:** Consumes Pub/Sub events\. Applies ML rules\. Writes to Cloud SQL transactions\.
+- **EnrichmentService:** Checks Firestore enrich_cache for logos/names\. Updates cache on miss using normalized keys\.
+- **RecurringService:** Analyzes transaction history to identify patterns \(Series ID\)\.
+- **NotificationService:** Checks notification_preferences\. Dispatches to Twilio/SendGrid\.
+- **LogLedgerService (New):** Accepts append-only events from API/services, writes to Cloud SQL `audit.*` tables, enforces row-level security, runs `log-ledger-archiver` to push encrypted Parquet copies to Coldline, and handles cryptographic-erasure purge tickets.
+- **CurrencyConversionService:** Converts transaction amounts to user's preferred display currency\. Uses ExchangeRate\-API or similar service for real\-time rates\. Caches rates in Firestore (collection: `fx_rates`) with a 1\-hour TTL so the caching layer aligns with the metering stack\. Base currency is USD for all calculations; conversion is display\-only\. User preference stored in users\.currency_pref \(ISO 4217 code\)\. Handles multi\-currency transactions from CEX and Web3 sources\. Note: Full international compliance \(GDPR, country\-specific regulations\) is a backlog item for future implementation\.
+- **AI Orchestrator Service:** Flag Check: Must check ENABLE_AI_CHAT before processing\. RAG Engine: Pre\-fetches user financial context \(Sum of Spend, Budget Status\) via `pgvector` search to prepend to system prompt\. Note: No sanitization or content filtering is applied\. The service is a direct pass\-through to the configured LLM provider\.
+- **Payout Calculation Service \(New\):** Executes monthly \(or subject to change\) to calculate the Engagement Score \($\\text\{Engagement Score\} = \\text\{Downloads\} \\times \\text\{Average Rating Score\}$\), determines the revenue share, and creates a ledger entry in the developer_payouts table\.
+- **Support Ticket Service:** Orchestrates support ticket automation using Cloud Workflows and Cloud Run\. Handles ticket creation, categorization, routing, and auto-responses\. Integrates with FastAPI backend for user data lookup\.
+- **Agent Tracking Service:** Logs all agent actions to `audit.support_portal_actions` table with agent_id, company_id, name, action type, ticket_id, and action details\. Ensures immutable audit trail for accountability and quality assurance\.
+- **Quality Metrics Service:** Aggregates customer ratings and internal management reviews to calculate agent performance metrics \(average response time, customer satisfaction score, tickets resolved, escalation rate\)\. Provides dashboard data for management review\.
 
 #### 6.0.1 Log-Ledger-Archiver Cloud Run Job
 
@@ -846,16 +894,16 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 - **Runtime:** Cloud Run Job (`us-central1`, 512 MiB, 1 vCPU, timeout 900s, concurrency 1).
 - **Entrypoint:** `python jobs/log_ledger_archiver.py --since=${YESTERDAY} --until=${TODAY}`.
 - **Environment:**
-	- `DATABASE_URL` (Cloud SQL Auth Proxy)
-	- `GCS_BUCKET=gs://jualuma-log-vault`
-	- `CMEK_KEY=projects/jualuma/locations/us/keyRings/ledger/cryptoKeys/log-ledger`
-	- `AUDIT_TABLES=audit.audit_log,audit.feature_preview,audit.developer_payout_events,audit.llm_logs,audit.support_portal_actions`
+  - `DATABASE_URL` (Cloud SQL Auth Proxy)
+  - `GCS_BUCKET=gs://jualuma-log-vault`
+  - `CMEK_KEY=projects/jualuma/locations/us/keyRings/ledger/cryptoKeys/log-ledger`
+  - `AUDIT_TABLES=audit.audit_log,audit.feature_preview,audit.developer_payout_events,audit.llm_logs,audit.support_portal_actions`
 - **Workflow:**
-	1. Query each table for `ts >= since AND ts < until`, stream chunked Parquet files to `gs://jualuma-log-vault/<table>/<YYYY>/<MM>/<DD>/<chunk>.parquet`.
-	2. Emit a manifest JSON + SHA256 checksum per table, store alongside exports, and set object state to Coldline after 90 days via lifecycle rules.
-	3. Update the exported rows with `archived = TRUE`, then delete any `archived` rows older than 90 days.
-	4. Process `log_purge_queue` events (Right-to-Be-Forgotten) by deleting matching rows and pushing delete markers to `coldline_delete_queue` for downstream storage cleanup.
-	5. Write a run summary to `audit.log_ledger_archiver_runs` for Compliance.
+  1.  Query each table for `ts >= since AND ts < until`, stream chunked Parquet files to `gs://jualuma-log-vault/<table>/<YYYY>/<MM>/<DD>/<chunk>.parquet`.
+  2.  Emit a manifest JSON + SHA256 checksum per table, store alongside exports, and set object state to Coldline after 90 days via lifecycle rules.
+  3.  Update the exported rows with `archived = TRUE`, then delete any `archived` rows older than 90 days.
+  4.  Process `log_purge_queue` events (Right-to-Be-Forgotten) by deleting matching rows and pushing delete markers to `coldline_delete_queue` for downstream storage cleanup.
+  5.  Write a run summary to `audit.log_ledger_archiver_runs` for Compliance.
 - **Testing:** Pytest harness spins up Postgres + the GCS emulator to validate chunking, manifest integrity, and purge handling. CI fails if checksum mismatches or archive deletes exceed 1% of daily volume.
 
 ### 6\.1 Future Enhancement Services \(Backlog\)
@@ -882,69 +930,69 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 #### 7\.1 Kill Switches \(Feature Flags\)
 
-- __Mechanism:__ All services must query Firebase Remote Config \(cached for 60s\) at runtime\.
-- __Mandatory Flags:__
-	- ENABLE\_GLOBAL\_SYNC: Master switch to stop all Plaid/CEX polling\.
-	- ENABLE\_AI\_GATEWAY: Instantly reject all /chat requests with 503 Service Unavailable\.
-	- MAINTENANCE\_MODE: Puts the entire API into Read\-Only mode\.
+- **Mechanism:** All services must query Firebase Remote Config \(cached for 60s\) at runtime\.
+- **Mandatory Flags:**
+  - ENABLE_GLOBAL_SYNC: Master switch to stop all Plaid/CEX polling\.
+  - ENABLE_AI_GATEWAY: Instantly reject all /chat requests with 503 Service Unavailable\.
+  - MAINTENANCE_MODE: Puts the entire API into Read\-Only mode\.
 
 #### 7\.2 Runaway Cost Circuit Breakers
 
-- __Internal Rate Limiting:__ Sync Jobs: Hard limit of 10 sync attempts per user/day\. AI Chat: Hard limit of 5 requests per minute \(burst protection\) even for Pro users\.
-- __LLM Token Caps:__ Every outgoing LLM request (local or Vertex AI Gemini) must explicitly set max\_tokens \(e\.g\., 1024\) to prevent infinite generation loops\.
-- __GCP Budget Automations:__ Budget Alert: Set daily budget alert at $50\. Action: If budget > 150% forecast, trigger Pub/Sub topic emergency\-shutdown\. Reaction: Cloud Function consumes topic \-> Sets ENABLE\_GLOBAL\_SYNC = False via Remote Config \-> API stops expensive calls\.
+- **Internal Rate Limiting:** Sync Jobs: Hard limit of 10 sync attempts per user/day\. AI Chat: Hard limit of 5 requests per minute \(burst protection\) even for Pro users\.
+- **LLM Token Caps:** Every outgoing LLM request (local or Vertex AI Gemini) must explicitly set max_tokens \(e\.g\., 1024\) to prevent infinite generation loops\.
+- **GCP Budget Automations:** Budget Alert: Set daily budget alert at $50\. Action: If budget > 150% forecast, trigger Pub/Sub topic emergency\-shutdown\. Reaction: Cloud Function consumes topic \-> Sets ENABLE_GLOBAL_SYNC = False via Remote Config \-> API stops expensive calls\.
 
 ### 7\.3 Service Level Objectives \(SLO\) & Performance Targets
 
 **API Availability & Latency:**
 
-- __Availability SLO:__ 99\.9% monthly \(error budget: ~43 minutes/month\)\. SLI: successful requests / total requests\.
-- __Latency SLO:__ p95 ≤ 350 ms, p99 ≤ 700 ms for reads; writes ~20\-30% higher\. SLI: per\-endpoint latency percentiles\.
-- __Error Rate SLO:__ ≤ 0\.2% 5xx over 30 days\. SLI: 5xx / total requests\.
+- **Availability SLO:** 99\.9% monthly \(error budget: ~43 minutes/month\)\. SLI: successful requests / total requests\.
+- **Latency SLO:** p95 ≤ 350 ms, p99 ≤ 700 ms for reads; writes ~20\-30% higher\. SLI: per\-endpoint latency percentiles\.
+- **Error Rate SLO:** ≤ 0\.2% 5xx over 30 days\. SLI: 5xx / total requests\.
 
 **AI Chat Performance:**
 
-- __End\-to\-End Latency:__ p90 ≤ 1\.8 s, p95 ≤ 3\.0 s \(request to first token\)\. SLI: measured at edge, not just model time\.
-- __Availability:__ 99\.5\-99\.9% \(model vendors dominate tails; track per\-provider SLI\)\. SLI: successful chats / total per provider\.
+- **End\-to\-End Latency:** p90 ≤ 1\.8 s, p95 ≤ 3\.0 s \(request to first token\)\. SLI: measured at edge, not just model time\.
+- **Availability:** 99\.5\-99\.9% \(model vendors dominate tails; track per\-provider SLI\)\. SLI: successful chats / total per provider\.
 
 **Data Freshness:**
 
-- __Webhook/Stream Deltas:__ p95 freshness ≤ 5 minutes, p99 ≤ 15 minutes \(event to ledger availability\)\. SLI: freshness histogram per provider\.
-- __Scheduled Backfill:__ ≥ 99% jobs finish within schedule + 10 minutes daily\. SLI: on\-time job completion ratio\.
+- **Webhook/Stream Deltas:** p95 freshness ≤ 5 minutes, p99 ≤ 15 minutes \(event to ledger availability\)\. SLI: freshness histogram per provider\.
+- **Scheduled Backfill:** ≥ 99% jobs finish within schedule + 10 minutes daily\. SLI: on\-time job completion ratio\.
 
 **Frontend Performance \(Core Web Vitals\):**
 
-- __LCP:__ ≤ 2\.5 s \(p75 on 4G/mid\-tier mobile\)\.
-- __INP:__ ≤ 100 ms \(p75\)\.
-- __CLS:__ < 0\.1\.
-- __Bundle Budget:__ Initial JS ≤ 250\-300 KB gzip; CSS ≤ 80 KB; strict code\-splitting\.
+- **LCP:** ≤ 2\.5 s \(p75 on 4G/mid\-tier mobile\)\.
+- **INP:** ≤ 100 ms \(p75\)\.
+- **CLS:** < 0\.1\.
+- **Bundle Budget:** Initial JS ≤ 250\-300 KB gzip; CSS ≤ 80 KB; strict code\-splitting\.
 
 **Data Integrity & Durability:**
 
-- __RPO:__ ≤ 5 minutes for transactional/ledger data\. SLI: replication lag\.
-- __RTO:__ ≤ 60 minutes regional failover\. SLI: DR exercise recovery time\.
+- **RPO:** ≤ 5 minutes for transactional/ledger data\. SLI: replication lag\.
+- **RTO:** ≤ 60 minutes regional failover\. SLI: DR exercise recovery time\.
 
 **Operational Responsiveness:**
 
-- __P1 Incident Response:__ MTTA ≤ 15 minutes, MTTR ≤ 60 minutes\. SLI: time\-to\-ack/time\-to\-mitigate from alert fire\.
+- **P1 Incident Response:** MTTA ≤ 15 minutes, MTTR ≤ 60 minutes\. SLI: time\-to\-ack/time\-to\-mitigate from alert fire\.
 
 **Cost Guardrails:**
 
-- __AI Cost Per Call:__ Set budget ceiling per provider; alert on forecast breaches\. SLI: rolling cost per call, per model\.
+- **AI Cost Per Call:** Set budget ceiling per provider; alert on forecast breaches\. SLI: rolling cost per call, per model\.
 
 **Error Budgets & Alert Thresholds:**
 
 - Error budget burn alerts at 2%, 10%, 25%, 50% of monthly budget\.
-- >25% budget consumed → canary\-only deployments; >50% → freeze non\-urgent changes\.
+- > 25% budget consumed → canary\-only deployments; >50% → freeze non\-urgent changes\.
 
 ### 7\.4 Environments & Observability
 
 **Environment Matrix:**
 
-- __Local:__ Docker Compose with emulators \(Postgres, Firestore Emulator, Pub/Sub Emulator\)\. Ports: Postgres 5433, Firestore 8080, Pub/Sub 8085, MCP Server 3000\.
-- __Dev:__ GCP project `jualuma-dev`, region `us-central1`, Cloud Run services with `-dev` suffix\.
-- __Stage:__ GCP project `jualuma-stage`, region `us-central1`, Cloud Run services with `-stage` suffix\.
-- __Prod:__ GCP project `jualuma-prod`, regions `us-central1` \(primary\), `us-east1` \(DR\)\.
+- **Local:** Docker Compose with emulators \(Postgres, Firestore Emulator, Pub/Sub Emulator\)\. Ports: Postgres 5433, Firestore 8080, Pub/Sub 8085, MCP Server 3000\.
+- **Dev:** GCP project `jualuma-dev`, region `us-central1`, Cloud Run services with `-dev` suffix\.
+- **Stage:** GCP project `jualuma-stage`, region `us-central1`, Cloud Run services with `-stage` suffix\.
+- **Prod:** GCP project `jualuma-prod`, regions `us-central1` \(primary\), `us-east1` \(DR\)\.
 
 **Emulator Map:**
 
@@ -961,31 +1009,31 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 **Observability Baseline:**
 
-- __Logging:__ OpenTelemetry logs to Cloud Logging\. Log taxonomy: `{service, tier, feature, user_id, request_id}`\. Structured JSON format\.
-- __Metrics:__ OpenTelemetry metrics to Cloud Monitoring\. Per\-provider SLIs \(Plaid, CEX, LLM\), per\-widget metrics via MCP\. Custom metrics for error budgets\.
-- __Traces:__ OpenTelemetry traces for distributed request tracking\. Sampling: 100% errors, 10% successful requests\.
-- __Alerting:__ Error budget burn alerts, latency p95/p99 breaches, availability drops, cost threshold breaches\. Alert owners assigned per service\.
+- **Logging:** OpenTelemetry logs to Cloud Logging\. Log taxonomy: `{service, tier, feature, user_id, request_id}`\. Structured JSON format\.
+- **Metrics:** OpenTelemetry metrics to Cloud Monitoring\. Per\-provider SLIs \(Plaid, CEX, LLM\), per\-widget metrics via MCP\. Custom metrics for error budgets\.
+- **Traces:** OpenTelemetry traces for distributed request tracking\. Sampling: 100% errors, 10% successful requests\.
+- **Alerting:** Error budget burn alerts, latency p95/p99 breaches, availability drops, cost threshold breaches\. Alert owners assigned per service\.
 
 ### 8\.0 Security, Privacy & Encryption
 
 #### 8\.1 Secrets Management
 
-- __Flow:__ User submits Key $\\rightarrow$ API \(Memory Only\) $\\rightarrow$ Secret Manager\.
-- __DB:__ Cloud SQL stores reference `projects/my-project/secrets/uid-coinbase/versions/1`.
-- __Rotation:__ Automated rotation policies via Secret Manager\.
+- **Flow:** User submits Key $\\rightarrow$ API \(Memory Only\) $\\rightarrow$ Secret Manager\.
+- **DB:** Cloud SQL stores reference `projects/my-project/secrets/uid-coinbase/versions/1`.
+- **Rotation:** Automated rotation policies via Secret Manager\.
 
 #### 8\.2 Privacy Pipeline \(The "Red Team" Standard\)
 
-- __GLBA Compliance:__ Implementation of a formal Information Security Program \(ISP\)\.
-- __Cryptographic Erasure \(RTBF\):__ On Signup: Create DEK\_UID in Cloud KMS\. On Log: Encrypt raw payload with DEK\_UID\. On Delete: Destroy DEK\_UID\. Physical Purge: A scheduled job hard\-deletes encrypted rows 24 hours after key destruction to ensure compliance with strict "Right to Erasure" interpretations\.
+- **GLBA Compliance:** Implementation of a formal Information Security Program \(ISP\)\.
+- **Cryptographic Erasure \(RTBF\):** On Signup: Create DEK_UID in Cloud KMS\. On Log: Encrypt raw payload with DEK_UID\. On Delete: Destroy DEK_UID\. Physical Purge: A scheduled job hard\-deletes encrypted rows 24 hours after key destruction to ensure compliance with strict "Right to Erasure" interpretations\.
 
 ### 8\.3 Legal Acceptance Tracking
 
 **Legal Document Acceptance:**
 
-- __TOS/Privacy/AI Disclaimer:__ Acceptance tracked in Cloud SQL `users.legal_acceptances` JSONB column\. Fields: `{tos_version, privacy_version, ai_disclaimer_version, accepted_at, ip_address}`\.
-- __UI Requirements:__ Click\-wrap mechanism with version display\. Acceptance required before access granted\. Denial blocks feature access\.
-- __Counsel Approval Status:__ All legal documents require attorney review and approval before publication\. Approval status tracked in `legal/` directory metadata\.
+- **TOS/Privacy/AI Disclaimer:** Acceptance tracked in Cloud SQL `users.legal_acceptances` JSONB column\. Fields: `{tos_version, privacy_version, ai_disclaimer_version, accepted_at, ip_address}`\.
+- **UI Requirements:** Click\-wrap mechanism with version display\. Acceptance required before access granted\. Denial blocks feature access\.
+- **Counsel Approval Status:** All legal documents require attorney review and approval before publication\. Approval status tracked in `legal/` directory metadata\.
 
 ### 9\.0 CI/CD & Infrastructure
 
@@ -993,26 +1041,26 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 **Branching & Release Policy:**
 
-- __Branch Strategy:__ `main` branch for production releases\. Feature branches → PRs → `main`\. Release branches \(`release/*`\) for hotfixes\.
-- __Merge Criteria:__ All PRs require: passing lint/format/typecheck, passing tests \(unit + integration\), contract validation \(OpenAPI\), code review approval, no error budget burn >25%\.
+- **Branch Strategy:** `main` branch for production releases\. Feature branches → PRs → `main`\. Release branches \(`release/*`\) for hotfixes\.
+- **Merge Criteria:** All PRs require: passing lint/format/typecheck, passing tests \(unit + integration\), contract validation \(OpenAPI\), code review approval, no error budget burn >25%\.
 
 **CI/CD Pipeline Stages:**
 
-1. __Lint & Format:__ Ruff \(Python\), ESLint/Prettier \(React\), Terraform fmt/validate\.
-2. __Typecheck:__ mypy \(Python\), TypeScript compiler \(React\)\.
-3. __Tests:__ Unit tests \(pytest, vitest\), contract tests \(OpenAPI validation\), integration tests \(emulators\)\.
-4. __Build:__ Backend Docker → Artifact Registry, Frontend React Build → GCS Bucket\.
-5. __Deploy:__ Dev environment auto\-deploys on merge to `main`\. Stage/Prod require manual approval\.
-6. __Smoke Tests:__ E2E smoke tests \(dashboard + AI chat happy path\) post\-deploy\.
-7. __Perf Sanity:__ Lighthouse CI for frontend, API latency checks for backend\.
+1. **Lint & Format:** Ruff \(Python\), ESLint/Prettier \(React\), Terraform fmt/validate\.
+2. **Typecheck:** mypy \(Python\), TypeScript compiler \(React\)\.
+3. **Tests:** Unit tests \(pytest, vitest\), contract tests \(OpenAPI validation\), integration tests \(emulators\)\.
+4. **Build:** Backend Docker → Artifact Registry, Frontend React Build → GCS Bucket\.
+5. **Deploy:** Dev environment auto\-deploys on merge to `main`\. Stage/Prod require manual approval\.
+6. **Smoke Tests:** E2E smoke tests \(dashboard + AI chat happy path\) post\-deploy\.
+7. **Perf Sanity:** Lighthouse CI for frontend, API latency checks for backend\.
 
 **Testing Strategy:**
 
-- __Unit Tests:__ >80% code coverage for business logic\. Mock external dependencies\.
-- __Contract Tests:__ OpenAPI schema validation, request/response shape validation\.
-- __Integration Tests:__ Real database \(local Postgres\), service\-to\-service communication \(FastAPI → Cloud SQL, FastAPI → Firestore Emulator\)\.
-- __E2E Tests:__ Complete user workflows \(signup → link account → view transactions\), feature preview/paywall interactions, tier\-based access control\.
-- __Perf Tests:__ Dashboard load time, AI chat round\-trip latency, transaction feed pagination\.
+- **Unit Tests:** >80% code coverage for business logic\. Mock external dependencies\.
+- **Contract Tests:** OpenAPI schema validation, request/response shape validation\.
+- **Integration Tests:** Real database \(local Postgres\), service\-to\-service communication \(FastAPI → Cloud SQL, FastAPI → Firestore Emulator\)\.
+- **E2E Tests:** Complete user workflows \(signup → link account → view transactions\), feature preview/paywall interactions, tier\-based access control\.
+- **Perf Tests:** Dashboard load time, AI chat round\-trip latency, transaction feed pagination\.
 
 ### 9\.1 Development Milestones
 
@@ -1065,12 +1113,12 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 #### 9\.1 Pipeline \(Cloud Build\)
 
-- __Lint & Format:__ Ruff \(Python\), ESLint/Prettier \(React\)\.
-- __Security Scan:__ trivy fs \. \(Fail on secrets/vulns\)\.
-- __Accessibility Scan:__ axe\-core on composite glass UI\. \(Fail on contrast < 4\.5:1\)\.
-- __Test:__ Pytest \(Unit\) plus Postgres integration tests using the local Cloud SQL mirror container\.
-- __Build:__ Backend: Docker $\\rightarrow$ Artifact Registry\. Frontend: React Build $\\rightarrow$ GCS Bucket\.
-- __Deploy:__ gcloud run deploy \(Backend\)\. Invalidate Cloud CDN \(Frontend\)\.
+- **Lint & Format:** Ruff \(Python\), ESLint/Prettier \(React\)\.
+- **Security Scan:** trivy fs \. \(Fail on secrets/vulns\)\.
+- **Accessibility Scan:** axe\-core on composite glass UI\. \(Fail on contrast < 4\.5:1\)\.
+- **Test:** Pytest \(Unit\) plus Postgres integration tests using the local Cloud SQL mirror container\.
+- **Build:** Backend: Docker $\\rightarrow$ Artifact Registry\. Frontend: React Build $\\rightarrow$ GCS Bucket\.
+- **Deploy:** gcloud run deploy \(Backend\)\. Invalidate Cloud CDN \(Frontend\)\.
 
 #### 9\.1\.1 CI/CD & IaC Instantiation Requirements
 
@@ -1198,111 +1246,111 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 
 **Ticket Format:** Each ticket should include title, description, acceptance criteria \(as above\), test plan outline, and estimated complexity \(story points\)\.
 
-__Acronym__
+**Acronym**
 
-__Definition__
+**Definition**
 
-__GDPR__
+**GDPR**
 
 General Data Protection Regulation
 
-__PII__
+**PII**
 
 Personally Identifiable Information
 
-__RTBF__
+**RTBF**
 
 Right to Be Forgotten
 
-__GLBA__
+**GLBA**
 
 Gramm\-Leach\-Bliley Act
 
-__WCAG__
+**WCAG**
 
 Web Content Accessibility Guidelines
 
-__FinCEN__
+**FinCEN**
 
 Financial Crimes Enforcement Network
 
-__MSB__
+**MSB**
 
 Money Services Business
 
-__CEX__
+**CEX**
 
 Centralized Exchange
 
-__API__
+**API**
 
 Application Programming Interface
 
-__LLM__
+**LLM**
 
 Large Language Model
 
-__PWA__
+**PWA**
 
 Progressive Web App
 
-__CDN__
+**CDN**
 
 Content Delivery Network
 
-__HSTS__
+**HSTS**
 
 HTTP Strict Transport Security
 
-__GCP__
+**GCP**
 
 Google Cloud Platform
 
-__QPS__
+**QPS**
 
 Queries Per Second
 
-__ACID__
+**ACID**
 
 Atomicity, Consistency, Isolation, Durability
 
-__PG__
+**PG**
 
 PostgreSQL
 
-__PK__
+**PK**
 
 Primary Key
 
-__FK__
+**FK**
 
 Foreign Key
 
-__UUID__
+**UUID**
 
 Universally Unique Identifier
 
-__UID__
+**UID**
 
 User Identifier
 
-__RAG__
+**RAG**
 
 Retrieval\-Augmented Generation
 
-__DEK__
+**DEK**
 
 Data Encryption Key
 
-__KMS__
+**KMS**
 
 Key Management Service
 
-__ISP__
+**ISP**
 
 Information Security Program
 
-__CI/CD__
+**CI/CD**
 
 Continuous Integration / Continuous Deployment
 
@@ -1344,24 +1392,24 @@ Workflow automation for support tickets and operations is implemented using Goog
 For the planning website and documentation access, Cloud SQL \(PostgreSQL\) stores access requests and issued tokens.
 
 - **Table `access_requests`:**
-	- `id` \(UUID, PK\)\.
-	- `email` \(VARCHAR\(320\), indexed\)\.
-	- `name` \(VARCHAR\(200\)\)\.
-	- `role` \(VARCHAR\(32\)\) \(`lawyer`, `cpa`, `consultant`, `technical`, `other`\)\.
-	- `requested_pages` \(JSONB\)\.
-	- `status` \(VARCHAR\(32\)\) \(`pending`, `needs_review`, `approved`, `denied`, `expired`\)\.
-	- `decision_reason` \(TEXT\)\.
-	- `created_at`, `updated_at`, `decided_at` \(TIMESTAMPTZ\)\.
-	- `token_jti` \(UUID, nullable\) → FK to `access_tokens.jti`\.
+  - `id` \(UUID, PK\)\.
+  - `email` \(VARCHAR\(320\), indexed\)\.
+  - `name` \(VARCHAR\(200\)\)\.
+  - `role` \(VARCHAR\(32\)\) \(`lawyer`, `cpa`, `consultant`, `technical`, `other`\)\.
+  - `requested_pages` \(JSONB\)\.
+  - `status` \(VARCHAR\(32\)\) \(`pending`, `needs_review`, `approved`, `denied`, `expired`\)\.
+  - `decision_reason` \(TEXT\)\.
+  - `created_at`, `updated_at`, `decided_at` \(TIMESTAMPTZ\)\.
+  - `token_jti` \(UUID, nullable\) → FK to `access_tokens.jti`\.
 - **Table `access_tokens`:**
-	- `jti` \(UUID, PK\)\.
-	- `email` \(VARCHAR\(320\), indexed\)\.
-	- `role` \(VARCHAR\(32\)\)\.
-	- `allowed_pages` \(JSONB\)\.
-	- `issued_at`, `expires_at` \(TIMESTAMPTZ\)\.
-	- `superseded_by` \(UUID, nullable\)\.
-	- `revoked` \(BOOLEAN\)\.
-	- `revoked_reason` \(TEXT\)\.
+  - `jti` \(UUID, PK\)\.
+  - `email` \(VARCHAR\(320\), indexed\)\.
+  - `role` \(VARCHAR\(32\)\)\.
+  - `allowed_pages` \(JSONB\)\.
+  - `issued_at`, `expires_at` \(TIMESTAMPTZ\)\.
+  - `superseded_by` \(UUID, nullable\)\.
+  - `revoked` \(BOOLEAN\)\.
+  - `revoked_reason` \(TEXT\)\.
 
 JWTs are signed with `JWT_SECRET` from Secret Manager and include the `jti`, `sub`, `role`, `allowed_pages`, and `exp` claims\.
 
@@ -1369,7 +1417,7 @@ JWTs are signed with `JWT_SECRET` from Secret Manager and include the `jti`, `su
 
 The website Cloud Run backend exposes `POST /api/access/request` for external users to request access\.
 
-- Validates input \(email, name, role, requested\_pages for `role = 'other'`\)\.
+- Validates input \(email, name, role, requested_pages for `role = 'other'`\)\.
 - Inserts a row into `access_requests` with `status = 'pending'`\.
 - Publishes a Pub/Sub message to `access-requests` containing `{ "request_id", "email", "role" }`\.
 
@@ -1398,10 +1446,10 @@ Cloud Workflows `token-refresh-workflow`:
 - Triggered on `access-refresh-requests`\.
 - Calls `POST /approvals/tokens/{jti}/refresh` on the Approvals Service\.
 - The Approvals Service:
-	- Validates the existing token row\.
-	- Creates a new `access_tokens` row with a new `jti` and extended `expires_at`\.
-	- Marks the old token as superseded\.
-	- Generates a new JWT and sends email via Gmail API\.
+  - Validates the existing token row\.
+  - Creates a new `access_tokens` row with a new `jti` and extended `expires_at`\.
+  - Marks the old token as superseded\.
+  - Generates a new JWT and sends email via Gmail API\.
 
 ### 12\.0 Customer Support Portal
 
@@ -1490,10 +1538,10 @@ The Customer Support Portal is a separate frontend/service with its own authenti
 
 - Agent identification: Each agent has a unique Company ID \(format: `INT-AGENT-YYYY-###`\) displayed in the portal UI
 - All agent actions are logged to Cloud SQL `audit.support_portal_actions` table with:
-	- Agent name and Company ID
-	- Timestamp and action type \(view ticket, respond, reassign, escalate, etc\.\)
-	- Ticket ID and customer reference \(masked\)
-	- Action details \(response text, status changes, etc\.\)
+  - Agent name and Company ID
+  - Timestamp and action type \(view ticket, respond, reassign, escalate, etc\.\)
+  - Ticket ID and customer reference \(masked\)
+  - Action details \(response text, status changes, etc\.\)
 - Customer quality ratings: After ticket resolution, customers can rate the agent's service \(1\-5 stars\) with optional feedback
 - Internal management reviews: Managers can review agent performance, response times, and customer ratings
 - Quality metrics dashboard: Aggregated metrics per agent \(average response time, customer satisfaction score, tickets resolved, escalation rate\)

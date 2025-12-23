@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .account import Account
     from .ai_settings import AISettings
     from .developer import Developer
+    from .household import HouseholdMember
     from .manual_asset import ManualAsset
     from .notification import NotificationPreference
     from .payment import Payment
@@ -121,6 +122,13 @@ class User(Base):
         "DeveloperPayout",
         back_populates="user",
         cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    household_member: Mapped[Optional["HouseholdMember"]] = relationship(
+        "HouseholdMember",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
         lazy="selectin",
     )
 

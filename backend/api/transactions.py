@@ -12,9 +12,16 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
-from backend.models import AuditLog, Transaction, User
-from backend.utils import get_db
+from backend.models import (
+    AuditLog,
+    Household,
+    HouseholdMember,
+    Subscription,
+    Transaction,
+    User,
+)
 from backend.services.analytics import invalidate_analytics_cache
+from backend.utils import get_db
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
@@ -167,23 +174,68 @@ def list_transactions(
     search: str | None = Query(
         default=None, description="Search merchant or description."
     ),
+    scope: str = Query(default="personal", description="personal or household"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TransactionListResponse:
     """
-    List current user's transactions with filters and pagination.
-
-    - **account_id**: Filter by account.
-    - **category**: Filter by category.
-    - **search**: Search merchant or description.
-    - **page / page_size**: Pagination control.
-
-    Returns paginated list of transactions.
+    List transactions with filters.
+    
+    - **scope**: 'personal' (default) or 'household' (requires Ultimate/Household membership).
     """
+    # 1. Determine Target UIDs
+    target_uids = [current_user.uid]
+
+    if scope == "household":
+        # Check permissions
+        member = (
+            db.query(HouseholdMember)
+            .filter(HouseholdMember.uid == current_user.uid)
+            .first()
+        )
+        if not member:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not a member of a household.",
+            )
+
+        # Check Household Owner's Subscription
+        household = (
+            db.query(Household).filter(Household.id == member.household_id).first()
+        )
+        if not household:
+            raise HTTPException(status_code=404, detail="Household not found.")
+
+        owner_sub = (
+            db.query(Subscription)
+            .filter(Subscription.uid == household.owner_uid)
+            .first()
+        )
+
+        # Robust string check for 'ultimate'
+        if (
+            not owner_sub
+            or "ultimate" not in owner_sub.plan
+            or owner_sub.status != "active"
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Household subscription requires Ultimate tier.",
+            )
+
+        # Get all members of this household
+        members = (
+            db.query(HouseholdMember)
+            .filter(HouseholdMember.household_id == household.id)
+            .all()
+        )
+        target_uids = [m.uid for m in members]
+
+    # 2. Query
     query = db.query(Transaction).filter(
-        Transaction.uid == current_user.uid,
+        Transaction.uid.in_(target_uids),
         Transaction.archived.is_(False),
     )
     query = _apply_filters(

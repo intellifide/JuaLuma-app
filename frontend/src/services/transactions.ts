@@ -95,6 +95,7 @@ const buildQueryParams = (filters?: TransactionFilters) => {
   if (filters.to) params.set('end_date', filters.to)
   if (filters.page) params.set('page', String(filters.page))
   if (filters.pageSize) params.set('page_size', String(filters.pageSize))
+  if (filters.scope) params.set('scope', filters.scope)
   return params
 }
 

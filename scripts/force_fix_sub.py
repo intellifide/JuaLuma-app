@@ -1,10 +1,12 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.getcwd())
 
-from backend.utils import get_db
-from backend.services.billing import update_user_tier
 from backend.models import User
+from backend.services.billing import update_user_tier
+from backend.utils import get_db
+
 
 def force_fix_user(email):
     print(f"Force fixing user {email}...")

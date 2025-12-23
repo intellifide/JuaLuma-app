@@ -33,6 +33,8 @@ import AIDisclaimer from './pages/legal/AIDisclaimer'
 import NotFound from './pages/NotFound'
 import Maintenance from './pages/Maintenance'
 
+import { HouseholdPage } from './pages/Household/HouseholdPage'
+
 
 
 function App() {
@@ -141,6 +143,15 @@ function App() {
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/ai-disclaimer" element={<AIDisclaimer />} />
 
+
+            <Route
+              path="/household"
+              element={
+                <ProtectedRoute>
+                  <HouseholdPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

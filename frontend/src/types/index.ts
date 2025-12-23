@@ -99,6 +99,7 @@ export type TransactionFilters = Partial<{
   to: string
   page: number
   pageSize: number
+  scope: 'personal' | 'household'
 }>
 
 export interface PaginatedResponse<T> {

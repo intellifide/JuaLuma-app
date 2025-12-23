@@ -8,7 +8,7 @@ from firebase_admin import firestore
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.core import settings
-from backend.models import Subscription, get_session
+from backend.models import HouseholdMember, Subscription, get_session
 from backend.services.prompts import RAG_PROMPT
 from backend.utils.firestore import get_firestore_client
 
@@ -186,12 +186,31 @@ def _check_rate_limit_sync(user_id: str) -> tuple[str, int, int]:
         # Note: In a real app, you might inject the session or cache the tier
         session_gen = get_session()
         db = next(session_gen)
-        subscription = (
-            db.query(Subscription).filter(Subscription.uid == user_id).first()
+
+        # 1a. Check Household Context first (Overrides subscription)
+        household_member = (
+            db.query(HouseholdMember).filter(HouseholdMember.uid == user_id).first()
         )
-        if subscription:
-            tier = subscription.plan.lower()
+        if household_member:
+            if not household_member.ai_access_enabled:
+                raise HTTPException(
+                    status_code=403,
+                    detail="AI features are disabled for this account by the household administrator.",
+                )
+            # Members inherit Ultimate status
+            tier = "ultimate"
+        else:
+            # 1b. Fallback to personal subscription
+            subscription = (
+                db.query(Subscription).filter(Subscription.uid == user_id).first()
+            )
+            if subscription:
+                tier = subscription.plan.lower()
         db.close()
+        db.close()
+    except HTTPException:
+        # Re-raise explicit HTTP exceptions (e.g. 403 Forbidden)
+        raise
     except Exception as e:
         logger.error(f"Error fetching subscription for rate limit: {e}")
         # Fallback to free tier safely

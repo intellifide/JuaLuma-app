@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.models import Payment, Subscription, User
+from backend.services.email import get_email_client
 
 logger = logging.getLogger(__name__)
 
@@ -297,6 +298,14 @@ def update_user_tier(
         db.add(user)
         db.commit()
         logger.info(f"User {uid} transitioned to ACTIVE status.")
+
+        # Send Welcome Email for new paid subscriptions
+        if tier != "free" and user.email:
+            try:
+                email_client = get_email_client()
+                email_client.send_subscription_welcome(user.email, tier)
+            except Exception as e:
+                logger.error(f"Failed to send welcome email to {user.email}: {e}")
 
     logger.info(f"Updated user {uid} tier to {tier} ({status})")
 

@@ -10,6 +10,7 @@ from .base import Base, SessionLocal, engine, get_session
 from .budget import Budget
 from .category_rule import CategoryRule
 from .developer import Developer
+from .household import Household, HouseholdInvite, HouseholdMember
 from .ledger import LedgerHotEssential, LedgerHotFree
 from .manual_asset import ManualAsset
 from .notification import LocalNotification, NotificationPreference
@@ -60,4 +61,7 @@ __all__ = [
     "CategoryRule",
     "Budget",
     "SubscriptionTier",
+    "Household",
+    "HouseholdMember",
+    "HouseholdInvite",
 ]

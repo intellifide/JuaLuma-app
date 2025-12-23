@@ -1,18 +1,13 @@
 
 import logging
-import uuid
-from datetime import datetime
 
+from backend.core.constants import UserStatus
 from backend.models import (
-    Base,
-    Payment,
     Subscription,
     SubscriptionTier,
     User,
-    engine,
 )
 from backend.models.base import SessionLocal
-from backend.core.constants import UserStatus
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -108,7 +103,7 @@ def seed():
                 new_tier = SubscriptionTier(**tier_data)
                 db.add(new_tier)
                 logger.info(f"Created tier: {tier_data['code']}")
-        
+
         logger.info("Seeding test user...")
         # Search by email first, then UID
         user = db.query(User).filter(User.email == TEST_USER["email"]).first()
@@ -136,7 +131,7 @@ def seed():
             logger.info(f"Created default free subscription for test user {user.uid}")
         else:
             logger.info(f"Test user {user.uid} already has a subscription: {sub.plan}")
-        
+
         db.commit()
         logger.info("Seeding complete.")
     except Exception as e:

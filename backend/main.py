@@ -18,6 +18,7 @@ from backend.api.auth import router as auth_router
 from backend.api.billing import router as billing_router
 from backend.api.budgets import router as budgets_router
 from backend.api.developers import router as developers_router
+from backend.api.household import router as household_router
 from backend.api.notifications import router as notifications_router
 from backend.api.plaid import router as plaid_router
 from backend.api.support import router as support_router
@@ -96,6 +97,7 @@ app.include_router(analytics_router)
 app.include_router(ai_router)
 app.include_router(widgets_router)
 app.include_router(developers_router)
+app.include_router(household_router)
 app.include_router(support_router)
 app.include_router(users_router)
 app.include_router(billing_router)

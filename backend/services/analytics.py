@@ -42,7 +42,7 @@ def invalidate_analytics_cache(uid: str):
 
         # Query all documents in 'analytics_cache' where 'uid' == uid
         docs = db_fs.collection("analytics_cache").where("uid", "==", uid).stream()
-        
+
         batch = db_fs.batch()
         count = 0
         for doc in docs:
@@ -53,12 +53,12 @@ def invalidate_analytics_cache(uid: str):
                 batch.commit()
                 batch = db_fs.batch()
                 count = 0
-        
+
         if count > 0:
             batch.commit()
-            
+
         logger.info(f"Invalidated analytics cache for user {uid}")
-            
+
     except Exception as e:
         logger.warning(f"Failed to invalidate analytics cache for user {uid}: {e}")
 

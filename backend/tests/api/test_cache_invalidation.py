@@ -1,16 +1,16 @@
 
-import pytest
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, UTC
 from unittest.mock import MagicMock, patch
-from fastapi import status
+
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 from backend.main import app
-from backend.models import User, Account, Transaction
 from backend.middleware.auth import get_current_user
+from backend.models import Account, Transaction, User
 from backend.utils import get_db
-from httpx import ASGITransport, AsyncClient
 
 # Mock User
 mock_user = User(uid="cache_test_user", email="cache@example.com", role="user")
@@ -43,7 +43,7 @@ async def test_transaction_update_invalidates_cache(mock_invalidate, mock_db_ses
         # User ID
         uid = "cache_test_user"
         txn_id = uuid.uuid4()
-        
+
         # Mock DB Transaction
         txn = Transaction(
             id=txn_id,
@@ -78,7 +78,7 @@ async def test_account_delete_invalidates_cache(mock_invalidate, mock_db_session
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         uid = "cache_test_user"
         acc_id = uuid.uuid4()
-        
+
         # Mock Account
         acc = Account(
             id=acc_id,
