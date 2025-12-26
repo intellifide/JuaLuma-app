@@ -132,11 +132,7 @@ export const Pricing = () => {
                                         CURRENT PLAN
                                     </div>
                                 )}
-                                {!isCurrent && plan.code.includes('essential') && billingCycle === 'month' && (
-                                    <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-aqua text-white px-4 py-1 rounded-xl text-xs font-semibold">
-                                        POPULAR
-                                    </div>
-                                )}
+
                                 
                                 <div className="card-header">
                                     <h3>{plan.name}</h3>

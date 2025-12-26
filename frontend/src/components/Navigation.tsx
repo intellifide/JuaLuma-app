@@ -38,9 +38,7 @@ export const Navigation = () => {
       <NavLink to="/settings" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Settings
       </NavLink>
-      <NavLink to="/developers/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
-        Developer Portal
-      </NavLink>
+
 
       {/* Notification Bell */}
       <button
@@ -167,9 +165,6 @@ export const Navigation = () => {
               </NavLink>
               <NavLink to="/about" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 About
-              </NavLink>
-              <NavLink to="/developers" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
-                Developers
               </NavLink>
               <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 Login

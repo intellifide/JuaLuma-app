@@ -36,6 +36,8 @@ class Account(Base):
         Numeric(18, 2), nullable=True, default=0
     )
     currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    assigned_member_uid: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    custom_label: Mapped[str | None] = mapped_column(String(128), nullable=True)
     secret_ref: Mapped[str | None] = mapped_column(String(512), nullable=True)
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

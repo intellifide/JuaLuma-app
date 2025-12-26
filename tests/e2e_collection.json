@@ -1,0 +1,152 @@
+{
+  "info": {
+    "name": "Jualuma E2E",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "base_url", "value": "http://localhost:8001", "type": "string"},
+    {"key": "owner_token", "value": "E2E_MAGIC_TOKEN_e2e_owner", "type": "string"},
+    {"key": "member_token", "value": "E2E_MAGIC_TOKEN_e2e_member", "type": "string"},
+    {"key": "stripe_webhook_secret", "value": "whsec_2ba322b8dc4c4c566c661acef8375ab9343e5d593c1e6098c813c30caa17e20b", "type": "string"}
+  ],
+  "item": [
+    {
+      "name": "Create Manual Account",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.collectionVariables.set(\"account_id\", jsonData.id);",
+              "pm.test(\"Status code is 201 or 200\", function () { pm.expect(pm.response.code).to.be.oneOf([201, 200]); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{owner_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account_type\": \"manual\",\n  \"provider\": \"manual\",\n  \"account_name\": \"Test Manual e2e\",\n  \"balance\": 5000\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/accounts/manual",
+          "host": ["{{base_url}}"],
+          "path": ["api", "accounts", "manual"]
+        }
+      }
+    },
+    {
+      "name": "Assign Account to Member",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code !== 200) { console.log('ERROR BODY:', pm.response.text()); }",
+              "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+              "var jsonData = pm.response.json();",
+              "pm.test(\"Assigned correctly\", function () { pm.expect(jsonData.assigned_member_uid).to.eql(\"e2e_member\"); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{owner_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"assigned_member_uid\": \"e2e_member\",\n  \"custom_label\": \"Child Allowance\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/accounts/{{account_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "accounts", "{{account_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Verify Member Can View Account",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+              "var jsonData = pm.response.json();",
+              "// Check if the account is in the list. Note: member view might be different",
+              "var found = jsonData.find(a => a.id === pm.collectionVariables.get(\"account_id\"));",
+              "pm.test(\"Account visible to member\", function () { pm.expect(found).to.not.be.undefined; });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{member_token}}", "type": "text"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/accounts",
+          "host": ["{{base_url}}"],
+          "path": ["api", "accounts"]
+        }
+      }
+    },
+    {
+      "name": "Simulate Stripe Webhook (Payment Succeeded)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var crypto = require('crypto-js');",
+              "var secret = pm.collectionVariables.get(\"stripe_webhook_secret\");",
+              "var timestamp = Math.floor(Date.now() / 1000);",
+              "var payload = pm.request.body.raw;",
+              "var signed_payload = timestamp + \".\" + payload;",
+              "var signature = crypto.HmacSHA256(signed_payload, secret).toString(crypto.enc.Hex);",
+              "pm.request.headers.add({key: \"Stripe-Signature\", value: \"t=\" + timestamp + \",v1=\" + signature});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 (Webhook Accepted)\", function () { pm.response.to.have.status(200); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"evt_test_webhook\",\n  \"object\": \"event\",\n  \"type\": \"invoice.payment_succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"in_test_invoice\",\n      \"customer\": \"cus_test_customer_id\",\n      \"amount_paid\": 2000,\n      \"status\": \"paid\"\n    }\n  }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/webhook",
+          "host": ["{{base_url}}"],
+          "path": ["webhook"]
+        }
+      }
+    }
+  ]
+}

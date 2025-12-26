@@ -188,8 +188,8 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
 
 import { useBudget } from '../hooks/useBudget';
 
-const BudgetTool = ({ categories }: { categories: string[] }) => {
-  const { budgets, saveBudget } = useBudget();
+const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'personal' | 'household' }) => {
+  const { budgets, saveBudget } = useBudget(scope);
   const [editing, setEditing] = useState<string | null>(null);
   const [tempAmount, setTempAmount] = useState<string>('');
   const [expanded, setExpanded] = useState(false);
@@ -207,7 +207,14 @@ const BudgetTool = ({ categories }: { categories: string[] }) => {
   // If collapsed and no budgets, we display a message, so categoriesToDisplay might be empty or irrelevant
   const showEmptyMessage = !expanded && activeBudgets.length === 0;
 
-  const getBudget = (cat: string) => budgets.find(b => b.category === cat)?.amount;
+  const getBudget = (cat: string) => {
+    // In household scope, we might have multiple budget entries for the same category from different users.
+    // We should sum them up for display.
+    const matchingBudgets = budgets.filter(b => b.category === cat);
+    if (matchingBudgets.length === 0) return undefined;
+    
+    return matchingBudgets.reduce((sum, b) => sum + b.amount, 0);
+  };
 
   const handleEdit = (cat: string) => {
     setEditing(cat);
@@ -283,11 +290,13 @@ const CATEGORIES = [
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const { accounts, refetch: refetchAccounts } = useAccounts();
-  const [transactionScope, setTransactionScope] = useState<'personal' | 'household'>('personal');
+  // Global Data Scope (Personal vs Family)
+  const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
+  
   const { transactions, refetch: refetchTransactions, updateOne } = useTransactions({
-    filters: { scope: transactionScope }
+    filters: { scope: dashboardScope }
   });
-  const { budgets } = useBudget();
+  const { budgets } = useBudget(dashboardScope);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
   const toast = useToast();
 
@@ -335,9 +344,9 @@ export default function Dashboard() {
     }
   }, [toast]);
 
-  const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval);
-  const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval);
-  const { data: spendData, loading: spendLoading } = useSpendingByCategory(start, end);
+  const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval, dashboardScope);
+  const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval, dashboardScope);
+  const { data: spendData, loading: spendLoading } = useSpendingByCategory(start, end, dashboardScope);
 
   // Computed Values for Cards
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);
@@ -397,7 +406,7 @@ export default function Dashboard() {
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-4">
           <div className="text-right mr-4 hidden md:block">
-            <span className="block text-sm text-text-muted">Total Balance</span>
+            <span className="block text-sm text-text-muted">Total Balance ({dashboardScope === 'household' ? 'Family' : 'Personal'})</span>
             <span className="block text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
           </div>
           <PlaidLinkButton onSuccess={handlePlaidSuccess} />
@@ -405,7 +414,7 @@ export default function Dashboard() {
       </div>
 
       {/* Timeframe Controls */}
-      <div className="glass-panel mb-8">
+      <div className="glass-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="timeframe-controls">
           <div className="section-timeframe-wrapper">
             <span className="section-timeframe-label">View Period:</span>
@@ -421,6 +430,37 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
+        </div>
+        
+        {/* Scope Toggle */}
+        <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
+          <button
+            onClick={() => setDashboardScope('personal')}
+            className={`px-3 py-1 text-sm rounded-md transition-all ${
+              dashboardScope === 'personal'
+                ? 'bg-royal-purple text-white shadow font-medium'
+                : 'text-text-muted hover:text-text-secondary'
+            }`}
+          >
+            Personal
+          </button>
+          <button
+            onClick={() => {
+              const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
+              if (!isUltimate) {
+                toast.show("Upgrade to Ultimate to view Family metrics.", "error");
+                return;
+              }
+              setDashboardScope('household');
+            }}
+            className={`px-3 py-1 text-sm rounded-md transition-all ${
+              dashboardScope === 'household'
+                ? 'bg-royal-purple text-white shadow font-medium'
+                : 'text-text-muted hover:text-text-secondary'
+            } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Family
+          </button>
         </div>
       </div>
 
@@ -470,7 +510,7 @@ export default function Dashboard() {
       </div>
 
       {/* Budgeting Tool */}
-      <BudgetTool categories={CATEGORIES} />
+      <BudgetTool categories={CATEGORIES} scope={dashboardScope} />
 
       {/* Infographics & Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
@@ -735,36 +775,7 @@ export default function Dashboard() {
       <div className="glass-panel mb-10">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Recent Transactions</h2>
-          
-          <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
-            <button
-              onClick={() => setTransactionScope('personal')}
-              className={`px-3 py-1 text-sm rounded-md transition-all ${
-                transactionScope === 'personal'
-                  ? 'bg-royal-purple text-white shadow font-medium'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-            >
-              Personal
-            </button>
-            <button
-              onClick={() => {
-                const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
-                if (!isUltimate) {
-                  toast.show("Upgrade to Ultimate to view Family transactions.", "error");
-                  return;
-                }
-                setTransactionScope('household');
-              }}
-              className={`px-3 py-1 text-sm rounded-md transition-all ${
-                transactionScope === 'household'
-                  ? 'bg-royal-purple text-white shadow font-medium'
-                  : 'text-text-muted hover:text-text-secondary'
-              } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50' : ''}`}
-            >
-              Family
-            </button>
-          </div>
+          {/* Toggle moved to top of page */}
         </div>
         <div className="overflow-x-auto">
           <table className="table w-full">

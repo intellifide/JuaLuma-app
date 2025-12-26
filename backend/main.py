@@ -190,7 +190,7 @@ async def validation_exception_handler(
     return _build_error_response(
         status_code=status.HTTP_400_BAD_REQUEST,
         error="bad_request",
-        message="Invalid request payload.",
+        message=f"Validation Error: {str(exc)}",
         request=request,
     )
 

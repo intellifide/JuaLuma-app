@@ -18,6 +18,7 @@ from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
 from backend.services.connectors import build_connector
+from backend.services.household_service import get_household_member_uids
 from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.utils import get_db
 from backend.utils.encryption import decrypt_secret, encrypt_secret
@@ -87,10 +88,17 @@ class CexLinkRequest(BaseModel):
 class AccountUpdate(BaseModel):
     account_name: str | None = Field(default=None, max_length=256)
     balance: Decimal | None = Field(default=None, ge=0)
+    assigned_member_uid: str | None = Field(default=None, description="UID of household member")
+    custom_label: str | None = Field(default=None, max_length=128)
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "AccountUpdate":
-        if self.account_name is None and self.balance is None:
+        if (
+            self.account_name is None
+            and self.balance is None
+            and self.assigned_member_uid is None
+            and self.custom_label is None
+        ):
             raise ValueError("Provide at least one field to update.")
         return self
 
@@ -140,6 +148,8 @@ class AccountResponse(BaseModel):
     account_number_masked: str | None = None
     balance: Decimal | None = None
     currency: str | None = None
+    assigned_member_uid: str | None = None
+    custom_label: str | None = None
     secret_ref: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -247,6 +257,8 @@ def _serialize_account(
         account_number_masked=account.account_number_masked,
         balance=response_balance,
         currency=account.currency,
+        assigned_member_uid=account.assigned_member_uid,
+        custom_label=account.custom_label,
         secret_ref=account.secret_ref,
         created_at=account.created_at,
         updated_at=account.updated_at,
@@ -274,7 +286,10 @@ def list_accounts(
 
     Returns a list of account summaries.
     """
-    query = db.query(Account).filter(Account.uid == current_user.uid)
+    query = db.query(Account).filter(
+        (Account.uid == current_user.uid)
+        | (Account.assigned_member_uid == current_user.uid)
+    )
 
     if account_type:
         normalized = account_type.lower()
@@ -848,16 +863,26 @@ def update_account(
             status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
         )
 
-    if payload.account_name is not None:
-        account.account_name = payload.account_name
+    update_data = payload.model_dump(exclude_unset=True)
 
-    if payload.balance is not None:
-        if account.account_type != "manual":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Balance updates are only allowed for manual accounts.",
-            )
-        account.balance = payload.balance
+    if "balance" in update_data and account.account_type != "manual":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Balance updates are only allowed for manual accounts.",
+        )
+
+    if "assigned_member_uid" in update_data:
+        uid_val = update_data["assigned_member_uid"]
+        if uid_val:
+            allowed_uids = get_household_member_uids(db, current_user.uid)
+            if uid_val not in allowed_uids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Assigned member is not part of your household. Allowed: {allowed_uids}. Target: {uid_val}",
+                )
+
+    for field, value in update_data.items():
+        setattr(account, field, value)
 
     db.add(account)
     db.commit()

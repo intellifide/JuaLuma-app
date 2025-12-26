@@ -1,3 +1,5 @@
+// Core Purpose: Hook for managing user budgets (Personal/Household).
+// Last Modified: 2025-12-26
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { apiFetch } from '../services/auth';
@@ -9,7 +11,7 @@ export interface Budget {
     period: string;
 }
 
-export const useBudget = () => {
+export const useBudget = (scope: 'personal' | 'household' = 'personal') => {
     const { user } = useAuth();
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [loading, setLoading] = useState(false);
@@ -18,7 +20,7 @@ export const useBudget = () => {
         if (!user) return;
         setLoading(true);
         try {
-            const res = await apiFetch('/budgets/');
+            const res = await apiFetch(`/budgets/?scope=${scope}`);
             if (res.ok) {
                 const data = await res.json();
                 setBudgets(data);
@@ -28,7 +30,7 @@ export const useBudget = () => {
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [user, scope]);
 
     useEffect(() => {
         fetchBudgets();

@@ -28,6 +28,7 @@ export const Footer = () => (
           <ul>
             <li><Link to="/developers">Developer Home</Link></li>
             <li><Link to="/developer-sdk">Developer SDK</Link></li>
+            <li><Link to="/developers/dashboard">Developer Portal</Link></li>
             <li><Link to="/support">Developer Support</Link></li>
           </ul>
         </div>

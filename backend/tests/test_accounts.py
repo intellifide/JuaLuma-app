@@ -1,10 +1,10 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.models import Account, Subscription
+from backend.models import Account, Household, HouseholdMember, Subscription, User
 
 # Tests for backend/api/accounts.py
 
@@ -139,3 +139,77 @@ def test_sync_account(test_client: TestClient, test_db, mock_auth):
     data = response.json()
     assert data["synced_count"] == 1
     assert data["new_transactions"] == 1
+
+
+def test_update_account_assignments(test_client: TestClient, test_db, mock_auth):
+    # Setup: Create a household for the current user
+    household = Household(owner_uid=mock_auth.uid, name="Test Household")
+    test_db.add(household)
+    test_db.flush()
+
+    # Add owner as member
+    owner_member = HouseholdMember(
+        household_id=household.id,
+        uid=mock_auth.uid,
+        role="admin",
+        joined_at=datetime.now(UTC),
+        can_view_household=True,
+        ai_access_enabled=True,
+    )
+    test_db.add(owner_member)
+
+    # Add another member
+    other_user = User(
+        uid="other_user_456",
+        email="other@example.com",
+        role="user",
+        theme_pref="light",
+        currency_pref="USD",
+    )
+    test_db.add(other_user)
+    other_member = HouseholdMember(
+        household_id=household.id,
+        uid="other_user_456",
+        role="member",
+        joined_at=datetime.now(UTC),
+        can_view_household=True,
+        ai_access_enabled=True,
+    )
+    test_db.add(other_member)
+    test_db.commit()
+
+    # Create an account
+    acct = Account(
+        uid=mock_auth.uid,
+        account_type="manual",
+        provider="manual",
+        account_name="Family Savings",
+        balance=Decimal("1000.00"),
+    )
+    test_db.add(acct)
+    test_db.commit()
+
+    # Case 1: Update with valid assigned_member_uid
+    payload = {"assigned_member_uid": "other_user_456", "custom_label": "Kid's Fund"}
+    response = test_client.patch(f"/api/accounts/{acct.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["assigned_member_uid"] == "other_user_456"
+    assert data["custom_label"] == "Kid's Fund"
+
+    # Verify DB
+    test_db.refresh(acct)
+    assert acct.assigned_member_uid == "other_user_456"
+
+    # Case 2: Update with INVALID assigned_member_uid (not in household)
+    payload = {"assigned_member_uid": "random_stranger"}
+    response = test_client.patch(f"/api/accounts/{acct.id}", json=payload)
+    assert response.status_code == 400
+    assert "not part of your household" in response.json()["detail"]
+
+    # Case 3: Update with OWNER uid (should be valid)
+    payload = {"assigned_member_uid": mock_auth.uid}
+    response = test_client.patch(f"/api/accounts/{acct.id}", json=payload)
+    assert response.status_code == 200
+    test_db.refresh(acct)
+    assert acct.assigned_member_uid == mock_auth.uid

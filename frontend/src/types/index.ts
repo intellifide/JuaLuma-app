@@ -41,6 +41,8 @@ export interface Account {
   accountNumberMasked?: string | null
   balance?: number | null
   currency?: string | null
+  assignedMemberUid?: string | null
+  customLabel?: string | null
   secretRef?: string | null
   createdAt?: string
   updatedAt?: string

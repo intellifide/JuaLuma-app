@@ -1,12 +1,15 @@
+# Core Purpose: Budget API endpoints for listing and creating budgets.
+# Last Modified: 2025-12-26
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
 from backend.models import Budget, User
+from backend.services.household_service import get_household_member_uids
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/budgets", tags=["Budgets"])
@@ -24,11 +27,16 @@ class BudgetResponse(BudgetSchema):
 
 @router.get("/", response_model=list[BudgetResponse])
 def list_budgets(
+    scope: str = Query("personal", pattern="^(personal|household)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
     """List all budgets for the authenticated user."""
-    stmt = select(Budget).where(Budget.uid == current_user.uid)
+    if scope == "household":
+        uids = get_household_member_uids(db, current_user.uid)
+        stmt = select(Budget).where(Budget.uid.in_(uids))
+    else:
+        stmt = select(Budget).where(Budget.uid == current_user.uid)
     result = db.execute(stmt)
     return [
         BudgetResponse(

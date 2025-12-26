@@ -1,3 +1,6 @@
+// Core Purpose: Household management page allowing users to create, join, and manage household members and settings.
+// Last Modified: 2025-12-26
+
 import React, { useEffect, useState } from 'react'
 
 import { householdService } from '../../services/householdService'
@@ -22,7 +25,7 @@ const SimpleInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { labe
 )
 
 export const HouseholdPage: React.FC = () => {
-  const { user, refetchProfile } = useAuth()
+  const { user, profile, refetchProfile } = useAuth()
   // const navigate = useNavigate() // Unused
   const [household, setHousehold] = useState<Household | null>(null)
   const [loading, setLoading] = useState(true)
@@ -179,6 +182,7 @@ export const HouseholdPage: React.FC = () => {
   // Role check: iterate members to find current user?
   const myMember = household.members.find(m => m.uid === user?.uid)
   const isAdmin = myMember?.role === 'admin'
+  const isUltimate = profile?.plan?.includes('ultimate')
 
   return (
     <div className="container mx-auto py-10 px-4 space-y-8">
@@ -188,7 +192,7 @@ export const HouseholdPage: React.FC = () => {
           <p className="text-text-secondary">Manage your household members and settings.</p>
         </div>
         <div className="flex gap-2">
-            {isAdmin && (
+            {isAdmin && isUltimate && (
                 <Button onClick={() => setShowInviteModal(true)}>Invite Member</Button>
             )}
             <Button variant="outline" className="text-red-600 border-red-600 hover:bg-red-50" onClick={handleLeave}>Leave Household</Button>

@@ -11,6 +11,8 @@ type ManualAccountPayload = {
 type AccountUpdatePayload = Partial<{
   accountName: string
   balance: number
+  assignedMemberUid: string | null
+  customLabel: string | null
 }>
 
 type AccountSyncResponse = {
@@ -43,6 +45,8 @@ const mapAccount = (data: any): Account => ({
         ? Number(data.balance)
         : null,
   currency: data.currency ?? null,
+  assignedMemberUid: data.assigned_member_uid ?? data.assignedMemberUid ?? null,
+  customLabel: data.custom_label ?? data.customLabel ?? null,
   secretRef: data.secret_ref ?? data.secretRef ?? null,
   createdAt: data.created_at ?? data.createdAt,
   updatedAt: data.updated_at ?? data.updatedAt,
@@ -96,6 +100,8 @@ export const updateAccount = async (
     const { data } = await api.patch(`/accounts/${id}`, {
       account_name: payload.accountName,
       balance: payload.balance,
+      assigned_member_uid: payload.assignedMemberUid,
+      custom_label: payload.customLabel,
     })
     return mapAccount(data)
   } catch (error) {

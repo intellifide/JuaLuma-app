@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
 import { api as apiClient } from '../services/api';
+import { householdService } from '../services/householdService';
+import { Household } from '../types/household';
 
 interface ApiError {
   response?: {
@@ -150,7 +152,7 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             />
           </div>
           <p className="text-xs text-text-secondary">
-            Ensure your API key has <strong>Ready-Only</strong> permissions. We do not support trading or withdrawals.
+            Ensure your API key has <strong>Read-Only</strong> permissions. We do not support trading or withdrawals.
           </p>
           <div className="flex gap-3 justify-end mt-6">
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
@@ -164,11 +166,108 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   );
 };
 
+const EditAccountModal = ({
+  account,
+  onClose,
+  onSuccess
+}: {
+  account: { id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null };
+  onClose: () => void;
+  onSuccess: (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null }) => void;
+}) => {
+  const [label, setLabel] = useState(account.customLabel || '');
+  const [name, setName] = useState(account.accountName || '');
+  const [assignedUid, setAssignedUid] = useState(account.assignedMemberUid || '');
+  const [household, setHousehold] = useState<Household | null>(null);
+  const [loading, setLoading] = useState(true);
+  const toast = useToast();
+
+  useEffect(() => {
+    householdService.getMyHousehold()
+      .then(setHousehold)
+      .catch(() => {
+        // Ignore error if not in household
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSuccess(account.id, {
+      accountName: name,
+      customLabel: label || null,
+      assignedMemberUid: assignedUid || null
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-1 bordered p-6 rounded-lg w-full max-w-md shadow-xl">
+        <h3 className="text-xl font-bold mb-4">Edit Account</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Account Name</label>
+            <input
+              type="text"
+              className="input w-full"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Official bank name"
+            />
+             <p className="text-xs text-text-secondary mt-1">Found inside your bank/app.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Custom Label</label>
+            <input
+              type="text"
+              className="input w-full"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Vacation Fund, Bobby's Allowance"
+            />
+            <p className="text-xs text-text-secondary mt-1">Your personal nickname for this account.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Assign to Household Member</label>
+            {loading ? (
+              <div className="animate-pulse h-10 w-full bg-surface-2 rounded"></div>
+            ) : household ? (
+              <select
+                className="input w-full"
+                value={assignedUid}
+                onChange={(e) => setAssignedUid(e.target.value)}
+              >
+                <option value="">(Unassigned / Me)</option>
+                <option value={household.owner_uid}>Myself (Owner)</option>
+                {household.members.map(m => (
+                   <option key={m.uid} value={m.uid}>
+                     {m.email || `Member (${m.uid.substring(0, 4)}...)`} ({m.role})
+                   </option>
+                ))}
+              </select>
+            ) : (
+               <div className="text-sm text-text-secondary p-2 bg-surface-2 rounded border border-border">
+                 You are not in a household.
+               </div>
+            )}
+             <p className="text-xs text-text-secondary mt-1">Transactions will be tagged to this member in Family View.</p>
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const ConnectAccounts = () => {
-  const { accounts, loading, remove, sync, refetch } = useAccounts();
+  const { accounts, loading, remove, sync, update, refetch } = useAccounts();
   const toast = useToast();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showCexModal, setShowCexModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<any>(null);
 
   const handlePlaidSuccess = () => {
     toast.show('Account connected successfully', 'success');
@@ -177,6 +276,16 @@ export const ConnectAccounts = () => {
 
   const handlePlaidError = (msg: string) => {
     toast.show(msg, 'error');
+  };
+
+  const handleUpdate = async (id: string, payload: any) => {
+      try {
+          await update(id, payload);
+          toast.show('Account updated', 'success');
+          setEditingAccount(null);
+      } catch (err: any) {
+          toast.show(err.message || 'Failed to update', 'error');
+      }
   };
 
   return (
@@ -256,6 +365,13 @@ export const ConnectAccounts = () => {
             onSuccess={() => { setShowCexModal(false); refetch(); }}
           />
         )}
+        {editingAccount && (
+            <EditAccountModal
+                account={editingAccount}
+                onClose={() => setEditingAccount(null)}
+                onSuccess={handleUpdate}
+            />
+        )}
 
         <div className="glass-panel mb-12">
           <h2 className="mb-6">Linked Accounts</h2>
@@ -263,8 +379,9 @@ export const ConnectAccounts = () => {
             <table className="table w-full text-left">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="pb-3 font-semibold">Institution</th>
+                  <th className="pb-3 font-semibold">Account / Label</th>
                   <th className="pb-3 font-semibold">Type</th>
+                  <th className="pb-3 font-semibold">Assigned To</th>
                   <th className="pb-3 font-semibold">Status</th>
                   <th className="pb-3 font-semibold">Last Sync</th>
                   <th className="pb-3 font-semibold">Actions</th>
@@ -273,21 +390,37 @@ export const ConnectAccounts = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="py-4 text-center text-text-muted">Loading accounts...</td>
+                    <td colSpan={6} className="py-4 text-center text-text-muted">Loading accounts...</td>
                   </tr>
                 ) : accounts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-4 text-center text-text-muted">No accounts connected yet.</td>
+                    <td colSpan={6} className="py-4 text-center text-text-muted">No accounts connected yet.</td>
                   </tr>
                 ) : (
                   accounts.map((account) => (
                     <tr key={account.id} className="border-b border-border/50 hover:bg-surface-2 transition-colors">
-                      <td className="py-4 font-medium">{account.accountName || 'Unnamed Account'}</td>
+                      <td className="py-4">
+                          <div className="font-medium">{account.customLabel || account.accountName || 'Unnamed Account'}</div>
+                          {account.customLabel && <div className="text-xs text-text-secondary">{account.accountName}</div>}
+                      </td>
                       <td className="py-4 capitalize">{account.accountType}</td>
+                      <td className="py-4">
+                          {account.assignedMemberUid ? (
+                              <span className="badge badge-neutral text-xs">Assigned</span>
+                          ) : (
+                              <span className="text-text-muted text-sm">-</span>
+                          )}
+                      </td>
                       <td className="py-4"><span className="badge badge-success">Connected</span></td>
                       <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'Just now'}</td>
                       <td className="py-4">
                         <div className="flex gap-2">
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => setEditingAccount(account)}
+                          >
+                            Edit
+                          </button>
                           <button
                             className="btn btn-sm btn-outline"
                             onClick={() => sync(account.id)}

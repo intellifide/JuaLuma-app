@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from backend.models import Account, Transaction
+from backend.models import Account, Transaction, User
+from backend.services.household_service import get_household_member_uids
 from backend.utils.firestore import get_firestore_client
 
 logger = logging.getLogger(__name__)
@@ -107,14 +108,14 @@ def _get_cached_net_worth(db_fs, cache_key: str) -> NetWorthResponse | None:
         logger.warning(f"Firestore cache read failed: {e}")
     return None
 
-def _calculate_balance_at_end(db: Session, uid: str, end_date: date) -> Decimal:
-    accounts = db.query(Account).filter(Account.uid == uid).all()
+def _calculate_balance_at_end(db: Session, uids: list[str], end_date: date) -> Decimal:
+    accounts = db.query(Account).filter(Account.uid.in_(uids)).all()
     current_total = sum(((acc.balance or Decimal(0)) for acc in accounts), Decimal(0))
 
     recent_txns = (
         db.query(Transaction)
         .filter(
-            Transaction.uid == uid,
+            Transaction.uid.in_(uids),
             Transaction.ts
             > datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
             Transaction.archived.is_(False),
@@ -171,9 +172,12 @@ def get_net_worth(
     uid: str,
     start_date: date,
     end_date: date,
-    interval: str
+    interval: str,
+    scope: str = "personal",
 ) -> NetWorthResponse:
-    cache_key = f"net_worth:{uid}:{start_date.isoformat()}:{end_date.isoformat()}:{interval}"
+    cache_key = (
+        f"net_worth:{uid}:{start_date.isoformat()}:{end_date.isoformat()}:{interval}:{scope}"
+    )
     db_fs = None
     try:
         db_fs = get_firestore_client()
@@ -188,12 +192,16 @@ def get_net_worth(
     if not dates:
         return NetWorthResponse(data=[])
 
-    balance_at_end = _calculate_balance_at_end(db, uid, end_date)
+    target_uids = [uid]
+    if scope == "household":
+        target_uids = get_household_member_uids(db, uid)
+
+    balance_at_end = _calculate_balance_at_end(db, target_uids, end_date)
 
     all_txns_in_range = (
         db.query(Transaction)
         .filter(
-            Transaction.uid == uid,
+            Transaction.uid.in_(target_uids),
             Transaction.ts
             <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
             Transaction.ts
@@ -215,8 +223,13 @@ def get_cash_flow(
     uid: str,
     start_date: date,
     end_date: date,
-    interval: str
+    interval: str,
+    scope: str = "personal",
 ) -> CashFlowResponse:
+    target_uids = [uid]
+    if scope == "household":
+        target_uids = get_household_member_uids(db, uid)
+
     # Income
     income_query = (
         select(
@@ -224,7 +237,7 @@ def get_cash_flow(
             func.sum(Transaction.amount).label("total"),
         )
         .where(
-            Transaction.uid == uid,
+            Transaction.uid.in_(target_uids),
             Transaction.ts
             >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
             Transaction.ts
@@ -243,7 +256,7 @@ def get_cash_flow(
             func.sum(Transaction.amount).label("total"),
         )
         .where(
-            Transaction.uid == uid,
+            Transaction.uid.in_(target_uids),
             Transaction.ts
             >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
             Transaction.ts
@@ -271,10 +284,15 @@ def get_spending_by_category(
     db: Session,
     uid: str,
     start_date: date,
-    end_date: date
+    end_date: date,
+    scope: str = "personal",
 ) -> SpendingByCategoryResponse:
     start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
     end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
+
+    target_uids = [uid]
+    if scope == "household":
+        target_uids = get_household_member_uids(db, uid)
 
     exclude_cats = [
         "Income",
@@ -288,7 +306,7 @@ def get_spending_by_category(
             Transaction.category, func.sum(func.abs(Transaction.amount)).label("total")
         )
         .where(
-            Transaction.uid == uid,
+            Transaction.uid.in_(target_uids),
             Transaction.ts >= start_dt,
             Transaction.ts <= end_dt,
             Transaction.category.not_in(exclude_cats),

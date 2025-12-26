@@ -1,4 +1,4 @@
-# Updated 2025-12-18 20:25 CST by Antigravity
+# Updated 2025-12-26 21:00 CST by Antigravity
 import logging
 from datetime import date
 
@@ -24,11 +24,12 @@ def get_net_worth(
     start_date: date,
     end_date: date,
     interval: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    scope: str = Query("personal", pattern="^(personal|household)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return analytics_service.get_net_worth(
-        db, current_user.uid, start_date, end_date, interval
+        db, current_user.uid, start_date, end_date, interval, scope
     )
 
 
@@ -37,11 +38,12 @@ def get_cash_flow(
     start_date: date,
     end_date: date,
     interval: str = Query("month", pattern="^(day|week|month)$"),
+    scope: str = Query("personal", pattern="^(personal|household)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return analytics_service.get_cash_flow(
-        db, current_user.uid, start_date, end_date, interval
+        db, current_user.uid, start_date, end_date, interval, scope
     )
 
 
@@ -49,11 +51,12 @@ def get_cash_flow(
 def get_spending_by_category(
     start_date: date,
     end_date: date,
+    scope: str = Query("personal", pattern="^(personal|household)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return analytics_service.get_spending_by_category(
-        db, current_user.uid, start_date, end_date
+        db, current_user.uid, start_date, end_date, scope
     )
 
 

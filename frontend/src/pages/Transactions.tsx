@@ -2,14 +2,20 @@
 import { useMemo, useState } from 'react'
 import { TransactionTable } from '../components/TransactionTable'
 import { useTransactions } from '../hooks/useTransactions'
+import { useAuth } from '../hooks/useAuth'
+import { useToast } from '../components/ui/Toast'
 
 export const Transactions = () => {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [page, setPage] = useState(1)
 
+  const { profile } = useAuth()
+  const toast = useToast()
+  const [scope, setScope] = useState<'personal' | 'household'>('personal')
+
   const { transactions, total, pageSize, loading, refetch, updateOne, remove } = useTransactions({
-    filters: { category: category || undefined, page, pageSize: 10 },
+    filters: { category: category || undefined, page, pageSize: 10, scope },
     search: search || undefined,
   })
 
@@ -48,6 +54,40 @@ export const Transactions = () => {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-royal-purple"
         />
+        
+        {/* Scope Toggle */}
+        <div className="flex bg-slate-100 border border-slate-200 rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setScope('personal')}
+            className={`px-3 py-1 text-sm rounded-md transition-all ${
+              scope === 'personal'
+                ? 'bg-royal-purple text-white shadow font-medium'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Personal
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
+              if (!isUltimate) {
+                toast.show("Upgrade to Ultimate to view Family transactions.", "error");
+                return;
+              }
+              setScope('household');
+            }}
+            className={`px-3 py-1 text-sm rounded-md transition-all ${
+              scope === 'household'
+                ? 'bg-royal-purple text-white shadow font-medium'
+                : 'text-slate-500 hover:text-slate-700'
+            } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Family
+          </button>
+        </div>
+
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
