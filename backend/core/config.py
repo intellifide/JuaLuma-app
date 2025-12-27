@@ -76,6 +76,10 @@ class AppSettings(BaseSettings):
         default="no-reply@jualuma.com", alias="SMTP_FROM_EMAIL"
     )
 
+    # Testmail Config (for development testing)
+    testmail_api_key: str | None = Field(default=None, alias="TESTMAIL_API_KEY")
+    testmail_namespace: str | None = Field(default=None, alias="TESTMAIL_NAMESPACE")
+
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod
     def _require_non_empty(cls, value: str, info):

@@ -37,38 +37,133 @@ class EmailClient(Protocol):
         ...
 
 
-class MockEmailClient:
+class TestmailEmailClient:
+    """Email client using Testmail.app API for development testing."""
+
+    def __init__(self):
+        self.api_key = settings.testmail_api_key
+        self.namespace = settings.testmail_namespace
+        self.from_email = "noreply@testmail.app"
+
+    def _send_via_api(self, to_email: str, subject: str, text: str, html: str = None) -> None:
+        """Send email via Testmail SMTP (simpler than GraphQL API)."""
+        # Testmail recommends using SMTP for sending
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        msg = MIMEMultipart("alternative")
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        msg["Subject"] = subject
+
+        # Attach text version
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+
+        # Attach HTML version if provided
+        if html:
+            msg.attach(MIMEText(html, "html", "utf-8"))
+
+        try:
+            # Use Testmail's SMTP service
+            with smtplib.SMTP("smtp.testmail.app", 587) as server:
+                server.starttls()
+                server.login(self.namespace, self.api_key)
+                server.send_message(msg)
+            logger.info(f"Sent email via Testmail SMTP to {to_email}")
+        except Exception as e:
+            logger.error(f"Failed to send email via Testmail SMTP: {e}")
+
     def send_generic_alert(self, to_email: str, title: str) -> None:
-        logger.info(
-            f"[MOCK EMAIL] To: {to_email} | Subject: {title} | Body: <Generic Portal Link>"
+        """Send a generic alert email."""
+        body = (
+            "You have a new notification in your secure jualuma Portal.\n\n"
+            "Please log in to view the details: https://app.jualuma.com/notifications\n\n"
+            "Running a financial platform means we prioritize your privacy. "
+            "We do not include sensitive details in emails."
         )
+        self._send_via_api(to_email, title, body)
 
     def send_subscription_welcome(self, to_email: str, plan_name: str) -> None:
-        logger.info(
-            f"[MOCK EMAIL WELCOME] To: {to_email} | Plan: {plan_name} | Subject: Welcome to JuaLuma {plan_name.capitalize()}!"
+        """Send welcome email for new subscription."""
+        display_name = plan_name.replace("_", " ").title()
+        subject = f"Welcome to JuaLuma {display_name}!"
+        body = (
+            f"Thank you for subscribing to the {display_name} plan.\n\n"
+            "We are excited to have you on board! You now have access to all premium features.\n"
+            "If you have any questions, please contact support."
         )
+        self._send_via_api(to_email, subject, body)
 
     def send_otp(self, to_email: str, code: str) -> None:
-        """Log the OTP code for local dev."""
-        logger.info(f"[MOCK EMAIL OTP] To: {to_email} | Code: {code}")
+        """Send OTP code."""
+        subject = "jualuma Verification Code"
+        body = (
+            f"Your verification code is: {code}\n\n"
+            "This code will expire in 10 minutes.\n"
+            "If you did not request this code, please contact support."
+        )
+        self._send_via_api(to_email, subject, body)
 
     def send_password_reset(self, to_email: str, link: str) -> None:
-        """Log the reset link for local dev."""
-        logger.info(f"[MOCK EMAIL RESET] To: {to_email} | Link: {link}")
+        """Send password reset link."""
+        subject = "jualuma Password Reset"
+        body = (
+            "You requested a password reset for your jualuma account.\n\n"
+            f"Click the link below to reset your password:\n{link}\n\n"
+            "If you did not request this change, please ignore this email or contact support."
+        )
+        self._send_via_api(to_email, subject, body)
 
     def send_household_invite(self, to_email: str, link: str, inviter_name: str) -> None:
-        """Log the household invite link for local dev."""
-        logger.info(
-            f"[MOCK EMAIL INVITE] To: {to_email} | Inviter: {inviter_name} | Link: {link}"
+        """Send household invitation email."""
+        subject = "You have been invited to a JuaLuma Household"
+
+        text_body = (
+            f"{inviter_name} has invited you to join their household on JuaLuma.\n\n"
+            f"Click the link below to accept the invitation:\n{link}\n\n"
+            f"This link will expire in 24 hours.\n"
+            f"If you did not expect this invitation, please ignore this email."
         )
+
+        html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #007bff;">Household Invitation</h2>
+        <p><strong>{inviter_name}</strong> has invited you to join their household on JuaLuma.</p>
+        <p>Click the button below to accept the invitation:</p>
+        <p>
+            <a href="{link}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Invitation</a>
+        </p>
+        <p style="margin-top: 20px; font-size: 13px; color: #666;">
+            Or copy and paste this link:<br>
+            <a href="{link}" style="color: #007bff;">{link}</a>
+        </p>
+        <p style="font-size: 12px; color: #999;">This link will expire in 24 hours.</p>
+    </div>
+</body>
+</html>"""
+
+        self._send_via_api(to_email, subject, text_body, html_body)
 
     def send_household_welcome_member(
         self, to_email: str, household_name: str, owner_name: str
     ) -> None:
-        """Log the household welcome for local dev."""
-        logger.info(
-            f"[MOCK EMAIL HOUSEHOLD WELCOME] To: {to_email} | Household: {household_name}"
+        """Send welcome email to new household member."""
+        subject = f"Welcome to the {household_name} Household!"
+        body = (
+            f"Welcome to the {household_name} household on JuaLuma!\n\n"
+            "You have successfully joined the household and now have access to shared financial insights, "
+            "collaborative budgeting, and AI-powered features provided by the household's Ultimate plan.\n\n"
+            f"This household is managed by {owner_name}.\n\n"
+            "Log in to your dashboard to get started:\n"
+            f"{settings.frontend_url}/dashboard"
         )
+        self._send_via_api(to_email, subject, body)
 
 
 class SmtpEmailClient:
@@ -211,19 +306,13 @@ class SmtpEmailClient:
         """
         Sends the household invitation email.
         """
-        from email.utils import formatdate
-        
-        # Create the root message (mixed)
-        msg = MIMEMultipart("mixed")
+        # Use simple alternative structure for text+HTML
+        msg = MIMEMultipart("alternative")
         msg["From"] = self.from_email
         msg["To"] = to_email
         msg["Subject"] = "You have been invited to a JuaLuma Household"
-        msg["Date"] = formatdate(localtime=True)
 
-        # Create the alternative part (for text vs html)
-        msg_alternative = MIMEMultipart("alternative")
-        msg.attach(msg_alternative)
-
+        # Plain text version
         text_body = (
             f"{inviter_name} has invited you to join their household on JuaLuma.\n\n"
             f"Click the link below to accept the invitation:\n{link}\n\n"
@@ -231,24 +320,32 @@ class SmtpEmailClient:
             f"If you did not expect this invitation, please ignore this email."
         )
 
-        html_body = (
-            f'<!DOCTYPE html>'
-            f'<html><head><meta charset="UTF-8"></head>'
-            f'<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">'
-            f'<div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">'
-            f'<h2 style="color: #007bff;">Household Invitation</h2>'
-            f'<p><strong>{inviter_name}</strong> has invited you to join their household on JuaLuma.</p>'
-            f'<p>Click the button below to accept the invitation:</p>'
-            f'<p><a href="{link}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Invitation</a></p>'
-            f'<p style="margin-top: 20px; font-size: 13px; color: #666;">Or copy specific link: <br><a href="{link}" style="color: #007bff;">{link}</a></p>'
-            f'<p style="font-size: 12px; color: #999;">This link will expire in 24 hours.</p>'
-            f'</div></body></html>'
-        )
+        # HTML version
+        html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #007bff;">Household Invitation</h2>
+        <p><strong>{inviter_name}</strong> has invited you to join their household on JuaLuma.</p>
+        <p>Click the button below to accept the invitation:</p>
+        <p>
+            <a href="{link}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Invitation</a>
+        </p>
+        <p style="margin-top: 20px; font-size: 13px; color: #666;">
+            Or copy and paste this link:<br>
+            <a href="{link}" style="color: #007bff;">{link}</a>
+        </p>
+        <p style="font-size: 12px; color: #999;">This link will expire in 24 hours.</p>
+    </div>
+</body>
+</html>"""
 
-        # Attach parts to the alternative container
-        # Order matters: text first, then html (last is preferred)
-        msg_alternative.attach(MIMEText(text_body, "plain", "utf-8"))
-        msg_alternative.attach(MIMEText(html_body, "html", "utf-8"))
+        # Attach both versions - text first, then HTML (last is preferred)
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
 
         try:
             if self.host == "mock":
@@ -305,10 +402,11 @@ class SmtpEmailClient:
 
 
 def get_email_client() -> EmailClient:
-    # If explicit SMTP settings exist, use SmtpEmailClient even in local
-    if settings.smtp_host and settings.smtp_password:
-        return SmtpEmailClient()
+    # Always use Testmail API for development testing
+    if settings.testmail_api_key and settings.testmail_namespace:
+        logger.info("Using TestmailEmailClient for email delivery")
+        return TestmailEmailClient()
 
-    if settings.app_env.lower() in ["local", "test"]:
-        return MockEmailClient()
+    # Fallback to SMTP if Testmail not configured
+    logger.warning("Testmail not configured, falling back to SMTP")
     return SmtpEmailClient()
