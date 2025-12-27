@@ -1,4 +1,7 @@
 
+# CORE PURPOSE: Service for managing households, members, and invites.
+# LAST MODIFIED: 2025-12-26 10:47 CST
+
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -120,13 +123,43 @@ def invite_member(
     email_client = get_email_client()
     try:
         # Need inviter name, verify user object loaded
-        inviter_name = member.user.email # Fallback to email if name not avail
+        # Fallback to email if name not avail
+        inviter_name = member.user.email if member.user else "A family member"
         email_client.send_household_invite(email, link, inviter_name)
     except Exception as e:
         logger.error(f"Failed to send invite email: {e}")
         # Non-blocking, return invite
 
     return invite
+
+
+def get_invite_details(db: Session, token: str) -> dict:
+    """
+    Validates an invite token and returns details about the invitee status.
+    Used for public invite validation endpoint.
+    """
+    invite = (
+        db.query(HouseholdInvite)
+        .filter(HouseholdInvite.token == token, HouseholdInvite.status == "pending")
+        .first()
+    )
+    if not invite:
+        return {"valid": False, "detail": "Invalid or accepted invite."}
+
+    if invite.expires_at < datetime.now(UTC):
+        return {"valid": False, "detail": "Invite has expired."}
+
+    # Check if user exists
+    user = db.query(User).filter(User.email == invite.email).first()
+    user_exists = bool(user)
+
+    return {
+        "valid": True,
+        "email": invite.email,
+        "is_minor": invite.is_minor,
+        "user_exists": user_exists,
+        "household_id": invite.household_id
+    }
 
 
 def accept_invite(db: Session, user_uid: str, token: str):
@@ -168,13 +201,22 @@ def accept_invite(db: Session, user_uid: str, token: str):
 
     current_sub = db.query(Subscription).filter(Subscription.uid == user_uid).first()
     if current_sub and current_sub.plan not in ["free", "trial"]:
-        # TODO: Cancel Stripe Subscription logic here if we had the code.
-        # For now, we downgrade the DB record to avoid 'double billing' logic confusion
-        # Real implementation should call stripe.Subscription.delete(...)
-        logger.info(f"User {user_uid} joining household. Downgrading personal sub {current_sub.plan}")
-        update_user_tier(db, user_uid, "free", status="active")
+        from backend.services.billing import cancel_user_subscription
+
+        # Cancel Stripe Subscription
+        cancel_user_subscription(db, user_uid)
+
+        logger.info(
+            f"User {user_uid} joining household. Canceled personal sub {current_sub.plan} and converting to dependent."
+        )
+
+    # Always ensure user is on 'free' tier (dependent) and 'active' status
+    # This fixes the issue where new users (pending_plan_selection) get redirected to pricing
+    update_user_tier(db, user_uid, "free", status="active")
 
     # 3. Add Member
+    # Note: joined_at serves as the timestamp for "Consent Agreed" to data sharing terms.
+    # This is enforced by the API endpoint logic checking `consent_agreed=True`.
     role = "restricted_member" if invite.is_minor else "member"
     ai_access = not invite.is_minor
 
@@ -182,7 +224,7 @@ def accept_invite(db: Session, user_uid: str, token: str):
         household_id=invite.household_id,
         uid=user_uid,
         role=role,
-        can_view_household=True, # Default?
+        can_view_household=True,  # Default?
         ai_access_enabled=ai_access,
         joined_at=datetime.now(UTC)
     )
@@ -192,6 +234,33 @@ def accept_invite(db: Session, user_uid: str, token: str):
     db.commit()
 
     logger.info(f"User {user_uid} joined household {invite.household_id} via invite.")
+    logger.info(f"User {user_uid} joined household {invite.household_id} via invite.")
+
+    # 4. Send Household Welcome Email
+    try:
+        household = db.query(Household).filter(Household.id == invite.household_id).first()
+        owner_name = "The Household Owner"
+        if household:
+            owner_member = (
+                db.query(HouseholdMember)
+                .filter(
+                    HouseholdMember.household_id == household.id,
+                    HouseholdMember.role == "admin",
+                )
+                .first()
+            )
+            if owner_member and owner_member.user:
+                owner_name = owner_member.user.email  # Or name if available
+
+            email_client = get_email_client()
+            email_client.send_household_welcome_member(
+                to_email=invite.email,
+                household_name=household.name,
+                owner_name=owner_name,
+            )
+    except Exception as e:
+        logger.error(f"Failed to send household welcome email: {e}")
+
     return new_member
 
 
@@ -214,7 +283,7 @@ def leave_household(db: Session, user_uid: str):
         # For now, simple check:
         household = db.query(Household).filter(Household.id == household_id).first()
         if household.owner_uid == user_uid:
-             raise HTTPException(
+            raise HTTPException(
                 status_code=400,
                 detail="Owner cannot leave household directly. Delete the household or transfer ownership."
             )

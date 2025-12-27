@@ -419,6 +419,16 @@ def login(
         _verify_mfa(user, payload.mfa_code, db)
 
     subscription = db.query(Subscription).filter(Subscription.uid == uid).first()
+    if subscription and subscription.plan not in ["free", "trial"] and not subscription.welcome_email_sent:
+        # Delayed Welcome Email Trigger
+        try:
+            email_client = get_email_client()
+            email_client.send_subscription_welcome(user.email, subscription.plan)
+            subscription.welcome_email_sent = True
+            db.commit()
+            logger.info(f"Sent delayed welcome email to {user.email} for plan {subscription.plan}")
+        except Exception as e:
+            logger.error(f"Failed to send delayed welcome email to {user.email}: {e}")
 
     profile = user.to_dict()
     if subscription:

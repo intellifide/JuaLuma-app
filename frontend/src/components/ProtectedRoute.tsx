@@ -20,7 +20,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user) {
-    const params = new URLSearchParams({ returnUrl: location.pathname })
+    const params = new URLSearchParams({ returnUrl: location.pathname + location.search })
     return <Navigate to={`/login?${params.toString()}`} replace />
   }
 
@@ -36,11 +36,17 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (profile.status === 'pending_verification') {
-    return <Navigate to="/verify-email" replace />
+    const params = new URLSearchParams({ returnUrl: location.pathname + location.search })
+    return <Navigate to={`/verify-email?${params.toString()}`} replace />
   }
 
   if (profile.status === 'pending_plan_selection') {
-    return <Navigate to="/pricing" replace />
+    // Allow access to household invite page even without a plan
+    if (location.pathname.startsWith('/household/accept-invite')) {
+      return <>{children}</>
+    }
+    const params = new URLSearchParams({ returnUrl: location.pathname + location.search })
+    return <Navigate to={`/pricing?${params.toString()}`} replace />
   }
 
   if (profile.status === 'suspended') {

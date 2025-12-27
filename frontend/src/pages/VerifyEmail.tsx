@@ -3,7 +3,7 @@
  * LAST MODIFIED: 2025-12-21 17:05 CST
  */
 import { useState, FormEvent, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { requestEmailCode, verifyEmailCode } from '../services/auth'
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
@@ -22,16 +22,30 @@ export const VerifyEmail = () => {
         eventTracking.trackSignupFunnel(SignupFunnelEvent.EMAIL_VERIFICATION_STARTED)
     }, [])
 
+    const [params] = useSearchParams()
+    const returnUrl = params.get('returnUrl')
+
     useEffect(() => {
         // If user has completed verification, redirect to pricing or dashboard
         // ProtectedRoute will handle the final destination based on status
+        // BUT we want to preserve returnUrl if present
+        
+        const nextParams = returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''
+        
+        // Prioritize household invites - bypass pricing check
+        if (returnUrl && returnUrl.includes('/household/accept-invite')) {
+             navigate(returnUrl, { replace: true })
+             return
+        }
+
         if (profile?.status === 'pending_plan_selection') {
-            navigate('/pricing', { replace: true })
+            navigate(`/pricing${nextParams}`, { replace: true })
         } else if (profile?.status === 'active') {
-            navigate('/dashboard', { replace: true })
+            // If active, go to returnUrl if exists, else dashboard
+            navigate(returnUrl || '/dashboard', { replace: true })
         }
         // If status is 'pending_verification', stay on this page
-    }, [profile, navigate])
+    }, [profile, navigate, returnUrl])
 
     const handleSendCode = async () => {
         if (!user?.email) return

@@ -34,6 +34,7 @@ import NotFound from './pages/NotFound'
 import Maintenance from './pages/Maintenance'
 
 import { HouseholdPage } from './pages/Household/HouseholdPage'
+import JoinHousehold from './pages/JoinHousehold'
 
 
 
@@ -150,6 +151,12 @@ function App() {
                 <ProtectedRoute>
                   <HouseholdPage />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/household/accept-invite"
+              element={
+                  <JoinHousehold />
               }
             />
             <Route path="*" element={<NotFound />} />

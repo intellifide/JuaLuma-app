@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,6 +39,9 @@ class Subscription(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+    welcome_email_sent: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
     )
 
     user: Mapped["User"] = relationship(

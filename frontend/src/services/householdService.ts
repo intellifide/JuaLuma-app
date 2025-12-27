@@ -6,6 +6,14 @@ import {
   AcceptInvitePayload,
 } from '../types/household'
 
+interface InviteStatus {
+  valid: boolean
+  email: string
+  is_minor: boolean
+  user_exists: boolean
+  household_id: string
+}
+
 export const householdService = {
   createHousehold: async (payload: CreateHouseholdPayload): Promise<Household> => {
     const response = await api.post<Household>('/households/', payload)
@@ -19,6 +27,11 @@ export const householdService = {
 
   inviteMember: async (payload: InviteMemberPayload): Promise<{ message: string; invite_id: string }> => {
     const response = await api.post('/households/invites', payload)
+    return response.data
+  },
+
+  checkInviteStatus: async (token: string): Promise<InviteStatus> => {
+    const response = await api.get<InviteStatus>(`/households/invites/${token}`)
     return response.data
   },
 

@@ -69,7 +69,7 @@ def encrypt_prompt(text: str, user_dek_ref: str) -> bytes:
 
     key = _get_local_key(user_dek_ref)
     f = Fernet(key)
-    return f.encrypt(text.encode())
+    return f.encrypt(text.encode()).decode("utf-8")
 
 
 def decrypt_prompt(encrypted_text: bytes | str, user_dek_ref: str) -> str:
@@ -91,7 +91,7 @@ def decrypt_prompt(encrypted_text: bytes | str, user_dek_ref: str) -> str:
         )
         return f.decrypt(ciphertext).decode()
     except Exception as e:
-        logger.error(f"Decryption failed: {e}")
+        logger.error(f"Decryption failed: {e!s}")  # Force string representation
         raise ValueError("Failed to decrypt content.") from e
 
 

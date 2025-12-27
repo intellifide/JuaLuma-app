@@ -35,4 +35,5 @@ export interface InviteMemberPayload {
 
 export interface AcceptInvitePayload {
   token: string
+  consent_agreed: boolean
 }

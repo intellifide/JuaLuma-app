@@ -30,6 +30,12 @@ class EmailClient(Protocol):
         """Send household invitation link."""
         ...
 
+    def send_household_welcome_member(
+        self, to_email: str, household_name: str, owner_name: str
+    ) -> None:
+        """Send welcome email to new household member."""
+        ...
+
 
 class MockEmailClient:
     def send_generic_alert(self, to_email: str, title: str) -> None:
@@ -54,6 +60,14 @@ class MockEmailClient:
         """Log the household invite link for local dev."""
         logger.info(
             f"[MOCK EMAIL INVITE] To: {to_email} | Inviter: {inviter_name} | Link: {link}"
+        )
+
+    def send_household_welcome_member(
+        self, to_email: str, household_name: str, owner_name: str
+    ) -> None:
+        """Log the household welcome for local dev."""
+        logger.info(
+            f"[MOCK EMAIL HOUSEHOLD WELCOME] To: {to_email} | Household: {household_name}"
         )
 
 
@@ -197,18 +211,44 @@ class SmtpEmailClient:
         """
         Sends the household invitation email.
         """
-        msg = MIMEMultipart()
+        from email.utils import formatdate
+        
+        # Create the root message (mixed)
+        msg = MIMEMultipart("mixed")
         msg["From"] = self.from_email
         msg["To"] = to_email
-        msg["Subject"] = f"{inviter_name} invited you to join their JuaLuma Household"
+        msg["Subject"] = "You have been invited to a JuaLuma Household"
+        msg["Date"] = formatdate(localtime=True)
 
-        body = (
+        # Create the alternative part (for text vs html)
+        msg_alternative = MIMEMultipart("alternative")
+        msg.attach(msg_alternative)
+
+        text_body = (
             f"{inviter_name} has invited you to join their household on JuaLuma.\n\n"
             f"Click the link below to accept the invitation:\n{link}\n\n"
-            "This link will expire in 24 hours.\n"
-            "If you did not expect this invitation, please ignore this email."
+            f"This link will expire in 24 hours.\n"
+            f"If you did not expect this invitation, please ignore this email."
         )
-        msg.attach(MIMEText(body, "plain"))
+
+        html_body = (
+            f'<!DOCTYPE html>'
+            f'<html><head><meta charset="UTF-8"></head>'
+            f'<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">'
+            f'<div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">'
+            f'<h2 style="color: #007bff;">Household Invitation</h2>'
+            f'<p><strong>{inviter_name}</strong> has invited you to join their household on JuaLuma.</p>'
+            f'<p>Click the button below to accept the invitation:</p>'
+            f'<p><a href="{link}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Invitation</a></p>'
+            f'<p style="margin-top: 20px; font-size: 13px; color: #666;">Or copy specific link: <br><a href="{link}" style="color: #007bff;">{link}</a></p>'
+            f'<p style="font-size: 12px; color: #999;">This link will expire in 24 hours.</p>'
+            f'</div></body></html>'
+        )
+
+        # Attach parts to the alternative container
+        # Order matters: text first, then html (last is preferred)
+        msg_alternative.attach(MIMEText(text_body, "plain", "utf-8"))
+        msg_alternative.attach(MIMEText(html_body, "html", "utf-8"))
 
         try:
             if self.host == "mock":
@@ -225,6 +265,43 @@ class SmtpEmailClient:
             logger.info(f"Sent household invite to {to_email}")
         except Exception as e:
             logger.error(f"Failed to send household invite email: {e}")
+
+    def send_household_welcome_member(
+        self, to_email: str, household_name: str, owner_name: str
+    ) -> None:
+        """
+        Sends the household welcome email.
+        """
+        msg = MIMEMultipart()
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        msg["Subject"] = f"Welcome to the {household_name} Household!"
+
+        body = (
+            f"Welcome to the {household_name} household on JuaLuma!\n\n"
+            "You have successfully joined the household and now have access to shared financial insights, "
+            "collaborative budgeting, and AI-powered features provided by the household's Ultimate plan.\n\n"
+            f"This household is managed by {owner_name}.\n\n"
+            "Log in to your dashboard to get started:\n"
+            f"{settings.frontend_url}/dashboard"
+        )
+        msg.attach(MIMEText(body, "plain"))
+
+        try:
+            if self.host == "mock":
+                logger.info(
+                    f"[SMTP-HOUSEHOLD-WELCOME] To: {to_email} | Household: {household_name}"
+                )
+                return
+
+            with smtplib.SMTP(self.host, self.port) as server:
+                server.starttls()
+                server.login(self.username, self.password)
+                server.send_message(msg)
+
+            logger.info(f"Sent household welcome email to {to_email}")
+        except Exception as e:
+            logger.error(f"Failed to send household welcome email: {e}")
 
 
 def get_email_client() -> EmailClient:

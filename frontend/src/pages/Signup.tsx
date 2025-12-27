@@ -1,6 +1,6 @@
 // Updated 2025-12-09 16:45 CST by ChatGPT
 import { FormEvent, useMemo, useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 
@@ -16,7 +16,10 @@ export const Signup = () => {
   const { signup } = useAuth()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
+  const [params] = useSearchParams()
+  const returnUrl = params.get('returnUrl')
+  // Use params.get('email') as initial value
+  const [email, setEmail] = useState(params.get('email') || '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
@@ -66,7 +69,7 @@ export const Signup = () => {
       eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_COMPLETED, { email })
       // After signup, user status is 'pending_verification'
       // Navigate to verify-email page where they'll enter the OTP
-      navigate('/verify-email', { replace: true })
+      navigate(`/verify-email${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`, { replace: true })
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to sign up at the moment.'

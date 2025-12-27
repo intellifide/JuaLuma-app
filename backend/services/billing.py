@@ -283,6 +283,10 @@ def update_user_tier(
         if tier == "free" and sub.plan != "free":
             handle_downgrade_logic(db, uid)
 
+        if sub.plan != tier:
+            # Plan changed, reset welcome email flag so they get a new one on next login
+            sub.welcome_email_sent = False
+
         sub.plan = tier
         sub.status = status
         if end_date:
@@ -299,13 +303,8 @@ def update_user_tier(
         db.commit()
         logger.info(f"User {uid} transitioned to ACTIVE status.")
 
-        # Send Welcome Email for new paid subscriptions
-        if tier != "free" and user.email:
-            try:
-                email_client = get_email_client()
-                email_client.send_subscription_welcome(user.email, tier)
-            except Exception as e:
-                logger.error(f"Failed to send welcome email to {user.email}: {e}")
+        # Welcome Email is now handled in Auth Login to prevent premature sending.
+        # We assume welcome_email_sent=False on plan change above.
 
     logger.info(f"Updated user {uid} tier to {tier} ({status})")
 
@@ -318,6 +317,44 @@ def handle_downgrade_logic(db: Session, uid: str):
     logger.info(f"Processing downgrade logic for user {uid}")
     # Example: Mark usage as archived or send notification
     pass
+
+
+def cancel_user_subscription(db: Session, uid: str) -> bool:
+    """
+    Cancels the user's active Stripe subscription immediately.
+    Used when a user joins a household and becomes a dependent.
+    """
+    if not settings.stripe_secret_key:
+        logger.warning(
+            "Stripe not configured. Skipping Stripe subscription cancellation."
+        )
+        return False
+
+    payment = db.query(Payment).filter(Payment.uid == uid).first()
+    if not payment or not payment.stripe_customer_id:
+        logger.warning(f"No payment record found for user {uid}. Skipping cancellation.")
+        return False
+
+    try:
+        # Find active subscriptions
+        subs = stripe.Subscription.list(
+            customer=payment.stripe_customer_id, status="active", limit=1
+        )
+        if subs.data:
+            sub_id = subs.data[0].id
+            stripe.Subscription.delete(sub_id)
+            logger.info(
+                f"canceled Stripe subscription {sub_id} for user {uid} (joining household)."
+            )
+            return True
+        else:
+            logger.info(f"No active Stripe subscription found for user {uid}.")
+            return False
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Error canceling subscription for user {uid}: {e}")
+        # We don't raise here to avoid blocking the household join, but we log it.
+        return False
 
 
 async def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session):

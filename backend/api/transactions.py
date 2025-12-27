@@ -5,6 +5,7 @@
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -22,6 +23,8 @@ from backend.models import (
 )
 from backend.services.analytics import invalidate_analytics_cache
 from backend.utils import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
@@ -234,10 +237,13 @@ def list_transactions(
         target_uids = [m.uid for m in members]
 
     # 2. Query
+    logger.info(f"Listing transactions. Scope={scope}, CurrentUser={current_user.uid}, TargetUIDs={target_uids}")
+    
     query = db.query(Transaction).filter(
         Transaction.uid.in_(target_uids),
         Transaction.archived.is_(False),
     )
+
     query = _apply_filters(
         query,
         account_id=account_id,

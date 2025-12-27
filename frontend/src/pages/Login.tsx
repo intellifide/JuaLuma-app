@@ -9,7 +9,7 @@ export const Login = () => {
   const [params] = useSearchParams()
   const returnUrl = params.get('returnUrl') || '/dashboard'
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(params.get('email') || '')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -113,7 +113,10 @@ export const Login = () => {
 
             <p className="text-center text-sm text-slate-700 mt-4">
               Don&apos;t have an account?{' '}
-              <Link to="/signup" className="text-royal-purple font-semibold hover:text-deep-indigo">
+              <Link 
+                to={`/signup${returnUrl && returnUrl !== '/dashboard' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`}
+                className="text-royal-purple font-semibold hover:text-deep-indigo"
+              >
                 Create one
               </Link>
             </p>

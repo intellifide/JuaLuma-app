@@ -1,4 +1,7 @@
 
+# CORE PURPOSE: API endpoints for household management and invite system.
+# LAST MODIFIED: 2025-12-26 10:48 CST
+
 import logging
 from typing import Any
 
@@ -27,6 +30,7 @@ class InviteRequest(BaseModel):
 
 class InviteAccept(BaseModel):
     token: str
+    consent_agreed: bool
 
 
 class HouseholdOut(BaseModel):
@@ -116,6 +120,23 @@ def create_invite(
         raise HTTPException(status_code=500, detail="Failed to send invite.") from e
 
 
+@router.get("/invites/{token}")
+def check_invite_status(
+    token: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Public Endpoint: Check if an invite token is valid.
+    Returns the associated email and whether a user exists.
+    Does NOT require authentication (allowing flow for new users).
+    """
+    info = household_service.get_invite_details(db, token)
+    if not info["valid"]:
+        raise HTTPException(status_code=400, detail=info["detail"])
+    
+    return info
+
+
 @router.post("/invites/accept")
 def accept_invite_endpoint(
     payload: InviteAccept,
@@ -125,6 +146,12 @@ def accept_invite_endpoint(
     """
     Accept an invite using a token.
     """
+    if not payload.consent_agreed:
+        raise HTTPException(
+            status_code=400,
+            detail="You must agree to the data sharing terms to join the household."
+        )
+
     try:
         household_service.accept_invite(db, current_user.uid, payload.token)
         return {"message": "Joined household successfully."}

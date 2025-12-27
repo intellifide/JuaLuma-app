@@ -1,3 +1,4 @@
+// Last updated: 2025-12-26 18:55:00
 import React, { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
@@ -7,6 +8,8 @@ import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { Account } from '../types';
 import { DataPoint } from '../services/analytics';
 import { useToast } from '../components/ui/Toast';
+import { Modal } from '../components/ui/Modal';
+import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 
 // Removed static BUDGET_CAP
@@ -312,6 +315,49 @@ export default function Dashboard() {
   const [timeframe, setTimeframe] = useState('1m');
   const [activeTab, setActiveTab] = useState('all-accounts');
 
+  // Invite Member State
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteIsMinor, setInviteIsMinor] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
+
+  const handleInviteClick = async () => {
+    const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
+    if (!isUltimate) {
+       toast.show("Upgrade to Ultimate to invite family members.", "error");
+       return;
+    }
+
+    try {
+      await householdService.getMyHousehold();
+      setInviteModalOpen(true);
+    } catch (e) {
+      try {
+        // Auto-create household if missing (common for new Ultimate users)
+        await householdService.createHousehold({ name: 'My Household' });
+        setInviteModalOpen(true);
+      } catch (createErr) {
+        toast.show("Failed to initialize household. Please contact support.", "error");
+      }
+    }
+  };
+
+  const sendInvite = async () => {
+    if (!inviteEmail) return;
+    setSendingInvite(true);
+    try {
+      await householdService.inviteMember({ email: inviteEmail, is_minor: inviteIsMinor });
+      toast.show(`Invite sent to ${inviteEmail}`, 'success');
+      setInviteModalOpen(false);
+      setInviteEmail('');
+      setInviteIsMinor(false);
+    } catch (err: any) {
+      toast.show(err.response?.data?.detail || "Failed to send invite.", "error");
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
   // Analytics Hooks
   const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
 
@@ -432,35 +478,46 @@ export default function Dashboard() {
           </div>
         </div>
         
-        {/* Scope Toggle */}
-        <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
-          <button
-            onClick={() => setDashboardScope('personal')}
-            className={`px-3 py-1 text-sm rounded-md transition-all ${
-              dashboardScope === 'personal'
-                ? 'bg-royal-purple text-white shadow font-medium'
-                : 'text-text-muted hover:text-text-secondary'
-            }`}
-          >
-            Personal
-          </button>
-          <button
-            onClick={() => {
-              const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
-              if (!isUltimate) {
-                toast.show("Upgrade to Ultimate to view Family metrics.", "error");
-                return;
-              }
-              setDashboardScope('household');
-            }}
-            className={`px-3 py-1 text-sm rounded-md transition-all ${
-              dashboardScope === 'household'
-                ? 'bg-royal-purple text-white shadow font-medium'
-                : 'text-text-muted hover:text-text-secondary'
-            } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            Family
-          </button>
+        {/* Scope Toggle & Invite */}
+        <div className="flex items-center gap-4">
+          <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
+            <button
+              onClick={() => setDashboardScope('personal')}
+              className={`px-3 py-1 text-sm rounded-md transition-all ${
+                dashboardScope === 'personal'
+                  ? 'bg-royal-purple text-white shadow font-medium'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              Personal
+            </button>
+            <button
+              onClick={() => {
+                const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
+                if (!isUltimate) {
+                  toast.show("Upgrade to Ultimate to view Family metrics.", "error");
+                  return;
+                }
+                setDashboardScope('household');
+              }}
+              className={`px-3 py-1 text-sm rounded-md transition-all ${
+                dashboardScope === 'household'
+                  ? 'bg-royal-purple text-white shadow font-medium'
+                  : 'text-text-muted hover:text-text-secondary'
+              } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Family
+            </button>
+          </div>
+          
+          {profile?.plan?.toLowerCase().includes('ultimate') && (
+            <button 
+              onClick={handleInviteClick}
+              className="text-xs font-medium text-royal-purple border border-royal-purple/30 rounded px-2 py-1.5 hover:bg-royal-purple/10 transition-colors flex items-center gap-1"
+            >
+              <span>+</span> Invite Member
+            </button>
+          )}
         </div>
       </div>
 
@@ -819,6 +876,58 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+
+      <Modal
+        open={inviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+        title="Invite Family Member"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button 
+              onClick={() => setInviteModalOpen(false)} 
+              className="btn btn-ghost text-sm"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={sendInvite} 
+              disabled={sendingInvite || !inviteEmail}
+              className="btn btn-primary text-sm"
+            >
+              {sendingInvite ? 'Sending...' : 'Send Invite'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-text-muted">
+            Enter the email address of the family member you wish to invite. They will receive an email with instructions to join your household.
+          </p>
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Email Address</label>
+            <input 
+              type="email" 
+              className="form-input w-full" 
+              placeholder="family@example.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              id="is-minor" 
+              checked={inviteIsMinor} 
+              onChange={(e) => setInviteIsMinor(e.target.checked)}
+              className="rounded border-white/20 bg-transparent text-royal-purple focus:ring-royal-purple"
+            />
+            <label htmlFor="is-minor" className="text-sm text-text-secondary select-none cursor-pointer">
+              Is Minor (Restricted Access, No AI Chat)
+            </label>
+          </div>
+        </div>
+      </Modal>
 
     </section>
   );
