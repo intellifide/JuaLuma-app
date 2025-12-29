@@ -5,6 +5,7 @@
 - every file update requires a date and time stamp at the top of the file to identify the last time the file was modified.
 - restart docker services whenever backend changes are made. restart docker services for any required frontend updates as well.
 - always create an account using testmail.app for testing purposes. never create arbitrary email accounts.
+- use the cat .env command to see the environment variables when necessary.
 
 # 1. Production Quality First
 
@@ -19,14 +20,15 @@
 # 2. Documentation & Source of Truth
 
 - **Master Guide:** ALWAYS reference [docs/Master App Dev Guide.md](cci:7://file:///Users/midnight/Projects/jualuma-app/docs/Master%20App%20Dev%20Guide.md:0:0-0:0) for role taxonomy, compliance, and specific business rules.
-- **Codebase as Context:** Do not rely on rules files for specific paths or filenames involving minor implementation details; search the codebase to understand the current structure.
+- **Codebase as Context:** Do not rely on rules files for specific paths or filenames involving minor implementation details; search the codebase to understand the current structure using terminal grep commands.
 
 # 3. Development Workflow
 
 - **Git Safety:**
   - NEVER update git without a direct, explicit command from the user.
   - Use `GitKraken` MCP tools for all git operations.
-- **Agent Capabilities:** Use available MCP tools (GitKraken, Stripe, etc.) for operations rather than suggesting manual CLI commands.
+- **Agent Capabilities:** Use available MCP tools (GitKraken, Stripe, Postman, etc.) for operations rather than suggesting manual CLI commands.
+  - Specifically, use the Postman MCP to run the 'Plaid API Endpoints Copy' collection for independent verification of Plaid integrations.
 - **Communication:** Explain technical decisions in plain language. Assume the user is a junior developer learning the codebase.
 
 # 4. Scope & Boundaries
