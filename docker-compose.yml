@@ -82,7 +82,7 @@ services:
     networks:
       - jualuma-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -98,13 +98,16 @@ services:
         npm install -g firebase-tools@13 &&
         firebase emulators:start --only firestore,auth --project jualuma-local --import=/workspace/.firebase --export-on-exit --config=/workspace/firebase.json
       "
+    stop_grace_period: 30s
     ports:
       - "8080:8080" # Firestore
       - "9099:9099" # Auth
       - "4000:4000" # Emulator UI
     volumes:
       - ./firebase.json:/workspace/firebase.json
-      - firebase_data:/workspace/.firebase
+      - ./firestore.rules:/workspace/firestore.rules
+      - ./firestore.indexes.json:/workspace/firestore.indexes.json
+      - ./firebase_data:/workspace/.firebase
     networks:
       - jualuma-network
     environment:
@@ -127,7 +130,6 @@ services:
 volumes:
   postgres_data:
   firebase_data:
-
 
 networks:
   jualuma-network:

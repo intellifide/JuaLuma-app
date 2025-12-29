@@ -1,6 +1,8 @@
+# Updated 2025-12-30 01:23 CST by Antigravity
 import logging
 import subprocess
 from uuid import uuid4
+from datetime import datetime
 
 import httpx
 from fastmcp import FastMCP
@@ -11,6 +13,7 @@ from backend.models import SessionLocal
 from backend.models.subscription import Subscription
 from backend.models.transaction import Transaction
 from backend.models.user import User
+from backend.models.account import Account
 
 # Initialize the Dev Tools MCP server
 dev_mcp = FastMCP("jualuma Dev Tools")
@@ -78,34 +81,44 @@ def seed_database(tier: str = "free") -> str:
     session = SessionLocal()
     try:
         # Create User
-        user_id = uuid4()
-        test_email = f"test_{tier}_{user_id.hex[:8]}@example.com"
-        auth_uid = f"test_{tier}_{user_id.hex[:8]}"
+        test_uid = f"test_{tier}_{uuid4().hex[:8]}"
+        test_email = f"{test_uid}@example.com"
 
         user = User(
-            id=user_id,
+            uid=test_uid,
             email=test_email,
-            auth_uid=auth_uid,
-            full_name=f"Test User {tier.title()}",
-            is_active=True,
+            status="active",
+            role="user",
         )
         session.add(user)
+        session.flush()
+
+        # Create an account (needed for transactions)
+        account = Account(
+            uid=user.uid,
+            name=f"Main {tier.title()} Account",
+            type="checking",
+            mask="1234",
+            institution_id="ins_1",
+        )
+        session.add(account)
         session.flush()
 
         # Create Subscription
         plan = (
             SubscriptionPlans.PRO if tier.lower() == "pro" else SubscriptionPlans.FREE
         )
-        subscription = Subscription(user_id=user.id, plan=plan, is_active=True)
+        subscription = Subscription(uid=user.uid, plan=plan, status="active")
         session.add(subscription)
 
         # Create Transactions
         for i in range(10):
             tx = Transaction(
-                user_id=user.id,
+                uid=user.uid,
+                account_id=account.id,
                 amount=10.0 + i,
                 description=f"Test Transaction {i+1}",
-                date="2024-01-01",  # Simplified date
+                ts=datetime.now(),
             )
             session.add(tx)
 

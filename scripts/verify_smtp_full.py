@@ -16,8 +16,8 @@ from backend.services.email import SmtpEmailClient, get_email_client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TESTMAIL_API_KEY = "66757b44-e55f-4606-b676-dc2d08cba593"  # From .env in previous steps
-TESTMAIL_NAMESPACE = "s72ew"  # From user image
+TESTMAIL_API_KEY = "22e7f53b-de5c-4aae-bc7d-54641fc55174"
+TESTMAIL_NAMESPACE = "l2zpw"
 
 
 def verify_end_to_end():

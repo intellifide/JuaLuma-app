@@ -11,7 +11,7 @@ FIREBASE_AUTH_HOST = os.getenv(
     "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts",
 )
 API_KEY = os.getenv("VITE_FIREBASE_API_KEY", "demo-api-key")
-TESTMAIL_NS = os.getenv("TESTMAIL_NAMESPACE", "s72ew")
+TESTMAIL_NS = os.getenv("TESTMAIL_NAMESPACE", "l2zpw")
 TESTMAIL_KEY = os.getenv("TESTMAIL_API_KEY")
 
 if not TESTMAIL_KEY:

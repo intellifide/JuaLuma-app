@@ -1,3 +1,4 @@
+# Updated 2025-12-30 01:23 CST by Antigravity
 import logging
 
 from fastmcp import FastMCP
@@ -27,7 +28,7 @@ def get_user_by_email(email: str) -> str:
         user = db.query(User).filter(User.email == email).first()
         if not user:
             return "User not found"
-        return f"User: {user.full_name} (ID: {user.uid}, Role: {user.role})"
+        return f"User: {user.email} (UID: {user.uid}, Role: {user.role}, Status: {user.status})"
     except Exception as e:
         logger.error(f"Error fetching user: {e}")
         return f"Error: {str(e)}"

@@ -1,5 +1,7 @@
 import logging
 import os
+import random
+import string
 import sys
 
 # Ensure backend can be imported
@@ -27,19 +29,26 @@ def verify_smtp():
             logger.error("SMTP_HOST not set.")
             return
 
-    # Use a dummy code and self-email
-    # We use the SMTP_USERNAME as the recipient to avoid spamming unknown addresses
-    # unless we have a specific target.
-    to_email = client.username
+    # Determine target email
+    # Priority: Testmail (so we don't spam the sender's inbox) -> Self (fallback)
+    from backend.core import settings
+
+    if settings.testmail_namespace:
+        to_email = f"{settings.testmail_namespace}.smtp_check@inbox.testmail.app"
+    else:
+        to_email = client.username
+
     if not to_email:
         print("SMTP_USERNAME not set, cannot determine 'to' address.")
         return
 
+    # Use same logic as backend/api/auth.py: _generate_and_send_otp
+    otp_code = "".join(random.choices(string.digits, k=6))
     print(
         f"Attempting to send OTP email to {to_email} via {client.host}:{client.port}..."
     )
     try:
-        client.send_otp(to_email, "123456")
+        client.send_otp(to_email, otp_code)
         print("SUCCESS: Email sent successfully.")
     except Exception as e:
         print(f"FAILURE: Could not send email. Error: {e}")

@@ -6,7 +6,7 @@ import os
 # Configuration
 API_BASE_URL = "http://localhost:8001/api"
 FIREBASE_AUTH_URL = "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key"
-TESTMAIL_NAMESPACE = "s72ew" 
+TESTMAIL_NAMESPACE = "l2zpw" 
 INVITER_EMAIL = f"{TESTMAIL_NAMESPACE}.frontend-setup@inbox.testmail.app"
 PASSWORD = "password123"
 

@@ -66,7 +66,7 @@ class TestmailEmailClient:
 
         try:
             # Use Testmail's SMTP service
-            with smtplib.SMTP("smtp.testmail.app", 587) as server:
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
                 server.starttls()
                 server.login(self.namespace, self.api_key)
                 server.send_message(msg)
@@ -402,11 +402,14 @@ class SmtpEmailClient:
 
 
 def get_email_client() -> EmailClient:
-    # Always use Testmail API for development testing
-    if settings.testmail_api_key and settings.testmail_namespace:
-        logger.info("Using TestmailEmailClient for email delivery")
-        return TestmailEmailClient()
+    """
+    Returns the configured email client.
+    We use SmtpEmailClient (configured with Gmail in .env) for sending.
+    Testmail credentials in .env are used by E2E tests for verification only.
+    """
+    if settings.smtp_host:
+        logger.info(f"Using SmtpEmailClient with host: {settings.smtp_host}")
+        return SmtpEmailClient()
 
-    # Fallback to SMTP if Testmail not configured
-    logger.warning("Testmail not configured, falling back to SMTP")
-    return SmtpEmailClient()
+    logger.warning("SMTP_HOST not set. Email functionality disabled.")
+    return SmtpEmailClient()  # Will likely fail or log if host is missing
