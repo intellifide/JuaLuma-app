@@ -23,7 +23,7 @@ def mock_ai_services():
         mock_limit.return_value = 5  # 5 used today
         mock_gen.return_value = {"response": "This is AI response"}
         mock_rag.return_value = "Retrieved Context"
-        mock_encrypt.return_value = b"encrypted_prompt"
+        mock_encrypt.return_value = "encrypted_prompt"
         mock_decrypt.return_value = "Decrypted Prompt"
 
         yield {

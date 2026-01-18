@@ -160,8 +160,10 @@ async def chat_endpoint(
     # We'll default to encrypting if not specifically excluded.
     # Encrypt response as well (since model requires encrypted_response)
     # 2025-12-10 16:46 CST - store ciphertext as bytes to satisfy BYTEA columns
-    encrypted_prompt = encrypt_prompt(message, user_dek_ref=user_id)
-    encrypted_response = encrypt_prompt(ai_response, user_dek_ref=user_id)
+    encrypted_prompt = encrypt_prompt(message, user_dek_ref=user_id).encode("utf-8")
+    encrypted_response = encrypt_prompt(ai_response, user_dek_ref=user_id).encode(
+        "utf-8"
+    )
 
     log_entry = LLMLog(
         uid=user_id,
