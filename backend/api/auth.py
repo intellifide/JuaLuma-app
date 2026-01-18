@@ -3,17 +3,18 @@ import logging
 import random
 import string
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from threading import Lock
 
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from backend.core.constants import UserStatus
 from backend.middleware.auth import get_current_user
-from backend.models import AuditLog, Subscription, User
+from backend.models import AuditLog, HouseholdInvite, HouseholdMember, Subscription, User
 from backend.services.auth import (
     _get_firebase_app,
     create_user_record,
@@ -146,6 +147,18 @@ def _serialize_profile(user: User) -> dict:
 
     profile["ai_settings"] = ai_settings
     profile["is_developer"] = True if user.developer else False
+
+    # Household Info
+    if user.household_member:
+        profile["household_member"] = {
+            "household_id": str(user.household_member.household_id),
+            "role": user.household_member.role,
+            "can_view_household": user.household_member.can_view_household,
+            "ai_access_enabled": user.household_member.ai_access_enabled,
+        }
+    else:
+        profile["household_member"] = None
+
     return profile
 
 
@@ -620,7 +633,32 @@ def enable_email_mfa(
     current_user.email_otp = None
 
     if current_user.status == UserStatus.PENDING_VERIFICATION:
-        current_user.status = UserStatus.PENDING_PLAN_SELECTION
+        # 1. Check if ALREADY in a household (e.g. invite accepted during signup)
+        existing_membership = db.query(HouseholdMember).filter(HouseholdMember.uid == current_user.uid).first()
+        if existing_membership:
+            current_user.status = UserStatus.ACTIVE
+            logger.info(f"User {current_user.uid} verified email. Already a household member. Status -> ACTIVE")
+            db.commit()
+            return {"message": "Email MFA enabled."}
+
+        # 2. Check for pending household invites (Case-insensitive check)
+        # Note: invite.expires_at is timezone-aware.
+        pending_invite = (
+            db.query(HouseholdInvite)
+            .filter(
+                func.lower(HouseholdInvite.email) == func.lower(current_user.email),
+                HouseholdInvite.status == "pending",
+                HouseholdInvite.expires_at > datetime.now(UTC),
+            )
+            .first()
+        )
+        if pending_invite:
+            # If invited, skip plan selection (they will be prompted to accept invite)
+            current_user.status = UserStatus.ACTIVE
+            logger.info(f"User {current_user.uid} ({current_user.email}) verified email. Pending invite found from {pending_invite.household_id}, setting status ACTIVE.")
+        else:
+            logger.info(f"User {current_user.uid} ({current_user.email}) verified email. No pending invite found. Status -> PENDING_PLAN_SELECTION")
+            current_user.status = UserStatus.PENDING_PLAN_SELECTION
 
     db.commit()
 

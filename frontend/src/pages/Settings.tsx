@@ -94,75 +94,94 @@ export const Settings = () => {
           <div id="subscription-tab" role="tabpanel">
             <div className="glass-panel">
               <h2 className="mb-6">Subscription</h2>
-              <div className="card mb-6">
-                <div className="card-header pb-2 border-b border-border mb-4">
-                  <h3 className="text-xl font-bold">Current Plan: {profile?.plan ? profile.plan.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Free'}</h3>
-                </div>
-                <div className="card-body">
-                  <p className="mb-2"><strong>Billing:</strong> {profile?.plan && profile.plan !== 'free' ? 'Paid Subscription' : 'Free'}</p>
-                  {profile?.subscriptions?.[0]?.renew_at && (
-                    <p className="mb-2"><strong>Next Billing Date:</strong> {new Date(profile.subscriptions[0].renew_at).toLocaleDateString()}</p>
-                  )}
-                  <p className="mb-2"><strong>Status:</strong> <span className={`px-2 py-0.5 rounded text-xs font-semibold ${profile?.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{profile?.subscription_status || 'Inactive'}</span></p>
-
-                  {profile?.plan?.includes('pro') && (
-                    <p className="mt-4 p-2 bg-royal-purple/10 rounded text-sm">
-                      <strong>Tax Note:</strong> Billing includes Texas sales tax on 80% of subscription fee (20% exemption for data processing services)
+              
+              {profile?.household_member ? (
+                <div className="card mb-6">
+                  <div className="card-body">
+                    <h3 className="text-xl font-bold mb-4">Household Membership</h3>
+                    <p className="mb-4">
+                      Your subscription is part of a Household Plan.
+                      Billing and subscription level are managed by the Household Administrator.
                     </p>
-                  )}
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg">
+                      <p className="font-semibold">You have full access to JuaLuma features provided by your household.</p>
+                      <p className="text-sm mt-1">To change your plan, please contact your Household Admin or leave the household.</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="card-footer mt-6 flex gap-2">
-                  <button onClick={async () => {
-                    try {
-                      if (!user) {
-                        alert('You must be signed in to manage billing.');
-                        return;
-                      }
+              ) : (
+                <>
+                  <div className="card mb-6">
+                    <div className="card-header pb-2 border-b border-border mb-4">
+                      <h3 className="text-xl font-bold">Current Plan: {profile?.plan ? profile.plan.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Free'}</h3>
+                    </div>
+                    <div className="card-body">
+                      <p className="mb-2"><strong>Billing:</strong> {profile?.plan && profile.plan !== 'free' ? 'Paid Subscription' : 'Free'}</p>
+                      {profile?.subscriptions?.[0]?.renew_at && (
+                        <p className="mb-2"><strong>Next Billing Date:</strong> {new Date(profile.subscriptions[0].renew_at).toLocaleDateString()}</p>
+                      )}
+                      <p className="mb-2"><strong>Status:</strong> <span className={`px-2 py-0.5 rounded text-xs font-semibold ${profile?.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{profile?.subscription_status || 'Inactive'}</span></p>
 
-                      const response = await apiFetch('/billing/portal', {
-                        method: 'POST',
-                        body: JSON.stringify({ return_url: window.location.href })
-                      });
+                      {profile?.plan?.includes('pro') && (
+                        <p className="mt-4 p-2 bg-royal-purple/10 rounded text-sm">
+                          <strong>Tax Note:</strong> Billing includes Texas sales tax on 80% of subscription fee (20% exemption for data processing services)
+                        </p>
+                      )}
+                    </div>
+                    <div className="card-footer mt-6 flex gap-2">
+                      <button onClick={async () => {
+                        try {
+                          if (!user) {
+                            alert('You must be signed in to manage billing.');
+                            return;
+                          }
 
-                      if (response.ok) {
-                        const data = await response.json();
-                        window.location.href = data.url;
-                      } else {
-                        alert('Failed to redirect to billing portal.');
-                      }
-                    } catch (e) {
-                      console.error("Billing portal error:", e);
-                      alert('An error occurred opening the billing portal.');
-                    }
-                  }} className="btn btn-secondary">Manage Subscription</button>
-                </div>
-              </div>
+                          const response = await apiFetch('/billing/portal', {
+                            method: 'POST',
+                            body: JSON.stringify({ return_url: window.location.href })
+                          });
 
-              <div className="card">
-                <div className="card-header pb-2 border-b border-border mb-4">
-                  <h3 className="text-xl font-bold">Billing History</h3>
-                </div>
-                <div className="card-body overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="pb-2 text-text-secondary font-medium">Date</th>
-                        <th className="pb-2 text-text-secondary font-medium">Amount</th>
-                        <th className="pb-2 text-text-secondary font-medium">Tax</th>
-                        <th className="pb-2 text-text-secondary font-medium">Status</th>
-                        <th className="pb-2 text-text-secondary font-medium">Invoice</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td colSpan={5} className="py-6 text-center text-text-muted">
-                          Billing history is available providing you have an active subscription. Click &quot;Manage Subscription&quot; above to view invoices in the secure customer portal.
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                          if (response.ok) {
+                            const data = await response.json();
+                            window.location.href = data.url;
+                          } else {
+                            alert('Failed to redirect to billing portal.');
+                          }
+                        } catch (e) {
+                          console.error("Billing portal error:", e);
+                          alert('An error occurred opening the billing portal.');
+                        }
+                      }} className="btn btn-secondary">Manage Subscription</button>
+                    </div>
+                  </div>
+
+                  <div className="card">
+                    <div className="card-header pb-2 border-b border-border mb-4">
+                      <h3 className="text-xl font-bold">Billing History</h3>
+                    </div>
+                    <div className="card-body overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="pb-2 text-text-secondary font-medium">Date</th>
+                            <th className="pb-2 text-text-secondary font-medium">Amount</th>
+                            <th className="pb-2 text-text-secondary font-medium">Tax</th>
+                            <th className="pb-2 text-text-secondary font-medium">Status</th>
+                            <th className="pb-2 text-text-secondary font-medium">Invoice</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-text-muted">
+                              Billing history is available providing you have an active subscription. Click &quot;Manage Subscription&quot; above to view invoices in the secure customer portal.
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
