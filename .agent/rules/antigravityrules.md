@@ -7,7 +7,7 @@ trigger: always_on
 - all files must be prepended with its core purpose
 - every codeblock needs to have a comment on the purpose of its function.
 - every file update requires a date and time stamp at the top of the file to identify the last time the file was modified.
-- restart docker services whenever backend changes are made. restart docker services for any required frontend updates as well.
+- restart docker containers whenever any major changes or made to the specific service.
 - always create an account using testmail.app for testing purposes. never create arbitrary email accounts.
 - use the cat .env command to see the environment variables when necessary.
 

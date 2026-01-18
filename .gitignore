@@ -131,3 +131,10 @@ storybook-static
 
 # Notes
 notes.md
+
+# Agent artifacts
+.codex/
+.antigravity/
+
+# Debug scripts
+scripts/debug_*.py
