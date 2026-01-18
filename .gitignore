@@ -137,4 +137,6 @@ notes.md
 .antigravity/
 
 # Debug scripts
-scripts/debug_*.pyfirebase_data/
+scripts/debug_*.py
+
+firebase_data/
