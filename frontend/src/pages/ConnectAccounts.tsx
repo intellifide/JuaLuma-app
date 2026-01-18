@@ -180,7 +180,7 @@ const EditAccountModal = ({
   const [assignedUid, setAssignedUid] = useState(account.assignedMemberUid || '');
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
-  const toast = useToast();
+
 
   useEffect(() => {
     householdService.getMyHousehold()
@@ -267,7 +267,7 @@ export const ConnectAccounts = () => {
   const toast = useToast();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showCexModal, setShowCexModal] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<any>(null);
+  const [editingAccount, setEditingAccount] = useState<{ id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null } | null>(null);
 
   const handlePlaidSuccess = () => {
     toast.show('Account connected successfully', 'success');
@@ -278,13 +278,13 @@ export const ConnectAccounts = () => {
     toast.show(msg, 'error');
   };
 
-  const handleUpdate = async (id: string, payload: any) => {
+  const handleUpdate = async (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null }) => {
       try {
           await update(id, payload);
           toast.show('Account updated', 'success');
           setEditingAccount(null);
-      } catch (err: any) {
-          toast.show(err.message || 'Failed to update', 'error');
+      } catch (err: unknown) {
+          toast.show((err as Error).message || 'Failed to update', 'error');
       }
   };
 

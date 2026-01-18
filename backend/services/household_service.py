@@ -1,15 +1,16 @@
-
 # CORE PURPOSE: Service for managing households, members, and invites.
-# LAST MODIFIED: 2025-12-26 10:47 CST
+# LAST MODIFIED: 2026-01-18 01:02 CST
 
 import logging
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from backend.core import settings
+from backend.core.constants import UserStatus
 from backend.models import (
     Household,
     HouseholdInvite,
@@ -21,6 +22,40 @@ from backend.services.billing import update_user_tier
 from backend.services.email import get_email_client
 
 logger = logging.getLogger(__name__)
+
+
+# Send a household welcome email to a new member after verification.
+def send_household_welcome_email(db: Session, to_email: str, household_id: uuid.UUID) -> None:
+    """
+    Dispatch the household welcome email.
+    """
+    try:
+        household = db.query(Household).filter(Household.id == household_id).first()
+        if not household:
+            logger.warning(f"Household {household_id} not found when sending welcome email.")
+            return
+
+        owner_name = "The Household Owner"
+        owner_member = (
+            db.query(HouseholdMember)
+            .filter(
+                HouseholdMember.household_id == household.id,
+                HouseholdMember.role == "admin",
+            )
+            .first()
+        )
+        if owner_member and owner_member.user:
+            owner_name = owner_member.user.email
+
+        email_client = get_email_client()
+        email_client.send_household_welcome_member(
+            to_email=to_email,
+            household_name=household.name,
+            owner_name=owner_name,
+        )
+        logger.info(f"Sent household welcome email to {to_email} for household {household_id}.")
+    except Exception as e:
+        logger.error(f"Failed to send household welcome email: {e}")
 
 
 def create_household(db: Session, owner_uid: str, name: str) -> Household:
@@ -69,7 +104,7 @@ def create_household(db: Session, owner_uid: str, name: str) -> Household:
 
 
 def invite_member(
-    db: Session, owner_uid: str, email: str, is_minor: bool = False
+    db: Session, owner_uid: str, email: str, is_minor: bool = False, can_view_household: bool = True
 ) -> HouseholdInvite:
     """
     Generates an invite token and emails the target.
@@ -113,6 +148,7 @@ def invite_member(
         token=token,
         status="pending",
         is_minor=is_minor,
+        can_view_household=can_view_household,
         expires_at=expires_at,
     )
     db.add(invite)
@@ -224,7 +260,7 @@ def accept_invite(db: Session, user_uid: str, token: str):
         household_id=invite.household_id,
         uid=user_uid,
         role=role,
-        can_view_household=True,  # Default?
+        can_view_household=invite.can_view_household,
         ai_access_enabled=ai_access,
         joined_at=datetime.now(UTC)
     )
@@ -236,30 +272,12 @@ def accept_invite(db: Session, user_uid: str, token: str):
     logger.info(f"User {user_uid} joined household {invite.household_id} via invite.")
     logger.info(f"User {user_uid} joined household {invite.household_id} via invite.")
 
-    # 4. Send Household Welcome Email
-    try:
-        household = db.query(Household).filter(Household.id == invite.household_id).first()
-        owner_name = "The Household Owner"
-        if household:
-            owner_member = (
-                db.query(HouseholdMember)
-                .filter(
-                    HouseholdMember.household_id == household.id,
-                    HouseholdMember.role == "admin",
-                )
-                .first()
-            )
-            if owner_member and owner_member.user:
-                owner_name = owner_member.user.email  # Or name if available
-
-            email_client = get_email_client()
-            email_client.send_household_welcome_member(
-                to_email=invite.email,
-                household_name=household.name,
-                owner_name=owner_name,
-            )
-    except Exception as e:
-        logger.error(f"Failed to send household welcome email: {e}")
+    # 4. Send Household Welcome Email (defer until OTP verification if needed).
+    user = db.query(User).filter(User.uid == user_uid).first()
+    if user and user.status != UserStatus.PENDING_VERIFICATION:
+        send_household_welcome_email(db, invite.email, invite.household_id)
+    else:
+        logger.info(f"Deferring household welcome email for {invite.email} until verification completes.")
 
     return new_member
 
@@ -304,6 +322,98 @@ def leave_household(db: Session, user_uid: str):
 
     db.commit()
     return {"status": "success", "detail": "Left household."}
+
+
+# Remove a member from a household as an admin action.
+def remove_member(db: Session, admin_uid: str, member_uid: str) -> dict:
+    """
+    Removes a household member (admin only).
+    """
+    admin_member = (
+        db.query(HouseholdMember).filter(HouseholdMember.uid == admin_uid).first()
+    )
+    if not admin_member or admin_member.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only household admins can remove members."
+        )
+
+    if admin_uid == member_uid:
+        raise HTTPException(
+            status_code=400, detail="Use the leave household flow to remove yourself."
+        )
+
+    target_member = (
+        db.query(HouseholdMember).filter(HouseholdMember.uid == member_uid).first()
+    )
+    if not target_member:
+        raise HTTPException(status_code=404, detail="Household member not found.")
+
+    if target_member.household_id != admin_member.household_id:
+        raise HTTPException(
+            status_code=403, detail="Member does not belong to your household."
+        )
+
+    household = (
+        db.query(Household).filter(Household.id == admin_member.household_id).first()
+    )
+    if household and household.owner_uid == member_uid:
+        raise HTTPException(status_code=400, detail="Cannot remove the household owner.")
+
+    if target_member.role == "admin":
+        raise HTTPException(
+            status_code=400, detail="Cannot remove another household admin."
+        )
+
+    db.delete(target_member)
+    update_user_tier(db, member_uid, "free", status="active")
+    db.commit()
+
+    logger.info(
+        f"Household admin {admin_uid} removed member {member_uid} from household {admin_member.household_id}."
+    )
+    return {"status": "success", "detail": "Member removed."}
+
+
+# Cancel a pending household invite as an admin action.
+def cancel_invite(db: Session, admin_uid: str, invite_id: str) -> dict:
+    """
+    Cancels a pending household invite (admin only).
+    """
+    try:
+        invite_uuid = uuid.UUID(invite_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid invite id.") from exc
+
+    admin_member = (
+        db.query(HouseholdMember).filter(HouseholdMember.uid == admin_uid).first()
+    )
+    if not admin_member or admin_member.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only household admins can cancel invites."
+        )
+
+    invite = (
+        db.query(HouseholdInvite)
+        .filter(
+            HouseholdInvite.id == invite_uuid,
+            HouseholdInvite.household_id == admin_member.household_id,
+        )
+        .first()
+    )
+    if not invite:
+        raise HTTPException(status_code=404, detail="Household invite not found.")
+
+    if invite.status != "pending":
+        raise HTTPException(status_code=400, detail="Invite is no longer pending.")
+
+    invite.status = "declined"
+    db.add(invite)
+    db.commit()
+
+    logger.info(
+        f"Household admin {admin_uid} cancelled invite {invite_id} for household {admin_member.household_id}."
+    )
+    return {"status": "success", "detail": "Invite cancelled."}
 
 
 def get_household_member_uids(db: Session, user_uid: str) -> list[str]:

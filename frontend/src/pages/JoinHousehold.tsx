@@ -33,9 +33,10 @@ export default function JoinHousehold() {
             const info = await householdService.checkInviteStatus(token)
             setInviteDetails(info)
             setStatus('pending')
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Invalid invite:', err)
-            setError(err?.response?.data?.detail || 'Invalid or expired invite link.')
+            const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Invalid or expired invite link.'
+            setError(message)
             setStatus('failed')
         } finally {
             setCheckingInvite(false)
@@ -95,9 +96,10 @@ export default function JoinHousehold() {
       setTimeout(() => {
         navigate('/dashboard')
       }, 2000)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to join household:', err)
-      setError(err?.response?.data?.detail || 'Failed to join household. Please try again.')
+      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Failed to join household. Please try again.'
+      setError(message)
       setStatus('failed')
     } finally {
       setLoading(false)
@@ -170,13 +172,13 @@ export default function JoinHousehold() {
                   Your <strong>account balances, transaction history, and net worth</strong> will be visible to household administrators.
                 </li>
                 <li>
-                  This data will be aggregated into the household's total financial overview.
+                  This data will be aggregated into the household&apos;s total financial overview.
                 </li>
                 <li>
-                  Authorized members may use <strong>AI Assistants</strong> that have access to this shared pool of financial data to answer questions and provide insights (e.g., "How much did we spend on groceries?").
+                  Authorized members may use <strong>AI Assistants</strong> that have access to this shared pool of financial data to answer questions and provide insights (e.g., &quot;How much did we spend on groceries?&quot;).
                 </li>
                 <li>
-                  If you previously held a paid subscription, it will be canceled, and your account will be converted to a dependent "Free" tier under this household.
+                  If you previously held a paid subscription, it will be canceled, and your account will be converted to a dependent &quot;Free&quot; tier under this household.
                 </li>
               </ul>
               <p className="text-xs text-neutral-500 pt-2">

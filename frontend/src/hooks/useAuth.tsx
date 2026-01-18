@@ -40,6 +40,14 @@ type NotificationPreference = {
   updated_at?: string
 }
 
+export type HouseholdMemberProfile = {
+  uid: string
+  household_id: string
+  role: string
+  can_view_household: boolean
+  ai_access_enabled: boolean
+}
+
 export type UserProfile = {
   uid?: string
   email?: string
@@ -50,6 +58,7 @@ export type UserProfile = {
   theme_pref?: string | null
   currency_pref?: string | null
   subscriptions?: Subscription[]
+  household_member?: HouseholdMemberProfile | null
   ai_settings?: Record<string, unknown> | null
   notification_preferences?: NotificationPreference[]
   [key: string]: unknown

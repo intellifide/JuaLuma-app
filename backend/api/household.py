@@ -1,6 +1,5 @@
-
 # CORE PURPOSE: API endpoints for household management and invite system.
-# LAST MODIFIED: 2025-12-26 10:48 CST
+# LAST MODIFIED: 2026-01-18 00:40 CST
 
 import logging
 from typing import Any
@@ -26,6 +25,7 @@ class HouseholdCreate(BaseModel):
 class InviteRequest(BaseModel):
     email: EmailStr
     is_minor: bool = False
+    can_view_household: bool = True
 
 
 class InviteAccept(BaseModel):
@@ -110,7 +110,7 @@ def create_invite(
     """
     try:
         invite = household_service.invite_member(
-            db, current_user.uid, payload.email, payload.is_minor
+            db, current_user.uid, payload.email, payload.is_minor, payload.can_view_household
         )
         return {"message": "Invite sent", "invite_id": str(invite.id)}
     except HTTPException as e:
@@ -180,6 +180,48 @@ def leave_household_endpoint(
         raise HTTPException(status_code=500, detail="Failed to leave household.") from e
 
 
+# Remove a member from the household (Admin only).
+@router.delete("/members/{member_uid}")
+def remove_member_endpoint(
+    member_uid: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Remove a household member (Admin only).
+    """
+    try:
+        result = household_service.remove_member(db, current_user.uid, member_uid)
+        return result
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error removing household member: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to remove household member."
+        ) from e
+
+
+# Cancel a pending invite (Admin only).
+@router.delete("/invites/{invite_id}")
+def cancel_invite_endpoint(
+    invite_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Cancel a pending household invite (Admin only).
+    """
+    try:
+        result = household_service.cancel_invite(db, current_user.uid, invite_id)
+        return result
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error cancelling household invite: {e}")
+        raise HTTPException(status_code=500, detail="Failed to cancel invite.") from e
+
+
 # --- Helpers ---
 def _format_household_response(household: Household) -> dict:
     return {
@@ -194,15 +236,18 @@ def _format_household_response(household: Household) -> dict:
                 "role": m.role,
                 "joined_at": m.joined_at,
                 "ai_access_enabled": m.ai_access_enabled,
+                "can_view_household": m.can_view_household,
             }
             for m in household.members
         ],
         "invites": [
             {
+                "id": str(i.id),
                 "email": i.email,
                 "status": i.status,
                 "created_at": i.created_at,
                 "expires_at": i.expires_at,
+                "can_view_household": i.can_view_household,
             }
             for i in household.invites
             if i.status == "pending"  # Only show pending invites

@@ -1,3 +1,6 @@
+// Core Purpose: Provide API helpers for household management workflows.
+// Last Modified: 2026-01-18 00:40 CST
+
 import { api } from './api'
 import {
   Household,
@@ -42,6 +45,18 @@ export const householdService = {
 
   leaveHousehold: async (): Promise<{ status: string; detail: string }> => {
     const response = await api.delete('/households/members/me')
+    return response.data
+  },
+
+  // Remove a household member (admin only).
+  removeMember: async (memberUid: string): Promise<{ status: string; detail: string }> => {
+    const response = await api.delete(`/households/members/${memberUid}`)
+    return response.data
+  },
+
+  // Cancel a pending invite (admin only).
+  cancelInvite: async (inviteId: string): Promise<{ status: string; detail: string }> => {
+    const response = await api.delete(`/households/invites/${inviteId}`)
     return response.data
   },
 }

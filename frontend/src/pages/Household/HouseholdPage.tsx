@@ -9,6 +9,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
+import Switch from '../../components/ui/Switch'
 
 import { useAuth } from '../../hooks/useAuth'
 
@@ -35,6 +36,7 @@ export const HouseholdPage: React.FC = () => {
   const [createName, setCreateName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [isMinor, setIsMinor] = useState(false)
+  const [canViewHousehold, setCanViewHousehold] = useState(true)
   const [inviteToken, setInviteToken] = useState('')
   
   // Modals
@@ -84,10 +86,15 @@ export const HouseholdPage: React.FC = () => {
     if (!inviteEmail.trim()) return
     setActionLoading(true)
     try {
-      await householdService.inviteMember({ email: inviteEmail, is_minor: isMinor })
+      await householdService.inviteMember({ 
+        email: inviteEmail, 
+        is_minor: isMinor,
+        can_view_household: canViewHousehold 
+      })
       setShowInviteModal(false)
       setInviteEmail('')
       setIsMinor(false)
+      setCanViewHousehold(true)
       alert('Invite sent successfully')
       fetchHousehold() // Refresh to show pending invite if backend returned it (it does in invites list)
     } catch (err: unknown) {
@@ -201,49 +208,66 @@ export const HouseholdPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="col-span-2 p-0 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-                <h2 className="text-xl font-semibold">Members</h2>
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Household Members</h2>
             </div>
             <div className="divide-y divide-gray-100">
+                {/* Active Members */}
                 {household.members.map((member) => (
                     <div key={member.uid} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                        <div>
-                            <p className="font-medium text-deep-indigo">{member.email || 'Unknown User'}</p>
-                            <p className="text-xs text-text-muted">UID: {member.uid.substring(0, 8)}...</p>
-                        </div>
                         <div className="flex items-center gap-3">
-                            <Badge variant={member.role === 'admin' ? 'primary' : 'secondary'}>
-                                {member.role}
-                            </Badge>
-                            {!member.ai_access_enabled && (
-                                <Badge variant="warning">No AI Access</Badge>
+                            <div className="h-10 w-10 rounded-full bg-royal-purple/10 flex items-center justify-center text-royal-purple font-bold">
+                                {(member.email?.[0] || 'U').toUpperCase()}
+                            </div>
+                            <div>
+                                <p className="font-medium text-deep-indigo">{member.email || 'Unknown User'}</p>
+                                <p className="text-xs text-text-muted capitalize">{member.role}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {member.role === 'admin' && <Badge variant="primary">Admin</Badge>}
+                            {member.can_view_household ? (
+                                <Badge variant="success" className="bg-green-100 text-green-800">View Finances</Badge> 
+                            ) : (
+                                <Badge variant="secondary">No View</Badge>
+                            )}
+                            {member.ai_access_enabled ? (
+                                <Badge variant="primary" className="bg-indigo-100 text-indigo-800">AI Access</Badge>
+                            ) : (
+                                <Badge variant="warning">No AI</Badge>
                             )}
                         </div>
                     </div>
                 ))}
+                
+                {/* Pending Invites */}
+                {household.invites?.filter(i => i.status === 'pending').map((invite) => (
+                    <div key={invite.email} className="p-4 flex justify-between items-center bg-gray-50/50 hover:bg-gray-50 transition-colors border-l-4 border-yellow-400">
+                         <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                                @
+                            </div>
+                            <div>
+                                <p className="font-medium text-text-secondary">{invite.email}</p>
+                                <p className="text-xs text-text-muted">Invitation Pending</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <Badge variant="warning" className="bg-yellow-100 text-yellow-800">Invited</Badge>
+                             <span className="text-xs text-text-muted">Expires: {new Date(invite.expires_at || '').toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                ))}
+
+                {household.members.length === 0 && (!household.invites || household.invites.length === 0) && (
+                    <div className="p-8 text-center text-text-muted">
+                        No members yet. Invite someone!
+                    </div>
+                )}
             </div>
         </Card>
 
         <div className="space-y-6">
-             {isAdmin && household.invites && household.invites.length > 0 && (
-                <Card className="p-0 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100">
-                        <h2 className="text-lg font-semibold">Pending Invites</h2>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                        {household.invites.map((invite) => (
-                            <div key={invite.email} className="p-4">
-                                <p className="font-medium">{invite.email}</p>
-                                <div className="flex justify-between items-center mt-1">
-                                    <span className="text-xs text-text-muted">Expires: {new Date(invite.expires_at || '').toLocaleDateString()}</span>
-                                    <Badge variant="secondary">Pending</Badge>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-             )}
-
             <Card className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-none">
                 <h3 className="font-semibold text-deep-indigo mb-2">Household Benefits</h3>
                 <ul className="text-sm space-y-2 text-text-secondary">
@@ -255,6 +279,9 @@ export const HouseholdPage: React.FC = () => {
                     </li>
                     <li className="flex items-start gap-2">
                         <span>✓</span> Parental Controls for Minors
+                    </li>
+                     <li className="flex items-start gap-2">
+                        <span>✓</span> Shared Financial Dashboard
                     </li>
                 </ul>
             </Card>
@@ -276,23 +303,28 @@ export const HouseholdPage: React.FC = () => {
       }
     >
         <SimpleInput 
-        label="Email Address"
-        value={inviteEmail}
-        onChange={(e) => setInviteEmail(e.target.value)}
-        placeholder="friend@example.com"
-        type="email"
+            label="Email Address"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="friend@example.com"
+            type="email"
         />
-        <div className="flex items-center gap-2 mb-6">
-        <input 
-            type="checkbox" 
-            id="minor-check" 
-            checked={isMinor} 
-            onChange={(e) => setIsMinor(e.target.checked)}
-            className="rounded border-gray-300 text-royal-purple focus:ring-royal-purple"
-        />
-        <label htmlFor="minor-check" className="text-sm text-text-secondary cursor-pointer select-none">
-            Restrict AI Access (Minor)
-        </label>
+        
+        <div className="space-y-4 mb-2">
+            <Switch
+                checked={isMinor}
+                onChange={setIsMinor}
+                label="Is this member a minor?"
+                description="Minors have restricted access to AI features."
+            />
+            
+            <Switch
+                checked={canViewHousehold}
+                onChange={setCanViewHousehold}
+                label="Allow viewing household finances?"
+                description="If enabled, this member can see the shared dashboard."
+                disabled={isMinor} // Optional: maybe minors shouldn't see finances? User didn't specify, but safer.
+            />
         </div>
     </Modal>
 

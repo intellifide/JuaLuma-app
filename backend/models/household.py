@@ -1,3 +1,6 @@
+# CORE PURPOSE: SQLAlchemy models for household entities and relationships.
+# LAST MODIFIED: 2026-01-18 00:40 CST
+
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -96,9 +99,10 @@ class HouseholdInvite(Base):
         String(32),
         default="pending",
         nullable=False,
-        comment="pending|accepted|expired",
+        comment="pending|accepted|declined|expired",
     )
     is_minor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    can_view_household: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

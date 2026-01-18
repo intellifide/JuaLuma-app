@@ -1,4 +1,5 @@
-# Updated 2025-12-10 16:46 CST by ChatGPT
+# CORE PURPOSE: Authentication and identity endpoints for user access control.
+# LAST MODIFIED: 2026-01-18 01:02 CST
 import logging
 import random
 import string
@@ -24,6 +25,7 @@ from backend.services.auth import (
     verify_password,
     verify_token,
 )
+from backend.services import household_service
 from backend.services.email import get_email_client
 from backend.utils import get_db
 
@@ -637,6 +639,13 @@ def enable_email_mfa(
         existing_membership = db.query(HouseholdMember).filter(HouseholdMember.uid == current_user.uid).first()
         if existing_membership:
             current_user.status = UserStatus.ACTIVE
+            # Send the household welcome email after OTP verification if the invite was accepted earlier.
+            if existing_membership.role != "admin":
+                household_service.send_household_welcome_email(
+                    db,
+                    to_email=current_user.email,
+                    household_id=existing_membership.household_id,
+                )
             logger.info(f"User {current_user.uid} verified email. Already a household member. Status -> ACTIVE")
             db.commit()
             return {"message": "Email MFA enabled."}

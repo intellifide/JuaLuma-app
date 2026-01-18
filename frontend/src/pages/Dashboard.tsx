@@ -1,5 +1,7 @@
-// Last updated: 2025-12-26 18:55:00
-import React, { useCallback, useMemo, useState } from 'react';
+// Core Purpose: Main dashboard for personal and household financial insights.
+// Last Modified: 2026-01-18 02:08 CST
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
@@ -9,6 +11,7 @@ import { Account } from '../types';
 import { DataPoint } from '../services/analytics';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import Switch from '../components/ui/Switch';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 
@@ -295,6 +298,10 @@ export default function Dashboard() {
   const { accounts, refetch: refetchAccounts } = useAccounts();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
+  const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
+  const isHouseholdAdmin = profile?.household_member?.role === 'admin';
+  const canViewHousehold = Boolean(profile?.household_member?.can_view_household);
+  const canSeeScopeToggle = (isUltimate && isHouseholdAdmin) || canViewHousehold;
   
   const { transactions, refetch: refetchTransactions, updateOne } = useTransactions({
     filters: { scope: dashboardScope }
@@ -319,7 +326,15 @@ export default function Dashboard() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteIsMinor, setInviteIsMinor] = useState(false);
+  const [inviteCanViewHousehold, setInviteCanViewHousehold] = useState(true);
   const [sendingInvite, setSendingInvite] = useState(false);
+
+  // Keep the dashboard scope aligned with the user's household access.
+  useEffect(() => {
+    if (!canSeeScopeToggle && dashboardScope === 'household') {
+      setDashboardScope('personal');
+    }
+  }, [canSeeScopeToggle, dashboardScope]);
 
   const handleInviteClick = async () => {
     const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
@@ -346,13 +361,20 @@ export default function Dashboard() {
     if (!inviteEmail) return;
     setSendingInvite(true);
     try {
-      await householdService.inviteMember({ email: inviteEmail, is_minor: inviteIsMinor });
+      await householdService.inviteMember({ 
+        email: inviteEmail, 
+        is_minor: inviteIsMinor,
+        can_view_household: inviteCanViewHousehold
+      });
       toast.show(`Invite sent to ${inviteEmail}`, 'success');
       setInviteModalOpen(false);
       setInviteEmail('');
       setInviteIsMinor(false);
-    } catch (err: any) {
-      toast.show(err.response?.data?.detail || "Failed to send invite.", "error");
+      setInviteCanViewHousehold(true);
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail 
+        || (err instanceof Error ? err.message : "Failed to send invite.");
+      toast.show(message, "error");
     } finally {
       setSendingInvite(false);
     }
@@ -480,35 +502,39 @@ export default function Dashboard() {
         
         {/* Scope Toggle & Invite */}
         <div className="flex items-center gap-4">
-          <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
-            <button
-              onClick={() => setDashboardScope('personal')}
-              className={`px-3 py-1 text-sm rounded-md transition-all ${
-                dashboardScope === 'personal'
-                  ? 'bg-royal-purple text-white shadow font-medium'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-            >
-              Personal
-            </button>
-            <button
-              onClick={() => {
-                const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
-                if (!isUltimate) {
-                  toast.show("Upgrade to Ultimate to view Family metrics.", "error");
-                  return;
-                }
-                setDashboardScope('household');
-              }}
-              className={`px-3 py-1 text-sm rounded-md transition-all ${
-                dashboardScope === 'household'
-                  ? 'bg-royal-purple text-white shadow font-medium'
-                  : 'text-text-muted hover:text-text-secondary'
-              } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              Family
-            </button>
-          </div>
+          {canSeeScopeToggle && (
+            <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
+              <button
+                onClick={() => setDashboardScope('personal')}
+                className={`px-3 py-1 text-sm rounded-md transition-all ${
+                  dashboardScope === 'personal'
+                    ? 'bg-royal-purple text-white shadow font-medium'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                Personal
+              </button>
+              <button
+                onClick={() => {
+                  const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
+                  const hasHouseholdPermission = profile?.household_member?.can_view_household;
+
+                  if (!isUltimate && !hasHouseholdPermission) {
+                    toast.show("Upgrade to Ultimate or join a household to view Family metrics.", "error");
+                    return;
+                  }
+                  setDashboardScope('household');
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-all ${
+                  dashboardScope === 'household'
+                    ? 'bg-royal-purple text-white shadow font-medium'
+                    : 'text-text-muted hover:text-text-secondary'
+                } ${!profile?.plan?.toLowerCase().includes('ultimate') && !profile?.household_member?.can_view_household ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Family
+              </button>
+            </div>
+          )}
           
           {profile?.plan?.toLowerCase().includes('ultimate') && (
             <button 
@@ -914,17 +940,21 @@ export default function Dashboard() {
               autoFocus
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input 
-              type="checkbox" 
-              id="is-minor" 
-              checked={inviteIsMinor} 
-              onChange={(e) => setInviteIsMinor(e.target.checked)}
-              className="rounded border-white/20 bg-transparent text-royal-purple focus:ring-royal-purple"
+          <div className="space-y-4 mt-4">
+            <Switch 
+              checked={inviteIsMinor}
+              onChange={setInviteIsMinor}
+              label="Is this member a minor?"
+              description="Minors have restricted access to AI features."
             />
-            <label htmlFor="is-minor" className="text-sm text-text-secondary select-none cursor-pointer">
-              Is Minor (Restricted Access, No AI Chat)
-            </label>
+            
+            <Switch 
+              checked={inviteCanViewHousehold}
+              onChange={setInviteCanViewHousehold}
+              label="Allow viewing finances?"
+              description="Enable access to shared household metrics."
+              disabled={inviteIsMinor} 
+            />
           </div>
         </div>
       </Modal>

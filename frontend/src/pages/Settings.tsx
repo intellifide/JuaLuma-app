@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
+// Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
+// Last Modified: 2026-01-18 01:30 CST
+
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { changePassword, apiFetch } from '../services/auth';
+import { householdService } from '../services/householdService';
+import type { Household } from '../types/household';
 
+// Render the account settings experience with tabbed sections.
 export const Settings = () => {
   const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [household, setHousehold] = useState<Household | null>(null);
+  const [householdLoading, setHouseholdLoading] = useState(false);
+  const [householdError, setHouseholdError] = useState<string | null>(null);
+  const [memberActionUid, setMemberActionUid] = useState<string | null>(null);
+  const [inviteActionId, setInviteActionId] = useState<string | null>(null);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -17,9 +28,109 @@ export const Settings = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
+  // Format a household role string for display in the UI.
+  const formatRole = (role: string) =>
+    role
+      .split('_')
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
+
+  // Fetch household details for the settings view and handle non-member cases.
+  const loadHousehold = useCallback(async () => {
+    if (!profile?.household_member) {
+      setHousehold(null);
+      setHouseholdError(null);
+      return;
+    }
+
+    setHouseholdLoading(true);
+    setHouseholdError(null);
+
+    try {
+      const data = await householdService.getMyHousehold();
+      setHousehold(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to load household details.';
+      if (message.includes('not in a household')) {
+        setHousehold(null);
+        setHouseholdError(null);
+      } else {
+        setHousehold(null);
+        setHouseholdError(message);
+      }
+    } finally {
+      setHouseholdLoading(false);
+    }
+  }, [profile?.household_member]);
+
+  // Keep household data synced when the Household tab is active.
+  useEffect(() => {
+    if (activeTab !== 'household') return;
+    void loadHousehold();
+  }, [activeTab, loadHousehold]);
+
+  // Control visibility of the household tab based on membership or Ultimate tier.
+  const hasUltimatePlan = Boolean(profile?.plan?.includes('ultimate'));
+  const showHouseholdTab = Boolean(profile?.household_member) || hasUltimatePlan;
+
+  // Ensure we do not render a hidden tab as the active view.
+  useEffect(() => {
+    if (!showHouseholdTab && activeTab === 'household') {
+      setActiveTab('profile');
+    }
+  }, [activeTab, showHouseholdTab]);
+
+  // Remove a household member and refresh the household list.
+  const handleRemoveMember = useCallback(
+    async (memberUid: string, memberEmail?: string) => {
+      const label = memberEmail || memberUid;
+      if (!window.confirm(`Remove ${label} from the household?`)) return;
+
+      setMemberActionUid(memberUid);
+      try {
+        await householdService.removeMember(memberUid);
+        await loadHousehold();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to remove household member.';
+        window.alert(message);
+      } finally {
+        setMemberActionUid(null);
+      }
+    },
+    [loadHousehold],
+  );
+
+  // Cancel a pending invite and refresh the household list.
+  const handleCancelInvite = useCallback(
+    async (inviteId: string, inviteEmail: string) => {
+      if (!window.confirm(`Cancel the invite for ${inviteEmail}?`)) return;
+
+      setInviteActionId(inviteId);
+      try {
+        await householdService.cancelInvite(inviteId);
+        await loadHousehold();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to cancel household invite.';
+        window.alert(message);
+      } finally {
+        setInviteActionId(null);
+      }
+    },
+    [loadHousehold],
+  );
+
+  const isHouseholdMember = Boolean(profile?.household_member);
+  const isHouseholdAdmin =
+    Boolean(profile?.household_member && profile.household_member.role === 'admin') ||
+    Boolean(household?.owner_uid && household.owner_uid === user?.uid);
+  const pendingInvites = household?.invites?.filter((invite) => invite.status === 'pending') ?? [];
+
   const tabs = [
     { id: 'profile', label: 'Profile' },
     { id: 'subscription', label: 'Subscription' },
+    ...(showHouseholdTab ? [{ id: 'household', label: 'Household' }] : []),
     { id: 'notifications', label: 'Notifications' },
     { id: 'privacy', label: 'Privacy' },
     { id: 'security', label: 'Security' },
@@ -180,6 +291,134 @@ export const Settings = () => {
                       </table>
                     </div>
                   </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Household Tab */}
+        {activeTab === 'household' && (
+          <div id="household-tab" role="tabpanel">
+            <div className="glass-panel">
+              <h2 className="mb-6">Household</h2>
+
+              {householdLoading && (
+                <div className="text-text-secondary">Loading household...</div>
+              )}
+
+              {!householdLoading && householdError && (
+                <div className="card mb-6">
+                  <div className="card-body">
+                    <p className="text-sm text-red-600">{householdError}</p>
+                  </div>
+                </div>
+              )}
+
+              {!householdLoading && !householdError && !isHouseholdMember && (
+                <div className="card">
+                  <div className="card-body">
+                    <p className="text-text-secondary">
+                      You are not currently in a household. Join one to view members and invites.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!householdLoading && !householdError && isHouseholdMember && !household && (
+                <div className="card">
+                  <div className="card-body">
+                    <p className="text-text-secondary">
+                      Household details are not available yet. Please refresh or try again shortly.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!householdLoading && !householdError && isHouseholdMember && household && (
+                <>
+                  <div className="card mb-6">
+                    <div className="card-header pb-2 border-b border-border mb-4">
+                      <h3 className="text-xl font-bold">My Household</h3>
+                      <p className="text-sm text-text-muted mt-1">{household.name}</p>
+                    </div>
+                    <div className="card-body">
+                      {household.members.length > 0 ? (
+                        <ul className="divide-y divide-border">
+                          {household.members.map((member) => (
+                            <li
+                              key={member.uid}
+                              className="py-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <div>
+                                <p className="font-medium text-text-primary">{member.email || member.uid}</p>
+                                {member.email && (
+                                  <p className="text-xs text-text-muted">{member.uid}</p>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">
+                                  {formatRole(member.role)}
+                                </span>
+                                {isHouseholdAdmin && member.uid !== user?.uid && member.role !== 'admin' && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline text-red-600 border-red-600 hover:bg-red-50"
+                                    disabled={memberActionUid === member.uid}
+                                    onClick={() => handleRemoveMember(member.uid, member.email)}
+                                  >
+                                    {memberActionUid === member.uid ? 'Removing...' : 'Remove Member'}
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-text-muted">No household members found.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {isHouseholdAdmin && (
+                    <div className="card">
+                      <div className="card-header pb-2 border-b border-border mb-4">
+                        <h3 className="text-xl font-bold">Pending Invites</h3>
+                      </div>
+                      <div className="card-body">
+                        {pendingInvites.length > 0 ? (
+                          <ul className="divide-y divide-border">
+                            {pendingInvites.map((invite) => (
+                              <li
+                                key={invite.id}
+                                className="py-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+                              >
+                                <div>
+                                  <p className="font-medium text-text-primary">{invite.email}</p>
+                                  <p className="text-xs text-text-muted">Status: Pending</p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">
+                                    Pending
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline text-red-600 border-red-600 hover:bg-red-50"
+                                    disabled={inviteActionId === invite.id}
+                                    onClick={() => handleCancelInvite(invite.id, invite.email)}
+                                  >
+                                    {inviteActionId === invite.id ? 'Cancelling...' : 'Cancel Invite'}
+                                  </button>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-text-muted">No pending invites.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -562,4 +801,3 @@ export const Settings = () => {
     </div>
   );
 };
-
