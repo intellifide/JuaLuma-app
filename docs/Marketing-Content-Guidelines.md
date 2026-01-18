@@ -88,7 +88,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 
 - "Free tier includes basic account aggregation"
 - "Link up to 2 traditional accounts, 1 Web3 wallet, and 1 CEX account for free"
-- "Free tier includes local AI model access"
+- "Free tier includes Cloud AI access (10 queries/day; temporary stateless sessions only)"
 - "Free tier retains 45 days of transactions locally; older data is automatically removed (no archives kept)"
 
 **APPROVED - Essential Tier:**
@@ -599,4 +599,4 @@ Disclaimer: jualuma is for informational purposes only and does not provide fina
 
 **Note:** These guidelines are living documents and should be reviewed regularly. When in doubt about content, err on the side of caution and consult with legal counsel.
 
-**Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)
+**Last Updated:** 2026-01-18 at 03:06 AM CST (Modified 01/18/2026 03:06 Central Time per rules)

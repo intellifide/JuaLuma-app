@@ -6,9 +6,9 @@
 features:
   # AI Features
   ai.cloud:
-    tier: essential
+    tier: free
     preview_enabled: true
-    description: Cloud AI chat interface with RAG context
+    description: Cloud AI chat interface with RAG context (Tiered limits: Free 10/day, Essential 30/day, Pro 40/day)
 
   # Budget Features
   budgets.basic:

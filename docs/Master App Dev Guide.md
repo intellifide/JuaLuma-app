@@ -1,3 +1,5 @@
+<!-- Last Updated: 2026-01-18 03:06 CST -->
+
 ## App Development Guide v2\.4 \(Master Technical Specification\)
 
 ### 1\.0 Core Principles & Governance
@@ -160,15 +162,15 @@ The product goal is to abstract financial complexity and provide a simple, autom
 
 - **Free Tier:**
   - **Aggregator:** Link up to 2 Traditional accounts / 1 Investment account / 1 Web3 wallet / 1 CEX account\.
-  - **AI Model:** Cloud AI model: Vertex AI Gemini 2\.5 Flash (Production), limited to 20 queries/day. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
+  - **AI Model:** Cloud AI model: Vertex AI Gemini 2\.5 Flash (Production), limited to 10 queries/day. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
   - **Features:** Standard infographics, holistic balance sheet, notifications\.
-  - **Data Retention:** Rolling 45-day ledger stored in Cloud SQL table `ledger_hot_free`; the nightly `free-ledger-pruner` Cloud Run Job deletes data older than 45 days (no archive retained). AI chat history has no retention limits; all transactions remain fully visible.
+  - **Data Retention:** Rolling 45-day ledger stored in Cloud SQL table `ledger_hot_free`; the nightly `free-ledger-pruner` Cloud Run Job deletes data older than 45 days (no archive retained). AI chat history is temporary and never stored (stateless conversations). All transactions within the 45-day window remain visible.
   - **Sync Controls:** Manual "Sync Now" available but throttled to 10 uses/day per user via Cloud Tasks; background sync relies on Plaid/CEX webhooks plus scheduled jobs.
 - **Essential Tier ($12/month):**
   - **Aggregator:** Link up to 3 Traditional accounts / 2 investment accounts / 1 Web3 wallet / 3 CEX accounts.
 - **AI Model:** Cloud AI model: Vertex AI Gemini 2.5 Flash (Production) with encrypted RAG prompts. For local development, Google AI Studio Gemini 2.5 Flash is used via API key authentication (see Local App Dev Guide for configuration details).
   - **Sync Cadence:** Webhook-driven deltas plus guaranteed 24-hour Cloud Scheduler refresh (`essential-ledger-refresh`); manual "Sync Now" is disabled to keep aggregator/API costs predictable.
-  - **Data Retention:** 30-day Cloud SQL hot window (`ledger_hot_essential`). The `essential-ledger-archiver` job moves data older than 30 days to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only retrieval. AI chat history has no retention limits; all transactions remain fully visible.
+  - **Data Retention:** 1 full year (365/366-day) Cloud SQL hot window (`ledger_hot_essential`). The `essential-ledger-archiver` job moves data older than 1 full year to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only retrieval. AI chat history has no retention limits; all transactions remain fully visible.
   - **Quota:** 30 Cloud AI queries/day (Metered, resets daily; shared with Pro tier via Firestore enforcement).
 - **Pro Tier \($25/month or $20.83/month annual - $250/year\):**
   - **Aggregator:** Link up to 5 Traditional accounts / 5 investment accounts \(via Plaid Investments API\) / 5 Web3 wallets\.
@@ -313,7 +315,6 @@ features:
 **Generation Script:** `scripts/sync_feature_registry.py` reads `feature_requirements.yaml` and generates:
 
 1. **TypeScript Module** (`packages/shared/accessControl.ts`):
-
    - Exports `enum Tier`, `featureRequirements` map, and helper functions
    - Used by React components and frontend middleware
 
@@ -528,8 +529,8 @@ Zero secrets in DB\.
 
 #### Tier Retention Summary
 
-- **Free Tier:** Cloud SQL table `ledger_hot_free` stores 45 days of transactions; the nightly `free-ledger-pruner` Cloud Run Job (02:00 CT) deletes rows older than 45 days, and no archive copy exists.
-- **Essential Tier:** Cloud SQL table `ledger_hot_essential` stores 30 days of transactions; the `essential-ledger-archiver` job writes older rows to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
+- **Free Tier:** Cloud SQL table `ledger_hot_free` stores 45 days of transactions; the nightly `free-ledger-pruner` Cloud Run Job (02:00 CT) deletes rows older than 45 days, and no archive copy exists. AI chat history is temporary and never stored.
+- **Essential Tier:** Cloud SQL table `ledger_hot_essential` stores 1 full year (365/366 days) of transactions; the `essential-ledger-archiver` job writes older rows to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table.
 - **Pro / Ultimate:** Cloud SQL `ledger_pro` retains full history; pruning occurs only during "Right to be Forgotten" workflows.
 
 #### 3\.4 Machine Learning Pipeline (Categorization & Vertex AI)
@@ -550,7 +551,6 @@ Zero secrets in DB\.
 **AI Model Development vs Production Pathways:**
 
 - **Local Development:** The codebase uses Google AI Studio Gemini 2.5 Flash API for local development. Configuration includes:
-
   - Base URL: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
   - Authentication: API key via `AI_STUDIO_API_KEY` environment variable
   - Model: `gemini-2.5-flash` (configurable via `GEMINI_MODEL` environment variable)
@@ -559,7 +559,6 @@ Zero secrets in DB\.
   - RAG Context: Uses local pgvector search for RAG injection (Vertex AI Vector Search not available in local dev)
 
 - **Production Deployment:** The codebase switches to Vertex AI Gemini endpoints for production:
-
   - Base URL: `https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:generateContent`
   - Authentication: Service account credentials (Application Default Credentials or workload identity)
   - Model: Same model identifiers (`gemini-2.5-flash`, `gemini-2.5-pro`) but accessed via Vertex AI publisher endpoints
@@ -681,7 +680,7 @@ Zero secrets in DB\.
   - category \(STRING\)
   - raw_json \(JSONB\)
   - indexes: `idx_ledger_hot_ess_uid_ts`, `idx_ledger_hot_ess_account`
-  - retention: `essential-ledger-archiver` streams rows older than 30 days to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table
+  - retention: `essential-ledger-archiver` streams rows older than 1 full year (365/366 days) to Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) before pruning the hot table
   - archive format: partitioned Parquet files with per-user manifests
 
 #### B\. Firestore \(Datastore Mode\) \- High\-Velocity Metering
@@ -1603,5 +1602,3 @@ This master technical specification relates to the following planning documents:
 - `Security-Architecture.md` - Detailed security architecture (Section 1.0, 3.0)
 - `Data-Flow-Diagrams.md` - Data flow architecture (Section 3.3, 3.4)
 - `getting started gcp.md` - GCP infrastructure setup (Section 3.0)
-
-**Last Updated:** December 19, 2025 at 01:51 PM CT (Modified 12/19/2025 13:51 Central Time per rules)

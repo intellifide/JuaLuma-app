@@ -63,7 +63,7 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 
 - All new users start on Free Tier
 - Limits: 2 traditional accounts, 1 Web3 wallet, 1 CEX account
-- Cloud AI model: Vertex AI Gemini 2.5 Flash, limited to 5 queries/day
+- Cloud AI model: Vertex AI Gemini 2.5 Flash, limited to 10 queries/day. AI chat history is temporary and never stored (stateless sessions).
 - Standard features
 - Rolling 45-day transaction window stored exclusively in Cloud SQL (`ledger_hot_free`). The nightly `free-ledger-pruner` Cloud Run Job deletes entries older than 45 days—no archive is retained—ensuring low storage costs and straightforward GDPR/GLBA erasure handling.
 - Manual “Sync Now” remains available but is throttled to 10 invocations per user per day via Cloud Tasks to control Plaid usage.
@@ -761,9 +761,9 @@ For detailed Kevin Pendergrass responsibilities, see `Personnel.md`.
 
 - **Training Cadence:** Nightly at 03:00 CT via Vertex AI Pipelines (`categorization_pipeline`).
 - **Feature Sources:**
-	- Free Tier → Cloud SQL `ledger_hot_free` (45-day window).
-	- Essential Tier → Cloud SQL `ledger_hot_essential` (30-day window + Coldline archive).
-	- Pro/Ultimate → Cloud SQL `ledger_pro`.
+  - Free Tier → Cloud SQL `ledger_hot_free` (45-day window).
+  - Essential Tier → Cloud SQL `ledger_hot_essential` (30-day window + Coldline archive).
+  - Pro/Ultimate → Cloud SQL `ledger_pro`.
 - **Model Registry:** Vertex AI Model Registry entry `categorization_model`. Promotions require QA sign-off plus canary traffic (10%) for 1 hour before full rollout.
 
 ### 10.2 Monitoring & Alerting
@@ -912,4 +912,4 @@ For detailed AI automation strategy, see `Personnel.md` and `Business-Model-Evol
 
 **Note:** These procedures should be updated as processes evolve. All team members should be trained on these procedures and have access to this document.
 
-**Last Updated:** December 19, 2025 at 01:51 PM CT (Modified 12/19/2025 13:51 Central Time per rules)
+**Last Updated:** 2026-01-18 at 03:06 AM CST (Modified 01/18/2026 03:06 Central Time per rules)
