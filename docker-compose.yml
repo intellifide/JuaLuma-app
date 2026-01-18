@@ -92,12 +92,7 @@ services:
     image: node:20-bullseye
     container_name: jualuma-firebase-emulator
     working_dir: /workspace
-    command: >
-      bash -c "
-        apt-get update && apt-get install -y openjdk-17-jre-headless &&
-        npm install -g firebase-tools@13 &&
-        firebase emulators:start --only firestore,auth --project jualuma-local --import=/workspace/.firebase --export-on-exit --config=/workspace/firebase.json
-      "
+
     stop_grace_period: 30s
     ports:
       - "8080:8080" # Firestore
@@ -113,7 +108,13 @@ services:
     environment:
       - FIRESTORE_EMULATOR_HOST=0.0.0.0:8080
       - FIREBASE_AUTH_EMULATOR_HOST=0.0.0.0:9099
-
+    stop_signal: SIGINT
+    command: >
+      bash -c "
+        apt-get update && apt-get install -y openjdk-17-jre-headless &&
+        npm install -g firebase-tools@13 &&
+        exec firebase emulators:start --only firestore,auth --project jualuma-local --import=/workspace/.firebase/data --export-on-exit --config=/workspace/firebase.json
+      "
   # Pub/Sub Emulator
   pubsub-emulator:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
