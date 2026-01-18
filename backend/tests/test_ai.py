@@ -1,3 +1,4 @@
+# Last Modified: 2026-01-18 03:16 CST
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -113,8 +114,15 @@ def test_chat_free_tier_no_rag(
     call_kwargs = mock_ai_services["generate_chat_response"].call_args.kwargs
     assert call_kwargs.get("context") == ""
 
+    log = test_db.query(LLMLog).order_by(LLMLog.id.desc()).first()
+    assert log is None
+
 
 def test_chat_history(test_client: TestClient, test_db, mock_auth, mock_ai_services):
+    sub = Subscription(uid=mock_auth.uid, plan="pro", status="active", ai_quota_used=0)
+    test_db.add(sub)
+    test_db.commit()
+
     # Setup log entries
     log1 = LLMLog(
         uid=mock_auth.uid,

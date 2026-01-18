@@ -1,4 +1,4 @@
-# Updated 2025-12-11 10:30 CST by ChatGPT
+# Last Modified: 2026-01-18 03:16 CST
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -114,10 +114,11 @@ async def chat_endpoint(
 
     # 2. Check rate limit before doing extra work (RAG/model)
     precheck = await check_rate_limit(user_id)
-    limit = TIER_LIMITS.get(tier, 20)
     if isinstance(precheck, tuple):
         prechecked_limit = precheck
+        tier = prechecked_limit[0]
     else:
+        limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
         prechecked_limit = (tier, limit, int(precheck) if precheck is not None else 0)
 
     # 3. RAG Context (Essential+ only)
@@ -152,32 +153,31 @@ async def chat_endpoint(
         quota_limit = None
         quota_used = None
 
-    # 5. Log to Audit (LLMLog)
-    # TIER 3.4: Encryption
-    # Encrypt prompt if needed (Essential+). Free tier: maybe don't encrypt or don't store PII?
-    # Task 3.4 says "For Essential/Pro/Ultimate tiers, encrypt prompts before logging."
-    # We'll encrypt for everyone or just paid? The note specifies keys.
-    # We'll default to encrypting if not specifically excluded.
-    # Encrypt response as well (since model requires encrypted_response)
-    # 2025-12-10 16:46 CST - store ciphertext as bytes to satisfy BYTEA columns
-    encrypted_prompt = encrypt_prompt(message, user_dek_ref=user_id).encode("utf-8")
-    encrypted_response = encrypt_prompt(ai_response, user_dek_ref=user_id).encode(
-        "utf-8"
-    )
+    # 5. Log to Audit (LLMLog) - skip for free tier to keep sessions ephemeral
+    if tier != "free":
+        # TIER 3.4: Encryption
+        # Encrypt response as well (since model requires encrypted_response)
+        # 2025-12-10 16:46 CST - store ciphertext as bytes to satisfy BYTEA columns
+        encrypted_prompt = encrypt_prompt(message, user_dek_ref=user_id).encode(
+            "utf-8"
+        )
+        encrypted_response = encrypt_prompt(ai_response, user_dek_ref=user_id).encode(
+            "utf-8"
+        )
 
-    log_entry = LLMLog(
-        uid=user_id,
-        # tier not in model
-        model="gemini-pro",  # Hardcoded or from config? distinct from 'tier'
-        encrypted_prompt=encrypted_prompt,
-        encrypted_response=encrypted_response,
-        # context_used not in model
-        tokens=0,  # tokens_used -> tokens
-        user_dek_ref=user_id,
-        archived=False,
-    )
-    db.add(log_entry)
-    db.commit()
+        log_entry = LLMLog(
+            uid=user_id,
+            # tier not in model
+            model="gemini-pro",  # Hardcoded or from config? distinct from 'tier'
+            encrypted_prompt=encrypted_prompt,
+            encrypted_response=encrypted_response,
+            # context_used not in model
+            tokens=0,  # tokens_used -> tokens
+            user_dek_ref=user_id,
+            archived=False,
+        )
+        db.add(log_entry)
+        db.commit()
 
     return ChatResponse(
         response=ai_response,
@@ -208,7 +208,7 @@ def get_chat_history(
     query = db.query(LLMLog).filter(LLMLog.uid == user_id).order_by(desc(LLMLog.ts))
 
     if tier == "free":
-        query = query.limit(10)
+        return HistoryResponse(messages=[])
 
     logs = query.all()
 
@@ -257,7 +257,7 @@ def get_quota_status(
     tier = subscription.plan.lower() if subscription else "free"
 
     # TIER_LIMITS is imported from backend.services.ai at module level
-    limit = TIER_LIMITS.get(tier, 20)
+    limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
 
     # 2. Check Usage (read-only)
     # check_rate_limit modifies usage.

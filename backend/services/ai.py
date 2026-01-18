@@ -1,3 +1,4 @@
+# Last Modified: 2026-01-18 03:16 CST
 import asyncio
 import datetime
 import logging
@@ -161,12 +162,12 @@ def get_ai_client() -> AIClient:
 
 
 TIER_LIMITS = {
-    "free": 20,
-    "essential": 75,
-    "essential_monthly": 75,
-    "pro": 75,
-    "pro_monthly": 75,
-    "pro_annual": 75,
+    "free": 10,
+    "essential": 30,
+    "essential_monthly": 30,
+    "pro": 40,
+    "pro_monthly": 40,
+    "pro_annual": 40,
     "ultimate": 200,
     "ultimate_monthly": 200,
     "ultimate_annual": 200,
@@ -215,7 +216,7 @@ def _check_rate_limit_sync(user_id: str) -> tuple[str, int, int]:
         logger.error(f"Error fetching subscription for rate limit: {e}")
         # Fallback to free tier safely
 
-    limit = TIER_LIMITS.get(tier, 20)
+    limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
 
     # 2. Check Firestore for daily usage (read-only)
     db_fs = get_firestore_client()
