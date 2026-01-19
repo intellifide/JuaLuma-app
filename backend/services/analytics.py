@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from backend.models import Account, Transaction, User
@@ -230,10 +230,16 @@ def get_cash_flow(
     if scope == "household":
         target_uids = get_household_member_uids(db, uid)
 
+    base_ts = func.timezone("UTC", Transaction.ts)
+    if interval == "week":
+        period_expr = func.date_trunc("week", base_ts) + text("interval '6 days'")
+    else:
+        period_expr = func.date_trunc(interval, base_ts)
+
     # Income
     income_query = (
         select(
-            func.date_trunc(interval, Transaction.ts).label("period"),
+            period_expr.label("period"),
             func.sum(Transaction.amount).label("total"),
         )
         .where(
@@ -252,7 +258,7 @@ def get_cash_flow(
     # Expenses
     expense_query = (
         select(
-            func.date_trunc(interval, Transaction.ts).label("period"),
+            period_expr.label("period"),
             func.sum(Transaction.amount).label("total"),
         )
         .where(

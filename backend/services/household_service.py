@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.models import (
+    Account,
     Household,
     HouseholdInvite,
     HouseholdMember,
@@ -56,6 +57,39 @@ def send_household_welcome_email(db: Session, to_email: str, household_id: uuid.
         logger.info(f"Sent household welcome email to {to_email} for household {household_id}.")
     except Exception as e:
         logger.error(f"Failed to send household welcome email: {e}")
+
+
+def _clear_household_account_assignments(
+    db: Session,
+    household_id: uuid.UUID,
+    member_uid: str,
+) -> int:
+    member_uids = (
+        db.query(HouseholdMember.uid)
+        .filter(HouseholdMember.household_id == household_id)
+        .all()
+    )
+    if not member_uids:
+        return 0
+
+    allowed_uids = [m.uid for m in member_uids]
+    cleared = (
+        db.query(Account)
+        .filter(
+            Account.assigned_member_uid == member_uid,
+            Account.uid.in_(allowed_uids),
+            Account.uid != member_uid,
+        )
+        .update({Account.assigned_member_uid: None}, synchronize_session=False)
+    )
+    if cleared:
+        logger.info(
+            "Cleared %s assigned accounts for member %s in household %s.",
+            cleared,
+            member_uid,
+            household_id,
+        )
+    return cleared
 
 
 def create_household(db: Session, owner_uid: str, name: str) -> Household:
@@ -306,6 +340,12 @@ def leave_household(db: Session, user_uid: str):
                 detail="Owner cannot leave household directly. Delete the household or transfer ownership."
             )
 
+    member_uids = get_household_member_uids(db, user_uid)
+    _clear_household_account_assignments(db, household_id, user_uid)
+    from backend.services.analytics import invalidate_analytics_cache
+    for uid in set(member_uids):
+        invalidate_analytics_cache(uid)
+
     # 1. Remove Member
     db.delete(member)
 
@@ -363,6 +403,14 @@ def remove_member(db: Session, admin_uid: str, member_uid: str) -> dict:
         raise HTTPException(
             status_code=400, detail="Cannot remove another household admin."
         )
+
+    member_uids = get_household_member_uids(db, admin_uid)
+    _clear_household_account_assignments(
+        db, admin_member.household_id, target_member.uid
+    )
+    from backend.services.analytics import invalidate_analytics_cache
+    for uid in set(member_uids + [target_member.uid]):
+        invalidate_analytics_cache(uid)
 
     db.delete(target_member)
     update_user_tier(db, member_uid, "free", status="active")

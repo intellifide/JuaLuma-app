@@ -1,3 +1,6 @@
+# CORE PURPOSE: Test for account endpoints including household scope and permission checks.
+# LAST MODIFIED: 2026-01-18 23:35 CST
+
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from unittest.mock import patch
@@ -213,3 +216,126 @@ def test_update_account_assignments(test_client: TestClient, test_db, mock_auth)
     assert response.status_code == 200
     test_db.refresh(acct)
     assert acct.assigned_member_uid == mock_auth.uid
+
+
+def test_list_accounts_household_scope_includes_member_accounts(
+    test_client: TestClient, test_db, mock_auth
+):
+    household = Household(owner_uid=mock_auth.uid, name="Test Household")
+    test_db.add(household)
+    test_db.flush()
+
+    owner_member = HouseholdMember(
+        household_id=household.id,
+        uid=mock_auth.uid,
+        role="admin",
+        joined_at=datetime.now(UTC),
+        can_view_household=True,
+        ai_access_enabled=True,
+    )
+    other_user = User(
+        uid="member_user_999",
+        email="member@example.com",
+        role="user",
+        theme_pref="light",
+        currency_pref="USD",
+    )
+    other_member = HouseholdMember(
+        household_id=household.id,
+        uid=other_user.uid,
+        role="member",
+        joined_at=datetime.now(UTC),
+        can_view_household=True,
+        ai_access_enabled=True,
+    )
+    test_db.add_all([owner_member, other_user, other_member])
+
+    owner_account = Account(
+        uid=mock_auth.uid,
+        account_type="manual",
+        provider="manual",
+        account_name="Owner Account",
+        balance=Decimal("100.00"),
+    )
+    member_account = Account(
+        uid=other_user.uid,
+        account_type="manual",
+        provider="manual",
+        account_name="Member Account",
+        balance=Decimal("50.00"),
+    )
+    test_db.add_all([owner_account, member_account])
+    test_db.commit()
+
+    response = test_client.get("/api/accounts?scope=household")
+    assert response.status_code == 200
+    data = response.json()
+    ids = {item["id"] for item in data}
+    assert str(owner_account.id) in ids
+    assert str(member_account.id) in ids
+
+    response = test_client.get("/api/accounts")
+    assert response.status_code == 200
+    data = response.json()
+    ids = {item["id"] for item in data}
+    assert str(owner_account.id) in ids
+    assert str(member_account.id) not in ids
+
+
+def test_list_accounts_requires_household_membership_for_assignments(
+    test_client: TestClient, test_db, mock_auth
+):
+    admin_user = User(
+        uid="admin_user_999",
+        email="admin@example.com",
+        role="user",
+        theme_pref="light",
+        currency_pref="USD",
+    )
+    test_db.add(admin_user)
+
+    household = Household(owner_uid=admin_user.uid, name="Household A")
+    test_db.add(household)
+    test_db.flush()
+
+    admin_member = HouseholdMember(
+        household_id=household.id,
+        uid=admin_user.uid,
+        role="admin",
+        joined_at=datetime.now(UTC),
+        can_view_household=True,
+        ai_access_enabled=True,
+    )
+    member = HouseholdMember(
+        household_id=household.id,
+        uid=mock_auth.uid,
+        role="member",
+        joined_at=datetime.now(UTC),
+        can_view_household=True,
+        ai_access_enabled=True,
+    )
+    test_db.add_all([admin_member, member])
+
+    acct = Account(
+        uid=admin_user.uid,
+        account_type="manual",
+        provider="manual",
+        account_name="Admin Account",
+        balance=Decimal("10.00"),
+        assigned_member_uid=mock_auth.uid,
+    )
+    test_db.add(acct)
+    test_db.commit()
+
+    response = test_client.get("/api/accounts")
+    assert response.status_code == 200
+    data = response.json()
+    assert any(a["id"] == str(acct.id) for a in data)
+
+    test_db.delete(member)
+    test_db.commit()
+
+    response = test_client.get("/api/accounts")
+    assert response.status_code == 200
+    data = response.json()
+    assert all(a["id"] != str(acct.id) for a in data)

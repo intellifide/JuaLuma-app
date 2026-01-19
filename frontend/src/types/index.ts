@@ -91,6 +91,7 @@ export interface NotificationPreference {
 export type AccountFilter = Partial<{
   accountType: AccountType
   provider: AccountProvider
+  scope: 'personal' | 'household'
 }>
 
 export type TransactionFilters = Partial<{

@@ -18,9 +18,21 @@ import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 // Removed static BUDGET_CAP
 
 // Helpers for Date Management
+const formatDateParam = (value: Date) => {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, '0');
+  const day = `${value.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateUTC = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
 const getDateRange = (timeframe: string) => {
   const end = new Date();
-  const start = new Date();
+  const start = new Date(end);
   let nwInterval: 'daily' | 'weekly' | 'monthly' = 'daily';
   let cfInterval: 'week' | 'month' = 'week';
 
@@ -51,7 +63,7 @@ const getDateRange = (timeframe: string) => {
       cfInterval = 'month';
       break;
     case 'ytd':
-      start.setMonth(0, 1);
+      start.setFullYear(end.getFullYear(), 0, 1);
       nwInterval = 'monthly';
       cfInterval = 'month';
       break;
@@ -59,8 +71,8 @@ const getDateRange = (timeframe: string) => {
       start.setDate(end.getDate() - 30);
   }
   return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0],
+    start: formatDateParam(start),
+    end: formatDateParam(end),
     nwInterval,
     cfInterval
   };
@@ -80,7 +92,7 @@ const generateLinePath = (data: DataPoint[], width: number, height: number) => {
   const drawWidth = width - padding.left - padding.right;
   const drawHeight = height - padding.top - padding.bottom;
 
-  if (!data || data.length === 0) return { path: '', areaPath: '', dots: [], yLabels: [], xLabels: [], padding };
+  if (!data || data.length === 0) return { path: '', areaPath: '', dots: [], yLabels: [], xLabels: [], padding, points: [] };
 
   const values = data.map(d => d.value);
   const min = Math.min(...values) * 0.98;
@@ -90,10 +102,10 @@ const generateLinePath = (data: DataPoint[], width: number, height: number) => {
   const points = data.map((d, i) => {
     const x = padding.left + (i / (data.length - 1)) * drawWidth;
     const y = padding.top + drawHeight - ((d.value - min) / range) * drawHeight;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    return { x, y, value: d.value, date: d.date };
   });
 
-  const path = points.join(' ');
+  const path = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const areaPath = `${padding.left},${padding.top + drawHeight} ${path} ${padding.left + drawWidth},${padding.top + drawHeight}`;
 
   // Y-axis labels (Value)
@@ -104,16 +116,13 @@ const generateLinePath = (data: DataPoint[], width: number, height: number) => {
 
   // X-axis labels (Timeframe - start, mid, end)
   const xLabels = [0, Math.floor(data.length / 2), data.length - 1].map(i => ({
-    label: new Date(data[i].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    label: parseDateUTC(data[i].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }),
     x: padding.left + (i / (data.length - 1)) * drawWidth
   }));
 
   // Select a few points to show dots (start, middle, end)
   const dotIndices = [0, Math.floor(data.length / 2), data.length - 1];
-  const dots = dotIndices.map(i => {
-    const p = points[i].split(',');
-    return { cx: p[0], cy: p[1] };
-  });
+  const dots = dotIndices.map(i => ({ cx: points[i].x, cy: points[i].y }));
 
   return {
     path,
@@ -121,7 +130,8 @@ const generateLinePath = (data: DataPoint[], width: number, height: number) => {
     dots,
     yLabels,
     xLabels,
-    padding
+    padding,
+    points
   };
 };
 
@@ -149,11 +159,12 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
   });
   maxVal = maxVal * 1.1 || 1000;
 
-  const barWidth = (drawWidth / sortedDates.length) * 0.4;
-  const gap = (drawWidth / sortedDates.length) * 0.1;
+  const slotWidth = drawWidth / sortedDates.length;
+  const barWidth = slotWidth * 0.4;
+  const gap = slotWidth * 0.1;
 
   const bars = sortedDates.map((date, i) => {
-    const xBase = padding.left + (drawWidth / sortedDates.length) * i + gap;
+    const xBase = padding.left + slotWidth * i + gap;
     const vals = dataMap[date];
 
     const hInc = (vals.inc / maxVal) * drawHeight;
@@ -161,6 +172,9 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
 
     return {
       date,
+      inc: vals.inc,
+      exp: vals.exp,
+      xCenter: padding.left + slotWidth * i + slotWidth / 2,
       xInc: xBase,
       yInc: padding.top + drawHeight - hInc,
       hInc,
@@ -169,15 +183,11 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
       hExp,
       labelX: xBase + barWidth,
       label: (() => {
-        const d = new Date(date);
-        // If we are in 'week' view, the backend returns the start of the week (Mon).
-        // User wants the end of the week (Dec 10, Dec 17 etc) for analysis.
-        // We'll add 6 days to the start-of-week provided by Postgres date_trunc.
+        const d = parseDateUTC(date);
         if (cfInterval === 'week') {
-          d.setDate(d.getDate() + 6);
-          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
         }
-        return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+        return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' });
       })()
     };
   });
@@ -295,16 +305,28 @@ const CATEGORIES = [
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
-  const { accounts, refetch: refetchAccounts } = useAccounts();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
+  const { accounts, refetch: refetchAccounts } = useAccounts({
+    filters: { scope: dashboardScope }
+  });
   const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
   const isHouseholdAdmin = profile?.household_member?.role === 'admin';
   const canViewHousehold = Boolean(profile?.household_member?.can_view_household);
   const canSeeScopeToggle = (isUltimate && isHouseholdAdmin) || canViewHousehold;
-  
-  const { transactions, refetch: refetchTransactions, updateOne } = useTransactions({
-    filters: { scope: dashboardScope }
+
+  const [timeframe, setTimeframe] = useState('1m');
+  const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [transactionsPageSize, setTransactionsPageSize] = useState(10);
+  const { transactions, total: transactionsTotal, refetch: refetchTransactions, updateOne } = useTransactions({
+    filters: {
+      scope: dashboardScope,
+      from: start,
+      to: end,
+      page: transactionsPage,
+      pageSize: transactionsPageSize
+    }
   });
   const { budgets } = useBudget(dashboardScope);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
@@ -319,7 +341,6 @@ export default function Dashboard() {
     }
   };
 
-  const [timeframe, setTimeframe] = useState('1m');
   const [activeTab, setActiveTab] = useState('all-accounts');
 
   // Invite Member State
@@ -335,6 +356,10 @@ export default function Dashboard() {
       setDashboardScope('personal');
     }
   }, [canSeeScopeToggle, dashboardScope]);
+
+  useEffect(() => {
+    setTransactionsPage(1);
+  }, [timeframe, dashboardScope, transactionsPageSize]);
 
   const handleInviteClick = async () => {
     const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
@@ -380,9 +405,6 @@ export default function Dashboard() {
     }
   };
 
-  // Analytics Hooks
-  const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
-
   // Track when user reaches dashboard (final step of signup funnel)
   React.useEffect(() => {
     eventTracking.trackSignupFunnel(SignupFunnelEvent.DASHBOARD_REACHED)
@@ -419,9 +441,9 @@ export default function Dashboard() {
   // Computed Values for Cards
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);
 
-  // Recent Transactions Table (Limit 10)
+  // Recent Transactions Table (Paginated)
   const recentTransactions = useMemo(
-    () => [...transactions].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 10),
+    () => [...transactions].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()),
     [transactions]
   );
 
@@ -450,6 +472,93 @@ export default function Dashboard() {
     const expense = cfData.expenses.reduce((sum, d) => sum + Math.abs(d.value), 0); // Display as positive
     return { income, expense, net: income - expense };
   }, [cfData]);
+
+  const [netWorthHover, setNetWorthHover] = useState<{
+    x: number;
+    y: number;
+    xPct: number;
+    yPct: number;
+    value: number;
+    date: string;
+  } | null>(null);
+  const [cashFlowHover, setCashFlowHover] = useState<{
+    x: number;
+    y: number;
+    xPct: number;
+    yPct: number;
+    label: string;
+    date: string;
+    income: number;
+    expense: number;
+    kind: 'income' | 'expense';
+  } | null>(null);
+  const netWorthSvgSize = { width: 320, height: 140 };
+  const cashFlowSvgSize = { width: 320, height: 160 };
+
+  const handleNetWorthMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+    if (!netWorthChart.points.length) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * netWorthSvgSize.width;
+    const points = netWorthChart.points;
+    let closestIndex = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      if (Math.abs(points[i].x - x) < Math.abs(points[closestIndex].x - x)) {
+        closestIndex = i;
+      }
+    }
+    const point = points[closestIndex];
+    setNetWorthHover({
+      x: point.x,
+      y: point.y,
+      xPct: (point.x / netWorthSvgSize.width) * 100,
+      yPct: (point.y / netWorthSvgSize.height) * 100,
+      value: point.value,
+      date: point.date,
+    });
+  }, [netWorthChart.points]);
+
+  const handleCashFlowMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+    if (!cashFlowChart.bars.length) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * cashFlowSvgSize.width;
+    const y = ((event.clientY - rect.top) / rect.height) * cashFlowSvgSize.height;
+    const drawWidth = cashFlowSvgSize.width - cashFlowChart.padding.left - cashFlowChart.padding.right;
+    const slotWidth = drawWidth / cashFlowChart.bars.length;
+    const rawIndex = Math.floor((x - cashFlowChart.padding.left) / slotWidth);
+    const index = Math.min(Math.max(rawIndex, 0), cashFlowChart.bars.length - 1);
+    const bar = cashFlowChart.bars[index];
+    const candidates = [
+      { y: bar.yInc, kind: 'income' as const },
+      { y: bar.yExp, kind: 'expense' as const },
+    ];
+    const chosen = candidates.reduce((prev, curr) => (
+      Math.abs(curr.y - y) < Math.abs(prev.y - y) ? curr : prev
+    ));
+    setCashFlowHover({
+      x: bar.xCenter,
+      y: chosen.y,
+      xPct: (bar.xCenter / cashFlowSvgSize.width) * 100,
+      yPct: (chosen.y / cashFlowSvgSize.height) * 100,
+      label: bar.label,
+      date: bar.date,
+      income: bar.inc,
+      expense: bar.exp,
+      kind: chosen.kind,
+    });
+  }, [cashFlowChart.bars, cashFlowChart.padding]);
+
+  const totalTransactionPages = Math.max(
+    1,
+    Math.ceil((transactionsTotal || 0) / transactionsPageSize)
+  );
+  const hasPrevTransactionsPage = transactionsPage > 1;
+  const hasNextTransactionsPage = transactionsPage < totalTransactionPages;
+  const transactionRangeStart = transactionsTotal
+    ? (transactionsPage - 1) * transactionsPageSize + 1
+    : 0;
+  const transactionRangeEnd = transactionsTotal
+    ? Math.min(transactionsTotal, (transactionsPage - 1) * transactionsPageSize + transactions.length)
+    : 0;
 
   const handlePlaidSuccess = useCallback(async () => {
     await Promise.all([refetchAccounts(), refetchTransactions()]);
@@ -603,82 +712,136 @@ export default function Dashboard() {
           <div className="chart-subtitle">Historical Balance</div>
 
           {nwLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
-            <svg className="chart-svg" viewBox="0 0 320 140" role="img" aria-label="Net worth trend">
-              <defs>
-                <linearGradient id="networthGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
-                </linearGradient>
-              </defs>
+            <div className="relative">
+              <svg
+                className="chart-svg"
+                viewBox="0 0 320 140"
+                role="img"
+                aria-label="Net worth trend"
+                onMouseMove={handleNetWorthMove}
+                onMouseLeave={() => setNetWorthHover(null)}
+              >
+                <defs>
+                  <linearGradient id="networthGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
 
-              {/* Grid Lines & Y Labels */}
-              {netWorthChart.yLabels?.map((l, i) => (
-                <g key={i}>
-                  <line
-                    x1={netWorthChart.padding.left}
-                    y1={l.y}
-                    x2={320 - netWorthChart.padding.right}
-                    y2={l.y}
-                    stroke="var(--border-color)"
-                    strokeWidth="1"
-                    strokeOpacity="0.1"
-                  />
+                {/* Grid Lines & Y Labels */}
+                {netWorthChart.yLabels?.map((l, i) => (
+                  <g key={i}>
+                    <line
+                      x1={netWorthChart.padding.left}
+                      y1={l.y}
+                      x2={320 - netWorthChart.padding.right}
+                      y2={l.y}
+                      stroke="var(--border-color)"
+                      strokeWidth="1"
+                      strokeOpacity="0.1"
+                    />
+                    <text
+                      x={netWorthChart.padding.left - 5}
+                      y={l.y + 4}
+                      fontSize="9"
+                      fill="var(--text-muted)"
+                      textAnchor="end"
+                    >
+                      {l.label}
+                    </text>
+                  </g>
+                ))}
+
+                {/* X Labels */}
+                {netWorthChart.xLabels?.map((l, i) => (
                   <text
-                    x={netWorthChart.padding.left - 5}
-                    y={l.y + 4}
+                    key={i}
+                    x={l.x}
+                    y={135}
                     fontSize="9"
                     fill="var(--text-muted)"
-                    textAnchor="end"
+                    textAnchor="middle"
                   >
                     {l.label}
                   </text>
+                ))}
+
+                {/* Main Axes */}
+                <line
+                  x1={netWorthChart.padding.left}
+                  y1={140 - netWorthChart.padding.bottom}
+                  x2={320 - netWorthChart.padding.right}
+                  y2={140 - netWorthChart.padding.bottom}
+                  stroke="var(--border-color)"
+                  strokeWidth="1"
+                  strokeOpacity="0.3"
+                />
+                <line
+                  x1={netWorthChart.padding.left}
+                  y1={netWorthChart.padding.top}
+                  x2={netWorthChart.padding.left}
+                  y2={140 - netWorthChart.padding.bottom}
+                  stroke="var(--border-color)"
+                  strokeWidth="1"
+                  strokeOpacity="0.3"
+                />
+
+                <g id="networth-area">
+                  <polyline fill="url(#networthGradient)" stroke="none" points={netWorthChart.areaPath} />
                 </g>
-              ))}
+                <g id="networth-line">
+                  <polyline fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={netWorthChart.path} />
+                </g>
+                <g id="networth-dots" fill="var(--color-primary)">
+                  {netWorthChart.dots.map((d, i) => <circle key={i} cx={d.cx} cy={d.cy} r="4" />)}
+                </g>
 
-              {/* X Labels */}
-              {netWorthChart.xLabels?.map((l, i) => (
-                <text
-                  key={i}
-                  x={l.x}
-                  y={135}
-                  fontSize="9"
-                  fill="var(--text-muted)"
-                  textAnchor="middle"
+                {netWorthHover && (
+                  <g>
+                    <line
+                      x1={netWorthHover.x}
+                      y1={netWorthChart.padding.top}
+                      x2={netWorthHover.x}
+                      y2={140 - netWorthChart.padding.bottom}
+                      stroke="var(--text-muted)"
+                      strokeDasharray="3 3"
+                      strokeOpacity="0.5"
+                    />
+                    <line
+                      x1={netWorthChart.padding.left}
+                      y1={netWorthHover.y}
+                      x2={320 - netWorthChart.padding.right}
+                      y2={netWorthHover.y}
+                      stroke="var(--text-muted)"
+                      strokeDasharray="3 3"
+                      strokeOpacity="0.5"
+                    />
+                    <circle
+                      cx={netWorthHover.x}
+                      cy={netWorthHover.y}
+                      r="4"
+                      fill="var(--bg-secondary)"
+                      stroke="var(--color-primary)"
+                      strokeWidth="2"
+                    />
+                  </g>
+                )}
+              </svg>
+              {netWorthHover && (
+                <div
+                  className="absolute z-10 rounded-md bg-slate-900/90 text-white text-xs px-2 py-1 pointer-events-none shadow-md"
+                  style={{
+                    left: `${netWorthHover.xPct}%`,
+                    top: `${netWorthHover.yPct}%`,
+                    transform: 'translate(-50%, -120%)',
+                    whiteSpace: 'nowrap',
+                  }}
                 >
-                  {l.label}
-                </text>
-              ))}
-
-              {/* Main Axes */}
-              <line
-                x1={netWorthChart.padding.left}
-                y1={140 - netWorthChart.padding.bottom}
-                x2={320 - netWorthChart.padding.right}
-                y2={140 - netWorthChart.padding.bottom}
-                stroke="var(--border-color)"
-                strokeWidth="1"
-                strokeOpacity="0.3"
-              />
-              <line
-                x1={netWorthChart.padding.left}
-                y1={netWorthChart.padding.top}
-                x2={netWorthChart.padding.left}
-                y2={140 - netWorthChart.padding.bottom}
-                stroke="var(--border-color)"
-                strokeWidth="1"
-                strokeOpacity="0.3"
-              />
-
-              <g id="networth-area">
-                <polyline fill="url(#networthGradient)" stroke="none" points={netWorthChart.areaPath} />
-              </g>
-              <g id="networth-line">
-                <polyline fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={netWorthChart.path} />
-              </g>
-              <g id="networth-dots" fill="var(--color-primary)">
-                {netWorthChart.dots.map((d, i) => <circle key={i} cx={d.cx} cy={d.cy} r="4" />)}
-              </g>
-            </svg>
+                  <div>{parseDateUTC(netWorthHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</div>
+                  <div className="font-semibold">{formatCurrency(netWorthHover.value)}</div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -688,63 +851,118 @@ export default function Dashboard() {
           <div className="chart-subtitle">Income vs Expenses</div>
 
           {cfLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
-            <svg className="chart-svg" viewBox="0 0 320 160" role="img" aria-label="Cash flow bar chart">
-              {/* Grid Lines & Y Labels */}
-              {cashFlowChart.yLabels?.map((l, i) => (
-                <g key={i}>
-                  <line
-                    x1={cashFlowChart.padding.left}
-                    y1={l.y}
-                    x2={320 - cashFlowChart.padding.right}
-                    y2={l.y}
-                    stroke="var(--border-color)"
-                    strokeWidth="1"
-                    strokeOpacity="0.1"
-                  />
-                  <text
-                    x={cashFlowChart.padding.left - 5}
-                    y={l.y + 4}
-                    fontSize="9"
-                    fill="var(--text-muted)"
-                    textAnchor="end"
-                  >
-                    {l.label}
-                  </text>
-                </g>
-              ))}
+            <div className="relative">
+              <svg
+                className="chart-svg"
+                viewBox="0 0 320 160"
+                role="img"
+                aria-label="Cash flow bar chart"
+                onMouseMove={handleCashFlowMove}
+                onMouseLeave={() => setCashFlowHover(null)}
+              >
+                {/* Grid Lines & Y Labels */}
+                {cashFlowChart.yLabels?.map((l, i) => (
+                  <g key={i}>
+                    <line
+                      x1={cashFlowChart.padding.left}
+                      y1={l.y}
+                      x2={320 - cashFlowChart.padding.right}
+                      y2={l.y}
+                      stroke="var(--border-color)"
+                      strokeWidth="1"
+                      strokeOpacity="0.1"
+                    />
+                    <text
+                      x={cashFlowChart.padding.left - 5}
+                      y={l.y + 4}
+                      fontSize="9"
+                      fill="var(--text-muted)"
+                      textAnchor="end"
+                    >
+                      {l.label}
+                    </text>
+                  </g>
+                ))}
 
-              {/* Main Axes */}
-              <line
-                x1={cashFlowChart.padding.left}
-                y1={160 - cashFlowChart.padding.bottom}
-                x2={320 - cashFlowChart.padding.right}
-                y2={160 - cashFlowChart.padding.bottom}
-                stroke="var(--border-color)"
-                strokeWidth="1"
-                strokeOpacity="0.3"
-              />
-              <line
-                x1={cashFlowChart.padding.left}
-                y1={cashFlowChart.padding.top}
-                x2={cashFlowChart.padding.left}
-                y2={160 - cashFlowChart.padding.bottom}
-                stroke="var(--border-color)"
-                strokeWidth="1"
-                strokeOpacity="0.3"
-              />
+                {/* Main Axes */}
+                <line
+                  x1={cashFlowChart.padding.left}
+                  y1={160 - cashFlowChart.padding.bottom}
+                  x2={320 - cashFlowChart.padding.right}
+                  y2={160 - cashFlowChart.padding.bottom}
+                  stroke="var(--border-color)"
+                  strokeWidth="1"
+                  strokeOpacity="0.3"
+                />
+                <line
+                  x1={cashFlowChart.padding.left}
+                  y1={cashFlowChart.padding.top}
+                  x2={cashFlowChart.padding.left}
+                  y2={160 - cashFlowChart.padding.bottom}
+                  stroke="var(--border-color)"
+                  strokeWidth="1"
+                  strokeOpacity="0.3"
+                />
 
-              {cashFlowChart.bars.map((bar, i) => (
-                <g key={i}>
-                  {/* Income Bar (Cyan) */}
-                  <rect x={bar.xInc} y={bar.yInc} width={((320 - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hInc} rx="2" fill="var(--color-accent)" />
-                  {/* Expense Bar (Red) */}
-                  <rect x={bar.xExp} y={bar.yExp} width={((320 - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hExp} rx="2" fill="#DC2626" />
+                {cashFlowChart.bars.map((bar, i) => (
+                  <g key={i}>
+                    {/* Income Bar (Cyan) */}
+                    <rect x={bar.xInc} y={bar.yInc} width={((320 - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hInc} rx="2" fill="var(--color-accent)" />
+                    {/* Expense Bar (Red) */}
+                    <rect x={bar.xExp} y={bar.yExp} width={((320 - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hExp} rx="2" fill="#DC2626" />
 
-                  {/* X Axis Label */}
-                  <text x={bar.labelX} y="155" fontSize="9" fill="var(--text-muted)" textAnchor="middle">{bar.label}</text>
-                </g>
-              ))}
-            </svg>
+                    {/* X Axis Label */}
+                    <text x={bar.labelX} y="155" fontSize="9" fill="var(--text-muted)" textAnchor="middle">{bar.label}</text>
+                  </g>
+                ))}
+
+                {cashFlowHover && (
+                  <g>
+                    <line
+                      x1={cashFlowHover.x}
+                      y1={cashFlowChart.padding.top}
+                      x2={cashFlowHover.x}
+                      y2={160 - cashFlowChart.padding.bottom}
+                      stroke="var(--text-muted)"
+                      strokeDasharray="3 3"
+                      strokeOpacity="0.5"
+                    />
+                    <line
+                      x1={cashFlowChart.padding.left}
+                      y1={cashFlowHover.y}
+                      x2={320 - cashFlowChart.padding.right}
+                      y2={cashFlowHover.y}
+                      stroke="var(--text-muted)"
+                      strokeDasharray="3 3"
+                      strokeOpacity="0.5"
+                    />
+                    <circle
+                      cx={cashFlowHover.x}
+                      cy={cashFlowHover.y}
+                      r="4"
+                      fill="var(--bg-secondary)"
+                      stroke={cashFlowHover.kind === 'income' ? 'var(--color-accent)' : '#DC2626'}
+                      strokeWidth="2"
+                    />
+                  </g>
+                )}
+              </svg>
+              {cashFlowHover && (
+                <div
+                  className="absolute z-10 rounded-md bg-slate-900/90 text-white text-xs px-2 py-1 pointer-events-none shadow-md"
+                  style={{
+                    left: `${cashFlowHover.xPct}%`,
+                    top: `${cashFlowHover.yPct}%`,
+                    transform: 'translate(-50%, -120%)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <div>{parseDateUTC(cashFlowHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</div>
+                  <div className="text-cyan-300">Income: {formatCurrency(cashFlowHover.income)}</div>
+                  <div className="text-red-300">Expenses: {formatCurrency(cashFlowHover.expense)}</div>
+                </div>
+              )}
+            </div>
           )}
           <div className="chart-legend mt-2 flex justify-center gap-4 text-xs">
             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-cyan-400 rounded-sm"></span>Income</span>
@@ -856,9 +1074,11 @@ export default function Dashboard() {
 
       {/* Recent Transactions */}
       <div className="glass-panel mb-10">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 mb-6">
           <h2 className="text-xl font-semibold">Recent Transactions</h2>
-          {/* Toggle moved to top of page */}
+          <span className="text-xs text-text-muted">
+            Page {transactionsPage} of {totalTransactionPages} · {transactionRangeStart}-{transactionRangeEnd} of {transactionsTotal || 0}
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="table w-full">
@@ -900,6 +1120,35 @@ export default function Dashboard() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mt-6 flex justify-center">
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-text-muted" htmlFor="transactions-page-size">Rows</label>
+            <select
+              id="transactions-page-size"
+              className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary"
+              value={transactionsPageSize}
+              onChange={(e) => setTransactionsPageSize(Number(e.target.value))}
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => setTransactionsPage((p) => Math.max(1, p - 1))}
+              disabled={!hasPrevTransactionsPage}
+            >
+              Prev
+            </button>
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => setTransactionsPage((p) => Math.min(totalTransactionPages, p + 1))}
+              disabled={!hasNextTransactionsPage}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 

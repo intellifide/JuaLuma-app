@@ -57,6 +57,7 @@ export const getAccounts = async (filters?: AccountFilter): Promise<Account[]> =
     const params = new URLSearchParams()
     if (filters?.accountType) params.set('account_type', filters.accountType)
     if (filters?.provider) params.set('provider', filters.provider)
+    if (filters?.scope) params.set('scope', filters.scope)
 
     const { data } = await api.get('/accounts', { params })
     return Array.isArray(data) ? data.map(mapAccount) : []

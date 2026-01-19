@@ -1,3 +1,6 @@
+# CORE PURPOSE: Pytest configuration and shared fixtures for backend tests.
+# LAST MODIFIED: 2026-01-18 23:30 CST
+
 import os
 from collections.abc import Generator
 
@@ -15,7 +18,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("PLAID_CLIENT_ID", "test-client")
 os.environ.setdefault("PLAID_SECRET", "test-secret")
 os.environ.setdefault("FRONTEND_URL", "http://localhost:5175")
-os.environ.setdefault("RATE_LIMIT_MAX_REQUESTS", "10")
+os.environ.setdefault("RATE_LIMIT_MAX_REQUESTS", "100")
 os.environ.setdefault("RATE_LIMIT_WINDOW_SECONDS", "60")
 
 # Monkeypatch httpx.Client to ignore 'app' argument passed by older starlette versions

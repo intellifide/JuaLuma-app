@@ -275,6 +275,7 @@ def list_accounts(
         default=True,
         description="If false, balance will be omitted to reduce sensitivity.",
     ),
+    scope: str = Query(default="personal", pattern="^(personal|household)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[AccountResponse]:
@@ -283,13 +284,22 @@ def list_accounts(
 
     - **account_type**: Optional filter (e.g., 'traditional', 'web3').
     - **include_balance**: If true, returns current balance (sensitive).
+    - **scope**: 'personal' (default) or 'household'.
 
     Returns a list of account summaries.
     """
-    query = db.query(Account).filter(
-        (Account.uid == current_user.uid)
-        | (Account.assigned_member_uid == current_user.uid)
-    )
+    if scope == "household":
+        target_uids = get_household_member_uids(db, current_user.uid)
+        query = db.query(Account).filter(Account.uid.in_(target_uids))
+    else:
+        allowed_uids = get_household_member_uids(db, current_user.uid)
+        query = db.query(Account).filter(
+            (Account.uid == current_user.uid)
+            | (
+                (Account.assigned_member_uid == current_user.uid)
+                & (Account.uid.in_(allowed_uids))
+            )
+        )
 
     if account_type:
         normalized = account_type.lower()
