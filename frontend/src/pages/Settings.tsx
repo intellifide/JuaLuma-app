@@ -1,5 +1,5 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
-// Last Modified: 2026-01-18 01:30 CST
+// Last Modified: 2026-01-19 19:56 CST
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -338,10 +338,7 @@ export const Settings = () => {
               {!householdLoading && !householdError && isHouseholdMember && household && (
                 <>
                   <div className="card mb-6">
-                    <div className="card-header pb-2 border-b border-border mb-4">
-                      <h3 className="text-xl font-bold">My Household</h3>
-                      <p className="text-sm text-text-muted mt-1">{household.name}</p>
-                    </div>
+
                     <div className="card-body">
                       {household.members.length > 0 ? (
                         <ul className="divide-y divide-border">
