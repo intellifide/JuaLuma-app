@@ -250,6 +250,118 @@ def _verify_mfa(user: User, mfa_code: str | None, db: Session) -> None:
         raise HTTPException(status_code=501, detail="SMS MFA not implemented")
 
 
+def _rollback_firebase_user(uid: str, *, email: str | None, reason: str) -> None:
+    from firebase_admin import auth
+    from firebase_admin import exceptions as firebase_exceptions
+
+    try:
+        auth.delete_user(uid)
+        logger.warning(
+            "Rolled back Firebase user after signup failure.",
+            extra={"uid": uid, "email": email, "reason": reason},
+        )
+    except firebase_exceptions.FirebaseError as exc:
+        logger.critical(
+            "CRITICAL: Failed to rollback Firebase user after signup failure.",
+            extra={"uid": uid, "email": email, "reason": reason},
+            exc_info=exc,
+        )
+
+
+def _handle_existing_db_user(
+    email: str,
+    password: str,
+    db: Session,
+):
+    """
+    Handle logic when a user already exists in the DB.
+    Returns (record, synced_user_obj) when a sync is performed.
+    """
+    from firebase_admin import auth
+    from firebase_admin import exceptions as firebase_exceptions
+
+    db_user = db.query(User).filter(User.email == email).first()
+    if not db_user:
+        return None, None
+
+    try:
+        existing_record = auth.get_user_by_email(email)
+    except auth.UserNotFoundError:
+        # Firebase missing; heal by creating with the DB UID
+        try:
+            logger.info(
+                "Healing missing Firebase user from DB record.",
+                extra={"email": email, "uid": db_user.uid},
+            )
+            record = auth.create_user(uid=db_user.uid, email=email, password=password)
+            return record, db_user
+        except firebase_exceptions.AlreadyExistsError:
+            # Race: retry lookup and fall through to UID sync
+            try:
+                existing_record = auth.get_user_by_email(email)
+            except firebase_exceptions.FirebaseError as exc:
+                logger.error(
+                    "Firebase lookup failed after create_user race.",
+                    extra={"email": email, "uid": db_user.uid},
+                    exc_info=exc,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Firebase unavailable. Try again shortly.",
+                ) from exc
+        except firebase_exceptions.FirebaseError as exc:
+            logger.error(
+                "Firebase create_user failed for existing DB user.",
+                extra={"email": email, "uid": db_user.uid},
+                exc_info=exc,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Firebase unavailable. Try again shortly.",
+            ) from exc
+    except firebase_exceptions.FirebaseError as exc:
+        logger.error(
+            "Firebase lookup failed for existing DB user.",
+            extra={"email": email, "uid": db_user.uid},
+            exc_info=exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Firebase unavailable. Try again shortly.",
+        ) from exc
+
+    if existing_record.uid != db_user.uid:
+        logger.info(
+            "Healing desynced user. Updating DB UID to match Firebase.",
+            extra={
+                "email": email,
+                "old_uid": db_user.uid,
+                "new_uid": existing_record.uid,
+            },
+        )
+        try:
+            db_user.uid = existing_record.uid
+            db.commit()
+            db.refresh(db_user)
+            return existing_record, db_user
+        except Exception as exc:
+            logger.error(
+                "Failed to heal DB user after UID mismatch.",
+                extra={"email": email, "uid": existing_record.uid},
+                exc_info=exc,
+            )
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Account sync failed.",
+            ) from exc
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Email already exists.",
+    )
+
+
 def _handle_existing_firebase_user(email: str, db: Session):
     """
     Handle logic when a user already exists in Firebase.
@@ -257,8 +369,20 @@ def _handle_existing_firebase_user(email: str, db: Session):
     If is_synced_user_obj is returned, it means we healed a desync and should return early.
     """
     from firebase_admin import auth
+    from firebase_admin import exceptions as firebase_exceptions
 
-    existing_user = auth.get_user_by_email(email)
+    try:
+        existing_user = auth.get_user_by_email(email)
+    except firebase_exceptions.FirebaseError as exc:
+        logger.error(
+            "Firebase lookup failed during signup.",
+            extra={"email": email},
+            exc_info=exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Firebase unavailable. Try again shortly.",
+        ) from exc
 
     # Check DB by authoritative UID
     db_user_by_uid = db.query(User).filter(User.uid == existing_user.uid).first()
@@ -281,13 +405,17 @@ def _handle_existing_firebase_user(email: str, db: Session):
             db.commit()
             db.refresh(db_user_by_email)
             return existing_user, db_user_by_email
-        except Exception as e:
-            logger.error(f"Failed to heal user {email}: {e}")
+        except Exception as exc:
+            logger.error(
+                "Failed to heal user during signup.",
+                extra={"email": email, "uid": existing_user.uid},
+                exc_info=exc,
+            )
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Account sync failed.",
-            ) from e
+            ) from exc
 
     # Truly Zombie
     logger.info(f"Healing zombie user account for {email} ({existing_user.uid})")
@@ -295,26 +423,52 @@ def _handle_existing_firebase_user(email: str, db: Session):
 
 
 def _create_db_user_safe(db: Session, record, is_fresh_firebase_user: bool) -> User:
-    from firebase_admin import auth
-
     try:
         user = create_user_record(db, uid=record.uid, email=record.email)
         return user
     except Exception as exc:
+        if isinstance(exc, ValueError):
+            existing_user = db.query(User).filter(User.email == record.email).first()
+            if existing_user:
+                if existing_user.uid == record.uid:
+                    logger.info(
+                        "Signup raced with existing DB user; treating as idempotent.",
+                        extra={"email": record.email, "uid": record.uid},
+                    )
+                    return existing_user
+                logger.info(
+                    "Healing DB user after signup conflict.",
+                    extra={
+                        "email": record.email,
+                        "old_uid": existing_user.uid,
+                        "new_uid": record.uid,
+                    },
+                )
+                try:
+                    existing_user.uid = record.uid
+                    db.commit()
+                    db.refresh(existing_user)
+                    return existing_user
+                except Exception as sync_exc:
+                    logger.error(
+                        "Failed to heal DB user after signup conflict.",
+                        extra={"email": record.email, "uid": record.uid},
+                        exc_info=sync_exc,
+                    )
+                    db.rollback()
+
         logger.error(
-            f"DB creation failed for {record.email} (UID: {record.uid}): {exc}"
+            "DB creation failed during signup.",
+            extra={"email": record.email, "uid": record.uid},
+            exc_info=exc,
         )
         # Rollback Firebase if we just created it
         if is_fresh_firebase_user:
-            try:
-                logger.warning(
-                    f"Rolling back Firebase user {record.uid} due to DB failure."
-                )
-                auth.delete_user(record.uid)
-            except Exception as cleanup_exc:
-                logger.critical(
-                    f"CRITICAL: Failed to rollback Firebase user {record.uid} after DB failure: {cleanup_exc}"
-                )
+            _rollback_firebase_user(
+                record.uid,
+                email=record.email,
+                reason="db_creation_failed",
+            )
 
         if isinstance(exc, ValueError):
             raise HTTPException(
@@ -365,6 +519,30 @@ def signup(
 
     try:
         _get_firebase_app()
+    except Exception as exc:
+        logger.error(
+            "Firebase app initialization failed during signup.",
+            extra={"email": payload.email},
+            exc_info=exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Firebase unavailable. Try again shortly.",
+        ) from exc
+
+    _, synced_user = _handle_existing_db_user(
+        payload.email,
+        payload.password,
+        db,
+    )
+    if synced_user:
+        return {
+            "uid": synced_user.uid,
+            "email": synced_user.email,
+            "message": "Account synced successfully.",
+        }
+
+    try:
         record = auth.create_user(email=payload.email, password=payload.password)
         is_fresh_firebase_user = True
     except firebase_exceptions.AlreadyExistsError:
@@ -376,11 +554,21 @@ def signup(
                 "message": "Account synced successfully.",
             }
     except firebase_exceptions.InvalidArgumentError as exc:
+        logger.error(
+            "Firebase rejected signup parameters.",
+            extra={"email": payload.email},
+            exc_info=exc,
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid signup parameters.",
         ) from exc
     except firebase_exceptions.FirebaseError as exc:
+        logger.error(
+            "Firebase create_user failed during signup.",
+            extra={"email": payload.email},
+            exc_info=exc,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Firebase unavailable. Try again shortly.",
@@ -390,10 +578,23 @@ def signup(
     accepted_keys = {agreement.agreement_key for agreement in payload.agreements}
     missing = required_keys - accepted_keys
     if missing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Missing required legal agreements: {', '.join(sorted(missing))}.",
+        logger.warning(
+            "Signup missing required legal agreements.",
+            extra={"email": payload.email, "missing": sorted(missing)},
         )
+        if is_fresh_firebase_user and record:
+            _rollback_firebase_user(
+                record.uid,
+                email=record.email,
+                reason="missing_required_agreements",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Missing required legal agreements: "
+                    f"{', '.join(sorted(missing))}."
+                ),
+            )
 
     # Create DB record
     user = _create_db_user_safe(db, record, is_fresh_firebase_user)
@@ -407,6 +608,11 @@ def signup(
             source="frontend",
         )
     except ValueError as exc:
+        logger.error(
+            "Agreement acceptance recording failed during signup.",
+            extra={"uid": user.uid, "email": user.email},
+            exc_info=exc,
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc

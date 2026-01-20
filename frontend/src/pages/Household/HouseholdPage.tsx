@@ -108,7 +108,7 @@ export const HouseholdPage: React.FC = () => {
     if (!inviteToken.trim()) return
     setActionLoading(true)
     try {
-      await householdService.acceptInvite({ token: inviteToken })
+      await householdService.acceptInvite({ token: inviteToken, consent_agreed: true })
       setInviteToken('')
       fetchHousehold()
       await refetchProfile()

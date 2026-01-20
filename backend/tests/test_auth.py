@@ -131,6 +131,43 @@ def test_signup_zombie_healing(test_client: TestClient, test_db):
     assert sub is not None
 
 
+def test_signup_db_only_healing(test_client: TestClient, test_db):
+    from firebase_admin import auth as firebase_auth
+
+    db_user = User(uid="db_only_uid", email="dbonly@example.com", role="user")
+    test_db.add(db_user)
+    test_db.commit()
+
+    mock_record = MagicMock()
+    mock_record.uid = "db_only_uid"
+    mock_record.email = "dbonly@example.com"
+
+    with patch(
+        "firebase_admin.auth.get_user_by_email",
+        side_effect=firebase_auth.UserNotFoundError("User not found", "User not found"),
+    ):
+        with patch("firebase_admin.auth.create_user", return_value=mock_record) as mock_create:
+            payload = {
+                "email": "dbonly@example.com",
+                "password": "password123",
+                "agreements": [
+                    {"agreement_key": "terms_of_service"},
+                    {"agreement_key": "privacy_policy"},
+                    {"agreement_key": "us_residency_certification"},
+                ],
+            }
+            response = test_client.post("/api/auth/signup", json=payload)
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["uid"] == "db_only_uid"
+    assert data["email"] == "dbonly@example.com"
+    assert data["message"] == "Account synced successfully."
+    mock_create.assert_called_once_with(
+        uid="db_only_uid", email="dbonly@example.com", password="password123"
+    )
+
+
 def test_login_success(test_client: TestClient, test_db, mock_auth):
     # mock_auth fixture creates the user in DB.
     # But login endpoint verifies token first.

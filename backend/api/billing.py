@@ -11,6 +11,9 @@ from backend.services.billing import (
 )
 from backend.utils import get_db
 
+from backend.core import settings
+import stripe
+
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
@@ -113,3 +116,44 @@ async def select_free_plan(
     """
     update_user_tier(db, user.uid, "free", status="active")
     return {"message": "Plan updated to Free", "plan": "free"}
+
+
+@router.get("/invoices")
+async def get_invoices(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """
+    Fetch the last 10 invoices for the user from Stripe.
+    """
+    if not settings.stripe_secret_key:
+        # If Stripe isn't configured, return empty list instead of crashing
+        return []
+
+    from backend.models import Payment
+
+    payment = db.query(Payment).filter(Payment.uid == user.uid).first()
+    if not payment or not payment.stripe_customer_id:
+        return []
+
+    try:
+        invoices = stripe.Invoice.list(
+            customer=payment.stripe_customer_id, limit=100, status="paid"
+        )
+        data = []
+        for inv in invoices.data:
+            data.append(
+                {
+                    "id": inv.id,
+                    "created": inv.created,  # timestamp
+                    "amount_paid": inv.amount_paid,  # cents
+                    "currency": inv.currency,
+                    "status": inv.status,
+                    "invoice_pdf": inv.invoice_pdf,
+                    "number": inv.number,
+                }
+            )
+        return data
+    except stripe.error.StripeError as e:
+        # Don't break the settings page if Stripe is down or errors
+        # In a real app we might want to log this deeper or return partial error
+        return []

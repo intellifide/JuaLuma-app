@@ -28,7 +28,19 @@ export const Settings = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
+  // Billing state
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [billingPage, setBillingPage] = useState(1);
+  const billingPageSize = 5;
+
+  const isRestrictedMember = Boolean(
+    profile?.household_member &&
+    !['admin', 'owner'].includes(profile?.household_member?.role || '')
+  );
+
   // Format a household role string for display in the UI.
+
   const formatRole = (role: string) =>
     role
       .split('_')
@@ -65,8 +77,27 @@ export const Settings = () => {
 
   // Keep household data synced when the Household tab is active.
   useEffect(() => {
-    if (activeTab !== 'household') return;
-    void loadHousehold();
+    if (activeTab === 'household') {
+      void loadHousehold();
+    } else if (activeTab === 'subscription') {
+      // Load billing history
+      const loadInvoices = async () => {
+        setInvoicesLoading(true);
+        try {
+          // Use apiFetch helper which handles auth headers automatically
+          const response = await apiFetch('/billing/invoices');
+          if (response.ok) {
+            const data = await response.json();
+            setInvoices(data);
+          }
+        } catch (error) {
+          console.error("Failed to load invoices", error);
+        } finally {
+          setInvoicesLoading(false);
+        }
+      };
+      void loadInvoices();
+    }
   }, [activeTab, loadHousehold]);
 
   // Control visibility of the household tab based on membership or Ultimate tier.
@@ -206,7 +237,7 @@ export const Settings = () => {
             <div className="glass-panel">
               <h2 className="mb-6">Subscription</h2>
               
-              {profile?.household_member ? (
+              {isRestrictedMember ? (
                 <div className="card mb-6">
                   <div className="card-body">
                     <h3 className="text-xl font-bold mb-4">Household Membership</h3>
@@ -276,20 +307,88 @@ export const Settings = () => {
                           <tr className="border-b border-border">
                             <th className="pb-2 text-text-secondary font-medium">Date</th>
                             <th className="pb-2 text-text-secondary font-medium">Amount</th>
-                            <th className="pb-2 text-text-secondary font-medium">Tax</th>
                             <th className="pb-2 text-text-secondary font-medium">Status</th>
                             <th className="pb-2 text-text-secondary font-medium">Invoice</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr>
-                            <td colSpan={5} className="py-6 text-center text-text-muted">
-                              Billing history is available providing you have an active subscription. Click &quot;Manage Subscription&quot; above to view invoices in the secure customer portal.
-                            </td>
-                          </tr>
+                          {invoicesLoading && (
+                            <tr>
+                              <td colSpan={5} className="py-6 text-center text-text-muted">
+                                Loading billing history...
+                              </td>
+                            </tr>
+                          )}
+
+                          {!invoicesLoading && invoices.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="py-6 text-center text-text-muted">
+                                No billing history found.
+                              </td>
+                            </tr>
+                          )}
+
+                          {!invoicesLoading && invoices
+                            .slice((billingPage - 1) * billingPageSize, billingPage * billingPageSize)
+                            .map((invoice: any) => (
+                            <tr key={invoice.id} className="border-b border-border/50 last:border-0 hover:bg-surface-2 transition-colors">
+                              <td className="py-3 text-text-primary">
+                                {new Date(invoice.created * 1000).toLocaleDateString()}
+                              </td>
+                              <td className="py-3 text-text-primary">
+                                {(invoice.amount_paid / 100).toLocaleString('en-US', {
+                                  style: 'currency',
+                                  currency: invoice.currency.toUpperCase()
+                                })}
+                              </td>
+                              <td className="py-3">
+                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${invoice.status === 'paid'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                                </span>
+                              </td>
+                              <td className="py-3">
+                                {invoice.invoice_pdf ? (
+                                  <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-royal-purple hover:underline text-sm font-medium">
+                                    Download PDF
+                                  </a>
+                                ) : (
+                                  <span className="text-text-muted text-sm">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>
+                    {/* Pagination Controls */}
+                    {!invoicesLoading && invoices.length > billingPageSize && (
+                      <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                        <p className="text-sm text-text-secondary">
+                          Page {billingPage} of {Math.ceil(invoices.length / billingPageSize)}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="px-3 py-2 text-sm rounded-lg border border-border text-text-primary disabled:opacity-50 hover:bg-surface-2"
+                            onClick={() => setBillingPage(p => Math.max(1, p - 1))}
+                            disabled={billingPage <= 1}
+                          >
+                            Previous
+                          </button>
+                          <button
+                            type="button"
+                            className="px-3 py-2 text-sm rounded-lg border border-border text-text-primary disabled:opacity-50 hover:bg-surface-2"
+                            onClick={() => setBillingPage(p => Math.min(Math.ceil(invoices.length / billingPageSize), p + 1))}
+                            disabled={billingPage >= Math.ceil(invoices.length / billingPageSize)}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
