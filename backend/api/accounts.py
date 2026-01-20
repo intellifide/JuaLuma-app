@@ -1,6 +1,7 @@
 # Updated 2025-12-18 20:25 CST by Antigravity
 import json
 import logging
+import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -10,8 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from web3 import Web3  # For address validation
-
+from backend.core.config import settings
 from backend.core.dependencies import enforce_account_limit
 from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, Subscription, Transaction, User
@@ -27,6 +27,95 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
 
 _ALLOWED_ACCOUNT_TYPES = {"traditional", "investment", "web3", "cex", "manual"}
+_CAIP2_PATTERN = re.compile(r"^[a-z0-9-]{2,32}:[A-Za-z0-9.-]{1,64}$")
+_EVM_ADDRESS_PATTERN = re.compile(r"^0x[a-fA-F0-9]{40}$")
+_MAX_ADDRESS_LENGTH = 256
+
+
+def _canonicalize_chain(chain: str) -> str:
+    namespace, reference = chain.split(":", 1)
+    return f"{namespace.lower()}:{reference}"
+
+
+def _resolve_web3_chain(chain: str | None, chain_id: int | None) -> tuple[str, str, str]:
+    if chain:
+        cleaned = chain.strip()
+        if not _CAIP2_PATTERN.match(cleaned):
+            raise ValueError("chain must be a CAIP-2 chain id like 'eip155:1'")
+        canonical = _canonicalize_chain(cleaned)
+        namespace, reference = canonical.split(":", 1)
+    else:
+        reference = str(chain_id or 1)
+        namespace = "eip155"
+        canonical = f"{namespace}:{reference}"
+
+    if namespace == "eip155" and not reference.isdigit():
+        raise ValueError("eip155 chain reference must be a numeric chain id")
+    if chain_id is not None and namespace != "eip155":
+        raise ValueError("chain_id is only supported for eip155 chains")
+    if chain_id is not None and namespace == "eip155" and reference != str(chain_id):
+        raise ValueError("chain_id does not match chain")
+
+    return canonical, namespace, reference
+
+
+def _get_chain_config(chain: str) -> tuple[str | None, str]:
+    """Return (rpc_url, symbol) for a given CAIP-2 chain id."""
+    # EVM chains with configured RPCs
+    if chain == "eip155:1":
+        return settings.eth_rpc_url, "ETH"
+    if chain == "eip155:137":
+        return settings.polygon_rpc_url, "MATIC"
+    if chain == "eip155:56":
+        return settings.bsc_rpc_url, "BNB"
+
+    # Known symbols for non-EVM or unsupported sync chains
+    symbols = {
+        "bip122:000000000019d6689c085ae165831e93": "BTC",
+        "solana:5eykt6UsFvXYuy2aiUB66XX7hsgnSSXq": "SOL",
+        "ripple:mainnet": "XRP",
+        "cardano:mainnet": "ADA",
+        "tron:mainnet": "TRX",
+    }
+    return None, symbols.get(chain, "ETH")
+
+
+def _normalize_web3_address(address: str, namespace: str) -> str:
+    cleaned = address.strip()
+    if not cleaned:
+        raise ValueError("Wallet address is required")
+    if any(ch.isspace() for ch in cleaned):
+        raise ValueError("Wallet address must not contain whitespace")
+    if len(cleaned) > _MAX_ADDRESS_LENGTH:
+        raise ValueError("Wallet address is too long")
+    if namespace == "eip155":
+        if not _EVM_ADDRESS_PATTERN.match(cleaned):
+            raise ValueError("Invalid EVM address format")
+        return cleaned.lower()
+    return cleaned
+
+
+def _normalize_web3_identity(chain: str, address: str) -> tuple[str, str]:
+    namespace = chain.split(":", 1)[0].lower()
+    if namespace == "eip155":
+        return _canonicalize_chain(chain), address.lower()
+    return _canonicalize_chain(chain), address
+
+
+def _extract_web3_identity(secret_ref: str) -> tuple[str | None, str | None]:
+    try:
+        stored = json.loads(secret_ref)
+    except json.JSONDecodeError:
+        return None, None
+    address = stored.get("address")
+    chain = stored.get("chain")
+    if not chain:
+        chain_id = stored.get("chain_id") or 1
+        chain = f"eip155:{chain_id}"
+    try:
+        return _canonicalize_chain(chain), address
+    except ValueError:
+        return None, None
 
 
 class AccountCreate(BaseModel):
@@ -58,16 +147,25 @@ class AccountCreate(BaseModel):
 
 
 class Web3LinkRequest(BaseModel):
-    address: str = Field(description="Wallet public address (0x...)")
-    chain_id: int = Field(default=1, description="Chain ID (1=Mainnet)")
+    address: str = Field(description="Wallet public address")
+    chain_id: int | None = Field(
+        default=None, ge=1, description="Legacy EVM chain id (e.g., 1 for mainnet)"
+    )
+    chain: str | None = Field(
+        default=None, description="CAIP-2 chain id (e.g., eip155:1, solana:mainnet)"
+    )
     account_name: str = Field(max_length=256)
 
-    @field_validator("address")
-    @classmethod
-    def validate_address(cls, v: str) -> str:
-        if not Web3.is_address(v):
-            raise ValueError("Invalid Web3 address format")
-        return Web3.to_checksum_address(v)
+    @model_validator(mode="after")
+    def normalize(self) -> "Web3LinkRequest":
+        chain, namespace, reference = _resolve_web3_chain(self.chain, self.chain_id)
+        self.chain = chain
+        if namespace == "eip155":
+            self.chain_id = int(reference)
+        else:
+            self.chain_id = None
+        self.address = _normalize_web3_address(self.address, namespace)
+        return self
 
 
 class CexLinkRequest(BaseModel):
@@ -361,8 +459,9 @@ def link_web3_account(
     db: Session = Depends(get_db),
 ) -> AccountResponse:
     """
-    Link a Web3 wallet (Ethereum address).
-    Validates the address format and prevents duplicate linking of the same address by the same user.
+    Link a Web3 wallet (chain-agnostic).
+    Validates the address format for the provided chain and prevents duplicate linking
+    of the same chain + address by the same user.
     """
     # 1. Check duplicate checks
     # While secret_ref might differ in formatting, we check if any existing account has this address in secret_ref
@@ -371,7 +470,15 @@ def link_web3_account(
     # or rely on a simple string check if we ensure stored format is consistent.
 
     # Simple consistent storage format:
-    secret_data = {"address": payload.address, "chain_id": payload.chain_id}
+    chain = payload.chain or "eip155:1"
+    chain_namespace, chain_reference = chain.split(":", 1)
+    chain_namespace = chain_namespace.lower()
+    secret_data = {
+        "address": payload.address,
+        "chain": chain,
+    }
+    if payload.chain_id is not None:
+        secret_data["chain_id"] = payload.chain_id
     secret_ref_str = json.dumps(secret_data, sort_keys=True)
 
     # Check for duplicates using Python iteration to be safe against JSON variations if not strict,
@@ -382,27 +489,45 @@ def link_web3_account(
         .all()
     )
 
+    incoming_chain, incoming_address = _normalize_web3_identity(
+        chain, payload.address
+    )
     for acc in existing_accounts:
         if not acc.secret_ref:
             continue
-        try:
-            stored = json.loads(acc.secret_ref)
-            if stored.get("address") == payload.address:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="This wallet address is already linked to your account.",
-                )
-        except json.JSONDecodeError:
+        stored_chain, stored_address = _extract_web3_identity(acc.secret_ref)
+        if not stored_chain or not stored_address:
             continue
+        stored_chain_norm, stored_address_norm = _normalize_web3_identity(
+            stored_chain, stored_address
+        )
+        if stored_chain_norm == incoming_chain and stored_address_norm == incoming_address:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This wallet address is already linked to your account.",
+            )
 
     enforce_account_limit(current_user, db, "web3")
+
+    _, symbol = _get_chain_config(chain)
+
+    # Map namespace to friendly provider name
+    friendly_providers = {
+        "eip155": "ethereum",
+        "bip122": "bitcoin",
+        "solana": "solana",
+        "ripple": "ripple",
+        "cardano": "cardano",
+        "tron": "tron"
+    }
+    provider_name = friendly_providers.get(chain_namespace, chain_namespace)
 
     account = Account(
         uid=current_user.uid,
         account_type="web3",
-        provider="ethereum",
+        provider=provider_name,
         account_name=payload.account_name,
-        currency="ETH",
+        currency=symbol,
         secret_ref=secret_ref_str,
         balance=Decimal("0.0"),  # Will be updated via sync
     )
@@ -410,12 +535,28 @@ def link_web3_account(
     db.commit()
     db.refresh(account)
 
+    # Trigger initial sync immediately so user sees transactions right away
+    try:
+        # Default window for initial sync: 30 days
+        start, end = _resolve_sync_dates(None, None)
+        fetched = _execute_provider_sync(account, start, end, current_user)
+        if fetched:
+            _save_sync_batch(db, current_user.uid, account.id, fetched, symbol)
+            db.commit()
+    except Exception as e:
+        logger.warning(f"Initial Web3 sync failed for {account.id}: {e}")
+        # We don't raise here; account is linked, sync can happen later.
+
     audit = AuditLog(
         actor_uid=current_user.uid,
         target_uid=current_user.uid,
         action="account_linked_web3",
         source="backend",
-        metadata_json={"account_id": str(account.id), "address": payload.address},
+        metadata_json={
+            "account_id": str(account.id),
+            "address": payload.address,
+            "chain": chain,
+        },
     )
     db.add(audit)
     db.commit()
@@ -514,7 +655,38 @@ def _sync_web3(account: Account) -> list[dict]:
         if not address:
             raise ValueError("Invalid Web3 configuration")
 
-        connector = build_connector(kind="web3", rpc_url=None)
+        chain = conn_data.get("chain")
+        if not chain:
+            chain_id = conn_data.get("chain_id") or 1
+            chain = f"eip155:{chain_id}"
+        try:
+            chain = _canonicalize_chain(chain)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid chain configuration for this wallet.",
+            ) from exc
+        namespace, reference = chain.split(":", 1)
+
+        if namespace == "eip155":
+            rpc_url, symbol = _get_chain_config(chain)
+            # Default to public if configured, build_connector handles the fallback
+            connector = build_connector(kind="web3", rpc_url=rpc_url, symbol=symbol, provider="ethereum")
+        else:
+            # Non-EVM chains (Bitcoin, Solana, etc)
+            _, symbol = _get_chain_config(chain)
+            # Map chain namespace to provider name expected by build_connector
+            # bip122 -> bitcoin, solana -> solana, etc.
+            provider_map = {
+                "bip122": "bitcoin",
+                "solana": "solana",
+                "ripple": "ripple",
+                "cardano": "cardano",
+                "tron": "tron"
+            }
+            provider = provider_map.get(namespace, namespace)
+            connector = build_connector(kind="web3", symbol=symbol, provider=provider)
+
         normalized_txns = connector.fetch_transactions(account_id=address)
 
         return [
@@ -532,7 +704,7 @@ def _sync_web3(account: Account) -> list[dict]:
     except Exception as e:
         logger.error(f"Web3 sync error: {e}")
         raise HTTPException(
-            status.HTTP_502_BAD_GATEWAY, "We encountered an issue syncing your wallet data. Please try again later."
+            status.HTTP_502_BAD_GATEWAY, f"We encountered an issue syncing your wallet data: {str(e)}"
         ) from e
 
 

@@ -16,9 +16,23 @@ interface ApiError {
   };
 }
 
+const CHAIN_PRESETS = [
+  { id: 'eip155:1', name: 'Ethereum', supported: true },
+  { id: 'bip122:000000000019d6689c085ae165831e93', name: 'Bitcoin', supported: true },
+  { id: 'solana:5eykt6UsFvXYuy2aiUB66XX7hsgnSSXq', name: 'Solana', supported: true },
+  { id: 'eip155:56', name: 'Binance Smart Chain', supported: true },
+  { id: 'eip155:137', name: 'Polygon', supported: true },
+  { id: 'ripple:mainnet', name: 'XRP (Ripple)', supported: true },
+  { id: 'cardano:mainnet', name: 'Cardano', supported: true },
+  { id: 'tron:mainnet', name: 'Tron', supported: true },
+  { id: 'custom', name: 'Custom (CAIP-2)', supported: false },
+];
+
 const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [address, setAddress] = useState('');
   const [name, setName] = useState('');
+  const [chain, setChain] = useState('eip155:1');
+  const [customChain, setCustomChain] = useState('');
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -26,9 +40,10 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
     e.preventDefault();
     setLoading(true);
     try {
-      await apiClient.post('/api/accounts/link/web3', {
+      const finalChain = chain === 'custom' ? customChain : chain;
+      await apiClient.post('/accounts/link/web3', {
         address,
-        chain_id: 1, // Mainnet default
+        chain: finalChain,
         account_name: name
       });
       toast.show('Wallet linked successfully', 'success');
@@ -40,37 +55,73 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
     }
   };
 
+  const selectedPreset = CHAIN_PRESETS.find(p => p.id === chain);
+
   return (
     <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
       <div className="modal-content max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold">Connect Web3 Wallet</h3>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
+        <div className="modal-header">
+          <h3>Connect Web3 Wallet</h3>
+          <button onClick={onClose} className="modal-close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="form-label">Wallet Label</label>
+            <label className="form-label text-sm">Wallet Label</label>
             <input
               type="text"
               className="input"
-              placeholder="My ETH Vault"
+              placeholder="e.g. My Ledger, MetaMask 1"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
           </div>
           <div>
-            <label className="form-label">ETH Address</label>
+            <label className="form-label text-sm">Blockchain Network</label>
+            <select 
+              className="input" 
+              value={chain} 
+              onChange={(e) => setChain(e.target.value)}
+            >
+              {CHAIN_PRESETS.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {chain === 'custom' && (
+            <div>
+              <label className="form-label text-sm">Custom CAIP-2 ID</label>
+              <input
+                type="text"
+                className="input font-mono text-sm"
+                placeholder="namespace:reference (e.g. cosmos:cosmoshub-4)"
+                value={customChain}
+                onChange={(e) => setCustomChain(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          {selectedPreset && !selectedPreset.supported && chain !== 'custom' && (
+            <div className="alert alert-info py-2 text-xs">
+              <strong>Note:</strong> Transaction sync for this network is coming soon. You can still link it for manual tracking.
+            </div>
+          )}
+
+          <div>
+            <label className="form-label text-sm">Wallet Address</label>
             <input
               type="text"
               className="input font-mono text-sm"
-              placeholder="0x..."
+              placeholder="Address on selected chain"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              pattern="^0x[a-fA-F0-9]{40}$"
-              title="Must be a valid Ethereum address starting with 0x"
               required
             />
+            <p className="text-xs text-text-secondary mt-2">
+              Ensure you use the correct address format for the selected network.
+            </p>
           </div>
           <div className="flex gap-3 justify-end mt-8">
             <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>Cancel</button>
@@ -108,7 +159,7 @@ const AddCexModal = ({
     e.preventDefault();
     setLoading(true);
     try {
-      await apiClient.post('/api/accounts/link/cex', {
+      await apiClient.post('/accounts/link/cex', {
         exchange_id: exchange,
         api_key: apiKey,
         api_secret: apiSecret,
@@ -126,9 +177,9 @@ const AddCexModal = ({
   return (
     <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
       <div className="modal-content max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold">{title}</h3>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
+        <div className="modal-header">
+          <h3>{title}</h3>
+          <button onClick={onClose} className="modal-close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -223,9 +274,9 @@ const EditAccountModal = ({
   return (
     <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
       <div className="modal-content max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold">Edit Account</h3>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
+        <div className="modal-header">
+          <h3>Edit Account</h3>
+          <button onClick={onClose} className="modal-close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -481,7 +532,17 @@ export const ConnectAccounts = () => {
                           </button>
                           <button
                             className="btn btn-sm btn-outline"
-                            onClick={() => sync(account.id)}
+                            onClick={async () => {
+                              try {
+                                await sync(account.id);
+                                toast.show('Account synced successfully', 'success');
+                              } catch (err) {
+                                // Error already toasted by useAccounts/api logic or we catch it here
+                                // Check if the error object has a message we should display
+                                const msg = err instanceof Error ? err.message : 'Sync failed';
+                                toast.show(msg, 'error');
+                              }
+                            }}
                             disabled={account.syncStatus === 'needs_reauth'}
                           >
                             Refresh
@@ -506,32 +567,6 @@ export const ConnectAccounts = () => {
           <strong>Read-Only Access:</strong> All connections are read-only to maintain non-custodial, non-MSB status. We cannot initiate transactions, transfer funds, or modify account settings. API keys and OAuth tokens are stored in an encrypted secret store.
         </div>
 
-        <div className="glass-panel">
-          <h2 className="mb-6">Data Retention by Tier</h2>
-          <div className="grid grid-2 mt-6">
-            <div className="card">
-              <h3 className="text-lg font-bold mb-2">Free Tier</h3>
-              <p className="font-semibold mb-1">45-day transaction retention</p>
-              <p className="text-sm text-text-secondary">
-                Transaction data is retained for 45 days. No archive is maintained after this period. AI chat history has no retention limits; all transactions remain fully visible.
-              </p>
-            </div>
-            <div className="card">
-              <h3 className="text-lg font-bold mb-2">Essential Tier</h3>
-              <p className="font-semibold mb-1">30-day hot + archive</p>
-              <p className="text-sm text-text-secondary">
-                Recent 30 days stored in Cloud SQL. Older data archived to Coldline storage for read-only retrieval. AI chat history has no retention limits; all transactions remain fully visible.
-              </p>
-            </div>
-            <div className="card">
-              <h3 className="text-lg font-bold mb-2">Pro & Ultimate Tiers</h3>
-              <p className="font-semibold mb-1">Full transaction retention</p>
-              <p className="text-sm text-text-secondary">
-                Complete transaction history retained. Data is only removed per &quot;Right to be Forgotten&quot; requests. AI chat history has no retention limits; all transactions remain fully visible.
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
     </div>
   );

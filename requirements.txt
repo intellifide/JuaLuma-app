@@ -16,7 +16,6 @@ email-validator>=2.2.0
 google-cloud-firestore==2.21.0
 google-cloud-storage==3.6.0
 google-cloud-pubsub==2.19.0
-google-cloud-secret-manager==2.17.0
 google-generativeai==0.3.2
 google-cloud-aiplatform
 pgvector==0.4.2
@@ -31,3 +30,4 @@ pytest-cov==4.1.0
 firebase-admin==7.1.0
 python-json-logger==2.0.7
 pyotp>=2.9.0
+user-agents

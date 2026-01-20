@@ -55,7 +55,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm transition-opacity"
+                className="fixed inset-0 z-40 bg-overlay transition-opacity"
                 onClick={onClose}
             />
 

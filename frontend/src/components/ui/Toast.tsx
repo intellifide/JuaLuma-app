@@ -28,7 +28,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast-container" style={{ position: 'fixed', bottom: 'var(--spacing-lg)', right: 'var(--spacing-lg)', zIndex: 2000, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+      <div className="toast-container" style={{ position: 'fixed', bottom: 'var(--spacing-lg)', right: 'var(--spacing-lg)', zIndex: 2000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--spacing-sm)', pointerEvents: 'none' }}>
         {toasts.map((toast) => (
           <div
             key={toast.id}

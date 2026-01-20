@@ -85,9 +85,22 @@ class AppSettings(BaseSettings):
         default="no-reply@jualuma.com", alias="SMTP_FROM_EMAIL"
     )
 
+    # Web3 / RPC Configuration
+    eth_rpc_url: str = Field(default="https://cloudflare-eth.com", alias="ETH_RPC_URL")
+    polygon_rpc_url: str = Field(default="https://polygon-rpc.com", alias="POLYGON_RPC_URL")
+    bsc_rpc_url: str = Field(default="https://bsc-dataseed.binance.org/", alias="BSC_RPC_URL")
+    bitcoin_api_url: str = Field(default="https://blockstream.info/api", alias="BITCOIN_API_URL")
+    solana_rpc_url: str = Field(default="https://api.mainnet-beta.solana.com", alias="SOLANA_RPC_URL")
+    ripple_rpc_url: str = Field(default="https://s2.ripple.com:51234", alias="RIPPLE_RPC_URL")
+    cardano_api_url: str = Field(default="https://api.koios.rest/api/v1", alias="CARDANO_API_URL")
+    tron_api_url: str = Field(default="https://api.trongrid.io", alias="TRON_API_URL")
+
     # Testmail Config (for development testing)
     testmail_api_key: str | None = Field(default=None, alias="TESTMAIL_API_KEY")
     testmail_namespace: str | None = Field(default=None, alias="TESTMAIL_NAMESPACE")
+
+    # Connector Overrides
+    force_real_connectors: bool = Field(default=False, alias="FORCE_REAL_CONNECTORS")
 
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod

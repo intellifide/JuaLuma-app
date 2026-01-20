@@ -27,6 +27,7 @@ from .support import (
 )
 from .transaction import Transaction
 from .user import User
+from .session import UserSession
 from .user_document import UserDocument
 from .widget import Widget
 from .widget_rating import WidgetRating
@@ -68,4 +69,5 @@ __all__ = [
     "HouseholdMember",
     "HouseholdInvite",
     "UserDocument",
+    "UserSession",
 ]

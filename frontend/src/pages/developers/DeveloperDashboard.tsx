@@ -211,15 +211,17 @@ export const DeveloperDashboard = () => {
 
             {/* Submit Modal */}
             {showSubmitModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-bg-secondary w-full max-w-lg rounded-xl border border-white/10 p-6 shadow-2xl relative">
-                        <button
-                            className="absolute top-4 right-4 text-text-muted hover:text-white"
-                            onClick={() => setShowSubmitModal(false)}
-                        >
-                            ✕
-                        </button>
-                        <h2 className="text-xl font-bold mb-6">Submit New Widget</h2>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-overlay">
+                    <div className="modal-content max-w-lg relative">
+                        <div className="modal-header">
+                            <h2>Submit New Widget</h2>
+                            <button
+                                className="modal-close"
+                                onClick={() => setShowSubmitModal(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
                         <form onSubmit={handleSubmitWidget} className="space-y-4">
                             <div>
                                 <label className="block text-sm text-text-secondary mb-1">Widget Name</label>

@@ -19,12 +19,15 @@ def test_link_web3_account(test_client: TestClient, test_db, mock_auth):
     data = response.json()
     assert data["account_name"] == "Vitalik Wallet"
     assert data["account_type"] == "web3"
+    assert data["provider"] == "ethereum"
+    assert data["currency"] == "ETH"
     assert "id" in data
 
     # Verify DB
     acct = test_db.query(Account).filter(Account.id == data["id"]).first()
     assert acct is not None
-    assert "d8dA6BF26964aF9D7eEd9e03E53415D37aA96045" in acct.secret_ref
+    assert "eip155:1" in acct.secret_ref
+    assert "0xd8da6bf26964af9d7eed9e03e53415d37aa96045" in acct.secret_ref
 
 
 def test_link_web3_account_invalid_address(test_client: TestClient, mock_auth):
@@ -55,6 +58,26 @@ def test_link_web3_duplicate(test_client: TestClient, test_db, mock_auth):
     )
     assert response.status_code == 409
     assert "already linked" in response.json()["detail"]
+
+
+def test_link_web3_non_evm_chain(test_client: TestClient, test_db, mock_auth):
+    payload = {
+        "address": "So11111111111111111111111111111111111111112",
+        "chain": "solana:5eykt6UsFvXYuy2aiUB66XX7hsgnSSXq",
+        "account_name": "Solana Wallet",
+    }
+
+    response = test_client.post("/api/accounts/link/web3", json=payload)
+    assert response.status_code == 201
+
+    data = response.json()
+    assert data["account_type"] == "web3"
+    assert data["provider"] == "solana"
+    assert data["currency"] == "SOL"
+
+    acct = test_db.query(Account).filter(Account.id == data["id"]).first()
+    assert acct is not None
+    assert "solana:5eykt6UsFvXYuy2aiUB66XX7hsgnSSXq" in acct.secret_ref
 
 
 def test_link_cex_account(test_client: TestClient, test_db, mock_auth):

@@ -43,6 +43,14 @@ def test_mock_connector_returns_deterministic_payloads():
     assert any(r.on_chain_symbol == "ETH" for r in results)
 
 
+def test_mock_connector_respects_symbol():
+    connector = MockConnectorClient("web3", symbol="MATIC")
+    results = list(connector.fetch_transactions("acct-123"))
+    web3_tx = next(r for r in results if r.tx_id == "web3-hash-003")
+    assert web3_tx.on_chain_symbol == "MATIC"
+    assert web3_tx.currency_code == "MATIC"
+
+
 def test_normalize_requires_timestamp():
     with pytest.raises(ValueError):
         normalize_transaction(

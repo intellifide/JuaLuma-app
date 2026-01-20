@@ -3,7 +3,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { changePassword, apiFetch } from '../services/auth';
+import { changePassword, apiFetch, listSessions, endSession, endOtherSessions, UserSessionData } from '../services/auth';
 import { householdService } from '../services/householdService';
 import type { Household } from '../types/household';
 
@@ -163,6 +163,46 @@ export const Settings = () => {
     !['admin', 'owner'].includes(profile?.household_member?.role || '')
   );
 
+  // Session Management State
+  const [sessions, setSessions] = useState<UserSessionData[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [terminatingSessionId, setTerminatingSessionId] = useState<string | null>(null);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const data = await listSessions();
+      setSessions(data);
+    } catch (err) {
+      console.error('Failed to load sessions', err);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  const handleEndSession = async (sessionId: string) => {
+    if (!window.confirm('Terminate this session?')) return;
+    setTerminatingSessionId(sessionId);
+    try {
+      await endSession(sessionId);
+      await loadSessions();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to end session');
+    } finally {
+      setTerminatingSessionId(null);
+    }
+  };
+
+  const handleEndOtherSessions = async () => {
+    if (!window.confirm('Terminate all other active sessions? This will log you out of all other devices.')) return;
+    try {
+      await endOtherSessions();
+      await loadSessions();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to end other sessions');
+    }
+  };
+
   // Format a household role string for display in the UI.
 
   const formatRole = (role: string) =>
@@ -221,8 +261,10 @@ export const Settings = () => {
         }
       };
       void loadInvoices();
+    } else if (activeTab === 'security') {
+      void loadSessions();
     }
-  }, [activeTab, loadHousehold]);
+  }, [activeTab, loadHousehold, loadSessions]);
 
   // Control visibility of the household tab based on membership or Ultimate tier.
   const hasUltimatePlan = Boolean(profile?.plan?.includes('ultimate'));
@@ -912,25 +954,72 @@ export const Settings = () => {
               </div>
 
               <div className="card">
-                <div className="card-header pb-2 border-b border-border mb-4">
+                <div className="card-header pb-2 border-b border-border mb-4 flex justify-between items-center">
                   <h3 className="text-xl font-bold">Active Sessions</h3>
+                  <button 
+                    onClick={handleEndOtherSessions}
+                    className="text-sm text-red-500 hover:text-red-600 font-medium"
+                    disabled={sessions.filter(s => s.is_active && !s.is_current).length === 0}
+                  >
+                    End all other sessions
+                  </button>
                 </div>
                 <div className="card-body overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="pb-2 text-text-secondary font-medium">Device</th>
-                        <th className="pb-2 text-text-secondary font-medium">Location</th>
+                        <th className="pb-2 text-text-secondary font-medium">Device & IP</th>
                         <th className="pb-2 text-text-secondary font-medium">Last Active</th>
+                        <th className="pb-2 text-text-secondary font-medium">Status</th>
                         <th className="pb-2 text-text-secondary font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td colSpan={4} className="py-6 text-center text-text-muted">
-                          Session management coming soon.
-                        </td>
-                      </tr>
+                      {sessionsLoading && (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-text-muted">
+                            Loading sessions...
+                          </td>
+                        </tr>
+                      )}
+                      {!sessionsLoading && sessions.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-text-muted">
+                            No sessions found.
+                          </td>
+                        </tr>
+                      )}
+                      {!sessionsLoading && sessions.map((session) => (
+                        <tr key={session.id} className="border-b border-border/50 last:border-0 hover:bg-surface-2 transition-colors">
+                          <td className="py-3">
+                            <div className="font-medium text-text-primary">
+                              {session.device_type} {session.is_current && <span className="ml-2 px-1.5 py-0.5 bg-royal-purple/10 text-royal-purple text-[10px] rounded font-bold uppercase">Current</span>}
+                            </div>
+                            <div className="text-xs text-text-muted">{session.ip_address || 'Unknown IP'}</div>
+                          </td>
+                          <td className="py-3 text-sm text-text-primary">
+                            {new Date(session.last_active).toLocaleString()}
+                          </td>
+                          <td className="py-3 text-sm">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${session.is_active 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-gray-100 text-gray-800'}`}>
+                              {session.is_active ? 'Active' : 'Ended'}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            {session.is_active && !session.is_current && (
+                              <button
+                                onClick={() => handleEndSession(session.id)}
+                                className="text-red-500 hover:text-red-600 text-xs font-medium"
+                                disabled={terminatingSessionId === session.id}
+                              >
+                                {terminatingSessionId === session.id ? 'Ending...' : 'End Session'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -944,9 +1033,9 @@ export const Settings = () => {
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
           <div className="modal-content max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Delete Account</h3>
-              <button onClick={() => setShowDeleteModal(false)} className="text-text-muted hover:text-text-primary text-2xl" aria-label="Close modal">×</button>
+            <div className="modal-header">
+              <h3>Delete Account</h3>
+              <button onClick={() => setShowDeleteModal(false)} className="modal-close" aria-label="Close modal">×</button>
             </div>
             <div>
               <p className="mb-4">

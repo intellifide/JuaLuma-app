@@ -5,6 +5,7 @@ import random
 import string
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
+import uuid
 from threading import Lock
 from urllib.parse import parse_qs, urlparse
 
@@ -18,7 +19,7 @@ from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.core.legal import REQUIRED_SIGNUP_AGREEMENTS
 from backend.middleware.auth import get_current_user
-from backend.models import AuditLog, HouseholdInvite, HouseholdMember, Subscription, User
+from backend.models import AuditLog, HouseholdInvite, HouseholdMember, Subscription, User, UserSession
 from backend.schemas.legal import AgreementAcceptancePayload
 from backend.services.legal import record_agreement_acceptances
 from backend.services.auth import (
@@ -1023,7 +1024,16 @@ def logout(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Revoke refresh tokens and record an audit log entry."""
+    # Deactivate current session record in our DB
+    iat = getattr(request.state, "iat", None)
+    if iat:
+        session_rec = db.query(UserSession).filter(
+            UserSession.uid == current_user.uid,
+            UserSession.iat == iat
+        ).first()
+        if session_rec:
+            session_rec.is_active = False
+
     try:
         revoke_refresh_tokens(current_user.uid)
     except RuntimeError as exc:
@@ -1049,6 +1059,90 @@ def logout(
     db.commit()
 
     return {"message": "Logged out successfully"}
+
+
+@router.get("/sessions")
+def list_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """List all sessions for the current user."""
+    sessions = db.query(UserSession).filter(
+        UserSession.uid == current_user.uid
+    ).order_by(UserSession.last_active.desc()).all()
+    
+    current_iat = getattr(request.state, "iat", None)
+    
+    result = []
+    for s in sessions:
+        d = s.to_dict()
+        d["is_current"] = (s.iat == current_iat)
+        result.append(d)
+        
+    return result
+
+
+@router.delete("/sessions/{session_id}")
+def end_session(
+    session_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Terminate a specific session."""
+    session_rec = db.query(UserSession).filter(
+        UserSession.id == session_id,
+        UserSession.uid == current_user.uid
+    ).first()
+    
+    if not session_rec:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+        
+    current_iat = getattr(request.state, "iat", None)
+    if session_rec.iat == current_iat:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot terminate your current session. Use logout instead."
+        )
+        
+    session_rec.is_active = False
+    db.commit()
+    
+    # Optionally: If we want to force logout on Firebase side, we might need more effort,
+    # but since our middleware checks is_active, this is sufficient for blocking access.
+    
+    return {"message": "Session terminated successfully."}
+
+
+@router.delete("/sessions")
+def end_other_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Terminate all sessions except the current one."""
+    current_iat = getattr(request.state, "iat", None)
+    
+    if not current_iat:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot identify your current session."
+        )
+        
+    # Mark all other active sessions as inactive
+    db.query(UserSession).filter(
+        UserSession.uid == current_user.uid,
+        UserSession.iat != current_iat,
+        UserSession.is_active == True
+    ).update({UserSession.is_active: False}, synchronize_session=False)
+    
+    db.commit()
+    
+    return {"message": "All other sessions have been terminated."}
 
 
 __all__ = ["router"]

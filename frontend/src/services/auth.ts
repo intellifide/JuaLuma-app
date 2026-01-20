@@ -13,6 +13,20 @@ import {
 import { auth } from './firebase'
 import { AgreementAcceptanceInput } from '../types/legal'
 
+export interface UserSessionData {
+  id: string
+  uid: string
+  iat: number
+  ip_address: string | null
+  user_agent: string | null
+  device_type: string | null
+  location: string | null
+  is_active: boolean
+  created_at: string
+  last_active: string
+  is_current: boolean
+}
+
 type ApiRequestInit = RequestInit & { skipAuth?: boolean }
 
 const TOKEN_MAX_AGE_MS = 4 * 60 * 1000 // refresh cached token every 4 minutes
@@ -83,6 +97,11 @@ export const login = async (email: string, password: string): Promise<User> => {
 }
 
 export const logout = async (): Promise<void> => {
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' })
+  } catch (error) {
+    console.error('Backend logout failed:', error)
+  }
   await signOut(auth)
   clearCachedToken()
 }
@@ -160,6 +179,23 @@ export const verifyEmailCode = async (code: string): Promise<void> => {
 export const selectFreePlan = async (): Promise<void> => {
   await apiFetch('/billing/plans/free', {
     method: 'POST',
+  })
+}
+
+export const listSessions = async (): Promise<UserSessionData[]> => {
+  const response = await apiFetch('/auth/sessions')
+  return response.json()
+}
+
+export const endSession = async (sessionId: string): Promise<void> => {
+  await apiFetch(`/auth/sessions/${sessionId}`, {
+    method: 'DELETE',
+  })
+}
+
+export const endOtherSessions = async (): Promise<void> => {
+  await apiFetch('/auth/sessions', {
+    method: 'DELETE',
   })
 }
 

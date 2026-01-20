@@ -37,8 +37,8 @@ class Transaction(Base):
         Index("idx_transactions_account_id", "account_id"),
         Index("idx_transactions_merchant_description", "merchant_name", "description"),
         Index(
-            "idx_transactions_external_id_uid",
-            "uid",
+            "idx_transactions_external_id_account",
+            "account_id",
             "external_id",
             unique=True,
         ),

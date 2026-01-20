@@ -307,7 +307,7 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
-  const { accounts, refetch: refetchAccounts } = useAccounts({
+  const { accounts, refetch: refetchAccounts, sync } = useAccounts({
     filters: { scope: dashboardScope }
   });
   const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
@@ -342,6 +342,32 @@ export default function Dashboard() {
   };
 
   const [activeTab, setActiveTab] = useState('all-accounts');
+  const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
+
+  const handleSync = async (accountId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent card click
+    if (syncingAccounts.has(accountId)) return;
+
+    setSyncingAccounts(prev => new Set(prev).add(accountId));
+    toast.show('Syncing account in background...', 'success');
+    try {
+      await sync(accountId);
+      await refetchTransactions();
+      toast.show('Account synced successfully', 'success');
+    } catch (err: any) {
+      console.error("Sync failed", err);
+      // Try to extract backend error message
+      const msg = err.response?.data?.detail || err.message || 'Failed to sync account';
+      toast.show(msg, 'error');
+    } finally {
+      setSyncingAccounts(prev => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
 
   // Invite Member State
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -1033,10 +1059,27 @@ export default function Dashboard() {
                     </span>
                   </div>
                 </div>
-                <div className="text-right mt-4 md:mt-0">
-                  <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
-                  <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
-                </div>
+                  <div className="text-right mt-4 md:mt-0 flex flex-col items-end gap-2">
+                    <div>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
+                      <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
+                    </div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        // Trigger sync for all accounts sequentially to prevent rate limits
+                        for (const acc of filteredAccounts) {
+                          if (!syncingAccounts.has(acc.id)) {
+                            // We await each sync to ensure sequential execution
+                            await handleSync(acc.id, e);
+                          }
+                        }
+                      }}
+                       className="text-xs bg-royal-purple/10 text-royal-purple px-2 py-1 rounded hover:bg-royal-purple/20 flex items-center gap-1 transition-colors"
+                    >
+                      <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
+                    </button>
+                  </div>
               </>
             )}
           </div>
@@ -1056,10 +1099,28 @@ export default function Dashboard() {
                 </div>
               ) : (
                 filteredAccounts.map((account: Account) => (
-                  <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5">
+                  <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5 relative group">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => handleSync(account.id, e)}
+                        disabled={syncingAccounts.has(account.id)}
+                        className="text-xs bg-royal-purple/20 text-royal-purple px-2 py-1 rounded hover:bg-royal-purple/30 disabled:opacity-50 flex items-center gap-1"
+                        title="Sync latest transactions"
+                      >
+                        {syncingAccounts.has(account.id) ? (
+                          <>
+                            <span className="animate-spin text-royal-purple">↻</span> Syncing...
+                          </>
+                        ) : (
+                          <>
+                            <span>↻</span> Sync
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <h3 className="font-semibold text-lg">{account.accountName}</h3>
                     <p className="text-2xl font-bold text-royal-purple my-2">
-                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
+                       {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
                     </p>
                     <p className="text-sm text-text-muted">
                       {account.accountNumberMasked ? `Account ending in ${account.accountNumberMasked}` : account.accountType}

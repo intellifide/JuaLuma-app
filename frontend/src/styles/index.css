@@ -18,9 +18,9 @@
   --color-accent-light: #22d3ee;
 
   /* Glass Theme */
-  --glass-bg: rgba(255, 255, 255, 0.65);
-  --glass-blur: blur(24px);
-  --glass-saturate: saturate(150%);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-blur: blur(12px);
+  --glass-saturate: saturate(180%);
 
   /* Text Colors */
   --text-primary: #1f2937;
@@ -73,7 +73,7 @@
 
 /* Dark Mode */
 [data-theme="dark"] {
-  --glass-bg: rgba(17, 24, 39, 0.95);
+  --glass-bg: rgba(31, 41, 55, 0.9);
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
   --text-muted: #9ca3af;
@@ -253,24 +253,24 @@ a:hover {
 }
 
 .btn-danger {
-  background: #EF4444 !important;
+  background: #ef4444 !important;
   color: white !important;
 }
 
 .btn-danger:hover {
-  background: #DC2626 !important;
+  background: #dc2626 !important;
 }
 
 .btn-outline-danger {
   background: transparent !important;
-  border-color: #EF4444 !important;
-  color: #EF4444 !important;
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
 }
 
 .btn-outline-danger:hover {
   background: rgba(239, 68, 68, 0.1) !important;
-  border-color: #DC2626 !important;
-  color: #DC2626 !important;
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
 }
 
 [data-theme="dark"] .btn-outline-danger:hover {
@@ -830,10 +830,18 @@ a:hover {
   right: 0;
   bottom: 0;
   background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 1000;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-lg);
+}
+
+.bg-overlay {
+  background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .modal.open {
@@ -851,9 +859,14 @@ a:hover {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   position: relative;
-  animation: modalScaleIn 0.3s ease-out;
+  animation: modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="dark"] .modal-content {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
 @keyframes modalScaleIn {
@@ -872,6 +885,13 @@ a:hover {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-lg);
+}
+
+.modal-header h2,
+.modal-header h3 {
+  font-size: var(--font-size-2xl) !important;
+  margin-bottom: 0;
+  font-weight: 700;
 }
 
 .modal-close {
@@ -1112,20 +1132,18 @@ textarea:focus-visible {
 
 /* Toast Notifications */
 .toast {
-  position: fixed;
-  bottom: var(--spacing-lg);
-  right: var(--spacing-lg);
+  position: relative;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur) var(--glass-saturate);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   padding: var(--spacing-md) var(--spacing-lg);
   box-shadow: var(--shadow-lg);
-  z-index: 2000;
   display: none;
   align-items: center;
   gap: var(--spacing-md);
   max-width: 400px;
+  pointer-events: auto;
 }
 
 .toast.show {

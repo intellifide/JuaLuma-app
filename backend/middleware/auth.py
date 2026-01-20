@@ -5,8 +5,9 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-from backend.models import Subscription, User
+from backend.models import Subscription, User, UserSession
 from backend.services.auth import verify_token
 from backend.utils import get_db
 
@@ -14,6 +15,7 @@ _plan_rank = {"free": 0, "essential": 1, "pro": 2, "ultimate": 3}
 
 
 async def get_current_user(
+    request: Request,
     authorization: Annotated[str | None, Header(convert_underscores=False)] = None,
     db: Session = Depends(get_db),
 ) -> User:
@@ -68,18 +70,70 @@ async def get_current_user(
                     user_by_email.uid = uid
                     db.commit()
                     db.refresh(user_by_email)
-                    return user_by_email
+                    user = user_by_email
                 except Exception as e:
                     logger.error(f"Auth Middleware: Healing failed for {email}: {e}")
                     # If PK update fails (e.g. FK constraints without cascade), rollback
                     db.rollback()
                     pass
 
+    if not user:
         logger.error(f"Auth Middleware: User {uid} not found in DB and healing failed.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Your account session is invalid.",
         )
+
+    # Session Tracking Logic
+    iat = decoded.get("iat")
+    if iat:
+        request.state.iat = iat
+        # Check if the specific session is killed
+        session_rec = db.query(UserSession).filter(
+            UserSession.uid == uid, UserSession.iat == iat
+        ).first()
+        
+        if session_rec and not session_rec.is_active:
+            logger.warning(f"Auth Middleware: Killed session attempt for user {uid}, iat {iat}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Your session has been terminated. Please log in again.",
+            )
+        
+        # Upsert session record (optional: only update if last_active is old to save writes)
+        # For simplicity, we'll just update every time for now or use a strategy later.
+        if not session_rec:
+            # Create new session record
+            import user_agents
+            ua_string = request.headers.get("user-agent", "")
+            ua = user_agents.parse(ua_string)
+            device_type = "Desktop"
+            if ua.is_mobile:
+                device_type = "Mobile"
+            elif ua.is_tablet:
+                device_type = "Tablet"
+            elif ua.is_bot:
+                device_type = "Bot"
+                
+            session_rec = UserSession(
+                uid=uid,
+                iat=iat,
+                ip_address=request.client.host if request.client else None,
+                user_agent=ua_string[:512],
+                device_type=device_type,
+                # Location would require GeoIP, leaving null for now or mock
+                is_active=True
+            )
+            db.add(session_rec)
+        else:
+            # Update last active
+            session_rec.last_active = func.now()
+        
+        try:
+            db.commit()
+        except Exception as e:
+            logger.error(f"Auth Middleware: Failed to update session for {uid}: {e}")
+            db.rollback()
 
     return user
 
