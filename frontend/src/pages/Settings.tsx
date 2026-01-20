@@ -1,5 +1,5 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
-// Last Modified: 2026-01-19 19:56 CST
+// Last Updated 2026-01-20 03:25 CST by Antigravity - standardize button styling and card layouts
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -214,7 +214,8 @@ export const Settings = () => {
                   <input type="tel" id="profile-phone" name="phone" className="form-input w-full" defaultValue="+1 (555) 123-4567" />
                 </div>
 
-                <div className="mb-6">
+                {/* Preferred Currency Section Disabled - Future Feature */}
+                {/* <div className="mb-6">
                   <label htmlFor="profile-currency" className="block text-sm font-medium text-text-secondary mb-1">Preferred Currency</label>
                   <select id="profile-currency" name="currency" className="form-select w-full">
                     <option value="USD">USD - US Dollar</option>
@@ -223,7 +224,7 @@ export const Settings = () => {
                     <option value="CAD">CAD - Canadian Dollar</option>
                     <option value="AUD">AUD - Australian Dollar</option>
                   </select>
-                </div>
+                </div> */}
 
                 <button type="submit" className="btn btn-primary">Save Changes</button>
               </form>
@@ -270,7 +271,7 @@ export const Settings = () => {
                         </p>
                       )}
                     </div>
-                    <div className="card-footer mt-6 flex gap-2">
+                    <div className="card-footer">
                       <button onClick={async () => {
                         try {
                           if (!user) {
@@ -290,10 +291,10 @@ export const Settings = () => {
                             alert('Failed to redirect to billing portal.');
                           }
                         } catch (e) {
-                          console.error("Billing portal error:", e);
-                          alert('An error occurred opening the billing portal.');
+                          const message = e instanceof Error ? e.message : 'An error occurred opening the billing portal.';
+                          alert(message);
                         }
-                      }} className="btn btn-secondary">Manage Subscription</button>
+                      }} className="btn btn-primary">Manage Subscription</button>
                     </div>
                   </div>
 
@@ -620,30 +621,22 @@ export const Settings = () => {
                       className="btn btn-outline"
                       onClick={async () => {
                         try {
-                          const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
-                          const token = await user?.getIdToken();
-                          const response = await fetch(`${apiBase}/api/users/export`, {
+                          const response = await apiFetch('/users/export', {
                             method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            }
                           });
 
-                          if (response.ok) {
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `jualuma-export-${new Date().toISOString().split('T')[0]}.json`;
-                            document.body.appendChild(a);
-                            a.click();
-                            a.remove();
-                          } else {
-                            alert('Failed to export data.');
-                          }
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `jualuma-export-${new Date().toISOString().split('T')[0]}.json`;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          window.URL.revokeObjectURL(url);
                         } catch (err) {
-                          console.error('Export error:', err);
-                          alert('An error occurred during export.');
+                          const message = err instanceof Error ? err.message : 'An error occurred during export.';
+                          alert(message);
                         }
                       }}
                     >
@@ -782,6 +775,8 @@ export const Settings = () => {
                   <p className="mb-4 text-text-secondary">
                     Add an extra layer of security to your account by enabling two-factor authentication.
                   </p>
+                </div>
+                <div className="card-footer">
                   <button type="button" className="btn btn-primary">Enable 2FA</button>
                 </div>
               </div>
@@ -817,13 +812,13 @@ export const Settings = () => {
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-surface-1 rounded-2xl shadow-xl border border-border max-w-md w-full mx-4 overflow-hidden">
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-xl font-bold">Delete Account</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
+          <div className="modal-content max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Delete Account</h3>
               <button onClick={() => setShowDeleteModal(false)} className="text-text-muted hover:text-text-primary text-2xl" aria-label="Close modal">×</button>
             </div>
-            <div className="p-6">
+            <div>
               <p className="mb-4">
                 Are you sure you want to delete your account? This action cannot be undone.
               </p>
@@ -840,34 +835,24 @@ export const Settings = () => {
                 e.preventDefault();
                 if (deleteConfirm === 'DELETE') {
                   try {
-                    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
-                    const token = await user?.getIdToken();
-                    const response = await fetch(`${apiBase}/api/users/me`, {
+                    await apiFetch('/users/me', {
                       method: 'DELETE',
-                      headers: {
-                        'Authorization': `Bearer ${token}`
-                      }
                     });
-
-                    if (response.ok) {
-                      window.location.href = '/login';
-                    } else {
-                      alert('Failed to delete account. Please try again.');
-                    }
+                    window.location.href = '/login';
                   } catch (err) {
-                    console.error('Delete account error:', err);
-                    alert('An error occurred. Please try again.');
+                    const message = err instanceof Error ? err.message : 'Failed to delete account. Please try again.';
+                    alert(message);
                   }
                 }
               }}>
                 <div className="mb-6">
-                  <label htmlFor="delete-confirm" className="block text-sm font-medium mb-1">
+                  <label htmlFor="delete-confirm" className="form-label">
                     Type &quot;DELETE&quot; to confirm:
                   </label>
                   <input
                     type="text"
                     id="delete-confirm"
-                    className="form-input w-full"
+                    className="input"
                     value={deleteConfirm}
                     onChange={(e) => setDeleteConfirm(e.target.value)}
                     required
@@ -876,7 +861,7 @@ export const Settings = () => {
                 <div className="flex gap-4">
                   <button
                     type="submit"
-                    className="btn bg-red-600 text-white hover:bg-red-700 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn btn-danger flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={deleteConfirm !== 'DELETE'}
                   >
                     Delete Account

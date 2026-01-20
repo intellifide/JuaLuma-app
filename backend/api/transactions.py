@@ -201,7 +201,7 @@ def list_transactions(
         if not member:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="User is not a member of a household.",
+                detail="You are not currently part of a household.",
             )
 
         # Check Household Owner's Subscription
@@ -209,7 +209,7 @@ def list_transactions(
             db.query(Household).filter(Household.id == member.household_id).first()
         )
         if not household:
-            raise HTTPException(status_code=404, detail="Household not found.")
+            raise HTTPException(status_code=404, detail="The requested household profile could not be found.")
 
         owner_sub = (
             db.query(Subscription)
@@ -225,7 +225,7 @@ def list_transactions(
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Household subscription requires Ultimate tier.",
+                detail="Household features require an active Ultimate subscription.",
             )
 
         # Get all members of this household
@@ -339,7 +339,7 @@ def get_transaction(
     )
     if not txn:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified transaction could not be found."
         )
     return txn
 
@@ -371,7 +371,7 @@ def bulk_update_transactions(
     if len(txns) != len(txn_ids):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="One or more transactions are missing or not owned by the user.",
+            detail="Some of the selected transactions could not be updated.",
         )
 
     for txn in txns:
@@ -414,7 +414,7 @@ def update_transaction(
     )
     if not txn:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified transaction could not be found."
         )
 
     old_category = txn.category
@@ -468,12 +468,12 @@ def delete_transaction(
     )
     if not txn:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified transaction could not be found."
         )
     if not txn.is_manual:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only manual transactions can be deleted.",
+            detail="Automated transactions cannot be deleted manually.",
         )
 
     txn.archived = True

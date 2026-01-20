@@ -110,7 +110,7 @@ def _check_submit_rate_limit(uid: str) -> None:
         if len(attempts) >= _SUBMIT_LIMIT:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Submission limit reached. Try again later.",
+                detail="Rate limit exceeded for widget submissions. Please try again in an hour.",
             )
         attempts.append(now)
 
@@ -243,11 +243,11 @@ def update_widget(
     """Update a widget. Owner only."""
     widget = db.query(Widget).filter(Widget.id == widget_id).first()
     if not widget:
-        raise HTTPException(status_code=404, detail="Widget not found")
+        raise HTTPException(status_code=404, detail="The specified widget could not be found.")
 
     if widget.developer_uid != current_user.uid:
         raise HTTPException(
-            status_code=403, detail="Not authorized to edit this widget"
+            status_code=403, detail="You do not have permission to edit this widget."
         )
 
     updated = False
@@ -302,7 +302,7 @@ def delete_widget(
 
     if widget.developer_uid != current_user.uid:
         raise HTTPException(
-            status_code=403, detail="Not authorized to delete this widget"
+            status_code=403, detail="You do not have permission to delete this widget."
         )
 
     widget.status = "removed"
@@ -338,7 +338,7 @@ def download_widget(
 
     if widget.status != "approved" and widget.developer_uid != current_user.uid:
         # Only owner can download non-approved widgets
-        raise HTTPException(status_code=404, detail="Widget not found or not available")
+        raise HTTPException(status_code=404, detail="This widget is not currently available.")
 
     # Enforce Pro/Ultimate Subscription for downloading
     sub = get_current_active_subscription(current_user)
@@ -464,7 +464,7 @@ def rate_widget(
 
     if widget.developer_uid == current_user.uid:
         raise HTTPException(
-            status_code=400, detail="Developer cannot rate their own widget"
+            status_code=400, detail="You cannot leave a rating for your own widget."
         )
 
     # Check existing rating
@@ -479,7 +479,7 @@ def rate_widget(
 
     if existing:
         raise HTTPException(
-            status_code=400, detail="You have already rated this widget"
+            status_code=400, detail="You have already submitted a rating for this widget."
         )
 
     rating = WidgetRating(

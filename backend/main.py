@@ -192,10 +192,28 @@ async def starlette_exception_handler(
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
+    # Attempt to extract a human-readable message from the first error
+    errors = exc.errors()
+    if errors:
+        err = errors[0]
+        field = ".".join(str(p) for p in err.get("loc", []) if p != "body")
+        msg = err.get("msg", "Invalid input")
+        # Sanitize common pydantic messages
+        if "string_too_short" in err.get("type", ""):
+            min_len = err.get("ctx", {}).get("min_length", "?")
+            msg = f"must be at least {min_len} characters long"
+        elif "string_too_long" in err.get("type", ""):
+            max_len = err.get("ctx", {}).get("max_length", "?")
+            msg = f"must be at most {max_len} characters long"
+        
+        friendly_message = f"Invalid {field}: {msg}" if field else f"Invalid input: {msg}"
+    else:
+        friendly_message = "Invalid request data."
+
     return _build_error_response(
         status_code=status.HTTP_400_BAD_REQUEST,
         error="bad_request",
-        message=f"Validation Error: {str(exc)}",
+        message=friendly_message,
         request=request,
     )
 

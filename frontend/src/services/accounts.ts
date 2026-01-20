@@ -24,9 +24,6 @@ type AccountSyncResponse = {
 }
 
 const handleError = (error: unknown) => {
-  const message =
-    error instanceof Error ? error.message : 'Something went wrong. Please try again.'
-  window.alert(message)
   throw error
 }
 

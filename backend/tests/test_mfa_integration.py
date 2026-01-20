@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pyotp
 
+from backend.core.constants import UserStatus
 from backend.models import User
 
 # Use fixtures from conftest.py (test_client, test_db) automatically found by pytest
@@ -107,6 +108,8 @@ def test_mfa_complete_flow(
     # ---------------------------------------------------------
     # 5. Setup Email MFA
     # ---------------------------------------------------------
+    user.status = UserStatus.ACTIVE
+    test_db.commit()
     # Request code (Public endpoint)
     res = test_client.post(
         "/api/auth/mfa/email/request-code", json={"email": test_email}

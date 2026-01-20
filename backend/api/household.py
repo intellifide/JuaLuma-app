@@ -65,7 +65,7 @@ def create_household(
         logger.error(f"Error creating household: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create household.",
+            detail="We encountered an issue creating your household. Please try again later.",
         ) from e
 
 
@@ -84,7 +84,7 @@ def get_my_household(
     )
     if not member:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="You are not in a household."
+            status_code=status.HTTP_404_NOT_FOUND, detail="No household was found for your account."
         )
 
     household = (
@@ -94,7 +94,7 @@ def get_my_household(
     # Permission check (optional, seeing your own household is usually allowed)
     if not member.can_view_household:
          raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied."
+            status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to view this household."
         )
 
     return _format_household_response(household)
@@ -118,7 +118,7 @@ def create_invite(
         raise e
     except Exception as e:
         logger.error(f"Error sending invite: {e}")
-        raise HTTPException(status_code=500, detail="Failed to send invite.") from e
+        raise HTTPException(status_code=500, detail="We could not send the invite at this time. Please try again later.") from e
 
 
 @router.get("/invites/{token}")
@@ -172,7 +172,7 @@ def accept_invite_endpoint(
         raise e
     except Exception as e:
         logger.error(f"Error accepting invite: {e}")
-        raise HTTPException(status_code=500, detail="Failed to join household.") from e
+        raise HTTPException(status_code=500, detail="We encountered an issue joining the household. Please try again later.") from e
 
 
 @router.delete("/members/me")
@@ -190,7 +190,7 @@ def leave_household_endpoint(
         raise e
     except Exception as e:
         logger.error(f"Error leaving household: {e}")
-        raise HTTPException(status_code=500, detail="Failed to leave household.") from e
+        raise HTTPException(status_code=500, detail="We encountered an issue while processing your request to leave the household.") from e
 
 
 # Remove a member from the household (Admin only).
@@ -211,7 +211,7 @@ def remove_member_endpoint(
     except Exception as e:
         logger.error(f"Error removing household member: {e}")
         raise HTTPException(
-            status_code=500, detail="Failed to remove household member."
+            status_code=500, detail="We could not remove the member at this time. Please try again later."
         ) from e
 
 
@@ -232,7 +232,7 @@ def cancel_invite_endpoint(
         raise e
     except Exception as e:
         logger.error(f"Error cancelling household invite: {e}")
-        raise HTTPException(status_code=500, detail="Failed to cancel invite.") from e
+        raise HTTPException(status_code=500, detail="We could not cancel the invite at this time. Please try again later.") from e
 
 
 # --- Helpers ---

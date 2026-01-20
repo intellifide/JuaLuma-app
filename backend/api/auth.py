@@ -1,11 +1,12 @@
 # CORE PURPOSE: Authentication and identity endpoints for user access control.
-# LAST MODIFIED: 2026-01-18 01:02 CST
+# LAST MODIFIED: 2026-01-20 02:50 CST
 import logging
 import random
 import string
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 from threading import Lock
+from urllib.parse import parse_qs, urlparse
 
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -13,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
+from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.core.legal import REQUIRED_SIGNUP_AGREEMENTS
 from backend.middleware.auth import get_current_user
@@ -90,13 +92,14 @@ class ChangePasswordRequest(BaseModel):
 
 class ProfileUpdateRequest(BaseModel):
     theme_pref: str | None = Field(default=None, max_length=32, example="dark")
-    currency_pref: str | None = Field(
-        default=None, min_length=3, max_length=3, example="USD"
-    )
+    # currency_pref: str | None = Field(
+    #     default=None, min_length=3, max_length=3, example="USD"
+    # )
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "ProfileUpdateRequest":
-        if not self.theme_pref and not self.currency_pref:
+        # if not self.theme_pref and not self.currency_pref:
+        if not self.theme_pref:
             raise ValueError("Provide at least one field to update.")
         return self
 
@@ -197,13 +200,13 @@ def _verify_totp(user: User, mfa_code: str) -> None:
     if not user.mfa_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="MFA setup incomplete.",
+            detail="The multi-factor authentication setup for your account is incomplete. Please complete the setup in settings.",
         )
     totp = pyotp.TOTP(user.mfa_secret)
     if not totp.verify(mfa_code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid MFA code",
+            detail="The multi-factor authentication code provided is incorrect.",
         )
 
 
@@ -211,18 +214,18 @@ def _verify_email_otp(user: User, mfa_code: str, db: Session) -> None:
     if not user.email_otp or not user.email_otp_expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No OTP generated. Request a code first.",
+            detail="No verification code was found. Please request a new code.",
         )
     # Simple timezone-naive comparison if tzinfo is mixed, relying on utcnow assumption
     if datetime.now(user.email_otp_expires_at.tzinfo) > user.email_otp_expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OTP expired.",
+            detail="The verification code has expired. Please request a new one.",
         )
     if mfa_code != user.email_otp:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid MFA code",
+            detail="The verification code provided is incorrect.",
         )
     # Consume OTP
     user.email_otp = None
@@ -248,6 +251,18 @@ def _verify_mfa(user: User, mfa_code: str | None, db: Session) -> None:
         _verify_email_otp(user, mfa_code, db)
     elif method == "sms":
         raise HTTPException(status_code=501, detail="SMS MFA not implemented")
+
+
+def _build_frontend_reset_link(reset_link: str) -> str:
+    """Rewrite Firebase reset links to the frontend reset page when possible."""
+    parsed = urlparse(reset_link)
+    params = parse_qs(parsed.query)
+    oob_code = params.get("oobCode", [None])[0]
+    if not oob_code:
+        return reset_link
+
+    base = settings.frontend_url.rstrip("/")
+    return f"{base}/reset-password?oobCode={oob_code}"
 
 
 def _rollback_firebase_user(uid: str, *, email: str | None, reason: str) -> None:
@@ -307,7 +322,7 @@ def _handle_existing_db_user(
                 )
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Firebase unavailable. Try again shortly.",
+                    detail="We're experiencing an issue connecting to our authentication service. Please try again in a moment.",
                 ) from exc
         except firebase_exceptions.FirebaseError as exc:
             logger.error(
@@ -353,12 +368,12 @@ def _handle_existing_db_user(
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Account sync failed.",
+                detail="We encountered an issue synchronizing your account data. Please contact support if the issue persists.",
             ) from exc
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Email already exists.",
+        detail="An account with this email address already exists.",
     )
 
 
@@ -390,7 +405,7 @@ def _handle_existing_firebase_user(email: str, db: Session):
         # Truly a duplicate
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists.",
+            detail="An account with this email address already exists.",
         )
 
     # Check DB by Email (Potential Desync)
@@ -478,7 +493,7 @@ def _create_db_user_safe(db: Session, record, is_fresh_firebase_user: bool) -> U
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Account creation failed. Please try again.",
+            detail="We encountered an issue creating your account. Please try again.",
         ) from exc
 
 
@@ -561,7 +576,7 @@ def signup(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid signup parameters.",
+            detail="The information provided for signup is invalid. Please check your email and password.",
         ) from exc
     except firebase_exceptions.FirebaseError as exc:
         logger.error(
@@ -614,7 +629,7 @@ def signup(
             exc_info=exc,
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid legal agreement data."
         ) from exc
 
     # Automatically send verification OTP
@@ -651,7 +666,7 @@ def login(
     if not uid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing uid.",
+            detail="Invalid session data.",
         )
 
     user = (
@@ -663,7 +678,7 @@ def login(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found.",
+            detail="Your account could not be found.",
         )
 
     if user.mfa_enabled:
@@ -702,18 +717,22 @@ def reset_password(
         # Prevent enumeration
         return {"message": "Reset link sent"}
 
+    if user.mfa_enabled and not payload.mfa_code:
+        return {"message": "MFA_REQUIRED"}
+
     if user.mfa_enabled:
         _verify_mfa(user, payload.mfa_code, db)
 
     try:
         reset_link = generate_password_reset_link(payload.email)
+        reset_link = _build_frontend_reset_link(reset_link)
     except ValueError:
         # Should not happen as we checked above, but safe fallback
         return {"message": "Reset link sent"}
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to send reset link right now.",
+            detail="We could not send a reset link at this time. Please try again later.",
         ) from exc
 
     # Securely dispatch the link via email
@@ -740,13 +759,14 @@ def change_password(
     """Update password for the logged-in user. Requires current password and MFA if enabled."""
     # 1. Verify MFA
     if current_user.mfa_enabled:
+        if not payload.mfa_code:
+            return {"message": "MFA_REQUIRED"}
         _verify_mfa(current_user, payload.mfa_code, db)
 
     # 2. Verify Current Password
     if not verify_password(current_user.email, payload.current_password):
-        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect current password.",
+            detail="The current password provided is incorrect.",
         )
 
     # 3. Update Password
@@ -755,7 +775,7 @@ def change_password(
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
+            detail="We encountered an issue updating your password. Please try again.",
         ) from exc
 
     # Optional: Log the event
@@ -792,7 +812,7 @@ def get_profile(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Your account session is invalid."
         )
 
     return {"user": _serialize_profile(user)}
@@ -823,8 +843,8 @@ def update_profile(
 
     if payload.theme_pref is not None:
         user.theme_pref = payload.theme_pref
-    if payload.currency_pref is not None:
-        user.currency_pref = payload.currency_pref.upper()
+    # if payload.currency_pref is not None:
+    #     user.currency_pref = payload.currency_pref.upper()
 
     db.add(user)
     db.commit()
@@ -857,20 +877,23 @@ def enable_email_mfa(
 ) -> dict:
     """Enable Email MFA by verifying a sent code."""
     if not current_user.email_otp or not current_user.email_otp_expires_at:
-        raise HTTPException(status_code=400, detail="Request a code first.")
+        raise HTTPException(status_code=400, detail="Please request a verification code before enabling MFA.")
 
     # Timezone naive vs aware fix using utcnow/native
     if datetime.utcnow() > current_user.email_otp_expires_at.replace(tzinfo=None):
-        raise HTTPException(status_code=400, detail="Code expired.")
+        raise HTTPException(status_code=400, detail="The verification code has expired. Please request a new one.")
 
     if payload.code != current_user.email_otp:
-        raise HTTPException(status_code=401, detail="Invalid code.")
+        raise HTTPException(status_code=401, detail="The verification code provided is incorrect.")
 
-    current_user.mfa_enabled = True
-    current_user.mfa_method = "email"
     current_user.email_otp = None
+    current_user.email_otp_expires_at = None
 
     if current_user.status == UserStatus.PENDING_VERIFICATION:
+        # Email verification during onboarding should not auto-enable MFA.
+        current_user.mfa_enabled = False
+        if current_user.mfa_method == "email":
+            current_user.mfa_method = None
         # 1. Check if ALREADY in a household (e.g. invite accepted during signup)
         existing_membership = db.query(HouseholdMember).filter(HouseholdMember.uid == current_user.uid).first()
         if existing_membership:
@@ -884,7 +907,7 @@ def enable_email_mfa(
                 )
             logger.info(f"User {current_user.uid} verified email. Already a household member. Status -> ACTIVE")
             db.commit()
-            return {"message": "Email MFA enabled."}
+            return {"message": "Email verified."}
 
         # 2. Check for pending household invites (Case-insensitive check)
         # Note: invite.expires_at is timezone-aware.
@@ -905,6 +928,11 @@ def enable_email_mfa(
             logger.info(f"User {current_user.uid} ({current_user.email}) verified email. No pending invite found. Status -> PENDING_PLAN_SELECTION")
             current_user.status = UserStatus.PENDING_PLAN_SELECTION
 
+        db.commit()
+        return {"message": "Email verified."}
+
+    current_user.mfa_enabled = True
+    current_user.mfa_method = "email"
     db.commit()
 
     return {"message": "Email MFA enabled."}
@@ -948,7 +976,7 @@ def mfa_enable(
     if not current_user.mfa_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="MFA setup not started.",
+            detail="The multi-factor authentication setup has not been initiated.",
         )
 
     totp = pyotp.TOTP(current_user.mfa_secret)
@@ -978,7 +1006,7 @@ def mfa_disable(
     if not totp.verify(payload.code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid MFA code.",
+            detail="The multi-factor authentication code provided is incorrect.",
         )
 
     current_user.mfa_enabled = False
@@ -1000,7 +1028,7 @@ def logout(
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to revoke tokens right now.",
+            detail="We encountered an issue during logout. Please close your browser and try again.",
         ) from exc
 
     metadata = {

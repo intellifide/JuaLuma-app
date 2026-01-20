@@ -26,7 +26,7 @@ async def get_current_user(
         logger.warning("Auth Middleware: Missing or invalid authorization header.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid authorization header.",
+            detail="Authentication required.",
         )
 
     token = authorization.split(" ", 1)[1].strip()
@@ -37,7 +37,7 @@ async def get_current_user(
         logger.error(f"Auth Middleware: Token verification failed: {exc}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token.",
+            detail="Your session has expired. Please log in again.",
         ) from exc
 
     uid = decoded.get("uid") or decoded.get("sub")
@@ -45,7 +45,7 @@ async def get_current_user(
         logger.error("Auth Middleware: Token missing uid.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing uid.",
+            detail="Invalid session data.",
         )
 
     user = db.query(User).filter(User.uid == uid).first()
@@ -78,7 +78,7 @@ async def get_current_user(
         logger.error(f"Auth Middleware: User {uid} not found in DB and healing failed.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found.",
+            detail="Your account session is invalid.",
         )
 
     return user
@@ -91,7 +91,7 @@ def require_role(allowed_roles: list[str]):
         if user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient role for this operation.",
+                detail="You do not have permission to perform this action.",
             )
         return user
 
@@ -127,7 +127,7 @@ async def require_tier(
     if not subscription:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Subscription required for this feature.",
+            detail="An active subscription is required to access this feature.",
         )
 
     user_rank = _plan_rank.get(subscription.plan, -1)
@@ -136,13 +136,13 @@ async def require_tier(
     if required_rank == -1:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server configuration error: unknown plan.",
+            detail="We encountered a configuration error while verifying your plan. Please contact support.",
         )
 
     if user_rank < required_rank:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Upgrade to {min_tier} to access this feature.",
+            detail=f"Please upgrade to the {min_tier.capitalize()} tier to access this feature.",
         )
 
     return subscription
@@ -173,7 +173,7 @@ def register_login_attempt(request: Request) -> None:
         if len(attempts) > LOGIN_MAX_ATTEMPTS:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many login attempts. Try again in a minute.",
+                detail="Too many login attempts have been made. Please wait a moment and try again.",
             )
 
 

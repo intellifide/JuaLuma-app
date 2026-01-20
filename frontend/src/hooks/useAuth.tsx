@@ -16,6 +16,7 @@ import {
   login as loginWithFirebase,
   logout as logoutWithFirebase,
   resetPassword as resetPasswordWithFirebase,
+  ResetPasswordStatus,
   signup as signupWithFirebase,
 } from '../services/auth'
 import { AgreementAcceptanceInput } from '../types/legal'
@@ -78,7 +79,7 @@ type AuthContextValue = {
   ) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  resetPassword: (email: string, mfa_code?: string) => Promise<void>
+  resetPassword: (email: string, mfa_code?: string) => Promise<ResetPasswordStatus>
   refetchProfile: () => Promise<UserProfile | null>
 }
 
@@ -185,7 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resetPassword = useCallback(async (email: string, mfa_code?: string) => {
     setError(null)
     try {
-      await resetPasswordWithFirebase(email, mfa_code)
+      return await resetPasswordWithFirebase(email, mfa_code)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to reset password.'

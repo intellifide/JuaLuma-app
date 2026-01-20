@@ -103,7 +103,7 @@ def delete_budget(
     existing_budget = result.scalars().first()
 
     if not existing_budget:
-        raise HTTPException(status_code=404, detail="Budget not found")
+        raise HTTPException(status_code=404, detail="No budget was found for the specified category.")
 
     db.delete(existing_budget)
     db.commit()

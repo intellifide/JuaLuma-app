@@ -81,12 +81,12 @@ class AIClient:
             logger.warning(f"AI Provider Quota Exceeded: {e}")
             raise HTTPException(
                 status_code=429,
-                detail="AI Provider Quota Exceeded. Please try again later.",
+                detail="Our AI service is currently at maximum capacity. Please try again in a few minutes.",
             ) from e
         except ServiceUnavailable as e:
             logger.warning(f"AI Provider Unavailable: {e}")
             raise HTTPException(
-                status_code=503, detail="AI Service is temporarily unavailable."
+                status_code=503, detail="The AI assistant is temporarily unavailable. We are working to restore service."
             ) from e
         except Exception as e:
             logger.error(f"Error generating content: {e}")
@@ -196,7 +196,7 @@ def _check_rate_limit_sync(user_id: str) -> tuple[str, int, int]:
             if not household_member.ai_access_enabled:
                 raise HTTPException(
                     status_code=403,
-                    detail="AI features are disabled for this account by the household administrator.",
+                    detail="AI features have been disabled for your account by your household administrator.",
                 )
             # Members inherit Ultimate status
             tier = "ultimate"
@@ -234,7 +234,7 @@ def _check_rate_limit_sync(user_id: str) -> tuple[str, int, int]:
     if current_usage >= limit:
         raise HTTPException(
             status_code=429,
-            detail=f"Daily AI limit reached for {tier} tier ({limit} requests).",
+            detail=f"You have reached your daily limit of {limit} AI requests for the {tier} tier.",
         )
 
     return tier, limit, current_usage
@@ -261,7 +261,7 @@ def _increment_usage_sync(user_id: str, tier: str, limit: int) -> int:
         if current_usage >= limit:
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily AI limit reached for {tier} tier ({limit} requests).",
+                detail=f"You have reached your daily limit of {limit} AI requests for the {tier} tier.",
             )
 
         if not snapshot.exists:
@@ -348,5 +348,5 @@ async def generate_chat_response(
         logger.error(f"AI Generation failed: {e}")
         raise HTTPException(
             status_code=500,
-            detail="AI service unavailable or error processing request.",
+            detail="We encountered an issue while processing your AI request. Please try again.",
         ) from e

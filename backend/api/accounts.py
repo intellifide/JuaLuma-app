@@ -216,7 +216,7 @@ def _enforce_sync_limit(db: Session, uid: str, plan: str) -> None:
     if plan == "essential":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Manual sync is disabled for Essential tier. Your accounts update automatically every 24 hours.",
+            detail="Manual sync is not available for the Essential tier. Your accounts update automatically every 24 hours.",
         )
 
     if plan != "free":
@@ -235,7 +235,7 @@ def _enforce_sync_limit(db: Session, uid: str, plan: str) -> None:
     if sync_count >= 10:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Free plan limit reached: 10 manual syncs per 24 hours.",
+            detail="You have reached the daily limit for manual syncs on the Free plan.",
         )
 
 
@@ -306,7 +306,7 @@ def list_accounts(
         if normalized not in _ALLOWED_ACCOUNT_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"account_type must be one of {sorted(_ALLOWED_ACCOUNT_TYPES)}",
+                detail="Invalid account type provided.",
             )
         query = query.filter(Account.account_type == normalized)
 
@@ -337,7 +337,7 @@ def get_account_details(
     )
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified account could not be found."
         )
 
     transactions = (
@@ -391,7 +391,7 @@ def link_web3_account(
             if stored.get("address") == payload.address:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Wallet address {payload.address} is already linked.",
+                    detail="This wallet address has already been linked to your account.",
                 )
         except json.JSONDecodeError:
             continue
@@ -456,7 +456,7 @@ def link_cex_account(
         # If it's a specific credential error, raise 400.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to validate CEX credentials: {str(e)}",
+            detail="We were unable to verify your exchange credentials. Please double-check your API key and secret.",
         ) from e
 
     # 2. Encrypt secrets
@@ -497,11 +497,11 @@ def _sync_traditional(account: Account, start: date, end: date) -> list[dict]:
         return fetch_transactions(account.secret_ref, start, end)
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account credentials."
         ) from exc
     except RuntimeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Plaid sync failed: {exc}"
+            status_code=status.HTTP_502_BAD_GATEWAY, detail="We encountered an issue syncing with your bank. Please try again later."
         ) from exc
 
 
@@ -530,7 +530,7 @@ def _sync_web3(account: Account) -> list[dict]:
     except Exception as e:
         logger.error(f"Web3 sync error: {e}")
         raise HTTPException(
-            status.HTTP_502_BAD_GATEWAY, f"Web3 sync failed: {e}"
+            status.HTTP_502_BAD_GATEWAY, "We encountered an issue syncing your wallet data. Please try again later."
         ) from e
 
 
@@ -563,7 +563,7 @@ def _sync_cex(account: Account, uid: str) -> list[dict]:
         logger.error(f"CEX sync error: {e}")
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "Failed to decrypt credentials or sync CEX",
+            "We encountered an issue connecting to your exchange. Please verify your credentials.",
         ) from e
 
 
@@ -669,9 +669,8 @@ def _resolve_sync_dates(
     resolved_start = start_date or (today - timedelta(days=30))
     resolved_end = end_date or today
     if resolved_start > resolved_end:
-        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="start_date must be before or equal to end_date.",
+            detail="The start date cannot be after the end date.",
         )
     return resolved_start, resolved_end
 
@@ -751,15 +750,14 @@ def sync_account_transactions(
         )
 
     if account.account_type not in ["traditional", "web3", "cex"]:
-        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sync not supported for account type: {account.account_type}",
+            detail="This account type does not support manual synchronization.",
         )
 
     if not account.secret_ref:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account is missing credentials.",
+            detail="Your account credentials appear to be missing. Please try re-linking the account.",
         )
 
     plan = _get_subscription_plan(db, current_user.uid)
@@ -784,7 +782,7 @@ def sync_account_transactions(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Conflict while syncing transactions; please retry.",
+            detail="A data conflict occurred while syncing transactions. Please try again.",
         ) from e
 
     # Audit Log
@@ -870,7 +868,7 @@ def update_account(
 
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified account could not be found."
         )
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -878,7 +876,7 @@ def update_account(
     if "balance" in update_data and account.account_type != "manual":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Balance updates are only allowed for manual accounts.",
+            detail="Balance updates are only allowed for manually tracked accounts.",
         )
 
     if "assigned_member_uid" in update_data:
@@ -888,7 +886,7 @@ def update_account(
             if uid_val not in allowed_uids:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Assigned member is not part of your household. Allowed: {allowed_uids}. Target: {uid_val}",
+                    detail="The assigned member could not be found in your household.",
                 )
 
     for field, value in update_data.items():
@@ -917,7 +915,7 @@ def delete_account(
 
     if not account:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified account could not be found."
         )
 
     # Remove Plaid Item if traditional

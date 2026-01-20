@@ -75,8 +75,8 @@ def get_plaid_client() -> plaid_api.PlaidApi:
 
 def _wrap_plaid_error(action: str, exc: ApiException) -> RuntimeError:
     """Convert Plaid ApiException into a friendlier RuntimeError."""
-    detail = getattr(exc, "body", None) or str(exc)
-    return RuntimeError(f"Plaid {action} failed: {detail}")
+    # Note: In a production API response, we'd map Plaid error_codes to user-friendly messages.
+    return RuntimeError(f"We encountered an issue with your bank connection during {action}. Please try again.")
 
 
 def _pick_currency(iso_code: str | None, unofficial_code: str | None) -> str | None:
@@ -214,7 +214,7 @@ def _fetch_transaction_page(
             raise _wrap_plaid_error("transactions_get", exc) from exc
     else:
         # Loop finished without breaking -> rate limit persisted
-        raise RuntimeError("Plaid rate limit exceeded after retries")
+        raise RuntimeError("We are experiencing high traffic from your bank provider. Please try again in a few minutes.")
 
     parsed_txns: list[dict[str, object]] = []
     for txn in response.transactions:

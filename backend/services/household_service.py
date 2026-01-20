@@ -104,7 +104,7 @@ def create_household(db: Session, owner_uid: str, name: str) -> Household:
     )
     if existing_member:
         raise HTTPException(
-            status_code=400, detail="User is already a member of a household."
+            status_code=400, detail="You are already a member of a household."
         )
 
     # Check Tier (This might be redundant if API enforces it, but safe)
@@ -150,7 +150,7 @@ def invite_member(
     )
     if not member or member.role != "admin":
         raise HTTPException(
-            status_code=403, detail="Only household admins can invite members."
+            status_code=403, detail="You do not have permission to invite new members to this household."
         )
 
     household_id = member.household_id
@@ -169,7 +169,7 @@ def invite_member(
         )
         if existing:
             raise HTTPException(
-                status_code=400, detail=f"{email} is already in the household."
+                status_code=400, detail=f"The user with email {email} is already a member of this household."
             )
 
     # 3. Create Invite
@@ -214,10 +214,10 @@ def get_invite_details(db: Session, token: str) -> dict:
         .first()
     )
     if not invite:
-        return {"valid": False, "detail": "Invalid or accepted invite."}
+        return {"valid": False, "detail": "This invite is no longer valid or has already been accepted."}
 
     if invite.expires_at < datetime.now(UTC):
-        return {"valid": False, "detail": "Invite has expired."}
+        return {"valid": False, "detail": "This invite has expired. Please request a new one."}
 
     # Check if user exists
     user = db.query(User).filter(User.email == invite.email).first()
@@ -245,12 +245,12 @@ def accept_invite(db: Session, user_uid: str, token: str):
         .first()
     )
     if not invite:
-        raise HTTPException(status_code=404, detail="Invalid or expired invite.")
+        raise HTTPException(status_code=404, detail="This invite is invalid or has expired.")
 
     if invite.expires_at < datetime.now(UTC):
         invite.status = "expired"
         db.commit()
-        raise HTTPException(status_code=400, detail="Invite has expired.")
+        raise HTTPException(status_code=400, detail="This invite has expired.")
 
     # 1. Check User Status
     existing_member = (
@@ -258,7 +258,7 @@ def accept_invite(db: Session, user_uid: str, token: str):
     )
     if existing_member:
         raise HTTPException(
-            status_code=400, detail="You are already in a household. Leave it first."
+            status_code=400, detail="You are already a member of a household. You must leave your current household before joining a new one."
         )
 
     # 2. Handle Subscription Conflict (The 'Breakup Protocol' Entry)
@@ -323,7 +323,7 @@ def leave_household(db: Session, user_uid: str):
     """
     member = db.query(HouseholdMember).filter(HouseholdMember.uid == user_uid).first()
     if not member:
-        raise HTTPException(status_code=400, detail="Not in a household.")
+        raise HTTPException(status_code=400, detail="You are not currently a member of a household.")
 
     household_id = member.household_id
     role = member.role
@@ -337,7 +337,7 @@ def leave_household(db: Session, user_uid: str):
         if household.owner_uid == user_uid:
             raise HTTPException(
                 status_code=400,
-                detail="Owner cannot leave household directly. Delete the household or transfer ownership."
+                detail="As the owner, you cannot leave the household directly. Please transfer ownership or delete the household instead."
             )
 
     member_uids = get_household_member_uids(db, user_uid)
@@ -374,34 +374,34 @@ def remove_member(db: Session, admin_uid: str, member_uid: str) -> dict:
     )
     if not admin_member or admin_member.role != "admin":
         raise HTTPException(
-            status_code=403, detail="Only household admins can remove members."
+            status_code=403, detail="You do not have permission to remove members from this household."
         )
 
     if admin_uid == member_uid:
         raise HTTPException(
-            status_code=400, detail="Use the leave household flow to remove yourself."
+            status_code=400, detail="To remove yourself from the household, please use the 'Leave Household' option."
         )
 
     target_member = (
         db.query(HouseholdMember).filter(HouseholdMember.uid == member_uid).first()
     )
     if not target_member:
-        raise HTTPException(status_code=404, detail="Household member not found.")
+        raise HTTPException(status_code=404, detail="The specified household member could not be found.")
 
     if target_member.household_id != admin_member.household_id:
         raise HTTPException(
-            status_code=403, detail="Member does not belong to your household."
+            status_code=403, detail="The specified member does not belong to your household."
         )
 
     household = (
         db.query(Household).filter(Household.id == admin_member.household_id).first()
     )
     if household and household.owner_uid == member_uid:
-        raise HTTPException(status_code=400, detail="Cannot remove the household owner.")
+        raise HTTPException(status_code=400, detail="The household owner cannot be removed.")
 
     if target_member.role == "admin":
         raise HTTPException(
-            status_code=400, detail="Cannot remove another household admin."
+            status_code=400, detail="You do not have permission to remove another household admin."
         )
 
     member_uids = get_household_member_uids(db, admin_uid)
@@ -430,14 +430,14 @@ def cancel_invite(db: Session, admin_uid: str, invite_id: str) -> dict:
     try:
         invite_uuid = uuid.UUID(invite_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid invite id.") from exc
+        raise HTTPException(status_code=400, detail="The provided invite identifier is invalid.") from exc
 
     admin_member = (
         db.query(HouseholdMember).filter(HouseholdMember.uid == admin_uid).first()
     )
     if not admin_member or admin_member.role != "admin":
         raise HTTPException(
-            status_code=403, detail="Only household admins can cancel invites."
+            status_code=403, detail="You do not have permission to cancel invites for this household."
         )
 
     invite = (
@@ -449,10 +449,10 @@ def cancel_invite(db: Session, admin_uid: str, invite_id: str) -> dict:
         .first()
     )
     if not invite:
-        raise HTTPException(status_code=404, detail="Household invite not found.")
+        raise HTTPException(status_code=404, detail="The specified household invite could not be found.")
 
     if invite.status != "pending":
-        raise HTTPException(status_code=400, detail="Invite is no longer pending.")
+        raise HTTPException(status_code=400, detail="This invite is no longer in a pending state.")
 
     invite.status = "declined"
     db.add(invite)

@@ -1,4 +1,4 @@
-// Updated 2025-12-11 12:20 CST by ChatGPT - auto-sync new Plaid accounts
+// Updated 2026-01-20 03:20 CST by Antigravity - standardize button styling
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata, type PlaidLinkError } from 'react-plaid-link'
 import { api } from '../services/api'
@@ -117,7 +117,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
         type="button"
         onClick={handleOpenModal}
         disabled={!linkConfig || !ready || loading || opening}
-        className="px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo disabled:opacity-50 transition-colors"
+        className="btn btn-primary w-full md:w-auto"
       >
         {loading ? 'Preparing...' : 'Connect with Plaid'}
       </button>

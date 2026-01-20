@@ -24,7 +24,7 @@ def require_developer(current_user: User = Depends(get_current_user)) -> User:
     """
     if not current_user.developer:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Developer access required."
+            status_code=status.HTTP_403_FORBIDDEN, detail="You do not have developer access."
         )
     return current_user
 
@@ -40,7 +40,7 @@ def require_pro_or_ultimate(current_user: User = Depends(get_current_user)) -> U
     if base_plan not in SubscriptionPlans.DEVELOPER_ELIGIBLE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Pro or Ultimate subscription required.",
+            detail="A Pro or Ultimate subscription is required for this feature.",
         )
     return current_user
 

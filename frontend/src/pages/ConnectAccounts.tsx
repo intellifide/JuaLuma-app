@@ -1,3 +1,5 @@
+// Core Purpose: UI for connecting various account types (Plaid, Web3, CEX) with household assignment logic.
+// Last Updated 2026-01-20 03:26 CST by Antigravity - consistent card layouts and button positioning
 import React, { useState, useEffect } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
@@ -39,15 +41,18 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface-1 bordered p-6 rounded-lg w-full max-w-md shadow-xl">
-        <h3 className="text-xl font-bold mb-4">Connect Web3 Wallet</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
+      <div className="modal-content max-w-md">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold">Connect Web3 Wallet</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium mb-1">Wallet Label</label>
+            <label className="form-label">Wallet Label</label>
             <input
               type="text"
-              className="input w-full"
+              className="input"
               placeholder="My ETH Vault"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -55,10 +60,10 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">ETH Address</label>
+            <label className="form-label">ETH Address</label>
             <input
               type="text"
-              className="input w-full font-mono text-sm"
+              className="input font-mono text-sm"
               placeholder="0x..."
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -67,8 +72,8 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
               required
             />
           </div>
-          <div className="flex gap-3 justify-end mt-6">
-            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+          <div className="flex gap-3 justify-end mt-8">
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? 'Linking...' : 'Link Wallet'}
             </button>
@@ -107,13 +112,16 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface-1 bordered p-6 rounded-lg w-full max-w-md shadow-xl">
-        <h3 className="text-xl font-bold mb-4">Connect Exchange</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
+      <div className="modal-content max-w-md">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold">Connect Exchange</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium mb-1">Exchange</label>
-            <select className="input w-full" value={exchange} onChange={(e) => setExchange(e.target.value)}>
+            <label className="form-label">Exchange</label>
+            <select className="input" value={exchange} onChange={(e) => setExchange(e.target.value)}>
               <option value="coinbase">Coinbase</option>
               <option value="kraken">Kraken</option>
               <option value="binance">Binance</option>
@@ -121,10 +129,10 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Label</label>
+            <label className="form-label">Label</label>
             <input
               type="text"
-              className="input w-full"
+              className="input"
               placeholder="My Pro Trading Account"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -132,20 +140,20 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">API Key</label>
+            <label className="form-label">API Key</label>
             <input
               type="password"
-              className="input w-full font-mono text-sm"
+              className="input font-mono text-sm"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">API Secret</label>
+            <label className="form-label">API Secret</label>
             <input
               type="password"
-              className="input w-full font-mono text-sm"
+              className="input font-mono text-sm"
               value={apiSecret}
               onChange={(e) => setApiSecret(e.target.value)}
               required
@@ -154,8 +162,8 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
           <p className="text-xs text-text-secondary">
             Ensure your API key has <strong>Read-Only</strong> permissions. We do not support trading or withdrawals.
           </p>
-          <div className="flex gap-3 justify-end mt-6">
-            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+          <div className="flex gap-3 justify-end mt-8">
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? 'Verifying...' : 'Link Exchange'}
             </button>
@@ -201,15 +209,18 @@ const EditAccountModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface-1 bordered p-6 rounded-lg w-full max-w-md shadow-xl">
-        <h3 className="text-xl font-bold mb-4">Edit Account</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
+      <div className="modal-content max-w-md">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold">Edit Account</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium mb-1">Account Name</label>
+            <label className="form-label">Account Name</label>
             <input
               type="text"
-              className="input w-full"
+              className="input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Official bank name"
@@ -217,10 +228,10 @@ const EditAccountModal = ({
              <p className="text-xs text-text-secondary mt-1">Found inside your bank/app.</p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Custom Label</label>
+            <label className="form-label">Custom Label</label>
             <input
               type="text"
-              className="input w-full"
+              className="input"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Vacation Fund, Bobby's Allowance"
@@ -228,12 +239,12 @@ const EditAccountModal = ({
             <p className="text-xs text-text-secondary mt-1">Your personal nickname for this account.</p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Assign to Household Member</label>
+            <label className="form-label">Assign to Household Member</label>
             {loading ? (
               <div className="animate-pulse h-10 w-full bg-surface-2 rounded"></div>
             ) : household ? (
               <select
-                className="input w-full"
+                className="input"
                 value={assignedUid}
                 onChange={(e) => setAssignedUid(e.target.value)}
               >
@@ -252,8 +263,8 @@ const EditAccountModal = ({
             )}
              <p className="text-xs text-text-secondary mt-1">Transactions will be tagged to this member in Family View.</p>
           </div>
-          <div className="flex gap-3 justify-end mt-6">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <div className="flex gap-3 justify-end mt-8">
+            <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary">Save Changes</button>
           </div>
         </form>
@@ -308,9 +319,9 @@ export const ConnectAccounts = () => {
                 <li>Read-only access; no transfers or trades</li>
                 <li>Supports up to 5 traditional accounts (Pro/Essential)</li>
               </ul>
-              <div className="mt-4">
-                <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
-              </div>
+            </div>
+            <div className="card-footer">
+              <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
             </div>
           </div>
           <div className="card">
@@ -322,8 +333,10 @@ export const ConnectAccounts = () => {
               <ul className="list-disc pl-6 mb-4 space-y-1">
                 <li>Supports up to 5 wallets (Pro/Essential)</li>
               </ul>
+            </div>
+            <div className="card-footer">
               <button
-                className="btn btn-secondary w-full md:w-auto"
+                className="btn btn-primary w-full md:w-auto"
                 type="button"
                 onClick={() => setShowWalletModal(true)}
               >
@@ -338,11 +351,12 @@ export const ConnectAccounts = () => {
             <div className="card-body">
               <p className="mb-4">Connect Coinbase, Kraken, and other exchanges via OAuth/API.</p>
               <ul className="list-disc pl-6 mb-4 space-y-1">
-                <li>Supports up to 5 CEX accounts (Pro/Essential)</li>
                 <li>API keys stored in Secret Manager (never in DB)</li>
               </ul>
+            </div>
+            <div className="card-footer">
               <button
-                className="btn btn-outline w-full md:w-auto"
+                className="btn btn-primary w-full md:w-auto"
                 type="button"
                 onClick={() => setShowCexModal(true)}
               >
@@ -428,7 +442,7 @@ export const ConnectAccounts = () => {
                             Refresh
                           </button>
                           <button
-                            className="btn btn-sm btn-outline text-red-500 border-red-200 hover:bg-red-50"
+                            className="btn btn-sm btn-outline-danger"
                             onClick={() => remove(account.id)}
                           >
                             Remove

@@ -106,7 +106,7 @@ async def chat_endpoint(
     message = payload.message.strip()
 
     if not message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+        raise HTTPException(status_code=400, detail="Please enter a message for the AI assistant.")
 
     # 1. Get User Subscription/Tier
     subscription = db.query(Subscription).filter(Subscription.uid == user_id).first()

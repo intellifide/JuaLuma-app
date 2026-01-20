@@ -202,7 +202,7 @@ class CcxtConnectorClient:
     def _load_exchange(self):
         ccxt = importlib.import_module("ccxt")
         if not hasattr(ccxt, self.exchange_id):
-            raise RuntimeError(f"ccxt exchange '{self.exchange_id}' not found.")
+            raise RuntimeError(f"The crypto exchange '{self.exchange_id}' is not currently supported.")
         klass = getattr(ccxt, self.exchange_id)
         exchange = klass(
             {
@@ -223,7 +223,7 @@ class CcxtConnectorClient:
 
         if not self.api_key or not self.api_secret:
             raise RuntimeError(
-                "CEX connector requires API credentials for private transaction history."
+                "API credentials are required to fetch your private transaction history from this exchange."
             )
 
         trades = exchange.fetch_my_trades(limit=50)
@@ -281,7 +281,7 @@ class Web3RpcConnectorClient:
             ) from exc
 
         if not w3.is_connected():
-            raise RuntimeError("Web3 RPC provider is unreachable.")
+            raise RuntimeError("We are unable to connect to the blockchain network right now. Please try again later.")
 
         latest_block = w3.eth.block_number
         payloads = []

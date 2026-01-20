@@ -31,7 +31,7 @@ def download_sdk():
 
     if not file_path.exists():
         logger.error(f"SDK file not found at: {file_path}")
-        raise HTTPException(status_code=404, detail="SDK not found")
+        raise HTTPException(status_code=404, detail="The developer SDK package is temporarily unavailable.")
 
     return FileResponse(
         path=file_path, media_type="application/zip", filename="jualuma-widget-sdk.zip"
@@ -109,7 +109,7 @@ def register_developer(
 ) -> dict[str, str]:
     """Register as a developer. Requires Pro/Ultimate."""
     if current_user.developer:
-        raise HTTPException(status_code=400, detail="Already a developer")
+        raise HTTPException(status_code=400, detail="You are already registered as a developer.")
 
     from backend.models.developer import Developer
 

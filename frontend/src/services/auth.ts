@@ -5,6 +5,8 @@
 import { FirebaseError } from 'firebase/app'
 import {
   User,
+  confirmPasswordReset as firebaseConfirmPasswordReset,
+  verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth'
@@ -31,6 +33,12 @@ const mapFirebaseError = (error: unknown): string => {
         return 'Invalid credentials. Please try again.'
       case 'auth/user-not-found':
         return 'Account not found. Please sign up first.'
+      case 'auth/expired-action-code':
+        return 'This reset link has expired. Request a new one.'
+      case 'auth/invalid-action-code':
+        return 'This reset link is invalid. Request a new one.'
+      case 'auth/user-disabled':
+        return 'This account is disabled. Please contact support.'
       default:
         return 'Something went wrong with authentication. Try again.'
     }
@@ -79,14 +87,24 @@ export const logout = async (): Promise<void> => {
   clearCachedToken()
 }
 
-export const resetPassword = async (email: string, mfa_code?: string): Promise<void> => {
+export type ResetPasswordStatus = 'mfa_required' | 'sent'
+
+export const resetPassword = async (
+  email: string,
+  mfa_code?: string,
+): Promise<ResetPasswordStatus> => {
   try {
     // 2025-12-19: Call backend to enforce MFA check if enabled
-    await apiFetch('/auth/reset-password', {
+    const response = await apiFetch('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ email, mfa_code }),
       skipAuth: true,
     })
+    const data = await response.json().catch(() => null)
+    if (data?.message === 'MFA_REQUIRED') {
+      return 'mfa_required'
+    }
+    return 'sent'
   } catch (error) {
     if (error instanceof Error) throw error
     throw new Error(mapFirebaseError(error))
@@ -111,6 +129,25 @@ export const requestEmailCode = async (email: string): Promise<void> => {
     body: JSON.stringify({ email }),
     skipAuth: true,
   })
+}
+
+export const verifyResetPasswordCode = async (oobCode: string): Promise<string> => {
+  try {
+    return await firebaseVerifyPasswordResetCode(auth, oobCode)
+  } catch (error) {
+    throw new Error(mapFirebaseError(error))
+  }
+}
+
+export const confirmResetPassword = async (
+  oobCode: string,
+  newPassword: string,
+): Promise<void> => {
+  try {
+    await firebaseConfirmPasswordReset(auth, oobCode, newPassword)
+  } catch (error) {
+    throw new Error(mapFirebaseError(error))
+  }
 }
 
 export const verifyEmailCode = async (code: string): Promise<void> => {

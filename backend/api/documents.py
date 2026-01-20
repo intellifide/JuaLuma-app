@@ -71,7 +71,7 @@ async def upload_document(
         
     except Exception as e:
         logger.error(f"Upload failed: {e}")
-        raise HTTPException(status_code=500, detail="File upload failed")
+        raise HTTPException(status_code=500, detail="We encountered an issue uploading your file. Please try again.")
 
 
 @router.get("/{doc_id}/download")
@@ -83,11 +83,11 @@ def download_document(
     """Download a specific document."""
     doc = db.query(UserDocument).filter(UserDocument.id == doc_id, UserDocument.uid == current_user.uid).first()
     if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="The requested document could not be found.")
         
     path = Path(doc.file_path)
     if not path.exists():
-         raise HTTPException(status_code=404, detail="File not found on server")
+         raise HTTPException(status_code=404, detail="The file appears to be missing. Please contact support.")
          
     return FileResponse(path, filename=doc.name, media_type="application/octet-stream")
 

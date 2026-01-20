@@ -244,7 +244,7 @@ def get_ticket_detail(
     )
     if not ticket:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified support ticket could not be found."
         )
     return ticket
 
@@ -259,7 +259,7 @@ def update_ticket_status(
     """Update ticket status (user scoped; agents/managers can update any ticket)."""
     if payload.status is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="status is required"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="A status value is required."
         )
 
     ticket = _get_ticket_for_actor(
@@ -267,7 +267,7 @@ def update_ticket_status(
     )
     if not ticket:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified support ticket could not be found."
         )
 
     old_status = ticket.status
@@ -304,7 +304,7 @@ def add_message(
     )
     if not ticket:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified support ticket could not be found."
         )
 
     # If ticket was resolved/closed, re-open it?
@@ -373,7 +373,7 @@ def close_ticket(
     )
     if not ticket:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified support ticket could not be found."
         )
 
     ticket.status = "closed"
@@ -416,7 +416,7 @@ def rate_ticket(
     )
     if not ticket:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="The specified support ticket could not be found."
         )
 
     # 2025-12-11 14:08 CST - normalize ticket_id handling for legacy string column
@@ -430,7 +430,7 @@ def rate_ticket(
     )
     if existing_rating:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Ticket already rated"
+            status_code=status.HTTP_409_CONFLICT, detail="This support ticket has already been rated."
         )
 
     # 2025-12-11 01:40 CST - persist rating with a fallback system agent

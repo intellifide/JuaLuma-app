@@ -26,7 +26,7 @@ def require_support_role(user: User = Depends(get_current_user)):
     if user.role not in ["support_agent", "admin", "support_manager"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: Support role required.",
+            detail="You do not have permission to access the support portal.",
         )
     return user
 
@@ -57,7 +57,7 @@ def get_ticket_detail(
     """Get ticket details and log VIEW audit."""
     ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise HTTPException(status_code=404, detail="The specified support ticket could not be found.")
 
     # AUDIT LOGGING (Information Viewing)
     action = SupportPortalAction(
@@ -117,7 +117,7 @@ def reply_to_ticket(
     """Agent reply to ticket and log REPLY audit."""
     ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise HTTPException(status_code=404, detail="The specified support ticket could not be found.")
 
     # Create Message
     msg = SupportTicketMessage(
@@ -161,7 +161,7 @@ def update_ticket_status(
     """Resolve/Close ticket and log RESOLVE audit."""
     ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise HTTPException(status_code=404, detail="The specified support ticket could not be found.")
 
     old_status = ticket.Status
     ticket.Status = payload.status

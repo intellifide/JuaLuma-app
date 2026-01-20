@@ -1,4 +1,4 @@
-// Updated 2025-12-08 21:49 CST by ChatGPT
+// Updated 2026-01-20 03:40 CST by Antigravity
 import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken } from './auth'
 
@@ -42,17 +42,10 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
-    } else if (status === 403) {
-      // Allow individual components to handle permission errors using the backend message
-      // window.alert('You do not have permission to perform this action.')
-    } else if (status && status >= 500) {
-      window.alert('A server error occurred. Please try again shortly.')
     }
 
     return Promise.reject(new Error(message))
   },
 )
-
-api.interceptors.request.use((config) => config)
 
 export { api }

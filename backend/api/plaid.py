@@ -85,7 +85,7 @@ def exchange_token_endpoint(
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Token exchange failed: {exc}",
+            detail="We could not link your account at this time. Please try again.",
         ) from exc
 
     try:
@@ -93,7 +93,7 @@ def exchange_token_endpoint(
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Fetching accounts failed: {exc}",
+            detail="Failed to retrieve accounts from your institution. Please try again.",
         ) from exc
 
     linked_accounts: list[Account] = []

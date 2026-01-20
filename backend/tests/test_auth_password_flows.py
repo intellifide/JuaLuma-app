@@ -66,8 +66,8 @@ def test_change_password_mfa_required_but_missing(
 
     response = test_client.post("/api/auth/change-password", json=payload)
 
-    assert response.status_code == 403
-    assert "MFA_REQUIRED" in response.json()["detail"]
+    assert response.status_code == 200
+    assert response.json()["message"] == "MFA_REQUIRED"
 
 
 def test_change_password_mfa_success(test_client: TestClient, test_db, mock_auth):
@@ -116,8 +116,8 @@ def test_reset_password_mfa_required(test_client: TestClient, test_db):
     payload = {"email": "mfa@example.com"}
     response = test_client.post("/api/auth/reset-password", json=payload)
 
-    assert response.status_code == 403
-    assert "MFA_REQUIRED" in response.json()["detail"]
+    assert response.status_code == 200
+    assert response.json()["message"] == "MFA_REQUIRED"
 
 
 def test_reset_password_mfa_success(test_client: TestClient, test_db):

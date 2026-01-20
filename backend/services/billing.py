@@ -83,7 +83,7 @@ def create_stripe_customer(db: Session, uid: str, email: str) -> str:
         # Validate if we should raise or return None. For sign-up flow, maybe log and continue?
         # But if this is called explicitly, we might want to raise.
         raise HTTPException(
-            status_code=500, detail="Error communicating with payment provider."
+            status_code=500, detail="There was an error communicating with the payment provider. Please try again later."
         ) from e
 
 
@@ -94,16 +94,16 @@ def create_checkout_session(
     Creates a Stripe Checkout Session for a subscription.
     """
     if not settings.stripe_secret_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured.")
+        raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
 
     price_id = STRIPE_PLANS.get(plan_type)
     if not price_id:
-        raise HTTPException(status_code=400, detail="Invalid plan type.")
+        raise HTTPException(status_code=400, detail="The selected subscription plan is not recognized.")
 
     try:
         user = db.query(User).filter(User.uid == uid).first()
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="The authenticated user profile could not be found.")
 
         customer_id = create_stripe_customer(db, uid, user.email)
 
@@ -122,7 +122,7 @@ def create_checkout_session(
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error creating checkout session: {e}")
         raise HTTPException(
-            status_code=500, detail="Error creating checkout session."
+            status_code=500, detail="We encountered an issue while creating your checkout session. Please try again."
         ) from e
 
 
@@ -231,11 +231,11 @@ def create_portal_session(user_id: str, db: Session, return_url: str) -> str:
     Creates a Stripe Customer Portal session for the user.
     """
     if not settings.stripe_secret_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured.")
+        raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
 
     user = db.query(User).filter(User.uid == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="The authenticated user profile could not be found.")
 
     try:
         customer_id = create_stripe_customer(db, user_id, user.email)
@@ -249,7 +249,7 @@ def create_portal_session(user_id: str, db: Session, return_url: str) -> str:
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error creating portal session: {e}")
         raise HTTPException(
-            status_code=500, detail="Error communicating with payment provider."
+            status_code=500, detail="There was an error communicating with the payment provider. Please try again later."
         ) from e
 
 

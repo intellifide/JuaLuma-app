@@ -19,7 +19,7 @@ def get_db() -> Generator[Session, None, None]:
     except OperationalError as exc:  # database unreachable
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed.",
+            detail="We are currently unable to connect to our database. Please try again soon.",
         ) from exc
 
     try:

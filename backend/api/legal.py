@@ -20,7 +20,7 @@ def accept_legal_agreements(
     if not payload.agreements:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No agreements provided.",
+            detail="No legal agreements were provided for acceptance.",
         )
 
     try:
@@ -33,6 +33,6 @@ def accept_legal_agreements(
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid legal agreement data."
         ) from exc
     return {"accepted": len(created)}

@@ -57,7 +57,7 @@ def export_user_data(
     )
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Your account session is invalid.")
 
     # Serialize Data
     data = {
