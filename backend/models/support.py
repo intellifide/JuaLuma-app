@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -95,6 +95,17 @@ class SupportTicketRating(Base):
             f"rating={self.rating!r})"
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "ticket_id": self.ticket_id,
+            "agent_id": str(self.agent_id),
+            "customer_uid": self.customer_uid,
+            "rating": self.rating,
+            "feedback_text": self.feedback_text,
+            "created_at": self.created_at.isoformat(),
+        }
+
 
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
@@ -152,6 +163,19 @@ class SupportTicket(Base):
     def __repr__(self) -> str:
         return f"SupportTicket(id={self.id!r}, subject={self.subject!r}, status={self.status!r})"
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "user_id": self.user_id,
+            "subject": self.subject,
+            "description": self.description,
+            "category": self.category,
+            "status": self.status,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "messages": [m.to_dict() for m in self.messages] if self.messages else [],
+        }
+
 
 class SupportTicketMessage(Base):
     __tablename__ = "support_ticket_messages"
@@ -179,6 +203,16 @@ class SupportTicketMessage(Base):
 
     def __repr__(self) -> str:
         return f"SupportTicketMessage(id={self.id!r}, ticket_id={self.ticket_id!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "ticket_id": str(self.ticket_id),
+            "sender_type": self.sender_type,
+            "sender_id": self.sender_id,
+            "message": self.message,
+            "created_at": self.created_at.isoformat(),
+        }
 
 
 __all__ = [

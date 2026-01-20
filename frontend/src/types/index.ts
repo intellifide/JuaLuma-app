@@ -43,7 +43,7 @@ export interface Account {
   currency?: string | null
   assignedMemberUid?: string | null
   customLabel?: string | null
-  secretRef?: string | null
+  syncStatus?: string | null
   createdAt?: string
   updatedAt?: string
 }

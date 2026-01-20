@@ -5,7 +5,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -84,6 +84,25 @@ class Account(Base):
             f"Account(id={self.id!r}, uid={self.uid!r}, "
             f"provider={self.provider!r}, account_type={self.account_type!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "account_type": self.account_type,
+            "provider": self.provider,
+            "account_name": self.account_name,
+            "account_number_masked": self.account_number_masked,
+            "balance": float(self.balance) if self.balance is not None else None,
+            "currency": self.currency,
+            "assigned_member_uid": self.assigned_member_uid,
+            "custom_label": self.custom_label,
+            "last_synced_at": self.last_synced_at.isoformat() if self.last_synced_at else None,
+            "sync_status": self.sync_status,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
 
 
 __all__ = ["Account"]

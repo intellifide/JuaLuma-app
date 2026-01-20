@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -52,6 +52,17 @@ class AISettings(Base):
             f"AISettings(id={self.id!r}, uid={self.uid!r}, "
             f"provider={self.provider!r}, model_id={self.model_id!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "provider": self.provider,
+            "model_id": self.model_id,
+            "user_dek_ref": self.user_dek_ref,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["AISettings"]

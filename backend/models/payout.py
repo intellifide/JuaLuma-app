@@ -5,7 +5,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Date,
@@ -61,6 +61,17 @@ class DeveloperPayout(Base):
             f"DeveloperPayout(id={self.id!r}, dev_uid={self.dev_uid!r}, "
             f"month={self.month!r}, status={self.payout_status!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "month": self.month.isoformat(),
+            "dev_uid": self.dev_uid,
+            "gross_revenue": float(self.gross_revenue),
+            "payout_status": self.payout_status,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["DeveloperPayout"]

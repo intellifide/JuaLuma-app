@@ -66,6 +66,15 @@ class AppSettings(BaseSettings):
     gcp_project_id: str | None = Field(default=None, alias="GCP_PROJECT_ID")
     gcp_location: str = Field(default="us-central1", alias="GCP_LOCATION")
     service_name: str = Field(default="jualuma-backend", alias="SERVICE_NAME")
+    secret_provider: str | None = Field(default=None, alias="SECRET_PROVIDER")
+    local_secret_store_path: str | None = Field(
+        default=None, alias="LOCAL_SECRET_STORE_PATH"
+    )
+    encryption_provider: str | None = Field(
+        default=None, alias="ENCRYPTION_PROVIDER"
+    )
+    gcp_kms_key_name: str | None = Field(default=None, alias="GCP_KMS_KEY_NAME")
+    local_encryption_key: str | None = Field(default=None, alias="LOCAL_ENCRYPTION_KEY")
 
     # Email / SMTP Config
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")

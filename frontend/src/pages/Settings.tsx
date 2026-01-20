@@ -7,6 +7,9 @@ import { changePassword, apiFetch } from '../services/auth';
 import { householdService } from '../services/householdService';
 import type { Household } from '../types/household';
 
+import Switch from '../components/ui/Switch';
+import { settingsService, NotificationPreference } from '../services/settingsService';
+
 // Render the account settings experience with tabbed sections.
 export const Settings = () => {
   const { user, profile } = useAuth();
@@ -18,6 +21,127 @@ export const Settings = () => {
   const [householdError, setHouseholdError] = useState<string | null>(null);
   const [memberActionUid, setMemberActionUid] = useState<string | null>(null);
   const [inviteActionId, setInviteActionId] = useState<string | null>(null);
+
+  // Settings State
+  const [settings, setSettings] = useState({
+    email: {
+      lowBalance: true,
+      largeTransaction: true,
+      budgetThreshold: true,
+      recurringBill: true,
+      syncFailure: true,
+      weeklyDigest: false,
+    },
+    sms: {
+      lowBalance: false,
+      largeTransaction: false,
+    },
+    privacy: {
+      dataSharing: false,
+      marketingEmails: false,
+    }
+  });
+
+  // Load Settings from Backend
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const [prefs, userProfile] = await Promise.all([
+          settingsService.getNotificationPreferences(),
+          // Use auth profile if available, but for data_sharing_consent we might need fresh fetch or check if profile includes it
+          // Assuming profile from useAuth is up to date or we fetch /me
+          apiFetch('/users/me').then(res => res.json()) 
+        ]);
+
+        const newSettings = { ...settings };
+
+        // Map Notification Preferences
+        prefs.forEach((p: NotificationPreference) => {
+           // Convert snake_case event keys to camelCase for frontend state mapping
+           // Simple mapping for known keys
+           const mapKey = (key: string) => {
+             const parts = key.split('_');
+             if (parts.length === 1) return parts[0];
+             return parts[0] + parts.slice(1).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+           };
+
+           const camelKey = mapKey(p.event_key);
+           
+           // Handle known email categories
+           if (camelKey in newSettings.email) {
+             newSettings.email[camelKey as keyof typeof newSettings.email] = p.channel_email;
+           }
+           
+           // Handle known sms categories
+           if (camelKey in newSettings.sms) {
+             newSettings.sms[camelKey as keyof typeof newSettings.sms] = p.channel_sms;
+           }
+
+           // Handle marketing emails (mapped to privacy in UI)
+           if (p.event_key === 'marketing_updates') {
+             newSettings.privacy.marketingEmails = p.channel_email;
+           }
+        });
+
+        // Map Privacy Settings
+        if (userProfile.data_sharing_consent !== undefined) {
+          newSettings.privacy.dataSharing = userProfile.data_sharing_consent;
+        }
+
+        setSettings(newSettings);
+
+      } catch (err) {
+        console.error("Failed to load settings", err);
+      }
+    };
+    loadSettings();
+  }, []); // Run once on mount
+
+  // Helper for snake_case conversion for API calls
+  const toSnakeCase = (str: string) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
+  const handleEmailToggle = async (key: keyof typeof settings.email, value: boolean) => {
+    setSettings(s => ({ ...s, email: { ...s.email, [key]: value } }));
+    try {
+      await settingsService.updateNotificationPreference({
+        event_key: toSnakeCase(key),
+        channel_email: value
+      });
+    } catch (e) {
+      console.error(e);
+      setSettings(s => ({ ...s, email: { ...s.email, [key]: !value } }));
+    }
+  };
+
+  const handleSmsToggle = async (key: keyof typeof settings.sms, value: boolean) => {
+    setSettings(s => ({ ...s, sms: { ...s.sms, [key]: value } }));
+    try {
+      await settingsService.updateNotificationPreference({
+        event_key: toSnakeCase(key),
+        channel_sms: value
+      });
+    } catch (e) {
+      console.error(e);
+      setSettings(s => ({ ...s, sms: { ...s.sms, [key]: !value } }));
+    }
+  };
+
+  const handlePrivacyToggle = async (key: keyof typeof settings.privacy, value: boolean) => {
+    setSettings(s => ({ ...s, privacy: { ...s.privacy, [key]: value } }));
+    try {
+      if (key === 'dataSharing') {
+        await settingsService.updatePrivacySettings({ data_sharing_consent: value });
+      } else if (key === 'marketingEmails') {
+        await settingsService.updateNotificationPreference({
+          event_key: 'marketing_updates',
+          channel_email: value
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      setSettings(s => ({ ...s, privacy: { ...s.privacy, [key]: !value } }));
+    }
+  };
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -529,43 +653,51 @@ export const Settings = () => {
               <h2 className="mb-6">Notification Preferences</h2>
               <form onSubmit={(e) => e.preventDefault()}>
                 <h3 className="mt-6 mb-4 font-semibold">Email Notifications</h3>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="email-low-balance" className="form-checkbox" defaultChecked />
-                    <span>Low balance alerts</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="email-large-transaction" className="form-checkbox" defaultChecked />
-                    <span>Large transaction notifications</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="email-budget-threshold" className="form-checkbox" defaultChecked />
-                    <span>Budget threshold alerts</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="email-recurring-bill" className="form-checkbox" defaultChecked />
-                    <span>Upcoming recurring bills</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="email-sync-failure" className="form-checkbox" defaultChecked />
-                    <span>Sync failure notifications</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="email-weekly-digest" className="form-checkbox" />
-                    <span>Weekly financial digest</span>
-                  </label>
+                <div className="space-y-4">
+                  <Switch
+                    checked={settings.email.lowBalance}
+                    onChange={(c) => handleEmailToggle('lowBalance', c)}
+                    label="Low balance alerts"
+                  />
+                  <Switch
+                    checked={settings.email.largeTransaction}
+                    onChange={(c) => handleEmailToggle('largeTransaction', c)}
+                    label="Large transaction notifications"
+                  />
+                  <Switch
+                    checked={settings.email.budgetThreshold}
+                    onChange={(c) => handleEmailToggle('budgetThreshold', c)}
+                    label="Budget threshold alerts"
+                  />
+                  <Switch
+                    checked={settings.email.recurringBill}
+                    onChange={(c) => handleEmailToggle('recurringBill', c)}
+                    label="Upcoming recurring bills"
+                  />
+                  <Switch
+                    checked={settings.email.syncFailure}
+                    onChange={(c) => handleEmailToggle('syncFailure', c)}
+                    label="Sync failure notifications"
+                  />
+                  <Switch
+                    checked={settings.email.weeklyDigest}
+                    onChange={(c) => handleEmailToggle('weeklyDigest', c)}
+                    label="Weekly financial digest"
+                  />
                 </div>
 
                 <h3 className="mt-8 mb-4 font-semibold">SMS Notifications</h3>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="sms-low-balance" className="form-checkbox" />
-                    <span>Low balance alerts</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="sms-large-transaction" className="form-checkbox" />
-                    <span>Large transaction notifications</span>
-                  </label>
+                <div className="space-y-4">
+                  <Switch
+                    checked={settings.sms.lowBalance}
+                    onChange={(c) => handleSmsToggle('lowBalance', c)}
+                    label="Low balance alerts"
+                  />
+                  <Switch
+                    checked={settings.sms.largeTransaction}
+                    onChange={(c) => handleSmsToggle('largeTransaction', c)}
+                    label="Large transaction notifications"
+                  />
                 </div>
 
                 <h3 className="mt-8 mb-4 font-semibold">Quiet Hours</h3>
@@ -592,21 +724,19 @@ export const Settings = () => {
             <div className="glass-panel">
               <h2 className="mb-6">Privacy Settings</h2>
               <form onSubmit={(e) => e.preventDefault()}>
-                <div className="mb-4">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="data-sharing" className="form-checkbox" />
-                    <span>Allow anonymized data sharing for service improvement</span>
-                  </label>
-                  <p className="mt-1 text-sm text-text-muted ml-6">
-                    Your personal information is never shared. Only aggregated, anonymized data may be used.
-                  </p>
-                </div>
-
-                <div className="mb-6">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="marketing-emails" className="form-checkbox" />
-                    <span>Receive marketing emails and product updates</span>
-                  </label>
+                <div className="mb-4 space-y-4">
+                  <Switch
+                    checked={settings.privacy.dataSharing}
+                    onChange={(c) => handlePrivacyToggle('dataSharing', c)}
+                    label="Allow anonymized data sharing for service improvement"
+                    description="Your personal information is never shared. Only aggregated, anonymized data may be used."
+                  />
+                  
+                  <Switch
+                    checked={settings.privacy.marketingEmails}
+                    onChange={(c) => handlePrivacyToggle('marketingEmails', c)}
+                    label="Receive marketing emails and product updates"
+                  />
                 </div>
 
                 <h3 className="mt-8 mb-4 font-semibold">Data Management</h3>

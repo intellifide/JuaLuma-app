@@ -1,8 +1,8 @@
 import base64
 import logging
-import os
 
-# Check if cryptography is available
+from backend.core import settings
+
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
@@ -13,86 +13,159 @@ except ImportError:
     Fernet = None  # type: ignore
     HAS_CRYPTO = False
 
+try:
+    from google.cloud import kms_v1
+
+    HAS_GCP_KMS = True
+except ImportError:
+    kms_v1 = None  # type: ignore
+    HAS_GCP_KMS = False
+
 logger = logging.getLogger(__name__)
 
-# In a real production scenario with Cloud KMS, we would import the KMS client here.
-# For this implementation, we focus on the Local interface and structure.
+_DEFAULT_MASTER_KEY = "CHANGE_ME_IN_PROD_OR_USE_KMS_PLEASE_12345"
+_FERNET_PREFIX = "fernet:"
+_GCPKMS_PREFIX = "gcpkms:"
+_ALLOWED_PROVIDERS = {"local", "gcp_kms"}
+
+
+def _resolve_provider() -> str:
+    provider = (settings.encryption_provider or "").strip().lower()
+    if not provider:
+        provider = "gcp_kms" if settings.gcp_kms_key_name else "local"
+    if provider not in _ALLOWED_PROVIDERS:
+        raise ValueError(
+            "ENCRYPTION_PROVIDER must be one of: local, gcp_kms."
+        )
+    return provider
+
+
+def _get_master_key(app_env: str) -> str:
+    master_key = settings.local_encryption_key
+    if master_key:
+        if master_key == _DEFAULT_MASTER_KEY and app_env not in {"local", "test"}:
+            raise ValueError(
+                "LOCAL_ENCRYPTION_KEY must be set to a non-default value in non-local environments."
+            )
+        return master_key
+
+    if app_env in {"local", "test"}:
+        logger.warning(
+            "LOCAL_ENCRYPTION_KEY is not set; using the insecure default for local/test."
+        )
+        return _DEFAULT_MASTER_KEY
+
+    raise ValueError(
+        "LOCAL_ENCRYPTION_KEY must be configured for non-local environments."
+    )
 
 
 def _get_local_key(user_dek_ref: str) -> bytes:
     """
     Derives a localized encryption key from the service's master key and the user's reference.
-    This simulates a per-user key retrieval.
     """
-    master_key = os.getenv(
-        "LOCAL_ENCRYPTION_KEY", "CHANGE_ME_IN_PROD_OR_USE_KMS_PLEASE_12345"
-    )
+    master_key = _get_master_key(settings.app_env.lower())
 
-    # Derive a key using PBKDF2
-    salt = b"jualuma_local_salt"  # In prod, store salt per user
+    salt = b"jualuma_local_salt"
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
         iterations=100000,
     )
-    # Combine master and user ref
-    key_material = f"{master_key}:{user_dek_ref}".encode()
+    key_material = f"{master_key}:{user_dek_ref}".encode("utf-8")
     return base64.urlsafe_b64encode(kdf.derive(key_material))
 
 
-def encrypt_prompt(text: str, user_dek_ref: str) -> bytes:
+def _require_crypto() -> None:
+    if not HAS_CRYPTO:
+        raise ImportError("cryptography is required for local encryption.")
+
+
+def _require_kms() -> None:
+    if not HAS_GCP_KMS:
+        raise ImportError(
+            "google-cloud-kms is required when ENCRYPTION_PROVIDER=gcp_kms."
+        )
+    if not settings.gcp_kms_key_name:
+        raise ValueError("GCP_KMS_KEY_NAME must be set for gcp_kms encryption.")
+
+
+def _kms_client():
+    _require_kms()
+    return kms_v1.KeyManagementServiceClient()
+
+
+def _encrypt_local(text: str, user_dek_ref: str) -> str:
+    _require_crypto()
+    key = _get_local_key(user_dek_ref)
+    f = Fernet(key)
+    return f.encrypt(text.encode("utf-8")).decode("utf-8")
+
+
+def _decrypt_local(ciphertext: str, user_dek_ref: str) -> str:
+    _require_crypto()
+    key = _get_local_key(user_dek_ref)
+    f = Fernet(key)
+    return f.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
+
+
+def _encrypt_kms(text: str) -> str:
+    client = _kms_client()
+    response = client.encrypt(
+        request={"name": settings.gcp_kms_key_name, "plaintext": text.encode("utf-8")}
+    )
+    return base64.b64encode(response.ciphertext).decode("ascii")
+
+
+def _decrypt_kms(ciphertext: str) -> str:
+    client = _kms_client()
+    response = client.decrypt(
+        request={
+            "name": settings.gcp_kms_key_name,
+            "ciphertext": base64.b64decode(ciphertext),
+        }
+    )
+    return response.plaintext.decode("utf-8")
+
+
+def encrypt_prompt(text: str, user_dek_ref: str) -> str:
     """
     Encrypts sensitive text (prompts or API secrets).
 
-    Args:
-        text: The raw text.
-        user_dek_ref: A reference ID for the user's key (e.g., user_uid).
-
     Returns:
-        The encrypted text as raw Fernet bytes.
+        A string-encoded ciphertext with a provider prefix.
     """
-    env = os.getenv("App_Env", "local").lower()
-
-    if env == "production":
-        # Placeholder for Cloud KMS implementation
-        # In a real scenario, this would check if we are truly properly configured or raise an error
-        # rather than silently falling back if security is paramount.
-        # However, for this codebase structure, we simulate secure key derivation locally.
-        logger.info(
-            "Using simulation key derivation for production-like behavior in demo environment."
-        )
-        pass
-
-    if not HAS_CRYPTO:
-        raise ImportError("Cryptography package is required for encryption.")
-
-    key = _get_local_key(user_dek_ref)
-    f = Fernet(key)
-    return f.encrypt(text.encode()).decode("utf-8")
+    provider = _resolve_provider()
+    if provider == "gcp_kms":
+        return f"{_GCPKMS_PREFIX}{_encrypt_kms(text)}"
+    return f"{_FERNET_PREFIX}{_encrypt_local(text, user_dek_ref)}"
 
 
 def decrypt_prompt(encrypted_text: bytes | str, user_dek_ref: str) -> str:
-    """
-    Decrypts sensitive text.
-    """
-    _ = os.getenv("App_Env", "local").lower()
-
-    if not HAS_CRYPTO:
-        raise ImportError("Cryptography package is required for encryption.")
+    """Decrypts sensitive text."""
+    ciphertext = (
+        encrypted_text.decode("utf-8")
+        if isinstance(encrypted_text, bytes)
+        else encrypted_text
+    )
 
     try:
-        key = _get_local_key(user_dek_ref)
-        f = Fernet(key)
-        ciphertext = (
-            encrypted_text.encode()
-            if isinstance(encrypted_text, str)
-            else encrypted_text
-        )
-        return f.decrypt(ciphertext).decode()
-    except Exception as e:
-        logger.error(f"Decryption failed: {e!s}")  # Force string representation
-        raise ValueError("Failed to decrypt content.") from e
+        if ciphertext.startswith(_FERNET_PREFIX):
+            return _decrypt_local(ciphertext[len(_FERNET_PREFIX) :], user_dek_ref)
+        if ciphertext.startswith(_GCPKMS_PREFIX):
+            return _decrypt_kms(ciphertext[len(_GCPKMS_PREFIX) :])
+
+        # Backward compatibility: try local, then KMS if configured.
+        try:
+            return _decrypt_local(ciphertext, user_dek_ref)
+        except Exception:
+            if settings.gcp_kms_key_name or _resolve_provider() == "gcp_kms":
+                return _decrypt_kms(ciphertext)
+            raise
+    except Exception as exc:
+        logger.error("Decryption failed: %s", exc)
+        raise ValueError("Failed to decrypt content.") from exc
 
 
 # Aliases for clarity in CEX integration context

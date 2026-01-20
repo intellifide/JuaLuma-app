@@ -2,6 +2,7 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import Switch from '../components/ui/Switch'
 
 export const Login = () => {
   const { login } = useAuth()
@@ -86,15 +87,11 @@ export const Login = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple"
-                  />
-                  Remember me
-                </label>
+                <Switch
+                  checked={rememberMe}
+                  onChange={setRememberMe}
+                  label="Remember me"
+                />
                 <Link to="/reset-password" className="text-sm text-royal-purple hover:text-deep-indigo font-medium">
                   Forgot password?
                 </Link>

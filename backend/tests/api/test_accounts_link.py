@@ -73,7 +73,7 @@ def test_link_cex_account(test_client: TestClient, test_db, mock_auth):
     assert data["account_type"] == "cex"
     assert data["provider"] == "coinbase"
 
-    # Verify encryption happened
+    # Verify secret storage happened
     acct = test_db.query(Account).filter(Account.id == data["id"]).first()
     assert acct.secret_ref != '{"apiKey": "mock-key", "secret": "mock-secret"}'
-    # It should be encrypted string
+    assert acct.secret_ref.startswith("file:")

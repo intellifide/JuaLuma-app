@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -40,6 +40,16 @@ class WidgetRating(Base):
 
     def __repr__(self) -> str:
         return f"WidgetRating(id={self.id!r}, widget_id={self.widget_id!r}, rating={self.rating!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "widget_id": self.widget_id,
+            "user_uid": self.user_uid,
+            "rating": self.rating,
+            "review": self.review,
+            "created_at": self.created_at.isoformat(),
+        }
 
 
 __all__ = ["WidgetRating"]

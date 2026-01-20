@@ -1,13 +1,14 @@
 // Core Purpose: Provide an accessible, styled toggle switch UI component.
 // Last Modified: 2026-01-17 23:40 CST
 
-import { useId } from 'react'
+import { useId, ReactNode } from 'react'
+import React from 'react'
 
 type SwitchProps = {
   checked: boolean
   onChange: (checked: boolean) => void
-  label?: string
-  description?: string
+  label?: ReactNode
+  description?: ReactNode
   disabled?: boolean
   className?: string
 }
@@ -29,12 +30,12 @@ export default function Switch({ checked, onChange, label, description, disabled
     <div className={`flex items-center justify-between ${className}`}>
       <span className="flex-grow flex flex-col">
         {label && (
-          <span id={labelId} className="text-sm font-medium text-gray-900">
+          <span id={labelId} className="text-sm font-medium text-text-primary">
             {label}
           </span>
         )}
         {description && (
-          <span id={descriptionId} className="text-sm text-gray-500">
+          <span id={descriptionId} className="text-sm text-text-secondary">
             {description}
           </span>
         )}

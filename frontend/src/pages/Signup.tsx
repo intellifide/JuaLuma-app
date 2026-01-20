@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 import { LEGAL_AGREEMENTS } from '../constants/legal'
 import { AgreementAcceptanceInput } from '../types/legal'
+import Switch from '../components/ui/Switch'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -161,55 +162,36 @@ export const Signup = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-start gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
-                    onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Select this box if you agree with the terms')}
-                    onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
-                    required
-                  />
-                  <span>
-                    I agree to the{' '}
-                    <a href="/legal/terms" className="text-royal-purple font-medium hover:text-deep-indigo">
-                      Terms of Service
-                    </a>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={acceptPrivacy}
-                    onChange={(e) => setAcceptPrivacy(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
-                    onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Select this box if you agree with the terms')}
-                    onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
-                    required
-                  />
-                  <span>
-                    I agree to the{' '}
-                    <a href="/legal/privacy" className="text-royal-purple font-medium hover:text-deep-indigo">
-                      Privacy Policy
-                    </a>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={acceptResident}
-                    onChange={(e) => setAcceptResident(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-royal-purple focus:ring-royal-purple mt-1"
-                    onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Select this box if you agree with the terms')}
-                    onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
-                    required
-                  />
-                  <span>
-                    I certify that I am a resident of the United States and agree to the Terms of Service.
-                  </span>
-                </label>
+              <div className="space-y-4">
+                <Switch
+                  checked={acceptTerms}
+                  onChange={setAcceptTerms}
+                  label={
+                    <span>
+                      I agree to the{' '}
+                      <a href="/legal/terms" className="text-royal-purple font-medium hover:text-deep-indigo">
+                        Terms of Service
+                      </a>
+                    </span>
+                  }
+                />
+                <Switch
+                  checked={acceptPrivacy}
+                  onChange={setAcceptPrivacy}
+                  label={
+                    <span>
+                      I agree to the{' '}
+                      <a href="/legal/privacy" className="text-royal-purple font-medium hover:text-deep-indigo">
+                        Privacy Policy
+                      </a>
+                    </span>
+                  }
+                />
+                <Switch
+                  checked={acceptResident}
+                  onChange={setAcceptResident}
+                  label="I certify that I am a resident of the United States and agree to the Terms of Service."
+                />
               </div>
 
               {error && <p className="text-sm text-red-600">{error}</p>}

@@ -39,6 +39,10 @@ class User(Base):
         default="pending_verification",
         server_default="pending_verification",
     )
+    # 2026-01-20 - Add privacy consent field
+    data_sharing_consent: Mapped[bool] = mapped_column(
+        default=False, nullable=False, server_default="false"
+    )
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
     theme_pref: Mapped[str | None] = mapped_column(String(32), nullable=True)
     currency_pref: Mapped[str | None] = mapped_column(String(3), nullable=True)
@@ -161,6 +165,7 @@ class User(Base):
             else None,
             "mfa_enabled": self.mfa_enabled,
             "status": self.status,
+            "data_sharing_consent": self.data_sharing_consent,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }

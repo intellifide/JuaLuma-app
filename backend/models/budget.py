@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, Float, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -41,6 +41,17 @@ class Budget(Base):
 
     def __repr__(self) -> str:
         return f"Budget(uid={self.uid!r}, category={self.category!r}, amount={self.amount!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "category": self.category,
+            "amount": float(self.amount),
+            "period": self.period,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["Budget"]

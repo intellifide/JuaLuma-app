@@ -3,7 +3,7 @@
 # Updated 2025-12-08 17:37 CST by ChatGPT
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -41,6 +41,15 @@ class Developer(Base):
         return (
             f"Developer(uid={self.uid!r}, payout_frequency={self.payout_frequency!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "uid": self.uid,
+            "payout_method": self.payout_method,
+            "payout_frequency": self.payout_frequency,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["Developer"]

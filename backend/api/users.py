@@ -1,7 +1,9 @@
+import json
 import logging
 
 # Updated 2025-12-10 21:27 CST (Central Time) - removed unused imports
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from firebase_admin import auth
@@ -20,16 +22,55 @@ from backend.models import (
     Widget,
     WidgetRating,
 )
+from backend.models.budget import Budget
+from backend.models.category_rule import CategoryRule
+from backend.models.developer import Developer
+from backend.models.household import Household, HouseholdMember
+from backend.models.manual_asset import ManualAsset
+from backend.models.notification import NotificationPreference
+from backend.models.payment import Payment
+from backend.models.payout import DeveloperPayout
+from backend.models.transaction import Transaction
+from backend.models.user_document import UserDocument
 from backend.services.auth import revoke_refresh_tokens
 from backend.services.notifications import NotificationService
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 logger = logging.getLogger(__name__)
+UTC = timezone.utc
 
 
 class SubscriptionUpdate(BaseModel):
     plan: str = Field(..., pattern="^(free|essential|pro|ultimate)$")
+
+
+@router.get("/me", response_model=dict[str, Any])
+def get_my_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the current logged-in user's profile."""
+    # current_user is already simple, but let's refresh to be safe or eager load needed fields
+    # For basic profile, we don't need heavy eager loading
+    return current_user.to_dict()
+
+
+class PrivacyUpdate(BaseModel):
+    data_sharing_consent: bool
+
+
+@router.patch("/me/privacy", response_model=dict[str, Any])
+def update_privacy_settings(
+    update_data: PrivacyUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update user privacy settings."""
+    current_user.data_sharing_consent = update_data.data_sharing_consent
+    db.commit()
+    db.refresh(current_user)
+    return current_user.to_dict()
 
 
 @router.post("/export")
@@ -38,9 +79,10 @@ def export_user_data(
     db: Session = Depends(get_db),
 ):
     """
-    Export all user data as a JSON bundle.
+    Export all data associated with the current user.
+    Returns a comprehensive JSON structure.
     """
-    # Eager load everything
+    # Eager load everything attached to User
     user = (
         db.query(User)
         .options(
@@ -51,64 +93,84 @@ def export_user_data(
             selectinload(User.accounts).selectinload(Account.transactions),
             selectinload(User.support_tickets),
             selectinload(User.legal_acceptances),
+            selectinload(User.manual_assets),
+            selectinload(User.documents),
+            selectinload(User.payments),
+            selectinload(User.developer_payouts),
+            selectinload(User.household_member),
         )
         .filter(User.uid == current_user.uid)
         .first()
     )
 
     if not user:
-        raise HTTPException(status_code=404, detail="Your account session is invalid.")
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Fetch data not directly linked via relationship on User model (or just to be safe)
+    budgets = db.query(Budget).filter(Budget.uid == user.uid).all()
+    category_rules = db.query(CategoryRule).filter(CategoryRule.uid == user.uid).all()
+    widget_ratings = db.query(WidgetRating).filter(WidgetRating.user_uid == user.uid).all()
+
+    # Handle Household data
+    household_data = None
+    if user.household_member:
+        # Load the household details if member
+        hh = (
+            db.query(Household)
+            .options(
+                selectinload(Household.members),
+                selectinload(Household.invites)
+            )
+            .filter(Household.id == user.household_member.household_id)
+            .first()
+        )
+        if hh:
+            household_data = hh.to_dict()
 
     # Serialize Data
     data = {
         "profile": user.to_dict(),
         "exported_at": datetime.now(UTC).isoformat(),
+        "ai_settings": user.ai_settings.to_dict() if user.ai_settings else None,
         "subscriptions": [s.to_dict() for s in user.subscriptions],
-        "accounts": [],
+        "notification_preferences": [n.to_dict() for n in user.notification_preferences],
+        
+        # Financials
+        "accounts": [],  # Filled below
+        "manual_assets": [m.to_dict() for m in user.manual_assets],
+        "payments": [p.to_dict() for p in user.payments],
+        "developer_payouts": [p.to_dict() for p in user.developer_payouts],
+        "budgets": [b.to_dict() for b in budgets],
+        "category_rules": [r.to_dict() for r in category_rules],
+
+        # Support & Legal
         "support_tickets": [t.to_dict() for t in user.support_tickets],
-        "legal_acceptances": [
-            {
-                "agreement_key": acceptance.agreement_key,
-                "agreement_version": acceptance.agreement_version,
-                "accepted_at": acceptance.accepted_at,
-                "presented_at": acceptance.presented_at,
-                "acceptance_method": acceptance.acceptance_method,
-                "source": acceptance.source,
-                "ip_address": acceptance.ip_address,
-                "user_agent": acceptance.user_agent,
-                "locale": acceptance.locale,
-                "metadata": acceptance.metadata_json,
-            }
-            for acceptance in user.legal_acceptances
-        ],
-        "widgets_owned": [],  # If we had widget ownership logic beyond developer
-        "widgets_rated": [
-            r.rating
-            for r in db.query(WidgetRating)
-            .filter(WidgetRating.user_uid == user.uid)
-            .all()
-        ],
+        "legal_acceptances": [l.to_dict() for l in user.legal_acceptances],
+        "documents": [d.to_dict() for d in user.documents],
+
+        # Household
+        "household_membership": user.household_member.to_dict() if user.household_member else None,
+        "household": household_data,
+
+        # Widgets
+        "developed_widgets": [], # Filled below
+        "widget_ratings": [r.to_dict() for r in widget_ratings],
     }
 
-    if user.ai_settings:
-        data["ai_settings"] = {
-            "provider": user.ai_settings.provider,
-            "created_at": user.ai_settings.created_at.isoformat()
-            if user.ai_settings.created_at
-            else None,
-        }
-
+    # Process Accounts & Transactions
     for account in user.accounts:
         acc_data = account.to_dict()
         acc_data["transactions"] = [t.to_dict() for t in account.transactions]
         data["accounts"].append(acc_data)
 
-    # User's developed widgets
+    # Process Developed Widgets if user is a developer
     if user.developer:
         widgets = db.query(Widget).filter(Widget.developer_uid == user.uid).all()
         data["developed_widgets"] = [w.to_dict() for w in widgets]
+        data["developer_profile"] = user.developer.to_dict()
 
-    return data
+    json_str = json.dumps(data, indent=2, default=str)
+    return Response(content=json_str, media_type="application/json")
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)

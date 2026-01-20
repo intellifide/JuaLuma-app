@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime, time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -61,6 +61,19 @@ class NotificationPreference(Base):
             f"NotificationPreference(id={self.id!r}, uid={self.uid!r}, "
             f"event_key={self.event_key!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "event_key": self.event_key,
+            "channel_email": self.channel_email,
+            "channel_sms": self.channel_sms,
+            "quiet_hours_start": self.quiet_hours_start.isoformat() if self.quiet_hours_start else None,
+            "quiet_hours_end": self.quiet_hours_end.isoformat() if self.quiet_hours_end else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 class LocalNotification(Base):

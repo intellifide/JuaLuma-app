@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -43,3 +43,14 @@ class CategoryRule(Base):
 
     def __repr__(self) -> str:
         return f"CategoryRule(uid={self.uid!r}, merchant={self.merchant_name!r}, category={self.category!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "merchant_name": self.merchant_name,
+            "category": self.category,
+            "match_type": self.match_type,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }

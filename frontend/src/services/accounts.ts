@@ -44,7 +44,7 @@ const mapAccount = (data: any): Account => ({
   currency: data.currency ?? null,
   assignedMemberUid: data.assigned_member_uid ?? data.assignedMemberUid ?? null,
   customLabel: data.custom_label ?? data.customLabel ?? null,
-  secretRef: data.secret_ref ?? data.secretRef ?? null,
+  syncStatus: data.sync_status ?? data.syncStatus ?? null,
   createdAt: data.created_at ?? data.createdAt,
   updatedAt: data.updated_at ?? data.updatedAt,
 })

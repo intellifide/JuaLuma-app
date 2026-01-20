@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -57,6 +57,24 @@ class Widget(Base):
 
     def __repr__(self) -> str:
         return f"Widget(id={self.id!r}, name={self.name!r}, status={self.status!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "developer_uid": self.developer_uid,
+            "name": self.name,
+            "description": self.description,
+            "version": self.version,
+            "category": self.category,
+            "status": self.status,
+            "scopes": self.scopes,
+            "preview_data": self.preview_data,
+            "downloads": self.downloads,
+            "rating_avg": self.rating_avg,
+            "rating_count": self.rating_count,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["Widget"]

@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -50,6 +50,18 @@ class Subscription(Base):
 
     def __repr__(self) -> str:
         return f"Subscription(id={self.id!r}, uid={self.uid!r}, plan={self.plan!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "plan": self.plan,
+            "status": self.status,
+            "renew_at": self.renew_at.isoformat() if self.renew_at else None,
+            "ai_quota_used": self.ai_quota_used,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["Subscription"]

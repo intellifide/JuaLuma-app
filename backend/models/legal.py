@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -65,6 +65,23 @@ class LegalAgreementAcceptance(Base):
             f"id={self.id!r}, uid={self.uid!r}, "
             f"agreement_key={self.agreement_key!r}, agreement_version={self.agreement_version!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "agreement_key": self.agreement_key,
+            "agreement_version": self.agreement_version,
+            "acceptance_method": self.acceptance_method,
+            "presented_at": self.presented_at.isoformat() if self.presented_at else None,
+            "accepted_at": self.accepted_at.isoformat(),
+            "source": self.source,
+            "ip_address": self.ip_address,
+            "user_agent": self.user_agent,
+            "locale": self.locale,
+            "metadata_json": self.metadata_json,
+            "archived": self.archived,
+        }
 
 
 __all__ = ["LegalAgreementAcceptance"]

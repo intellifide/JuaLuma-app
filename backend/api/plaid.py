@@ -16,6 +16,7 @@ from backend.services.plaid import (
     fetch_accounts,
 )
 from backend.utils import get_db
+from backend.utils.secret_manager import store_secret
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
 
@@ -97,6 +98,9 @@ def exchange_token_endpoint(
         ) from exc
 
     linked_accounts: list[Account] = []
+    secret_ref = store_secret(
+        access_token, uid=current_user.uid, purpose="plaid-access"
+    )
 
     for account_data in plaid_accounts:
         mask = account_data.get("mask")
@@ -119,7 +123,7 @@ def exchange_token_endpoint(
             existing.account_name = account_name
             existing.balance = balance
             existing.currency = currency
-            existing.secret_ref = access_token
+            existing.secret_ref = secret_ref
             linked_accounts.append(existing)
             continue
 
@@ -131,7 +135,7 @@ def exchange_token_endpoint(
             account_number_masked=mask,
             balance=balance,
             currency=currency,
-            secret_ref=access_token,
+            secret_ref=secret_ref,
         )
         db.add(account)
         linked_accounts.append(account)

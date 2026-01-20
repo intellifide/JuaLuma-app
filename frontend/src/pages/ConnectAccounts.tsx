@@ -84,11 +84,23 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
   );
 };
 
-const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
-  const [exchange, setExchange] = useState('coinbase');
+const AddCexModal = ({
+  onClose,
+  onSuccess,
+  initialExchange = 'coinbase',
+  initialName = '',
+  title = 'Connect Exchange'
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+  initialExchange?: string;
+  initialName?: string;
+  title?: string;
+}) => {
+  const [exchange, setExchange] = useState(initialExchange);
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -115,7 +127,7 @@ const AddCexModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
       <div className="modal-content max-w-md">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold">Connect Exchange</h3>
+          <h3 className="text-xl font-bold">{title}</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -278,6 +290,7 @@ export const ConnectAccounts = () => {
   const toast = useToast();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showCexModal, setShowCexModal] = useState(false);
+  const [reconnectPayload, setReconnectPayload] = useState<{ exchange: string; name: string } | null>(null);
   const [editingAccount, setEditingAccount] = useState<{ id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null } | null>(null);
 
   const handlePlaidSuccess = () => {
@@ -306,6 +319,11 @@ export const ConnectAccounts = () => {
         <p className="text-text-secondary mb-12 max-w-[800px]">
           Link bank accounts, Web3 wallets, and CEX accounts. All connections are read-only; we cannot move your money.
         </p>
+        {accounts.some((account) => account.syncStatus === 'needs_reauth') && (
+          <div className="alert alert-warning mb-8">
+            <strong>Action needed:</strong> One or more accounts need to be reconnected. For security, please reconnect to restore syncing.
+          </div>
+        )}
 
         <div className="grid grid-3 mb-12">
           <div className="card">
@@ -379,6 +397,15 @@ export const ConnectAccounts = () => {
             onSuccess={() => { setShowCexModal(false); refetch(); }}
           />
         )}
+        {reconnectPayload && (
+          <AddCexModal
+            title="Reconnect Exchange"
+            initialExchange={reconnectPayload.exchange}
+            initialName={reconnectPayload.name}
+            onClose={() => setReconnectPayload(null)}
+            onSuccess={() => { setReconnectPayload(null); refetch(); }}
+          />
+        )}
         {editingAccount && (
             <EditAccountModal
                 account={editingAccount}
@@ -425,10 +452,27 @@ export const ConnectAccounts = () => {
                               <span className="text-text-muted text-sm">-</span>
                           )}
                       </td>
-                      <td className="py-4"><span className="badge badge-success">Connected</span></td>
+                      <td className="py-4">
+                        {account.syncStatus === 'needs_reauth' ? (
+                          <span className="badge badge-warning">Reconnect needed</span>
+                        ) : (
+                          <span className="badge badge-success">Connected</span>
+                        )}
+                      </td>
                       <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'Just now'}</td>
                       <td className="py-4">
                         <div className="flex gap-2">
+                          {account.syncStatus === 'needs_reauth' && account.accountType === 'cex' && (
+                            <button
+                              className="btn btn-sm btn-primary"
+                              onClick={() => setReconnectPayload({
+                                exchange: account.provider || 'coinbase',
+                                name: account.accountName || 'My Exchange'
+                              })}
+                            >
+                              Reconnect
+                            </button>
+                          )}
                           <button
                             className="btn btn-sm btn-ghost"
                             onClick={() => setEditingAccount(account)}
@@ -438,6 +482,7 @@ export const ConnectAccounts = () => {
                           <button
                             className="btn btn-sm btn-outline"
                             onClick={() => sync(account.id)}
+                            disabled={account.syncStatus === 'needs_reauth'}
                           >
                             Refresh
                           </button>
@@ -458,7 +503,7 @@ export const ConnectAccounts = () => {
         </div>
 
         <div className="alert alert-info mb-8">
-          <strong>Read-Only Access:</strong> All connections are read-only to maintain non-custodial, non-MSB status. We cannot initiate transactions, transfer funds, or modify account settings. API keys and OAuth tokens are stored only in Secret Manager.
+          <strong>Read-Only Access:</strong> All connections are read-only to maintain non-custodial, non-MSB status. We cannot initiate transactions, transfer funds, or modify account settings. API keys and OAuth tokens are stored in an encrypted secret store.
         </div>
 
         <div className="glass-panel">

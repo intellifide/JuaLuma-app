@@ -15,6 +15,13 @@ services:
       FIREBASE_AUTH_EMULATOR_HOST: jualuma-firebase-emulator:9099
       FIREBASE_PROJECT_ID: jualuma-local
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      ENCRYPTION_PROVIDER: ${ENCRYPTION_PROVIDER:-local}
+      LOCAL_ENCRYPTION_KEY: ${LOCAL_ENCRYPTION_KEY:-local-dev-key-change-me}
+      SECRET_PROVIDER: ${SECRET_PROVIDER:-file}
+      LOCAL_SECRET_STORE_PATH: ${LOCAL_SECRET_STORE_PATH:-/app/data/local_secret_store.json}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-jualuma-local}
+      GCP_KMS_KEY_NAME: ${GCP_KMS_KEY_NAME:-}
+      GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT_ID:-jualuma-local}
       ENABLE_AI_GATEWAY: "false"
       BACKEND_CORS_ORIGINS: "http://localhost:5175,http://localhost:5176"
 
@@ -25,8 +32,10 @@ services:
       - "8001:8001"
     volumes:
       - ./backend:/app/backend
+      - ./data:/app/data
       - ./alembic.ini:/app/alembic.ini
       - ./alembic:/app/alembic
+      - ./scripts:/app/scripts
     networks:
       - jualuma-network
 

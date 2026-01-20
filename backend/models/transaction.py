@@ -5,7 +5,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -89,6 +89,25 @@ class Transaction(Base):
             f"account_id={self.account_id!r}, amount={self.amount!r}, "
             f"currency={self.currency!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "account_id": str(self.account_id),
+            "ts": self.ts.isoformat(),
+            "amount": float(self.amount),
+            "currency": self.currency,
+            "category": self.category,
+            "merchant_name": self.merchant_name,
+            "description": self.description,
+            "external_id": self.external_id,
+            "is_manual": self.is_manual,
+            "archived": self.archived,
+            "raw_json": self.raw_json,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["Transaction"]

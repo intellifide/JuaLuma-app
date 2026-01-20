@@ -21,7 +21,7 @@ from backend.services.connectors import build_connector
 from backend.services.household_service import get_household_member_uids
 from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.utils import get_db
-from backend.utils.encryption import decrypt_secret, encrypt_secret
+from backend.utils.secret_manager import get_secret, store_secret
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class AccountResponse(BaseModel):
     currency: str | None = None
     assigned_member_uid: str | None = None
     custom_label: str | None = None
-    secret_ref: str | None = None
+    sync_status: str | None = None
     created_at: datetime
     updated_at: datetime
     transactions: list[TransactionSummary] = Field(default_factory=list)
@@ -168,7 +168,6 @@ class AccountResponse(BaseModel):
                     "account_number_masked": "1234",
                     "balance": 15420.5,
                     "currency": "USD",
-                    "secret_ref": "plaid-item-xyz",
                     "created_at": "2025-12-01T12:00:00Z",
                     "updated_at": "2025-12-05T09:15:00Z",
                     "transactions": [],
@@ -259,7 +258,7 @@ def _serialize_account(
         currency=account.currency,
         assigned_member_uid=account.assigned_member_uid,
         custom_label=account.custom_label,
-        secret_ref=account.secret_ref,
+        sync_status=account.sync_status,
         created_at=account.created_at,
         updated_at=account.updated_at,
         transactions=txns,
@@ -391,7 +390,7 @@ def link_web3_account(
             if stored.get("address") == payload.address:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="This wallet address has already been linked to your account.",
+                    detail="This wallet address is already linked to your account.",
                 )
         except json.JSONDecodeError:
             continue
@@ -462,7 +461,9 @@ def link_cex_account(
     # 2. Encrypt secrets
     secret_data = {"apiKey": payload.api_key, "secret": payload.api_secret}
     secret_json = json.dumps(secret_data)
-    encrypted_ref = encrypt_secret(secret_json, current_user.uid)
+    secret_ref = store_secret(
+        secret_json, uid=current_user.uid, purpose=f"cex-{payload.exchange_id}"
+    )
 
     enforce_account_limit(current_user, db, "cex")
 
@@ -472,7 +473,7 @@ def link_cex_account(
         provider=payload.exchange_id,
         account_name=payload.account_name,
         currency="USD",  # Default for CEX until synced
-        secret_ref=encrypted_ref,
+        secret_ref=secret_ref,
         balance=Decimal("0.0"),
     )
     db.add(account)
@@ -494,7 +495,8 @@ def link_cex_account(
 
 def _sync_traditional(account: Account, start: date, end: date) -> list[dict]:
     try:
-        return fetch_transactions(account.secret_ref, start, end)
+        access_token = get_secret(account.secret_ref or "", uid=account.uid)
+        return fetch_transactions(access_token, start, end)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account credentials."
@@ -536,8 +538,8 @@ def _sync_web3(account: Account) -> list[dict]:
 
 def _sync_cex(account: Account, uid: str) -> list[dict]:
     try:
-        decrypted_json = decrypt_secret(account.secret_ref, uid)
-        creds = json.loads(decrypted_json)
+        secret_json = get_secret(account.secret_ref or "", uid=uid)
+        creds = json.loads(secret_json)
 
         connector = build_connector(
             kind="cex",
@@ -572,7 +574,8 @@ def _refresh_traditional_balance(account: Account, user_pref: str | None) -> str
     if account.account_type != "traditional":
         return None
     try:
-        plaid_accounts = fetch_accounts(account.secret_ref)
+        access_token = get_secret(account.secret_ref or "", uid=account.uid)
+        plaid_accounts = fetch_accounts(access_token)
         match = next(
             (
                 acct
@@ -669,6 +672,7 @@ def _resolve_sync_dates(
     resolved_start = start_date or (today - timedelta(days=30))
     resolved_end = end_date or today
     if resolved_start > resolved_end:
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The start date cannot be after the end date.",
         )
@@ -750,6 +754,7 @@ def sync_account_transactions(
         )
 
     if account.account_type not in ["traditional", "web3", "cex"]:
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This account type does not support manual synchronization.",
         )
@@ -926,7 +931,8 @@ def delete_account(
             account.secret_ref,
         )
         try:
-            remove_item(account.secret_ref)
+            access_token = get_secret(account.secret_ref, uid=current_user.uid)
+            remove_item(access_token)
         except Exception as e:
             logger.error("Failed to remove Plaid item: %s", e)
 

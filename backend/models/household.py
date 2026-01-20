@@ -3,7 +3,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -42,6 +42,16 @@ class Household(Base):
         return (
             f"Household(id={self.id!r}, name={self.name!r}, owner={self.owner_uid!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "owner_uid": self.owner_uid,
+            "name": self.name,
+            "created_at": self.created_at.isoformat(),
+            "members": [m.to_dict() for m in self.members] if self.members else [],
+            "invites": [i.to_dict() for i in self.invites] if self.invites else [],
+        }
 
 
 class HouseholdMember(Base):
@@ -83,6 +93,17 @@ class HouseholdMember(Base):
     def __repr__(self) -> str:
         return f"HouseholdMember(uid={self.uid!r}, household_id={self.household_id!r}, role={self.role!r})"
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "household_id": str(self.household_id),
+            "uid": self.uid,
+            "role": self.role,
+            "joined_at": self.joined_at.isoformat(),
+            "can_view_household": self.can_view_household,
+            "ai_access_enabled": self.ai_access_enabled,
+        }
+
 
 class HouseholdInvite(Base):
     __tablename__ = "household_invites"
@@ -115,3 +136,15 @@ class HouseholdInvite(Base):
 
     def __repr__(self) -> str:
         return f"HouseholdInvite(email={self.email!r}, household_id={self.household_id!r}, status={self.status!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "household_id": str(self.household_id),
+            "email": self.email,
+            "status": self.status,
+            "is_minor": self.is_minor,
+            "can_view_household": self.can_view_household,
+            "expires_at": self.expires_at.isoformat(),
+            "created_at": self.created_at.isoformat(),
+        }

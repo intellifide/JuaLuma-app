@@ -765,6 +765,7 @@ def change_password(
 
     # 2. Verify Current Password
     if not verify_password(current_user.email, payload.current_password):
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="The current password provided is incorrect.",
         )

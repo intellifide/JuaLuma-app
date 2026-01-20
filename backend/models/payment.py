@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -46,6 +46,16 @@ class Payment(Base):
             f"Payment(id={self.id!r}, uid={self.uid!r}, "
             f"stripe_customer_id={self.stripe_customer_id!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "stripe_customer_id": self.stripe_customer_id,
+            "stripe_sub_id": self.stripe_sub_id,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["Payment"]

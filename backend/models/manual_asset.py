@@ -5,7 +5,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -65,6 +65,19 @@ class ManualAsset(Base):
             f"ManualAsset(id={self.id!r}, uid={self.uid!r}, "
             f"asset_type={self.asset_type!r}, value={self.value!r})"
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "asset_type": self.asset_type,
+            "name": self.name,
+            "value": float(self.value),
+            "purchase_date": self.purchase_date.isoformat() if self.purchase_date else None,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
 
 __all__ = ["ManualAsset"]
