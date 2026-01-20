@@ -595,6 +595,8 @@ export default function Dashboard() {
     if (activeTab === 'all-accounts') return true;
     if (activeTab === 'checking') return acc.accountType === 'traditional';
     if (activeTab === 'investment') return acc.accountType === 'investment';
+    if (activeTab === 'web3') return acc.accountType === 'web3';
+    if (activeTab === 'cex') return acc.accountType === 'cex';
     return false;
   });
 
@@ -1090,6 +1092,8 @@ export default function Dashboard() {
                 <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
                 <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
                 <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'web3' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3 Wallets</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cex' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX Accounts</button></li>
               </ul>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1122,9 +1126,16 @@ export default function Dashboard() {
                     <p className="text-2xl font-bold text-royal-purple my-2">
                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
                     </p>
-                    <p className="text-sm text-text-muted">
-                      {account.accountNumberMasked ? `Account ending in ${account.accountNumberMasked}` : account.accountType}
-                    </p>
+                    <div className="flex justify-between items-center mt-auto pt-2">
+                      <span className="text-xs font-mono text-text-muted uppercase tracking-tighter">
+                        {account.accountNumberMasked ? `Ending in ${account.accountNumberMasked}` : account.accountType}
+                      </span>
+                      {account.provider && (
+                        <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-text-secondary">
+                          {account.provider}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))
               )}

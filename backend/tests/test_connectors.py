@@ -5,8 +5,10 @@ from decimal import Decimal
 import pytest
 
 from backend.services.connectors import (
-    MockConnectorClient,
+    CcxtConnectorClient,
+    EVMConnector,
     NormalizedTransaction,
+    SolanaConnector,
     build_connector,
     normalize_transaction,
 )
@@ -30,25 +32,19 @@ def test_normalize_transaction_coerces_and_sets_defaults():
     assert record.tx_id == "abc"
 
 
-def test_build_connector_returns_mocks_for_local_env():
+def test_build_connector_returns_real_clients_for_local_env():
     connector = build_connector("cex", app_env="local")
-    assert isinstance(connector, MockConnectorClient)
+    assert isinstance(connector, CcxtConnectorClient)
 
 
-def test_mock_connector_returns_deterministic_payloads():
-    connector = MockConnectorClient("web3")
-    results = list(connector.fetch_transactions("acct-123"))
-    assert len(results) >= 2
-    assert all(isinstance(r, NormalizedTransaction) for r in results)
-    assert any(r.on_chain_symbol == "ETH" for r in results)
+def test_build_connector_returns_evm_connector_by_default():
+    connector = build_connector("web3", app_env="local")
+    assert isinstance(connector, EVMConnector)
 
 
-def test_mock_connector_respects_symbol():
-    connector = MockConnectorClient("web3", symbol="MATIC")
-    results = list(connector.fetch_transactions("acct-123"))
-    web3_tx = next(r for r in results if r.tx_id == "web3-hash-003")
-    assert web3_tx.on_chain_symbol == "MATIC"
-    assert web3_tx.currency_code == "MATIC"
+def test_build_connector_respects_provider():
+    connector = build_connector("web3", provider="solana", app_env="local")
+    assert isinstance(connector, SolanaConnector)
 
 
 def test_normalize_requires_timestamp():

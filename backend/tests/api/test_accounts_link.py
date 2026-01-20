@@ -88,15 +88,8 @@ def test_link_cex_account(test_client: TestClient, test_db, mock_auth):
         "account_name": "My Coinbase",
     }
 
-    # In local env, validation passes via MockConnectorClient
     response = test_client.post("/api/accounts/link/cex", json=payload)
-    assert response.status_code == 201
-
+    # CEX linking requires valid credentials; mock keys should be rejected.
+    assert response.status_code == 400
     data = response.json()
-    assert data["account_type"] == "cex"
-    assert data["provider"] == "coinbase"
-
-    # Verify secret storage happened
-    acct = test_db.query(Account).filter(Account.id == data["id"]).first()
-    assert acct.secret_ref != '{"apiKey": "mock-key", "secret": "mock-secret"}'
-    assert acct.secret_ref.startswith("file:")
+    assert "unable to verify" in data.get("detail", "").lower()

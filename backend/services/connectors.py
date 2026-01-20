@@ -11,6 +11,7 @@ Responsibilities:
 from __future__ import annotations
 
 import importlib
+import logging
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -21,6 +22,7 @@ from backend.core import settings
 
 TransactionType = Literal["deposit", "withdrawal", "transfer", "trade"]
 Direction = Literal["inflow", "outflow"]
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -121,64 +123,7 @@ def normalize_transaction(
     return record
 
 
-class MockConnectorClient:
-    """Deterministic mock connector for local and sandbox usage."""
 
-    def __init__(
-        self,
-        kind: Literal["cex", "web3"],
-        symbol: str = "ETH",
-        converter: Callable[[Decimal, str], tuple[Decimal, str]] | None = None,
-    ) -> None:
-        self.kind = kind
-        self.symbol = symbol
-        self.converter = converter
-
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
-        base_payloads = [
-            {
-                "tx_id": f"{self.kind}-{self.symbol}-txn-001",
-                "account_id": account_id,
-                "amount": "125.50",
-                "currency_code": "USD",
-                "timestamp": "2024-01-15T12:00:00Z",
-                "merchant_name": "MockMart",
-                "counterparty": "MockPay",
-                "type": "deposit",
-                "direction": "inflow",
-            },
-            {
-                "tx_id": f"{self.kind}-{self.symbol}-txn-002",
-                "account_id": account_id,
-                "amount": "42.00",
-                "currency_code": "USD",
-                "timestamp": "2024-01-16T15:30:00Z",
-                "merchant_name": "UtilityCo",
-                "counterparty": "MockPay",
-                "type": "withdrawal",
-                "direction": "outflow",
-            },
-        ]
-
-        if self.kind == "web3":
-            base_payloads.append(
-                {
-                    "tx_id": f"{self.kind}-{self.symbol}-hash-003",
-                    "account_id": account_id,
-                    "amount": "0.0021",
-                    "currency_code": self.symbol,
-                    "timestamp": "2024-01-17T18:45:00Z",
-                    "counterparty": "0xfeedface",
-                    "type": "transfer",
-                    "direction": "outflow",
-                    "on_chain_units": "0.0021",
-                    "on_chain_symbol": self.symbol,
-                }
-            )
-
-        return [
-            normalize_transaction(p, converter=self.converter) for p in base_payloads
-        ]
 
 
 class CcxtConnectorClient:
@@ -284,15 +229,32 @@ class EVMConnector:
         if not w3.is_connected():
             raise RuntimeError("Unable to connect to EVM RPC.")
 
-        latest_block = w3.eth.block_number
+        try:
+            latest_block = w3.eth.block_number
+        except Exception as exc:
+            # Public RPCs can return -32046 when overloaded; fail softly.
+            payload = exc.args[0] if exc.args else {}
+            if isinstance(payload, dict):
+                message = str(payload.get("message", ""))
+                code = payload.get("code")
+            else:
+                message = str(payload)
+                code = None
+            if code == -32046 or "Cannot fulfill request" in message:
+                logger.warning("EVM RPC cannot fulfill request; skipping sync.")
+                return []
+            raise
         payloads = []
+        account_id_lower = account_id.lower()
         # Scan last 10 blocks for demo purposes. Real indexing requires a dedicated indexer.
         for block_number in range(latest_block - 10, latest_block + 1):
             block = w3.eth.get_block(block_number, full_transactions=True)
             for tx in block.transactions:
-                if tx["from"] == account_id or tx["to"] == account_id:
+                tx_from = str(tx.get("from", "")).lower()
+                tx_to = str(tx.get("to", "")).lower()
+                if tx_from == account_id_lower or tx_to == account_id_lower:
                     direction: Direction = (
-                        "outflow" if tx["from"] == account_id else "inflow"
+                        "outflow" if tx_from == account_id_lower else "inflow"
                     )
                     payloads.append(
                         {
@@ -303,9 +265,9 @@ class EVMConnector:
                             "timestamp": datetime.fromtimestamp(
                                 block.timestamp, tz=UTC
                             ),
-                            "counterparty": tx["to"]
+                            "counterparty": tx.get("to")
                             if direction == "outflow"
-                            else tx["from"],
+                            else tx.get("from"),
                             "type": "transfer",
                             "direction": direction,
                             "on_chain_units": tx["value"],
@@ -365,37 +327,70 @@ class SolanaConnector:
     def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
         import time
         requests = importlib.import_module("requests")
-        
+
+        if not self.rpc_url:
+            raise RuntimeError("SOLANA_RPC_URL is not configured.")
+
         # 1. Get Signatures
         payload = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "getSignaturesForAddress",
-            "params": [account_id, {"limit": 10}]
+            "params": [account_id, {"limit": 10}],
         }
-        try:
-            resp = requests.post(self.rpc_url, json=payload, timeout=10)
-            if resp.status_code == 429:
-                raise RuntimeError("Solana network is busy (429). Please try again later.")
-            if not resp.ok:
-                raise RuntimeError(f"Solana RPC error: {resp.status_code} {resp.text}")
-                
-            data = resp.json()
-            if "error" in data:
-                 raise RuntimeError(f"Solana RPC error: {data['error'].get('message')}")
-                 
-            sigs = [item["signature"] for item in data.get("result", [])]
-        except Exception as e:
-            # Re-raise known errors, wrap others
-            raise RuntimeError(f"Failed to fetch Solana signatures: {e}") from e
+        sigs: list[str] = []
+        last_error: Exception | None = None
+        soft_failure = False
+        for attempt in range(3):
+            try:
+                resp = requests.post(self.rpc_url, json=payload, timeout=6)
+                if resp.status_code == 429:
+                    last_error = RuntimeError(
+                        "Solana network is busy (429). Please try again later."
+                    )
+                    time.sleep(0.5 * (attempt + 1))
+                    continue
+                if not resp.ok:
+                    last_error = RuntimeError(
+                        f"Solana RPC error: {resp.status_code} {resp.text}"
+                    )
+                    time.sleep(0.25 * (attempt + 1))
+                    continue
+
+                data = resp.json()
+                if "error" in data:
+                    err = data.get("error") or {}
+                    err_message = err.get("message") or str(err)
+                    err_code = err.get("code")
+                    if err_code == -32046 or "Cannot fulfill request" in str(err_message):
+                        soft_failure = True
+                    last_error = RuntimeError(f"Solana RPC error: {err_message}")
+                    time.sleep(0.25 * (attempt + 1))
+                    continue
+
+                sigs = [item["signature"] for item in data.get("result", [])]
+                last_error = None
+                break
+            except Exception as e:
+                last_error = e
+                time.sleep(0.25 * (attempt + 1))
+        if last_error:
+            if soft_failure:
+                logger.warning("Solana RPC cannot fulfill request; skipping sync.")
+                return []
+            raise RuntimeError(f"Failed to fetch Solana signatures: {last_error}") from last_error
 
         if not sigs:
             return []
 
         # 2. Get Transaction Details (simplistic matching)
         payloads = []
+        start_time = time.monotonic()
+        time_budget = 20.0
         for sig in sigs:
             try:
+                if time.monotonic() - start_time > time_budget:
+                    break
                 tx_payload = {
                     "jsonrpc": "2.0",
                     "id": 1,
@@ -403,7 +398,10 @@ class SolanaConnector:
                     "params": [sig, {"encoding": "json", "maxSupportedTransactionVersion": 0}]
                 }
                 time.sleep(0.2) # Rate limit protection
-                tx_resp = requests.post(self.rpc_url, json=tx_payload, timeout=5)
+                tx_resp = requests.post(self.rpc_url, json=tx_payload, timeout=4)
+                if tx_resp.status_code == 429:
+                    time.sleep(0.4)
+                    continue
                 if not tx_resp.ok:
                     continue # Skip individual failed tx lookups
                     
@@ -608,11 +606,7 @@ def build_connector(
     """
     Factory returning the correct connector for the current environment.
     """
-    env = _resolve_env(app_env)
-    
-    # Use mocks only if local/sandbox AND forced real connectors is NOT enabled
-    if env in {"local", "sandbox"} and not settings.force_real_connectors:
-        return MockConnectorClient(kind, symbol=symbol, converter=converter)
+    # Logic to force mock connectors has been removed to ensure real data usage.
 
     if kind == "cex":
         return CcxtConnectorClient(
@@ -644,7 +638,6 @@ def build_connector(
 __all__ = [
     "NormalizedTransaction",
     "ConnectorClient",
-    "MockConnectorClient",
     "CcxtConnectorClient",
     "EVMConnector",
     "BitcoinConnector",

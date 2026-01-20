@@ -701,8 +701,10 @@ def _sync_web3(account: Account) -> list[dict]:
             }
             for t in normalized_txns
         ]
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Web3 sync error: {e}")
+        logger.exception("Web3 sync error")
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, f"We encountered an issue syncing your wallet data: {str(e)}"
         ) from e
