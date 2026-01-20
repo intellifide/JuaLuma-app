@@ -1,6 +1,8 @@
 import { FormEvent, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { LEGAL_AGREEMENTS } from '../../constants/legal';
+import { AgreementAcceptanceInput } from '../../types/legal';
 import { developerService } from '../../services/developers';
 
 interface DeveloperAuthProps {
@@ -22,7 +24,10 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [acceptDeveloperAgreement, setAcceptDeveloperAgreement] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+    const [acceptResident, setAcceptResident] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,8 +49,8 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                 setError('Password does not meet complexity requirements.');
                 return;
             }
-            if (!acceptTerms) {
-                setError('You must accept the Developer Agreement.');
+            if (!acceptDeveloperAgreement || !acceptTerms || !acceptPrivacy || !acceptResident) {
+                setError('You must accept all required legal agreements.');
                 return;
             }
         }
@@ -54,14 +59,43 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
         try {
             if (mode === 'signup') {
                 // 1. Create Core Account
-                await signup(email, password);
+                const agreements: AgreementAcceptanceInput[] = [
+                    {
+                        agreement_key: LEGAL_AGREEMENTS.termsOfService.key,
+                        agreement_version: LEGAL_AGREEMENTS.termsOfService.version,
+                        acceptance_method: 'clickwrap',
+                    },
+                    {
+                        agreement_key: LEGAL_AGREEMENTS.privacyPolicy.key,
+                        agreement_version: LEGAL_AGREEMENTS.privacyPolicy.version,
+                        acceptance_method: 'clickwrap',
+                    },
+                    {
+                        agreement_key: LEGAL_AGREEMENTS.usResidencyCertification.key,
+                        agreement_version: LEGAL_AGREEMENTS.usResidencyCertification.version,
+                        acceptance_method: 'clickwrap',
+                    },
+                    {
+                        agreement_key: LEGAL_AGREEMENTS.developerAgreement.key,
+                        agreement_version: LEGAL_AGREEMENTS.developerAgreement.version,
+                        acceptance_method: 'clickwrap',
+                    },
+                ];
+                await signup(email, password, agreements);
                 
                 // 2. Register as Developer
                 // Note: signup auto-logs in, so we have a token
                 try {
                     await developerService.register({
-                         payout_method: {}, // Default empty for now
-                         payout_frequency: 'monthly'
+                        payout_method: {}, // Default empty for now
+                        payout_frequency: 'monthly',
+                        agreements: [
+                            {
+                                agreement_key: LEGAL_AGREEMENTS.developerAgreement.key,
+                                agreement_version: LEGAL_AGREEMENTS.developerAgreement.version,
+                                acceptance_method: 'clickwrap',
+                            },
+                        ],
                     });
                 } catch (devErr) {
                     console.error("Developer registration failed, but account created.", devErr);
@@ -149,11 +183,46 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                                         <input 
                                             type="checkbox" 
                                             className="checkbox checkbox-xs mt-1"
+                                            checked={acceptDeveloperAgreement}
+                                            onChange={e => setAcceptDeveloperAgreement(e.target.checked)}
+                                        />
+                                        <span className="text-xs text-text-secondary">
+                                            I agree to the <Link to="/legal/terms" className="text-primary hover:underline">Developer Agreement</Link>.
+                                        </span>
+                                    </label>
+                                </div>
+                                <div className="pt-2 space-y-2">
+                                    <label className="flex items-start gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="checkbox checkbox-xs mt-1"
                                             checked={acceptTerms}
                                             onChange={e => setAcceptTerms(e.target.checked)}
                                         />
                                         <span className="text-xs text-text-secondary">
-                                            I agree to the <Link to="/legal/terms" className="text-primary hover:underline">Developer Agreement</Link> and <Link to="/legal/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+                                            I agree to the <Link to="/legal/terms" className="text-primary hover:underline">Terms of Service</Link>.
+                                        </span>
+                                    </label>
+                                    <label className="flex items-start gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="checkbox checkbox-xs mt-1"
+                                            checked={acceptPrivacy}
+                                            onChange={e => setAcceptPrivacy(e.target.checked)}
+                                        />
+                                        <span className="text-xs text-text-secondary">
+                                            I agree to the <Link to="/legal/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+                                        </span>
+                                    </label>
+                                    <label className="flex items-start gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="checkbox checkbox-xs mt-1"
+                                            checked={acceptResident}
+                                            onChange={e => setAcceptResident(e.target.checked)}
+                                        />
+                                        <span className="text-xs text-text-secondary">
+                                            I certify that I am a resident of the United States and agree to the Terms of Service.
                                         </span>
                                     </label>
                                 </div>

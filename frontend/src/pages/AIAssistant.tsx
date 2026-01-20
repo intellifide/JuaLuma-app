@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '../hooks/useAuth';
 import { ChatMessage } from '../components/ChatMessage';
 import { ChatInput } from '../components/ChatInput';
 import { QuotaDisplay } from '../components/QuotaDisplay';
-import { aiService, QuotaStatus } from '../services/aiService';
+import { aiService, QuotaStatus, HistoryItem } from '../services/aiService';
 import { AIPrivacyModal } from '../components/AIPrivacyModal';
+import { ChatHistoryList } from '../components/ChatHistoryList';
+import { DocumentList } from '../components/DocumentList';
+import { documentService, Document } from '../services/documentService';
+import { legalService } from '../services/legal';
+import { LEGAL_AGREEMENTS } from '../constants/legal';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -21,10 +27,21 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
   const storageKey = user?.uid ? `jualuma_ai_thread_${user.uid}` : 'jualuma_ai_thread_anon';
+
+  // Real documents state
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const { data: fetchedDocs, mutate: mutateDocs } = useSWR<Document[]>('/documents/', () => documentService.getAll());
+
+  useEffect(() => {
+    if (fetchedDocs) {
+      setDocuments(fetchedDocs);
+    }
+  }, [fetchedDocs]);
 
   useEffect(() => {
     const accepted = localStorage.getItem('jualuma_privacy_accepted');
@@ -39,6 +56,7 @@ export default function AIAssistant() {
   useEffect(() => {
     setHasFetchedHistory(false);
     setMessages([]);
+    setHistoryItems([]);
     setQuota(null);
   }, [user?.uid]);
 
@@ -51,6 +69,8 @@ export default function AIAssistant() {
           aiService.getHistory(),
           aiService.getQuota()
         ]);
+
+        setHistoryItems(history);
 
         const formattedMessages: Message[] = history.flatMap(item => [
           {
@@ -110,7 +130,18 @@ export default function AIAssistant() {
     fetchData();
   }, [user, privacyAccepted, hasFetchedHistory, storageKey]);
 
-  const handleAcceptPrivacy = () => {
+  const handleAcceptPrivacy = async () => {
+    try {
+      await legalService.acceptAgreements([
+        {
+          agreement_key: LEGAL_AGREEMENTS.aiPrivacyUserAgreement.key,
+          agreement_version: LEGAL_AGREEMENTS.aiPrivacyUserAgreement.version,
+          acceptance_method: 'scrollwrap',
+        },
+      ]);
+    } catch (error) {
+      console.error('Failed to record AI privacy agreement:', error);
+    }
     localStorage.setItem('jualuma_privacy_accepted', 'true');
     setPrivacyAccepted(true);
     setShowPrivacyModal(false);
@@ -119,6 +150,41 @@ export default function AIAssistant() {
   const handleClosePrivacyModal = () => {
     setShowPrivacyModal(false);
   }
+
+  const handleNewChat = () => {
+    // Clear current messages
+    setMessages([{
+      role: 'assistant',
+      text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
+    
+    // Clear local storage for this thread
+    localStorage.removeItem(storageKey);
+  };
+
+  const handleDownloadDoc = async (doc: Document) => {
+    try {
+        // Navigate directly to the document (browser handles viewing vs downloading)
+        const url = documentService.getDownloadUrl(doc.id);
+        window.open(url, '_blank');
+    } catch (e) {
+        console.error("Navigation failed", e);
+    }
+  };
+
+  const handleUploadDoc = async (file: File) => {
+      try {
+          await documentService.upload(file);
+          mutateDocs(); // Refresh list
+      } catch (e) {
+          console.error("Upload failed", e);
+      }
+  };
+
+  const handlePreviewDoc = (doc: Document) => {
+      return documentService.getPreviewUrl(doc.id);
+  };
 
   const handleSendMessage = async (text: string) => {
     if (!user) return;
@@ -145,6 +211,14 @@ export default function AIAssistant() {
         localStorage.setItem(storageKey, JSON.stringify(updated));
         return updated;
       });
+
+      // Update history list with new interaction
+      const newHistoryItem: HistoryItem = {
+        prompt: text,
+        response: response.response,
+        timestamp: new Date().toISOString()
+      };
+      setHistoryItems(prev => [newHistoryItem, ...prev]);
 
       if (
         response.quota_limit !== undefined &&
@@ -212,8 +286,17 @@ export default function AIAssistant() {
 
       <div className="glass-panel mb-8" id="ai-chat-wrapper">
         <div className="flex justify-between items-start mb-4">
-          <div>
+          <div className="flex items-center gap-3">
             <h2 className="m-0">Chat with Gemini</h2>
+            <button
+              onClick={handleNewChat}
+              className="btn btn-ghost btn-sm btn-square text-text-secondary hover:text-primary transition-colors"
+              title="Start New Conversation"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
           </div>
           <QuotaDisplay
             used={quota?.used ?? 0}
@@ -275,7 +358,16 @@ export default function AIAssistant() {
         </div>
       </div>
 
-      <div className="glass-panel">
+      <ChatHistoryList items={historyItems} />
+
+      <DocumentList 
+        documents={documents} 
+        onUpload={handleUploadDoc}
+        onDownload={handleDownloadDoc}
+        onPreview={handlePreviewDoc}
+      />
+
+      <div className="glass-panel mt-8">
         <h2>AI Assistant Features</h2>
         <div className="grid grid-2">
           <div className="card">

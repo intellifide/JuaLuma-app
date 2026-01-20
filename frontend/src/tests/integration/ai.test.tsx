@@ -15,6 +15,11 @@ vi.mock('../../services/aiService', () => ({
     },
     QuotaStatus: {}
 }))
+vi.mock('../../services/legal', () => ({
+    legalService: {
+        acceptAgreements: vi.fn().mockResolvedValue({ accepted: 1 }),
+    },
+}))
 
 // Mock ChatMessage and ChatInput to avoid testing their internals again? 
 // No, component integration test should use real child components if possible, but mocking complex children is also valid.

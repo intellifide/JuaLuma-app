@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from backend.models import Subscription, User
+from backend.models import LegalAgreementAcceptance, Subscription, User
 
 # Tests for backend/api/auth.py
 
@@ -14,7 +14,15 @@ def test_signup_success(test_client: TestClient, test_db):
     mock_record.email = "newuser@example.com"
 
     with patch("firebase_admin.auth.create_user", return_value=mock_record):
-        payload = {"email": "newuser@example.com", "password": "password123"}
+        payload = {
+            "email": "newuser@example.com",
+            "password": "password123",
+            "agreements": [
+                {"agreement_key": "terms_of_service"},
+                {"agreement_key": "privacy_policy"},
+                {"agreement_key": "us_residency_certification"},
+            ],
+        }
         response = test_client.post("/api/auth/signup", json=payload)
 
     assert response.status_code == 201
@@ -26,6 +34,12 @@ def test_signup_success(test_client: TestClient, test_db):
     user = test_db.query(User).filter_by(email="newuser@example.com").first()
     assert user is not None
     assert user.uid == "new_user_123"
+    acceptances = (
+        test_db.query(LegalAgreementAcceptance)
+        .filter(LegalAgreementAcceptance.uid == user.uid)
+        .all()
+    )
+    assert len(acceptances) == 3
 
 
 def test_signup_duplicate_email(test_client: TestClient, test_db):
@@ -51,7 +65,15 @@ def test_signup_duplicate_email(test_client: TestClient, test_db):
         side_effect=exceptions.AlreadyExistsError("Email exists", "Email exists"),
     ):
         with patch("firebase_admin.auth.get_user_by_email", return_value=mock_existing):
-            payload = {"email": "existing@example.com", "password": "password123"}
+            payload = {
+                "email": "existing@example.com",
+                "password": "password123",
+                "agreements": [
+                    {"agreement_key": "terms_of_service"},
+                    {"agreement_key": "privacy_policy"},
+                    {"agreement_key": "us_residency_certification"},
+                ],
+            }
             response = test_client.post("/api/auth/signup", json=payload)
 
     assert response.status_code == 400
@@ -82,7 +104,15 @@ def test_signup_zombie_healing(test_client: TestClient, test_db):
         side_effect=exceptions.AlreadyExistsError("Email exists", "Email exists"),
     ):
         with patch("firebase_admin.auth.get_user_by_email", return_value=mock_zombie):
-            payload = {"email": "zombie@example.com", "password": "password123"}
+            payload = {
+                "email": "zombie@example.com",
+                "password": "password123",
+                "agreements": [
+                    {"agreement_key": "terms_of_service"},
+                    {"agreement_key": "privacy_policy"},
+                    {"agreement_key": "us_residency_certification"},
+                ],
+            }
             response = test_client.post("/api/auth/signup", json=payload)
 
     # Needs to be successful

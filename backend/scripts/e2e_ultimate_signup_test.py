@@ -44,7 +44,12 @@ def signup_user(email, password):
     url = f"{API_BASE}/auth/signup"
     payload = {
         "email": email,
-        "password": password
+        "password": password,
+        "agreements": [
+            {"agreement_key": "terms_of_service"},
+            {"agreement_key": "privacy_policy"},
+            {"agreement_key": "us_residency_certification"},
+        ],
     }
     logger.info(f"Signing up user: {email}")
     try:

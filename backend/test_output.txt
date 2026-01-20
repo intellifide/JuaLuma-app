@@ -1,0 +1,307 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-7.4.4, pluggy-1.6.0 -- /usr/local/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /app/backend
+configfile: pytest.ini
+plugins: cov-4.1.0, anyio-4.12.0, asyncio-0.23.3
+asyncio: mode=Mode.STRICT
+collecting ... collected 8 items
+
+backend/tests/test_accounts.py::test_list_accounts {"asctime": "2026-01-19 04:58:09,602", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,603", "levelname": "INFO", "name": "backend.core.events", "message": "Initializing Pub/Sub Publisher with Emulator at pubsub-emulator:8085", "module": "events", "lineno": 36, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,607", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,609", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,610", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,611", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,687", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: GET http://testserver/api/accounts \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+PASSED
+backend/tests/test_accounts.py::test_create_manual_account {"asctime": "2026-01-19 04:58:09,701", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,703", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,705", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,706", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,707", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,727", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST http://testserver/api/accounts/manual \"HTTP/1.1 201 Created\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+PASSED
+backend/tests/test_accounts.py::test_update_account {"asctime": "2026-01-19 04:58:09,746", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,748", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,749", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,751", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,751", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,771", "levelname": "INFO", "name": "backend.services.auth", "message": "Initializing Firebase Auth with Emulator", "module": "auth", "lineno": 49, "auth_host": "jualuma-firebase-emulator:9099", "project": "jualuma-local", "request_id": "3517e8dd-6bbf-4a38-8455-33e951379a4e", "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,776", "levelname": "INFO", "name": "backend.services.analytics", "message": "Invalidated analytics cache for user test_user_123", "module": "analytics", "lineno": 61, "request_id": "3517e8dd-6bbf-4a38-8455-33e951379a4e", "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,779", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: PATCH http://testserver/api/accounts/22af7629-d310-459b-8731-3afba76106fd \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+PASSED
+backend/tests/test_accounts.py::test_delete_account {"asctime": "2026-01-19 04:58:09,794", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,796", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,797", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,799", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,799", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,817", "levelname": "INFO", "name": "backend.services.analytics", "message": "Invalidated analytics cache for user test_user_123", "module": "analytics", "lineno": 61, "request_id": "fc7a5e69-2e6d-4cdf-92e0-6728819e3bdd", "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,820", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: DELETE http://testserver/api/accounts/e24ba7d5-dc36-4f49-81dd-5eefeac561ea \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+PASSED
+backend/tests/test_accounts.py::test_sync_account {"asctime": "2026-01-19 04:58:09,834", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,836", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,837", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,838", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,839", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,881", "levelname": "INFO", "name": "backend.services.analytics", "message": "Invalidated analytics cache for user test_user_123", "module": "analytics", "lineno": 61, "request_id": "987c2ab6-20f3-49a3-8f24-e94ab1b10653", "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,883", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST http://testserver/api/accounts/9379251f-c042-4d01-ab27-927c42f9427c/sync?start_date=2023-01-01 \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+PASSED
+backend/tests/test_accounts.py::test_update_account_assignments {"asctime": "2026-01-19 04:58:09,897", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,899", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,901", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,902", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,902", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,928", "levelname": "INFO", "name": "backend.services.analytics", "message": "Invalidated analytics cache for user test_user_123", "module": "analytics", "lineno": 61, "request_id": "7b257eae-0b6f-474d-b43c-f20ec020dedf", "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,931", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: PATCH http://testserver/api/accounts/09ab85d4-9624-4c2d-9395-678aad616bfa \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,940", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: PATCH http://testserver/api/accounts/09ab85d4-9624-4c2d-9395-678aad616bfa \"HTTP/1.1 400 Bad Request\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,953", "levelname": "INFO", "name": "backend.services.analytics", "message": "Invalidated analytics cache for user test_user_123", "module": "analytics", "lineno": 61, "request_id": "667b49c5-9b1a-44e4-bd1e-3241ad15de9f", "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,956", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: PATCH http://testserver/api/accounts/09ab85d4-9624-4c2d-9395-678aad616bfa \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+PASSED
+backend/tests/test_accounts.py::test_list_accounts_household_scope_includes_member_accounts {"asctime": "2026-01-19 04:58:09,971", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,973", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,974", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,975", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,976", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:09,994", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: GET http://testserver/api/accounts?scope=household \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:10,002", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: GET http://testserver/api/accounts \"HTTP/1.1 200 OK\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+PASSED
+backend/tests/test_accounts.py::test_list_accounts_requires_household_membership_for_assignments {"asctime": "2026-01-19 04:58:10,017", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub Emulator detected. Auto-creating topics...", "module": "events", "lineno": 55, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:10,018", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/ticket_events", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:10,020", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:10,021", "levelname": "INFO", "name": "backend.core.events", "message": "Topic already exists: projects/jualuma-local/topics/access-refresh-requests", "module": "events", "lineno": 74, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:10,022", "levelname": "INFO", "name": "backend.core.events", "message": "Pub/Sub initialization complete.", "module": "events", "lineno": 92, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+{"asctime": "2026-01-19 04:58:10,029", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: GET http://testserver/api/accounts \"HTTP/1.1 429 Too Many Requests\"", "module": "_client", "lineno": 1025, "request_id": null, "service": "jualuma-backend", "severity": "INFO"}
+FAILED
+
+=================================== FAILURES ===================================
+_______ test_list_accounts_requires_household_membership_for_assignments _______
+
+test_client = <starlette.testclient.TestClient object at 0xffff61ed4510>
+test_db = <sqlalchemy.orm.session.Session object at 0xffff61ed6590>
+mock_auth = User(uid='test_user_123', email='test@example.com', role='user')
+
+    def test_list_accounts_requires_household_membership_for_assignments(
+        test_client: TestClient, test_db, mock_auth
+    ):
+        admin_user = User(
+            uid="admin_user_999",
+            email="admin@example.com",
+            role="user",
+            theme_pref="light",
+            currency_pref="USD",
+        )
+        test_db.add(admin_user)
+    
+        household = Household(owner_uid=admin_user.uid, name="Household A")
+        test_db.add(household)
+        test_db.flush()
+    
+        admin_member = HouseholdMember(
+            household_id=household.id,
+            uid=admin_user.uid,
+            role="admin",
+            joined_at=datetime.now(UTC),
+            can_view_household=True,
+            ai_access_enabled=True,
+        )
+        member = HouseholdMember(
+            household_id=household.id,
+            uid=mock_auth.uid,
+            role="member",
+            joined_at=datetime.now(UTC),
+            can_view_household=True,
+            ai_access_enabled=True,
+        )
+        test_db.add_all([admin_member, member])
+    
+        acct = Account(
+            uid=admin_user.uid,
+            account_type="manual",
+            provider="manual",
+            account_name="Admin Account",
+            balance=Decimal("10.00"),
+            assigned_member_uid=mock_auth.uid,
+        )
+        test_db.add(acct)
+        test_db.commit()
+    
+        response = test_client.get("/api/accounts")
+>       assert response.status_code == 200
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+backend/tests/test_accounts.py:328: AssertionError
+------------------------------ Captured log setup ------------------------------
+INFO     backend.core.events:events.py:55 Pub/Sub Emulator detected. Auto-creating topics...
+INFO     backend.core.events:events.py:74 Topic already exists: projects/jualuma-local/topics/ticket_events
+INFO     backend.core.events:events.py:74 Topic already exists: projects/jualuma-local/topics/access-requests
+INFO     backend.core.events:events.py:74 Topic already exists: projects/jualuma-local/topics/access-refresh-requests
+INFO     backend.core.events:events.py:92 Pub/Sub initialization complete.
+------------------------------ Captured log call -------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/api/accounts "HTTP/1.1 429 Too Many Requests"
+=============================== warnings summary ===============================
+../usr/local/lib/python3.11/site-packages/starlette/formparsers.py:10
+  /usr/local/lib/python3.11/site-packages/starlette/formparsers.py:10: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+../usr/local/lib/python3.11/site-packages/websockets/legacy/__init__.py:6
+  /usr/local/lib/python3.11/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+    warnings.warn(  # deprecated in 14.0 - 2024-11-09
+
+backend/api/ai.py:24
+  /app/backend/api/ai.py:24: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    message: str = Field(example="Give me a spending summary for this week.")
+
+backend/api/auth.py:37
+  /app/backend/api/auth.py:37: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    email: EmailStr = Field(example="user@example.com")
+
+backend/api/auth.py:38
+  /app/backend/api/auth.py:38: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    password: str = Field(min_length=8, max_length=128, example="Str0ngPass!")
+
+backend/api/auth.py:50
+  /app/backend/api/auth.py:50: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    token: str = Field(min_length=10, example="eyJhbGciOiJSUzI1NiIsImtpZCI6...")
+
+backend/api/auth.py:51
+  /app/backend/api/auth.py:51: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    mfa_code: str | None = Field(
+
+backend/api/auth.py:65
+  /app/backend/api/auth.py:65: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    code: str = Field(min_length=6, max_length=6, example="123456")
+
+backend/api/auth.py:69
+  /app/backend/api/auth.py:69: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    email: EmailStr = Field(example="user@example.com")
+
+backend/api/auth.py:70
+  /app/backend/api/auth.py:70: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    mfa_code: str | None = Field(
+
+backend/api/auth.py:88
+  /app/backend/api/auth.py:88: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    theme_pref: str | None = Field(default=None, max_length=32, example="dark")
+
+backend/api/auth.py:89
+  /app/backend/api/auth.py:89: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    currency_pref: str | None = Field(
+
+tests/test_accounts.py::test_update_account
+tests/test_accounts.py::test_delete_account
+tests/test_accounts.py::test_sync_account
+tests/test_accounts.py::test_update_account_assignments
+  /usr/local/lib/python3.11/site-packages/google/cloud/firestore_v1/base_collection.py:304: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead.
+    return query.where(field_path, op_string, value)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform linux, python 3.11.14-final-0 ----------
+Name                                              Stmts   Miss  Cover
+---------------------------------------------------------------------
+backend/__init__.py                                   0      0   100%
+backend/api/__init__.py                               0      0   100%
+backend/api/accounts.py                             362    122    66%
+backend/api/ai.py                                   109     72    34%
+backend/api/analytics.py                             21      3    86%
+backend/api/auth.py                                 334    253    24%
+backend/api/billing.py                               51     16    69%
+backend/api/budgets.py                               50     28    44%
+backend/api/developers.py                            57     20    65%
+backend/api/household.py                            106     62    42%
+backend/api/notifications.py                         29      7    76%
+backend/api/plaid.py                                 75     40    47%
+backend/api/support.py                              176    103    41%
+backend/api/support_portal.py                        57     36    37%
+backend/api/transactions.py                         152     93    39%
+backend/api/users.py                                 72     51    29%
+backend/api/webhooks.py                              11      2    82%
+backend/api/widgets.py                              204    130    36%
+backend/core/__init__.py                              3      0   100%
+backend/core/config.py                               78     10    87%
+backend/core/constants.py                            34      3    91%
+backend/core/dependencies.py                         31     11    65%
+backend/core/events.py                               55     17    69%
+backend/core/logging.py                              36      1    97%
+backend/create_support_agent.py                      68     68     0%
+backend/dev_tools/__init__.py                         0      0   100%
+backend/dev_tools/mcp_server.py                     129    102    21%
+backend/dev_tools/run_mcp_dev.py                      9      9     0%
+backend/main.py                                     124     34    73%
+backend/mcp_server.py                                79     61    23%
+backend/middleware/__init__.py                        2      0   100%
+backend/middleware/auth.py                           86     63    27%
+backend/middleware/security.py                       66      3    95%
+backend/models/__init__.py                           21      0   100%
+backend/models/account.py                            33      1    97%
+backend/models/ai_settings.py                        21      1    95%
+backend/models/audit.py                              63      4    94%
+backend/models/base.py                               20      7    65%
+backend/models/budget.py                             20      1    95%
+backend/models/category_rule.py                      19      1    95%
+backend/models/developer.py                          17      1    94%
+backend/models/household.py                          45      3    93%
+backend/models/ledger.py                             41      2    95%
+backend/models/manual_asset.py                       24      1    96%
+backend/models/notification.py                       37      2    95%
+backend/models/payment.py                            19      1    95%
+backend/models/payout.py                             22      1    95%
+backend/models/subscription.py                       22      1    95%
+backend/models/subscription_tier.py                  26      2    92%
+backend/models/support.py                            69      7    90%
+backend/models/transaction.py                        33      1    97%
+backend/models/user.py                               39      1    97%
+backend/models/widget.py                             27      1    96%
+backend/models/widget_rating.py                      19      1    95%
+backend/run_mcp_app.py                                9      9     0%
+backend/schemas/support_portal.py                    19      0   100%
+backend/services/__init__.py                          3      0   100%
+backend/services/ai.py                              156    126    19%
+backend/services/analytics.py                       159    117    26%
+backend/services/auth.py                            101     63    38%
+backend/services/billing.py                         252    220    13%
+backend/services/categorization.py                   29     17    41%
+backend/services/connectors.py                      124     82    34%
+backend/services/email.py                           187    155    17%
+backend/services/household_service.py               184    157    15%
+backend/services/notifications.py                    27     17    37%
+backend/services/payouts.py                          12     12     0%
+backend/services/plaid.py                           163    125    23%
+backend/services/prompts.py                           1      0   100%
+backend/services/rag.py                              32     25    22%
+backend/tests/__init__.py                             0      0   100%
+backend/tests/api/__init__.py                         0      0   100%
+backend/tests/api/test_accounts_link.py              33     33     0%
+backend/tests/api/test_analytics.py                 161    161     0%
+backend/tests/api/test_cache_invalidation.py         51     51     0%
+backend/tests/conftest.py                            85      1    99%
+backend/tests/e2e_ultimate_full_verification.py     239    239     0%
+backend/tests/integration_test_marketplace.py       105    105     0%
+backend/tests/test_accounts.py                      140     10    93%
+backend/tests/test_ai.py                             68     68     0%
+backend/tests/test_auth.py                           86     86     0%
+backend/tests/test_auth_password_flows.py            62     62     0%
+backend/tests/test_budgets.py                        37     37     0%
+backend/tests/test_connectors.py                     28     28     0%
+backend/tests/test_health.py                         14     14     0%
+backend/tests/test_mfa_integration.py                74     74     0%
+backend/tests/test_payouts_math.py                   25     25     0%
+backend/tests/test_security_middleware.py            31     31     0%
+backend/tests/test_subscription_gating.py            43     43     0%
+backend/tests/test_transactions.py                   57     57     0%
+backend/tests/test_webhooks.py                       47     47     0%
+backend/tests/test_widgets_rate_limit.py             38     38     0%
+backend/tests/verify_archiver_run.py                 63     63     0%
+backend/utils/__init__.py                             2      0   100%
+backend/utils/database.py                            16     10    38%
+backend/utils/encryption.py                          42     28    33%
+backend/utils/firestore.py                           14      2    86%
+---------------------------------------------------------------------
+TOTAL                                              6322   3898    38%
+Coverage HTML written to dir htmlcov
+
+=========================== short test summary info ============================
+FAILED backend/tests/test_accounts.py::test_list_accounts_requires_household_membership_for_assignments
+=================== 1 failed, 7 passed, 16 warnings in 1.36s ===================

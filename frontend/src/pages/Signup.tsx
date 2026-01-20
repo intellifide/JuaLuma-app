@@ -3,6 +3,8 @@ import { FormEvent, useMemo, useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
+import { LEGAL_AGREEMENTS } from '../constants/legal'
+import { AgreementAcceptanceInput } from '../types/legal'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -64,7 +66,24 @@ export const Signup = () => {
 
     setSubmitting(true)
     try {
-      await signup(email, password)
+      const agreements: AgreementAcceptanceInput[] = [
+        {
+          agreement_key: LEGAL_AGREEMENTS.termsOfService.key,
+          agreement_version: LEGAL_AGREEMENTS.termsOfService.version,
+          acceptance_method: 'clickwrap',
+        },
+        {
+          agreement_key: LEGAL_AGREEMENTS.privacyPolicy.key,
+          agreement_version: LEGAL_AGREEMENTS.privacyPolicy.version,
+          acceptance_method: 'clickwrap',
+        },
+        {
+          agreement_key: LEGAL_AGREEMENTS.usResidencyCertification.key,
+          agreement_version: LEGAL_AGREEMENTS.usResidencyCertification.version,
+          acceptance_method: 'clickwrap',
+        },
+      ]
+      await signup(email, password, agreements)
       // Track successful signup
       eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_COMPLETED, { email })
       // After signup, user status is 'pending_verification'

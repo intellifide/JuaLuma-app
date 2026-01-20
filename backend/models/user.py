@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .ai_settings import AISettings
     from .developer import Developer
     from .household import HouseholdMember
+    from .legal import LegalAgreementAcceptance
     from .manual_asset import ManualAsset
     from .notification import NotificationPreference
     from .payment import Payment
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from .subscription import Subscription
     from .support import SupportTicket
     from .transaction import Transaction
+    from .user_document import UserDocument
 
 
 class User(Base):
@@ -129,6 +131,18 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
+        lazy="selectin",
+    )
+    legal_acceptances: Mapped[list["LegalAgreementAcceptance"]] = relationship(
+        "LegalAgreementAcceptance",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    documents: Mapped[list["UserDocument"]] = relationship(
+        "UserDocument",
+        back_populates="user",
+        cascade="all, delete-orphan",
         lazy="selectin",
     )
 

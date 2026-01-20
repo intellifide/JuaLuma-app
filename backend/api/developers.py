@@ -4,14 +4,17 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from backend.core.dependencies import require_developer
+from backend.core.legal import REQUIRED_DEVELOPER_AGREEMENTS
 from backend.middleware.auth import get_current_user
 from backend.models import DeveloperPayout, User
+from backend.schemas.legal import AgreementAcceptancePayload
+from backend.services.legal import record_agreement_acceptances
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/developers", tags=["developers"])
@@ -92,11 +95,13 @@ def get_developer_transactions(
 class DeveloperCreate(BaseModel):
     payout_method: dict[str, Any]
     payout_frequency: str = "monthly"
+    agreements: list[AgreementAcceptancePayload] = Field(default_factory=list)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def register_developer(
     payload: DeveloperCreate,
+    request: Request,
     current_user: User = Depends(
         get_current_user
     ),  # Any authenticated user can register
@@ -107,6 +112,28 @@ def register_developer(
         raise HTTPException(status_code=400, detail="Already a developer")
 
     from backend.models.developer import Developer
+
+    required_keys = set(REQUIRED_DEVELOPER_AGREEMENTS)
+    accepted_keys = {agreement.agreement_key for agreement in payload.agreements}
+    missing = required_keys - accepted_keys
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Missing required legal agreements: {', '.join(sorted(missing))}.",
+        )
+
+    try:
+        record_agreement_acceptances(
+            db,
+            uid=current_user.uid,
+            acceptances=payload.agreements,
+            request=request,
+            source="frontend",
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     dev = Developer(
         uid=current_user.uid,

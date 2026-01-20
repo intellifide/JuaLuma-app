@@ -19,6 +19,7 @@ from backend.api.billing import router as billing_router
 from backend.api.budgets import router as budgets_router
 from backend.api.developers import router as developers_router
 from backend.api.household import router as household_router
+from backend.api.legal import router as legal_router
 from backend.api.notifications import router as notifications_router
 from backend.api.plaid import router as plaid_router
 from backend.api.support import router as support_router
@@ -26,7 +27,9 @@ from backend.api.support_portal import router as support_portal_router
 from backend.api.transactions import router as transactions_router
 from backend.api.users import router as users_router
 from backend.api.webhooks import router as webhooks_router
+from backend.api.webhooks import router as webhooks_router
 from backend.api.widgets import router as widgets_router
+from backend.api.documents import router as documents_router
 from backend.core import configure_logging, settings
 from backend.core.events import initialize_events
 
@@ -95,6 +98,7 @@ app.include_router(plaid_router)
 app.include_router(transactions_router)
 app.include_router(analytics_router)
 app.include_router(ai_router)
+app.include_router(legal_router)
 app.include_router(widgets_router)
 app.include_router(developers_router)
 app.include_router(household_router)
@@ -105,6 +109,7 @@ app.include_router(budgets_router)
 app.include_router(webhooks_router)
 app.include_router(notifications_router)
 app.include_router(support_portal_router)  # New router inclusion
+app.include_router(documents_router)
 
 # Initialize and Mount Main MCP Server (Phase 3)
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI

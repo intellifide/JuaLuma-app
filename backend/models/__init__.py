@@ -12,6 +12,7 @@ from .category_rule import CategoryRule
 from .developer import Developer
 from .household import Household, HouseholdInvite, HouseholdMember
 from .ledger import LedgerHotEssential, LedgerHotFree
+from .legal import LegalAgreementAcceptance
 from .manual_asset import ManualAsset
 from .notification import LocalNotification, NotificationPreference
 from .payment import Payment
@@ -26,6 +27,7 @@ from .support import (
 )
 from .transaction import Transaction
 from .user import User
+from .user_document import UserDocument
 from .widget import Widget
 from .widget_rating import WidgetRating
 
@@ -54,6 +56,7 @@ __all__ = [
     "SupportTicketMessage",
     "DeveloperPayout",
     "ManualAsset",
+    "LegalAgreementAcceptance",
     "LedgerHotFree",
     "LedgerHotEssential",
     "Widget",
@@ -64,4 +67,5 @@ __all__ = [
     "Household",
     "HouseholdMember",
     "HouseholdInvite",
+    "UserDocument",
 ]

@@ -9,6 +9,7 @@ import {
   signOut,
 } from 'firebase/auth'
 import { auth } from './firebase'
+import { AgreementAcceptanceInput } from '../types/legal'
 
 type ApiRequestInit = RequestInit & { skipAuth?: boolean }
 
@@ -38,12 +39,16 @@ const mapFirebaseError = (error: unknown): string => {
   return 'Unexpected authentication error. Please retry.'
 }
 
-export const signup = async (email: string, password: string): Promise<User> => {
+export const signup = async (
+  email: string,
+  password: string,
+  agreements: AgreementAcceptanceInput[] = [],
+): Promise<User> => {
   try {
     // 1. Create user in Backend (seeds Postgres)
     await apiFetch('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, agreements }),
       skipAuth: true,
     })
 

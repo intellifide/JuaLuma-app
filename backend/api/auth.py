@@ -14,8 +14,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from backend.core.constants import UserStatus
+from backend.core.legal import REQUIRED_SIGNUP_AGREEMENTS
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, HouseholdInvite, HouseholdMember, Subscription, User
+from backend.schemas.legal import AgreementAcceptancePayload
+from backend.services.legal import record_agreement_acceptances
 from backend.services.auth import (
     _get_firebase_app,
     create_user_record,
@@ -36,6 +39,7 @@ logger = logging.getLogger(__name__)
 class SignupRequest(BaseModel):
     email: EmailStr = Field(example="user@example.com")
     password: str = Field(min_length=8, max_length=128, example="Str0ngPass!")
+    agreements: list[AgreementAcceptancePayload] = Field(default_factory=list)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -340,7 +344,11 @@ def _generate_and_send_otp(user: User, db: Session) -> None:
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
-def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
+def signup(
+    payload: SignupRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict:
     """
     Register a new user in Firebase and the local database.
 
@@ -378,8 +386,30 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> dict:
             detail="Firebase unavailable. Try again shortly.",
         ) from exc
 
+    required_keys = set(REQUIRED_SIGNUP_AGREEMENTS)
+    accepted_keys = {agreement.agreement_key for agreement in payload.agreements}
+    missing = required_keys - accepted_keys
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Missing required legal agreements: {', '.join(sorted(missing))}.",
+        )
+
     # Create DB record
     user = _create_db_user_safe(db, record, is_fresh_firebase_user)
+
+    try:
+        record_agreement_acceptances(
+            db,
+            uid=user.uid,
+            acceptances=payload.agreements,
+            request=request,
+            source="frontend",
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     # Automatically send verification OTP
     _generate_and_send_otp(user, db)

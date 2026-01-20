@@ -18,6 +18,7 @@ import {
   resetPassword as resetPasswordWithFirebase,
   signup as signupWithFirebase,
 } from '../services/auth'
+import { AgreementAcceptanceInput } from '../types/legal'
 
 type Subscription = {
   id?: string
@@ -70,7 +71,11 @@ type AuthContextValue = {
   loading: boolean
   profileLoading: boolean
   error: string | null
-  signup: (email: string, password: string) => Promise<void>
+  signup: (
+    email: string,
+    password: string,
+    agreements?: AgreementAcceptanceInput[],
+  ) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string, mfa_code?: string) => Promise<void>
@@ -129,11 +134,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [refetchProfile])
 
   const signup = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, agreements: AgreementAcceptanceInput[] = []) => {
       setError(null)
       setLoading(true)
       try {
-        await signupWithFirebase(email, password)
+        await signupWithFirebase(email, password, agreements)
         await refetchProfile()
       } catch (err) {
         const message =

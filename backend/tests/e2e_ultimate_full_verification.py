@@ -53,7 +53,15 @@ def generate_stripe_signature(payload: str, secret: str) -> str:
 
 def signup_user(email, password):
     url = f"{API_BASE}/auth/signup"
-    payload = {"email": email, "password": password}
+    payload = {
+        "email": email,
+        "password": password,
+        "agreements": [
+            {"agreement_key": "terms_of_service"},
+            {"agreement_key": "privacy_policy"},
+            {"agreement_key": "us_residency_certification"},
+        ],
+    }
     logger.info(f"Signing up user: {email}")
     try:
         res = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)

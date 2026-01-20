@@ -4,13 +4,14 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from backend.api.users import get_current_user
 from backend.models import Household, HouseholdMember, User
 from backend.services import household_service
+from backend.services.legal import record_single_agreement
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/households", tags=["households"])
@@ -140,6 +141,7 @@ def check_invite_status(
 @router.post("/invites/accept")
 def accept_invite_endpoint(
     payload: InviteAccept,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -153,8 +155,19 @@ def accept_invite_endpoint(
         )
 
     try:
-        household_service.accept_invite(db, current_user.uid, payload.token)
+        member = household_service.accept_invite(db, current_user.uid, payload.token)
+        record_single_agreement(
+            db,
+            uid=current_user.uid,
+            agreement_key="data_sharing_consent",
+            acceptance_method="clickwrap",
+            request=request,
+            source="frontend",
+            metadata={"household_id": str(member.household_id)},
+        )
         return {"message": "Joined household successfully."}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except HTTPException as e:
         raise e
     except Exception as e:

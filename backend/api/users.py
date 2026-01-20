@@ -13,6 +13,7 @@ from backend.models import (
     Account,
     AISettings,
     AuditLog,
+    LegalAgreementAcceptance,
     Subscription,
     SupportTicket,
     User,
@@ -49,6 +50,7 @@ def export_user_data(
             selectinload(User.developer),
             selectinload(User.accounts).selectinload(Account.transactions),
             selectinload(User.support_tickets),
+            selectinload(User.legal_acceptances),
         )
         .filter(User.uid == current_user.uid)
         .first()
@@ -64,6 +66,21 @@ def export_user_data(
         "subscriptions": [s.to_dict() for s in user.subscriptions],
         "accounts": [],
         "support_tickets": [t.to_dict() for t in user.support_tickets],
+        "legal_acceptances": [
+            {
+                "agreement_key": acceptance.agreement_key,
+                "agreement_version": acceptance.agreement_version,
+                "accepted_at": acceptance.accepted_at,
+                "presented_at": acceptance.presented_at,
+                "acceptance_method": acceptance.acceptance_method,
+                "source": acceptance.source,
+                "ip_address": acceptance.ip_address,
+                "user_agent": acceptance.user_agent,
+                "locale": acceptance.locale,
+                "metadata": acceptance.metadata_json,
+            }
+            for acceptance in user.legal_acceptances
+        ],
         "widgets_owned": [],  # If we had widget ownership logic beyond developer
         "widgets_rated": [
             r.rating
@@ -129,6 +146,9 @@ def delete_account(
 
     # Widget Ratings
     db.query(WidgetRating).filter(WidgetRating.user_uid == uid).delete()
+    db.query(LegalAgreementAcceptance).filter(
+        LegalAgreementAcceptance.uid == uid
+    ).delete()
 
     # If developer, maybe soft delete widgets or keep them?
     # Requirement: "Delete user-linked data... widget ownership as appropriate"
