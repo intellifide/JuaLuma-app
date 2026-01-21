@@ -94,6 +94,43 @@ class AppSettings(BaseSettings):
     ripple_rpc_url: str = Field(default="https://s2.ripple.com:51234", alias="RIPPLE_RPC_URL")
     cardano_api_url: str = Field(default="https://api.koios.rest/api/v1", alias="CARDANO_API_URL")
     tron_api_url: str = Field(default="https://api.trongrid.io", alias="TRON_API_URL")
+    etherscan_api_key: str | None = Field(default=None, alias="ETHERSCAN_API_KEY")
+    etherscan_base_url: str = Field(
+        default="https://api.etherscan.io/api", alias="ETHERSCAN_BASE_URL"
+    )
+    polygonscan_api_key: str | None = Field(default=None, alias="POLYGONSCAN_API_KEY")
+    polygonscan_base_url: str = Field(
+        default="https://api.polygonscan.com/api", alias="POLYGONSCAN_BASE_URL"
+    )
+    bscscan_api_key: str | None = Field(default=None, alias="BSCSCAN_API_KEY")
+    bscscan_base_url: str = Field(
+        default="https://api.bscscan.com/api", alias="BSCSCAN_BASE_URL"
+    )
+    helius_api_key: str | None = Field(default=None, alias="HELIUS_API_KEY")
+    helius_base_url: str = Field(
+        default="https://mainnet.helius-rpc.com", alias="HELIUS_BASE_URL"
+    )
+    helius_rpc_url: str | None = Field(default=None, alias="HELIUS_RPC_URL")
+    bitquery_api_key: str | None = Field(default=None, alias="BITQUERY_API_KEY")
+    bitquery_url: str = Field(
+        default="https://api.bitquery.io/graphql", alias="BITQUERY_URL"
+    )
+    blockchain_com_url: str = Field(
+        default="https://blockchain.info", alias="BLOCKCHAIN_COM_URL"
+    )
+    blockfrost_api_key: str | None = Field(default=None, alias="BLOCKFROST_API_KEY")
+    blockfrost_url_mainnet: str = Field(
+        default="https://cardano-mainnet.blockfrost.io/api/v0",
+        alias="BLOCKFROST_URL_MAINNET",
+    )
+    xrpscan_url: str = Field(default="https://xrpscan.com/api/v1", alias="XRPSCAN_URL")
+    tronscan_base_url: str = Field(
+        default="https://api.tronscanapi.com", alias="TRONSCAN_BASE_URL"
+    )
+    trongrid_api_key: str | None = Field(default=None, alias="TRONGRID_API_KEY")
+    trongrid_url: str = Field(
+        default="https://api.trongrid.io/v1", alias="TRONGRID_URL"
+    )
 
     # Testmail Config (for development testing)
     testmail_api_key: str | None = Field(default=None, alias="TESTMAIL_API_KEY")

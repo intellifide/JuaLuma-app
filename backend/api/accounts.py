@@ -18,6 +18,7 @@ from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
 from backend.services.connectors import build_connector
+from backend.services.web3_history import ProviderError, ProviderOverloaded, fetch_web3_history
 from backend.services.household_service import get_household_member_uids
 from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
 from backend.utils import get_db
@@ -539,9 +540,16 @@ def link_web3_account(
     try:
         # Default window for initial sync: 30 days
         start, end = _resolve_sync_dates(None, None)
-        fetched = _execute_provider_sync(account, start, end, current_user)
+        fetched, next_cursor, cursor_chain, update_cursor = _execute_provider_sync(
+            account, start, end, current_user
+        )
         if fetched:
             _save_sync_batch(db, current_user.uid, account.id, fetched, symbol)
+        if update_cursor:
+            account.web3_sync_cursor = next_cursor
+            account.web3_sync_chain = cursor_chain
+            db.add(account)
+        if fetched or update_cursor:
             db.commit()
     except Exception as e:
         logger.warning(f"Initial Web3 sync failed for {account.id}: {e}")
@@ -648,7 +656,7 @@ def _sync_traditional(account: Account, start: date, end: date) -> list[dict]:
         ) from exc
 
 
-def _sync_web3(account: Account) -> list[dict]:
+def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bool]:
     try:
         conn_data = json.loads(account.secret_ref)
         address = conn_data.get("address")
@@ -666,30 +674,17 @@ def _sync_web3(account: Account) -> list[dict]:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid chain configuration for this wallet.",
             ) from exc
-        namespace, reference = chain.split(":", 1)
+        cursor = (
+            account.web3_sync_cursor
+            if account.web3_sync_chain == chain
+            else None
+        )
 
-        if namespace == "eip155":
-            rpc_url, symbol = _get_chain_config(chain)
-            # Default to public if configured, build_connector handles the fallback
-            connector = build_connector(kind="web3", rpc_url=rpc_url, symbol=symbol, provider="ethereum")
-        else:
-            # Non-EVM chains (Bitcoin, Solana, etc)
-            _, symbol = _get_chain_config(chain)
-            # Map chain namespace to provider name expected by build_connector
-            # bip122 -> bitcoin, solana -> solana, etc.
-            provider_map = {
-                "bip122": "bitcoin",
-                "solana": "solana",
-                "ripple": "ripple",
-                "cardano": "cardano",
-                "tron": "tron"
-            }
-            provider = provider_map.get(namespace, namespace)
-            connector = build_connector(kind="web3", symbol=symbol, provider=provider)
+        history = fetch_web3_history(address, chain, cursor)
+        normalized_txns = history.transactions
 
-        normalized_txns = connector.fetch_transactions(account_id=address)
-
-        return [
+        return (
+            [
             {
                 "date": t.timestamp.date(),
                 "transaction_id": t.tx_id,
@@ -698,11 +693,27 @@ def _sync_web3(account: Account) -> list[dict]:
                 "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
                 "merchant_name": t.merchant_name,
                 "name": t.merchant_name or t.tx_id[:8],
+                "raw": t.raw,
+                "on_chain_units": t.on_chain_units,
+                "on_chain_symbol": t.on_chain_symbol,
             }
             for t in normalized_txns
-        ]
+            ],
+            history.next_cursor,
+            chain,
+            history.update_cursor,
+        )
     except HTTPException:
         raise
+    except ProviderOverloaded:
+        logger.warning("Web3 provider overloaded; skipping sync.")
+        return [], None, None, False
+    except ProviderError as exc:
+        logger.exception("Web3 sync provider error: %s", exc)
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "We encountered an issue syncing your wallet data. Please try again later.",
+        ) from exc
     except Exception as e:
         logger.exception("Web3 sync error")
         raise HTTPException(
@@ -855,18 +866,21 @@ def _resolve_sync_dates(
 
 def _execute_provider_sync(
     account: Account, start: date, end: date, user: User
-) -> list[dict]:
-    fetched = []
+) -> tuple[list[dict], str | None, str | None, bool]:
+    fetched: list[dict] = []
+    next_cursor = None
+    cursor_chain = None
+    update_cursor = False
     if account.account_type == "traditional":
         fetched = _sync_traditional(account, start, end)
         pid = _refresh_traditional_balance(account, user.currency_pref)
         if pid:
             fetched = [t for t in fetched if t.get("account_id") == pid]
     elif account.account_type == "web3":
-        fetched = _sync_web3(account)
+        fetched, next_cursor, cursor_chain, update_cursor = _sync_web3(account)
     elif account.account_type == "cex":
         fetched = _sync_cex(account, user.uid)
-    return fetched
+    return fetched, next_cursor, cursor_chain, update_cursor
 
 
 def _save_sync_batch(
@@ -946,7 +960,7 @@ def sync_account_transactions(
     resolved_start, resolved_end = _resolve_sync_dates(start_date, end_date)
 
     # Dispatch Sync & process
-    fetched_txns = _execute_provider_sync(
+    fetched_txns, next_cursor, cursor_chain, update_cursor = _execute_provider_sync(
         account, resolved_start, resolved_end, current_user
     )
 
@@ -954,6 +968,11 @@ def sync_account_transactions(
     synced, new_count = _save_sync_batch(
         db, current_user.uid, account.id, fetched_txns, currency_fallback
     )
+
+    if account.account_type == "web3" and update_cursor:
+        account.web3_sync_cursor = next_cursor
+        account.web3_sync_chain = cursor_chain
+        db.add(account)
 
     try:
         db.commit()

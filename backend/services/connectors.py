@@ -86,6 +86,7 @@ def normalize_transaction(
     amount = raw_amount if isinstance(raw_amount, Decimal) else Decimal(str(raw_amount))
 
     currency_code = payload.get("currency_code") or payload.get("currency") or "USD"
+    currency_code = _normalize_currency_code(currency_code)
 
     ts_raw = payload.get("timestamp") or payload.get("ts")
     if ts_raw is None:
@@ -100,7 +101,7 @@ def normalize_transaction(
 
     record = NormalizedTransaction(
         amount=amount,
-        currency_code=str(currency_code).upper(),
+        currency_code=currency_code,
         timestamp=timestamp,
         merchant_name=payload.get("merchant_name"),
         counterparty=payload.get("counterparty"),
@@ -121,6 +122,15 @@ def normalize_transaction(
             **{**record.__dict__, "fiat_display": f"{fiat_amount} {fiat_code}"},
         )
     return record
+
+
+def _normalize_currency_code(value: str) -> str:
+    text = str(value)
+    if text.startswith("0x") and len(text) == 42:
+        return text
+    if len(text) >= 32 and any(ch.isdigit() for ch in text):
+        return text
+    return text.upper()
 
 
 

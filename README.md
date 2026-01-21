@@ -32,6 +32,7 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
    ```
 2. **Environment**
    - Create `.env` at the repo root with values for `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, and any API keys (see `docker-compose.yml` for expected variables).
+   - Web3 indexer keys and base URLs are documented in `docs/Web3-History-Providers.md`.
 3. **Start stack**
    ```bash
    docker compose up -d --build

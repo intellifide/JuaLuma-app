@@ -43,6 +43,8 @@ class Account(Base):
         DateTime(timezone=True), nullable=True
     )
     plaid_next_cursor: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    web3_sync_cursor: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    web3_sync_chain: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sync_status: Mapped[str | None] = mapped_column(
         String(32), nullable=True, default="active"
     )
@@ -98,6 +100,8 @@ class Account(Base):
             "assigned_member_uid": self.assigned_member_uid,
             "custom_label": self.custom_label,
             "last_synced_at": self.last_synced_at.isoformat() if self.last_synced_at else None,
+            "web3_sync_cursor": self.web3_sync_cursor,
+            "web3_sync_chain": self.web3_sync_chain,
             "sync_status": self.sync_status,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
