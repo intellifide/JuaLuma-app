@@ -1,18 +1,23 @@
+# Updated 2026-01-21 00:05 CST
 """Bitquery-backed crypto history service."""
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 
 from backend.core.config import settings
 from backend.integrations.bitquery.adapters import (
     fetch_bitcoin_history,
-    fetch_cardano_history,
+    fetch_cardano_history as fetch_cardano_history_bitquery,
     fetch_evm_history,
     fetch_solana_history,
     fetch_tron_history,
     fetch_xrp_history,
+)
+from backend.integrations.blockfrost.cardano import (
+    fetch_cardano_history_blockfrost,
 )
 from backend.models.account import Account
 from backend.services.connectors import NormalizedTransaction
@@ -51,11 +56,13 @@ def _load_account_identity(account: Account) -> tuple[str, str]:
 
 
 def fetch_crypto_history(account: Account) -> list[NormalizedTransaction]:
-    if not settings.bitquery_api_key or not settings.bitquery_url:
-        raise BitqueryUnavailableError("Bitquery credentials are not configured")
-
     address, chain = _load_account_identity(account)
     namespace, _reference = chain.split(":", 1)
+
+    if namespace != "cardano" and (
+        not settings.bitquery_api_key or not settings.bitquery_url
+    ):
+        raise BitqueryUnavailableError("Bitquery credentials are not configured")
 
     try:
         if namespace == "eip155":
@@ -68,7 +75,15 @@ def fetch_crypto_history(account: Account) -> list[NormalizedTransaction]:
         if namespace == "solana":
             return fetch_solana_history(address)
         if namespace == "cardano":
-            return fetch_cardano_history(address)
+            try:
+                return fetch_cardano_history_bitquery(address)
+            except Exception as bitquery_error:
+                logger.warning(
+                    "Bitquery failed for Cardano address %s, falling back to Blockfrost: %s",
+                    address,
+                    bitquery_error,
+                )
+                return fetch_cardano_history_blockfrost(address)
         if namespace == "ripple":
             return fetch_xrp_history(address)
         if namespace == "tron":

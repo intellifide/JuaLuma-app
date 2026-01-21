@@ -1,4 +1,4 @@
-# Updated 2025-12-11 01:25 CST by ChatGPT
+# Updated 2026-01-21 00:05 CST
 """
 Centralized application configuration using pydantic-settings.
 
