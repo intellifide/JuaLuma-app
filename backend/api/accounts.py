@@ -18,6 +18,7 @@ from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
 from backend.services.connectors import build_connector
+from backend.services.crypto_history import BitqueryUnavailableError, fetch_crypto_history
 from backend.services.web3_history import ProviderError, ProviderOverloaded, fetch_web3_history
 from backend.services.household_service import get_household_member_uids
 from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
@@ -680,24 +681,49 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
             else None
         )
 
+        try:
+            normalized_txns = fetch_crypto_history(account)
+            return (
+                [
+                    {
+                        "date": t.timestamp.date(),
+                        "transaction_id": t.tx_id,
+                        "amount": float(t.amount),
+                        "currency": t.currency_code,
+                        "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
+                        "merchant_name": t.merchant_name,
+                        "name": t.merchant_name or t.tx_id[:8],
+                        "raw": t.raw,
+                        "on_chain_units": t.on_chain_units,
+                        "on_chain_symbol": t.on_chain_symbol,
+                    }
+                    for t in normalized_txns
+                ],
+                None,
+                chain,
+                True,
+            )
+        except BitqueryUnavailableError as exc:
+            logger.warning("Bitquery unavailable; falling back to explorers: %s", exc)
+
         history = fetch_web3_history(address, chain, cursor)
         normalized_txns = history.transactions
 
         return (
             [
-            {
-                "date": t.timestamp.date(),
-                "transaction_id": t.tx_id,
-                "amount": float(t.amount),
-                "currency": t.currency_code,
-                "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
-                "merchant_name": t.merchant_name,
-                "name": t.merchant_name or t.tx_id[:8],
-                "raw": t.raw,
-                "on_chain_units": t.on_chain_units,
-                "on_chain_symbol": t.on_chain_symbol,
-            }
-            for t in normalized_txns
+                {
+                    "date": t.timestamp.date(),
+                    "transaction_id": t.tx_id,
+                    "amount": float(t.amount),
+                    "currency": t.currency_code,
+                    "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
+                    "merchant_name": t.merchant_name,
+                    "name": t.merchant_name or t.tx_id[:8],
+                    "raw": t.raw,
+                    "on_chain_units": t.on_chain_units,
+                    "on_chain_symbol": t.on_chain_symbol,
+                }
+                for t in normalized_txns
             ],
             history.next_cursor,
             chain,

@@ -9,6 +9,11 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from backend.core.config import settings
+from backend.integrations.bitquery.client import bitquery_query
+from backend.integrations.bitquery.queries import (
+    BITCOIN_TRANSFERS_QUERY,
+    EVM_TRANSFERS_QUERY,
+)
 from backend.services.connectors import NormalizedTransaction, normalize_transaction
 
 logger = logging.getLogger(__name__)
@@ -644,86 +649,81 @@ def _normalize_bitcoin(
 
 def _fetch_bitquery_history(address: str, cursor: str | None) -> Web3HistoryResult:
     cursor_data = _load_cursor(cursor)
-    stream = cursor_data.get("stream")
     offset = int(cursor_data.get("offset") or 0)
-    if stream not in {"inputs", "outputs"}:
-        stream = "inputs"
 
-    if stream == "inputs":
-        query = f"""
-        query {{
-          bitcoin {{
-            inputs(
-              receiver: {{is: \"{address}\"}}
-              options: {{limit: {BITQUERY_PAGE_SIZE}, offset: {{value: {offset}}}, asc: \"block.time\"}}
-            ) {{
-              amount
-              sender {{address}}
-              txHash
-              block {{time}}
-            }}
-          }}
-        }}
-        """
-    else:
-        query = f"""
-        query {{
-          bitcoin {{
-            outputs(
-              address: {{is: \"{address}\"}}
-              options: {{limit: {BITQUERY_PAGE_SIZE}, offset: {{value: {offset}}}, asc: \"block.time\"}}
-            ) {{
-              amount
-              receiver {{address}}
-              txHash
-              block {{time}}
-            }}
-          }}
-        }}
-        """
+    try:
+        payload = bitquery_query(
+            BITCOIN_TRANSFERS_QUERY,
+            variables={
+                "address": address,
+                "limit": int(BITQUERY_PAGE_SIZE),
+                "offset": int(offset),
+            },
+            timeout=20,
+        )
+    except RuntimeError as exc:
+        raise ProviderError(str(exc)) from exc
 
-    headers = {"Authorization": f"Bearer {settings.bitquery_api_key}"}
-    payload, _headers = _request_json(
-        "POST", settings.bitquery_url, json_body={"query": query}, headers=headers, timeout=20
-    )
-
-    data = payload.get("data", {}).get("bitcoin", {})
-    items = data.get(stream) or []
+    data = payload.get("chain") or {}
+    items = data.get("Transfers") or data.get("transfers") or []
 
     transactions: list[NormalizedTransaction] = []
     for idx, item in enumerate(items):
-        tx_hash = item.get("txHash") or ""
-        timestamp = _parse_iso_timestamp(item.get("block", {}).get("time"))
-        amount_sats = Decimal(str(item.get("amount") or 0))
-        if stream == "inputs":
-            counterparty = item.get("sender", {}).get("address")
-            direction = "inflow"
-            suffix = f"in:{idx}"
-        else:
-            counterparty = item.get("receiver", {}).get("address")
-            direction = "outflow"
-            suffix = f"out:{idx}"
-        transactions.append(
-            _normalize_bitcoin(
-                tx_hash,
-                address,
-                amount_sats,
-                timestamp,
-                direction,
-                counterparty,
-                item,
-                suffix,
-            )
+        transfer = item.get("Transfer") or {}
+        sender = transfer.get("Sender")
+        receiver = transfer.get("Receiver")
+        sender_addr = (
+            sender.get("Address") if isinstance(sender, dict) else sender
         )
+        if isinstance(sender, dict) and sender_addr is None:
+            sender_addr = sender.get("address")
+        receiver_addr = (
+            receiver.get("Address") if isinstance(receiver, dict) else receiver
+        )
+        if isinstance(receiver, dict) and receiver_addr is None:
+            receiver_addr = receiver.get("address")
+        direction = (
+            "outflow"
+            if sender_addr and str(sender_addr).lower() == address.lower()
+            else "inflow"
+        )
+        counterparty = receiver_addr if direction == "outflow" else sender_addr
+
+        currency = transfer.get("Currency") or {}
+        symbol = currency.get("Symbol") or "BTC"
+        decimals_raw = currency.get("Decimals")
+        try:
+            decimals = int(decimals_raw) if decimals_raw is not None else 0
+        except (TypeError, ValueError):
+            decimals = 0
+
+        raw_amount = Decimal(str(transfer.get("Amount") or 0))
+        divisor = Decimal(10) ** decimals if decimals else Decimal(1)
+        amount = raw_amount / divisor
+
+        tx_hash = (transfer.get("Transaction") or {}).get("Hash") or ""
+        block_time = (item.get("Block") or {}).get("Time")
+        timestamp = _parse_iso_timestamp(str(block_time or ""))
+
+        payload_tx = {
+            "tx_id": f"{tx_hash}:{idx}",
+            "account_id": address,
+            "amount": amount,
+            "currency_code": symbol,
+            "timestamp": timestamp,
+            "counterparty": counterparty,
+            "type": "transfer",
+            "direction": direction,
+            "on_chain_units": str(raw_amount),
+            "on_chain_symbol": symbol,
+            "raw": item,
+        }
+        transactions.append(normalize_transaction(payload_tx))
 
     if len(items) >= BITQUERY_PAGE_SIZE:
-        next_cursor = _dump_cursor({"stream": stream, "offset": offset + BITQUERY_PAGE_SIZE})
+        next_cursor = _dump_cursor({"offset": offset + BITQUERY_PAGE_SIZE})
     else:
-        next_stream = "outputs" if stream == "inputs" else None
-        if next_stream:
-            next_cursor = _dump_cursor({"stream": next_stream, "offset": 0})
-        else:
-            next_cursor = None
+        next_cursor = None
 
     return Web3HistoryResult(transactions, next_cursor, True)
 
@@ -783,6 +783,8 @@ def _fetch_bitcoin_history(address: str, cursor: str | None) -> Web3HistoryResul
         except ProviderOverloaded:
             logger.warning("Bitquery rate limited; skipping sync.")
             return Web3HistoryResult([], cursor, False)
+        except ProviderError as exc:
+            logger.warning("Bitquery error; falling back to blockchain.com: %s", exc)
     return _fetch_blockchain_com_history(address, cursor)
 
 

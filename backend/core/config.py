@@ -113,7 +113,7 @@ class AppSettings(BaseSettings):
     helius_rpc_url: str | None = Field(default=None, alias="HELIUS_RPC_URL")
     bitquery_api_key: str | None = Field(default=None, alias="BITQUERY_API_KEY")
     bitquery_url: str = Field(
-        default="https://api.bitquery.io/graphql", alias="BITQUERY_URL"
+        default="https://streaming.bitquery.io/graphql", alias="BITQUERY_URL"
     )
     blockchain_com_url: str = Field(
         default="https://blockchain.info", alias="BLOCKCHAIN_COM_URL"
@@ -135,9 +135,6 @@ class AppSettings(BaseSettings):
     # Testmail Config (for development testing)
     testmail_api_key: str | None = Field(default=None, alias="TESTMAIL_API_KEY")
     testmail_namespace: str | None = Field(default=None, alias="TESTMAIL_NAMESPACE")
-
-    # Connector Overrides
-    force_real_connectors: bool = Field(default=False, alias="FORCE_REAL_CONNECTORS")
 
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod
@@ -199,4 +196,7 @@ class AppSettings(BaseSettings):
 
 settings = AppSettings()
 
-__all__ = ["AppSettings", "settings"]
+BITQUERY_URL = settings.bitquery_url
+BITQUERY_API_KEY = settings.bitquery_api_key
+
+__all__ = ["AppSettings", "settings", "BITQUERY_URL", "BITQUERY_API_KEY"]

@@ -10,6 +10,7 @@ trigger: always_on
 - restart docker containers whenever any major changes or made to the specific service.
 - always create an account using testmail.app for testing purposes. never create arbitrary email accounts.
 - use the cat .env command to see the environment variables when necessary.
+- always search online for official documentation relative to what we are working on if you do not have current details in your knowledge base.
 
 # 1. Production Quality First
 
