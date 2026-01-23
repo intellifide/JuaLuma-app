@@ -161,10 +161,18 @@ class CcxtConnectorClient:
         if not hasattr(ccxt, self.exchange_id):
             raise RuntimeError(f"The crypto exchange '{self.exchange_id}' is not currently supported.")
         klass = getattr(ccxt, self.exchange_id)
+        
+        # For Coinbase Advanced, ensure secret has proper newlines
+        secret = self.api_secret
+        if self.exchange_id == "coinbaseadvanced" and secret:
+            # Ensure newlines are actual newlines, not escape sequences
+            if "\\n" in secret and "\n" not in secret.replace("\\n", ""):
+                secret = secret.replace("\\n", "\n")
+        
         exchange = klass(
             {
                 "apiKey": self.api_key,
-                "secret": self.api_secret,
+                "secret": secret,
                 "enableRateLimit": True,
             }
         )
@@ -183,20 +191,61 @@ class CcxtConnectorClient:
                 "API credentials are required to fetch your private transaction history from this exchange."
             )
 
-        trades = exchange.fetch_my_trades(limit=50)
+        try:
+            # First try to load markets to validate basic connectivity
+            exchange.load_markets()
+            # Then try to fetch trades (requires authentication)
+            trades = exchange.fetch_my_trades(limit=50)
+        except Exception as exc:
+            # If fetch_my_trades fails, check if it's an authentication error
+            error_msg = str(exc).lower()
+            if "authentication" in error_msg or "unauthorized" in error_msg or "401" in error_msg:
+                raise RuntimeError(
+                    f"Failed to authenticate with {self.exchange_id}. Please verify your API credentials are correct. Error: {str(exc)}"
+                ) from exc
+            # For other errors, if markets loaded successfully, credentials are valid
+            # but there might be no trades or another issue
+            try:
+                exchange.load_markets()
+                # If we get here, credentials are valid but might not have trades
+                trades = []
+            except Exception as auth_exc:
+                raise RuntimeError(
+                    f"Failed to authenticate with {self.exchange_id}. Please verify your API credentials are correct. Error: {str(auth_exc)}"
+                ) from auth_exc
+
         payloads = []
         for trade in trades:
+            # Parse currency code from symbol (e.g., "BTC/USD" -> "USD")
+            symbol = trade.get("symbol", "")
+            currency_code = "USD"  # Default fallback
+            if symbol and "/" in symbol:
+                symbol_parts = symbol.split("/")
+                if len(symbol_parts) > 1:
+                    currency_code = symbol_parts[1]
+            
+            # Safely handle timestamp - might be in different formats
+            timestamp = trade.get("timestamp")
+            if timestamp:
+                try:
+                    # Handle both milliseconds and seconds timestamps
+                    if timestamp > 1e10:  # Likely milliseconds
+                        trade_timestamp = datetime.fromtimestamp(timestamp / 1000.0, tz=UTC)
+                    else:  # Likely seconds
+                        trade_timestamp = datetime.fromtimestamp(timestamp, tz=UTC)
+                except (ValueError, OSError, TypeError):
+                    # Fallback to current time if timestamp is invalid
+                    trade_timestamp = datetime.now(UTC)
+            else:
+                trade_timestamp = datetime.now(UTC)
+            
             payloads.append(
                 {
-                    "tx_id": trade.get("id"),
+                    "tx_id": trade.get("id") or f"trade_{len(payloads)}",
                     "account_id": account_id,
-                    "amount": trade.get("cost") or trade.get("amount"),
-                    "currency_code": trade.get("symbol", "USD").split("/")[1]
-                    if trade.get("symbol")
-                    else "USD",
-                    "timestamp": datetime.fromtimestamp(
-                        trade["timestamp"] / 1000.0, tz=UTC
-                    ),
+                    "amount": trade.get("cost") or trade.get("amount") or 0,
+                    "currency_code": currency_code,
+                    "timestamp": trade_timestamp,
                     "counterparty": trade.get("side"),
                     "type": "trade",
                     "direction": "inflow" if trade.get("side") == "buy" else "outflow",

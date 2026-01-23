@@ -12,9 +12,22 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 
-if (import.meta.env.DEV) {
+const useAuthEmulator =
+  import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR !== 'false'
+const authEmulatorHost =
+  import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || 'localhost:9099'
+const authEmulatorUrl = useAuthEmulator
+  ? authEmulatorHost.startsWith('http')
+    ? authEmulatorHost
+    : `http://${authEmulatorHost}`
+  : null
+
+if (authEmulatorUrl) {
   // Use the local emulator during development to avoid hitting real Firebase.
-  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
+  const emulatorConfig = (auth as { emulatorConfig?: unknown }).emulatorConfig
+  if (!emulatorConfig) {
+    connectAuthEmulator(auth, authEmulatorUrl, { disableWarnings: true })
+  }
 }
 
-export { app, auth }
+export { app, auth, authEmulatorUrl }

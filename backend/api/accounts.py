@@ -5,6 +5,7 @@ import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -179,8 +180,12 @@ class CexLinkRequest(BaseModel):
     @field_validator("exchange_id")
     @classmethod
     def validate_exchange(cls, v: str) -> str:
-        allowed = {"coinbase", "kraken", "binance", "binanceus"}
-        if v.lower() not in allowed:
+        allowed = {"coinbase", "coinbaseadvanced", "kraken", "binance", "binanceus"}
+        normalized = v.lower()
+        # Map "coinbase" to "coinbaseadvanced" for Advanced Trade API compatibility
+        if normalized == "coinbase":
+            normalized = "coinbaseadvanced"
+        if normalized not in allowed:
             raise ValueError(f"Unsupported exchange. Allowed: {allowed}")
         return v.lower()
 
@@ -588,28 +593,62 @@ def link_cex_account(
     """
     # 1. Validate credentials
     try:
+        # Normalize API secret: convert literal \n escape sequences to actual newlines
+        # When JSON is sent from frontend, if user pastes literal \n, JSON.stringify escapes it as \\n
+        # JSON.parse then gives us literal \n (backslash-n), not actual newlines
+        # We need to convert these to actual newlines for CCXT
+        normalized_secret = payload.api_secret
+        if normalized_secret:
+            # Log what we received for debugging
+            logger.debug(f"Received secret for {payload.exchange_id}: length={len(normalized_secret)}, starts with: {repr(normalized_secret[:50])}")
+            
+            # Always replace literal backslash-n with actual newlines (handles both cases)
+            if "\\n" in normalized_secret:
+                normalized_secret = normalized_secret.replace("\\n", "\n")
+                logger.debug(f"Converted literal \\n to actual newlines for {payload.exchange_id}")
+            
+            # Ensure the secret has proper PEM format
+            if "-----BEGIN" not in normalized_secret:
+                logger.warning(f"Secret for {payload.exchange_id} doesn't appear to be in PEM format. First 100 chars: {repr(normalized_secret[:100])}")
+            else:
+                logger.debug(f"Secret for {payload.exchange_id} has proper PEM format")
+        
+        logger.debug(f"Validating CEX connection for {payload.exchange_id} with key: {payload.api_key[:50]}...")
+        logger.debug(f"Normalized secret length: {len(normalized_secret) if normalized_secret else 0}, starts with: {repr(normalized_secret[:50]) if normalized_secret else 'None'}...")
+        
         # build_connector handles the logic of choosing mock vs real based on ENV
         connector = build_connector(
             kind="cex",
             exchange_id=payload.exchange_id,
             api_key=payload.api_key,
-            api_secret=payload.api_secret,
+            api_secret=normalized_secret,
         )
         # Attempt to fetch transactions (or just a basic check if available) to validate keys.
         # Since fetch_transactions pulls up to 50, it's a reasonable connectivity check.
         # We pass a dummy account_id as we are just testing connectivity.
         list(connector.fetch_transactions(account_id="validation_check"))
     except Exception as e:
-        logger.warning(f"CEX validation failed for {payload.exchange_id}: {e}")
+        import traceback
+        error_details = str(e)
+        error_trace = traceback.format_exc()
+        logger.warning(f"CEX validation failed for {payload.exchange_id}: {error_details}")
+        logger.debug(f"CEX validation traceback: {error_trace}")
+        
+        # Extract more specific error information
+        error_message = error_details
+        if hasattr(e, '__cause__') and e.__cause__:
+            error_message = f"{error_details} (Caused by: {str(e.__cause__)})"
+        
         # In production, we'd want to block invalid keys. In dev/mock, it might pass.
         # If it's a specific credential error, raise 400.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="We were unable to verify your exchange credentials. Please double-check your API key and secret.",
+            detail=f"We were unable to verify your exchange credentials: {error_message}. Please double-check your API key and secret format.",
         ) from e
 
-    # 2. Encrypt secrets
-    secret_data = {"apiKey": payload.api_key, "secret": payload.api_secret}
+    # 2. Encrypt secrets (use normalized secret for storage)
+    normalized_secret = payload.api_secret.replace("\\n", "\n") if payload.api_secret else ""
+    secret_data = {"apiKey": payload.api_key, "secret": normalized_secret}
     secret_json = json.dumps(secret_data)
     secret_ref = store_secret(
         secret_json, uid=current_user.uid, purpose=f"cex-{payload.exchange_id}"
@@ -807,16 +846,23 @@ def _refresh_traditional_balance(account: Account, user_pref: str | None) -> str
     return None
 
 
+def _clean_raw_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, datetime | date):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(k): _clean_raw_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_clean_raw_value(v) for v in value]
+    return value
+
+
 def _clean_raw(txn_dict: dict) -> dict:
-    clean = {}
-    for k, v in txn_dict.items():
-        if isinstance(v, Decimal):
-            clean[k] = float(v)
-        elif isinstance(v, datetime | date):
-            clean[k] = v.isoformat()
-        else:
-            clean[k] = v
-    return clean
+    cleaned = _clean_raw_value(txn_dict)
+    if isinstance(cleaned, dict):
+        return cleaned
+    return {"value": cleaned}
 
 
 def _process_single_transaction(

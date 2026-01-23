@@ -57,7 +57,7 @@ class Transaction(Base):
     )
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    currency: Mapped[str] = mapped_column(String(16), nullable=False, default="USD")
     category: Mapped[str | None] = mapped_column(String(64), nullable=True)
     merchant_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

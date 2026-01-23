@@ -3,12 +3,14 @@ import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import Switch from '../components/ui/Switch'
+import { authEmulatorUrl } from '../services/firebase'
 
 export const Login = () => {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const returnUrl = params.get('returnUrl') || '/dashboard'
+  const showAuthEmulatorNotice = Boolean(authEmulatorUrl)
 
   const [email, setEmail] = useState(params.get('email') || '')
   const [password, setPassword] = useState('')
@@ -49,12 +51,14 @@ export const Login = () => {
             <p className="mb-6">
               Sign in to access your dashboard, AI assistant, and personalized settings. Use your email and password created during signup.
             </p>
-            <div className="card">
-              <p className="text-sm">
-                Local development uses the Firebase Auth emulator. Make sure it&apos;s running on{' '}
-                <code className="bg-slate-100 px-2 py-1 rounded">localhost:9099</code>.
-              </p>
-            </div>
+            {showAuthEmulatorNotice && (
+              <div className="card">
+                <p className="text-sm">
+                  Local development uses the Firebase Auth emulator. Make sure it&apos;s running on{' '}
+                  <code className="bg-slate-100 px-2 py-1 rounded">{authEmulatorUrl}</code>.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="glass-panel">
