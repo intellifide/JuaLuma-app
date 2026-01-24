@@ -1,5 +1,5 @@
 // Core Purpose: Main dashboard for personal and household financial insights.
-// Last Modified: 2026-01-18 02:08 CST
+// Last Modified: 2026-01-23 12:00 CST
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -88,7 +88,7 @@ const formatCompactCurrency = (value: number) =>
 // SVG Generators
 // SVG Generators
 const generateLinePath = (data: DataPoint[], width: number, height: number) => {
-  const padding = { top: 10, right: 10, bottom: 25, left: 45 };
+  const padding = { top: 10, right: 30, bottom: 25, left: 45 };
   const drawWidth = width - padding.left - padding.right;
   const drawHeight = height - padding.top - padding.bottom;
 
@@ -781,18 +781,21 @@ export default function Dashboard() {
                 ))}
 
                 {/* X Labels */}
-                {netWorthChart.xLabels?.map((l, i) => (
-                  <text
-                    key={i}
-                    x={l.x}
-                    y={135}
-                    fontSize="9"
-                    fill="var(--text-muted)"
-                    textAnchor="middle"
-                  >
-                    {l.label}
-                  </text>
-                ))}
+                {netWorthChart.xLabels?.map((l, i) => {
+                  const isLast = i === netWorthChart.xLabels.length - 1;
+                  return (
+                    <text
+                      key={i}
+                      x={l.x}
+                      y={135}
+                      fontSize="9"
+                      fill="var(--text-muted)"
+                      textAnchor={isLast ? "end" : i === 0 ? "start" : "middle"}
+                    >
+                      {l.label}
+                    </text>
+                  );
+                })}
 
                 {/* Main Axes */}
                 <line

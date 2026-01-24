@@ -1,4 +1,4 @@
-# Updated 2025-12-18 20:25 CST by Antigravity
+# Updated 2026-01-23 12:00 CST
 import json
 import logging
 import re
@@ -729,7 +729,7 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
                         "transaction_id": t.tx_id,
                         "amount": float(t.amount),
                         "currency": t.currency_code,
-                        "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
+                        "category": ["Transfer"] if t.type == "transfer" else None,
                         "merchant_name": t.merchant_name,
                         "name": t.merchant_name or t.tx_id[:8],
                         "raw": t.raw,
@@ -755,7 +755,7 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
                     "transaction_id": t.tx_id,
                     "amount": float(t.amount),
                     "currency": t.currency_code,
-                    "category": ["Transfer"] if t.type == "transfer" else ["Trade"],
+                    "category": ["Transfer"] if t.type == "transfer" else None,
                     "merchant_name": t.merchant_name,
                     "name": t.merchant_name or t.tx_id[:8],
                     "raw": t.raw,
@@ -805,7 +805,7 @@ def _sync_cex(account: Account, uid: str) -> list[dict]:
                 "transaction_id": t.tx_id,
                 "amount": float(t.amount),
                 "currency": t.currency_code,
-                "category": ["Trade"] if t.type == "trade" else ["Transfer"],
+                "category": ["Transfer"] if t.type == "transfer" else None,
                 "merchant_name": t.merchant_name,
                 "name": f"{t.counterparty} {t.type}",
             }
