@@ -64,6 +64,7 @@ export interface Transaction {
   rawJson?: Record<string, unknown> | null
   createdAt?: string
   updatedAt?: string
+  userDisplayName?: string | null  // Display name of transaction owner (Ultimate tier/household feature)
 }
 
 export interface AISettings {

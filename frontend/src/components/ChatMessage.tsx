@@ -1,4 +1,7 @@
+// Last Modified: 2026-01-23 22:15 CST
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessageProps {
     role: 'user' | 'assistant';
@@ -17,8 +20,41 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time }) =>
 
     return (
         <div className={`chat-message chat-message-${role} group relative ${role === 'assistant' ? 'backdrop-blur-glass bg-white/70 dark:bg-gray-900/75' : ''}`}>
-            <div className="chat-message-content whitespace-pre-wrap">
-                <p>{text}</p>
+            <div className="chat-message-content">
+                {role === 'assistant' ? (
+                    <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            code: ({node, inline, className, children, ...props}) => {
+                                return inline ? (
+                                    <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                                        {children}
+                                    </code>
+                                ) : (
+                                    <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto my-2">
+                                        <code className={className} {...props}>
+                                            {children}
+                                        </code>
+                                    </pre>
+                                );
+                            },
+                            p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
+                            ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                            ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                            li: ({children}) => <li className="ml-2">{children}</li>,
+                            a: ({children, href}) => <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                            strong: ({children}) => <strong className="font-semibold">{children}</strong>,
+                            em: ({children}) => <em className="italic">{children}</em>,
+                            h1: ({children}) => <h1 className="text-2xl font-bold mb-2">{children}</h1>,
+                            h2: ({children}) => <h2 className="text-xl font-bold mb-2">{children}</h2>,
+                            h3: ({children}) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+                        }}
+                    >
+                        {text}
+                    </ReactMarkdown>
+                ) : (
+                    <p className="whitespace-pre-wrap">{text}</p>
+                )}
             </div>
             <div className="flex items-center justify-between mt-1 min-h-[1.25rem]">
                 <div className="chat-message-time">{time}</div>

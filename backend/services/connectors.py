@@ -1,4 +1,4 @@
-# Updated 2025-12-11 02:55 CST by ChatGPT
+# Updated 2026-01-23 12:00 CST
 """
 Connector abstraction and normalization for CEX/Web3 data sources.
 
@@ -48,7 +48,10 @@ class ConnectorClient(Protocol):
     """Minimal connector contract to fetch normalized transactions."""
 
     def fetch_transactions(
-        self, account_id: str
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
     ) -> Iterable[NormalizedTransaction]: ...
 
 
@@ -178,7 +181,20 @@ class CcxtConnectorClient:
         )
         return exchange
 
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
+    def fetch_transactions(
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
+    ) -> Iterable[NormalizedTransaction]:
+        """
+        Fetch CEX transactions with optional date range filtering.
+        
+        Args:
+            account_id: Account identifier
+            since: Optional start datetime (UTC) to fetch trades from
+            limit: Maximum number of trades to fetch (default: 500, increased from 50)
+        """
         try:
             exchange = self._load_exchange()
         except ModuleNotFoundError as exc:
@@ -194,8 +210,26 @@ class CcxtConnectorClient:
         try:
             # First try to load markets to validate basic connectivity
             exchange.load_markets()
-            # Then try to fetch trades (requires authentication)
-            trades = exchange.fetch_my_trades(limit=50)
+            # Convert since datetime to milliseconds timestamp if provided
+            since_ms = None
+            if since:
+                since_ms = int(since.timestamp() * 1000)
+            
+            # Fetch trades with expanded limit and optional date range
+            # Note: Some exchanges may not support 'since' parameter reliably
+            try:
+                if since_ms:
+                    trades = exchange.fetch_my_trades(since=since_ms, limit=limit)
+                else:
+                    trades = exchange.fetch_my_trades(limit=limit)
+            except Exception as since_exc:
+                # If 'since' parameter fails, fall back to fetching without it
+                # and filter client-side
+                logger.warning(
+                    f"Exchange {self.exchange_id} may not support 'since' parameter: {since_exc}. "
+                    "Fetching all trades and filtering client-side."
+                )
+                trades = exchange.fetch_my_trades(limit=limit)
         except Exception as exc:
             # If fetch_my_trades fails, check if it's an authentication error
             error_msg = str(exc).lower()
@@ -239,6 +273,19 @@ class CcxtConnectorClient:
             else:
                 trade_timestamp = datetime.now(UTC)
             
+            # Filter by date range if since was provided and exchange didn't support it
+            if since and trade_timestamp < since:
+                continue
+            
+            # Build descriptive merchant_name from trade details
+            side = trade.get("side", "").upper()
+            amount = trade.get("amount", 0)
+            price = trade.get("price", 0)
+            # Create a descriptive name like "BTC/USD Buy 0.5 @ $45,000"
+            merchant_name = f"{symbol} {side}"
+            if amount and price:
+                merchant_name = f"{symbol} {side} {amount:.8f} @ ${price:,.2f}"
+            
             payloads.append(
                 {
                     "tx_id": trade.get("id") or f"trade_{len(payloads)}",
@@ -247,6 +294,7 @@ class CcxtConnectorClient:
                     "currency_code": currency_code,
                     "timestamp": trade_timestamp,
                     "counterparty": trade.get("side"),
+                    "merchant_name": merchant_name,
                     "type": "trade",
                     "direction": "inflow" if trade.get("side") == "buy" else "outflow",
                     "raw": trade,
@@ -277,7 +325,13 @@ class EVMConnector:
             web3.HTTPProvider(self.rpc_url, request_kwargs={"timeout": 10})
         )
 
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
+    def fetch_transactions(
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
+    ) -> Iterable[NormalizedTransaction]:
+        # Note: Web3 connectors don't use since/limit parameters but accept them for Protocol compatibility
         try:
             w3 = self._load_web3()
         except ModuleNotFoundError as exc:
@@ -345,7 +399,13 @@ class BitcoinConnector:
         self.api_base = settings.bitcoin_api_url
         self.converter = converter
 
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
+    def fetch_transactions(
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
+    ) -> Iterable[NormalizedTransaction]:
+        # Note: Bitcoin connector doesn't use since/limit parameters but accept them for Protocol compatibility
         requests = importlib.import_module("requests")
         resp = requests.get(f"{self.api_base}/address/{account_id}/txs")
         if not resp.ok:
@@ -383,7 +443,13 @@ class SolanaConnector:
         self.rpc_url = settings.solana_rpc_url
         self.converter = converter
 
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
+    def fetch_transactions(
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
+    ) -> Iterable[NormalizedTransaction]:
+        # Note: Solana connector doesn't use since/limit parameters but accept them for Protocol compatibility
         import time
         requests = importlib.import_module("requests")
 
@@ -528,7 +594,13 @@ class RippleConnector:
         self.rpc_url = settings.ripple_rpc_url
         self.converter = converter
 
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
+    def fetch_transactions(
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
+    ) -> Iterable[NormalizedTransaction]:
+        # Note: Ripple connector doesn't use since/limit parameters but accept them for Protocol compatibility
         requests = importlib.import_module("requests")
         payload = {
             "method": "account_tx",
@@ -578,7 +650,13 @@ class CardanoConnector:
         self.api_url = settings.cardano_api_url
         self.converter = converter
 
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
+    def fetch_transactions(
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
+    ) -> Iterable[NormalizedTransaction]:
+        # Note: Cardano connector doesn't use since/limit parameters but accept them for Protocol compatibility
         requests = importlib.import_module("requests")
         resp = requests.post(
             f"{self.api_url}/address_txs",
@@ -616,7 +694,13 @@ class TronConnector:
         self.api_url = settings.tron_api_url
         self.converter = converter
         
-    def fetch_transactions(self, account_id: str) -> Iterable[NormalizedTransaction]:
+    def fetch_transactions(
+        self, 
+        account_id: str,
+        since: datetime | None = None,
+        limit: int = 500,
+    ) -> Iterable[NormalizedTransaction]:
+        # Note: Tron connector doesn't use since/limit parameters but accept them for Protocol compatibility
         requests = importlib.import_module("requests")
         resp = requests.get(f"{self.api_url}/v1/accounts/{account_id}/transactions")
         if not resp.ok:

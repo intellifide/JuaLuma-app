@@ -1,3 +1,4 @@
+// Last Modified: 2026-01-24 04:25 CST
 import React, { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '../hooks/useAuth';
@@ -6,8 +7,7 @@ import { ChatInput } from '../components/ChatInput';
 import { QuotaDisplay } from '../components/QuotaDisplay';
 import { aiService, QuotaStatus, HistoryItem } from '../services/aiService';
 import { AIPrivacyModal } from '../components/AIPrivacyModal';
-import { ChatHistoryList } from '../components/ChatHistoryList';
-import { DocumentList } from '../components/DocumentList';
+import { AISidebar } from '../components/AISidebar';
 import { documentService, Document } from '../services/documentService';
 import { legalService } from '../services/legal';
 import { LEGAL_AGREEMENTS } from '../constants/legal';
@@ -16,6 +16,14 @@ interface Message {
   role: 'user' | 'assistant';
   text: string;
   time: string;
+}
+
+interface Thread {
+  id: string;
+  title: string;
+  timestamp: string;
+  preview: string;
+  messages: Message[];
 }
 
 
@@ -28,10 +36,15 @@ export default function AIAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [threads, setThreads] = useState<Thread[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const storageKey = user?.uid ? `jualuma_ai_thread_${user.uid}` : 'jualuma_ai_thread_anon';
+  const threadStorageKey = user?.uid ? `jualuma_ai_current_thread_${user.uid}` : 'jualuma_ai_current_thread_anon';
+  const threadsStorageKey = user?.uid ? `jualuma_ai_threads_${user.uid}` : 'jualuma_ai_threads_anon';
 
   // Real documents state
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -52,13 +65,43 @@ export default function AIAssistant() {
     }
   }, []);
 
-  // Reset per-user state when switching users
+  // Load threads and restore session when user is available
   useEffect(() => {
-    setHasFetchedHistory(false);
-    setMessages([]);
-    setHistoryItems([]);
-    setQuota(null);
-  }, [user?.uid]);
+    if (!user?.uid) {
+      // Clear state if no user
+      setThreads([]);
+      setMessages([]);
+      setCurrentThreadId(null);
+      setHasFetchedHistory(false);
+      return;
+    }
+
+    // Load threads from localStorage
+    const savedThreads = localStorage.getItem(threadsStorageKey);
+    if (savedThreads) {
+      try {
+        const parsedThreads = JSON.parse(savedThreads);
+        setThreads(parsedThreads);
+      } catch (e) {
+        console.error("Failed to parse saved threads:", e);
+      }
+    }
+
+    // Restore current thread if exists
+    const savedThreadId = localStorage.getItem(threadStorageKey);
+    if (savedThreadId) {
+      const threadMessages = localStorage.getItem(`${storageKey}_${savedThreadId}`);
+      if (threadMessages) {
+        try {
+          const parsedMessages = JSON.parse(threadMessages);
+          setMessages(parsedMessages);
+          setCurrentThreadId(savedThreadId);
+        } catch (e) {
+          console.error("Failed to restore thread messages:", e);
+        }
+      }
+    }
+  }, [user?.uid, threadsStorageKey, threadStorageKey, storageKey]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,65 +113,17 @@ export default function AIAssistant() {
           aiService.getQuota()
         ]);
 
+        // Set history items for the ChatHistoryList component (separate from current conversation)
         setHistoryItems(history);
-
-        const formattedMessages: Message[] = history.flatMap(item => [
-          {
-            role: 'user' as const,
-            text: item.prompt,
-            time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          },
-          {
-            role: 'assistant' as const,
-            text: item.response,
-            time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ]).filter(m => m.text);
-
-        // If backend has history, prefer it; otherwise fall back to local cache
-        if (formattedMessages.length > 0) {
-          setMessages(formattedMessages);
-          localStorage.setItem(storageKey, JSON.stringify(formattedMessages));
-        } else {
-          const cached = localStorage.getItem(storageKey);
-          if (cached) {
-            try {
-              const parsed: Message[] = JSON.parse(cached);
-              if (parsed.length > 0) {
-                setMessages(parsed);
-              } else {
-                setMessages([{
-                  role: 'assistant',
-                  text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
-                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                }]);
-              }
-            } catch {
-              setMessages([{
-                role: 'assistant',
-                text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              }]);
-            }
-          } else {
-            setMessages([{
-              role: 'assistant',
-              text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }]);
-          }
-        }
-
         setQuota(quotaData);
         setHasFetchedHistory(true);
       } catch (err) {
         console.error("Error fetching AI data:", err);
-        // Fallback or error state?
       }
     };
 
     fetchData();
-  }, [user, privacyAccepted, hasFetchedHistory, storageKey]);
+  }, [user, privacyAccepted, hasFetchedHistory]);
 
   const handleAcceptPrivacy = async () => {
     try {
@@ -152,15 +147,41 @@ export default function AIAssistant() {
   }
 
   const handleNewChat = () => {
-    // Clear current messages
-    setMessages([{
-      role: 'assistant',
-      text: "Hello! I am Gemini 2.5 Flash. I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.\n\nWhat would you like to know?",
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }]);
+    // Generate a new thread ID for this conversation
+    const newThreadId = Date.now().toString();
+    setCurrentThreadId(newThreadId);
+    localStorage.setItem(threadStorageKey, newThreadId);
     
-    // Clear local storage for this thread
-    localStorage.removeItem(storageKey);
+    // Clear current messages and start fresh
+    // Don't save the thread yet - only save when user sends first message
+    setMessages([]);
+  };
+
+  const handleSelectThread = (threadId: string) => {
+    const thread = threads.find(t => t.id === threadId);
+    if (thread) {
+      setCurrentThreadId(threadId);
+      setMessages(thread.messages);
+      localStorage.setItem(threadStorageKey, threadId);
+    }
+  };
+
+  const handleDeleteThread = (threadId: string) => {
+    // Remove from threads list
+    const updatedThreads = threads.filter(t => t.id !== threadId);
+    setThreads(updatedThreads);
+    localStorage.setItem(threadsStorageKey, JSON.stringify(updatedThreads));
+    
+    // Remove thread data
+    localStorage.removeItem(`${storageKey}_${threadId}`);
+    
+    // If deleting current thread, clear messages and generate new thread ID
+    if (currentThreadId === threadId) {
+      const newThreadId = Date.now().toString();
+      setCurrentThreadId(newThreadId);
+      localStorage.setItem(threadStorageKey, newThreadId);
+      setMessages([]);
+    }
   };
 
   const handleDownloadDoc = async (doc: Document) => {
@@ -189,6 +210,14 @@ export default function AIAssistant() {
   const handleSendMessage = async (text: string) => {
     if (!user) return;
 
+    // Ensure we have a current thread ID
+    let threadId = currentThreadId;
+    if (!threadId) {
+      threadId = Date.now().toString();
+      setCurrentThreadId(threadId);
+      localStorage.setItem(threadStorageKey, threadId);
+    }
+
     const newMessage: Message = {
       role: 'user',
       text: text,
@@ -206,9 +235,39 @@ export default function AIAssistant() {
         text: response.response,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
+      
       setMessages(prev => {
         const updated = [...prev, assistantMessage];
-        localStorage.setItem(storageKey, JSON.stringify(updated));
+        
+        // Update thread in threads list
+        const threadIndex = threads.findIndex(t => t.id === threadId);
+        let updatedThreads = [...threads];
+        
+        if (threadIndex >= 0) {
+          // Update existing thread
+          updatedThreads[threadIndex] = {
+            ...updatedThreads[threadIndex],
+            title: text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+            timestamp: new Date().toISOString(),
+            preview: response.response.slice(0, 60) + (response.response.length > 60 ? '...' : ''),
+            messages: updated
+          };
+        } else {
+          // Create new thread entry
+          const newThread: Thread = {
+            id: threadId!,
+            title: text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+            timestamp: new Date().toISOString(),
+            preview: response.response.slice(0, 60) + (response.response.length > 60 ? '...' : ''),
+            messages: updated
+          };
+          updatedThreads = [newThread, ...updatedThreads];
+        }
+        
+        setThreads(updatedThreads);
+        localStorage.setItem(threadsStorageKey, JSON.stringify(updatedThreads));
+        localStorage.setItem(`${storageKey}_${threadId}`, JSON.stringify(updated));
+        
         return updated;
       });
 
@@ -240,7 +299,6 @@ export default function AIAssistant() {
         setQuota(latestQuota);
       }
 
-
     } catch (error: unknown) {
       const errorMessage: Message = {
         role: 'assistant',
@@ -249,7 +307,7 @@ export default function AIAssistant() {
       };
       setMessages(prev => {
         const updated = [...prev, errorMessage];
-        localStorage.setItem(storageKey, JSON.stringify(updated));
+        localStorage.setItem(`${storageKey}_${threadId}`, JSON.stringify(updated));
         return updated;
       });
     } finally {
@@ -276,27 +334,30 @@ export default function AIAssistant() {
   const quotaExceeded = quota ? quota.used >= quota.limit : false;
 
   return (
-    <section className="container container-narrow py-12">
-
+    <div className="h-screen flex flex-col overflow-hidden bg-bg-primary">
       <AIPrivacyModal
         isOpen={showPrivacyModal}
         onAccept={handleAcceptPrivacy}
         onClose={handleClosePrivacyModal}
       />
 
-      <div className="glass-panel mb-8" id="ai-chat-wrapper">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="m-0">Chat with Gemini</h2>
+      {/* Header */}
+      <header className="flex-shrink-0 border-b border-white/10 bg-bg-secondary/30">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-4">
             <button
-              onClick={handleNewChat}
-              className="btn btn-ghost btn-sm btn-square text-text-secondary hover:text-primary transition-colors"
-              title="Start New Conversation"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-lg hover:bg-white/5 transition-colors text-text-secondary hover:text-text-primary"
+              title="Toggle sidebar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
+            <h1 className="text-xl font-semibold m-0 flex items-center gap-2">
+              <span className="text-2xl">✨</span>
+              <span>AI Assistant</span>
+            </h1>
           </div>
           <QuotaDisplay
             used={quota?.used ?? 0}
@@ -305,91 +366,121 @@ export default function AIAssistant() {
             loading={!quota}
           />
         </div>
+      </header>
 
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        {sidebarOpen && (
+          <aside className="w-80 flex-shrink-0">
+            <AISidebar
+              documents={documents}
+              threads={threads}
+              currentThreadId={currentThreadId}
+              onNewChat={handleNewChat}
+              onSelectThread={handleSelectThread}
+              onDeleteThread={handleDeleteThread}
+              onUploadDoc={handleUploadDoc}
+              onDownloadDoc={handleDownloadDoc}
+            />
+          </aside>
+        )}
 
-        <div id="ai-chat-container" className="chat-container relative">
+        {/* Chat Area */}
+        <main className="flex-1 flex flex-col overflow-hidden relative">
           {!privacyAccepted && (
-            <div id="privacy-block-overlay" className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-              <div className="bg-bg-primary p-8 rounded-lg text-center max-w-[400px]">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="bg-bg-secondary p-8 rounded-lg text-center max-w-[400px] border border-white/10">
                 <p className="mb-4">Please accept the Privacy & User Agreement to access the AI Assistant.</p>
-                <button id="open-privacy-modal" className="btn btn-primary" onClick={() => setShowPrivacyModal(true)}>Review Agreement</button>
+                <button className="btn btn-primary" onClick={() => setShowPrivacyModal(true)}>Review Agreement</button>
               </div>
             </div>
           )}
 
+          {/* Messages Container */}
           <div
-            id="ai-chat-messages"
-            className="chat-messages"
+            className="flex-1 overflow-y-auto px-6 py-6"
+            ref={messagesContainerRef}
             role="log"
             aria-live="polite"
             aria-label="Chat messages"
-            ref={messagesContainerRef}
           >
-            {messages.map((msg, idx) => (
-              <ChatMessage key={idx} role={msg.role} text={msg.text} time={msg.time} />
-            ))}
-
-            {isTyping && (
-              <div className="chat-message chat-message-assistant chat-typing">
-                <div className="chat-message-content">
-                  <div className="typing-indicator">
-                    <span></span><span></span><span></span>
+            <div className="max-w-4xl mx-auto space-y-6">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
+                  <div className="text-6xl mb-6">✨</div>
+                  <h2 className="text-3xl font-semibold mb-4">Hello! I'm your AI Assistant</h2>
+                  <p className="text-text-secondary mb-8 max-w-md">
+                    I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 max-w-2xl">
+                    <button
+                      onClick={() => handleSendMessage("How much did I spend this month?")}
+                      className="p-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-left"
+                    >
+                      <div className="text-sm font-medium mb-1">💰 Spending Summary</div>
+                      <div className="text-xs text-text-secondary">How much did I spend this month?</div>
+                    </button>
+                    <button
+                      onClick={() => handleSendMessage("What's my net worth?")}
+                      className="p-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-left"
+                    >
+                      <div className="text-sm font-medium mb-1">📊 Net Worth</div>
+                      <div className="text-xs text-text-secondary">What's my net worth?</div>
+                    </button>
+                    <button
+                      onClick={() => handleSendMessage("Show my subscriptions")}
+                      className="p-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-left"
+                    >
+                      <div className="text-sm font-medium mb-1">🔄 Subscriptions</div>
+                      <div className="text-xs text-text-secondary">Show my subscriptions</div>
+                    </button>
+                    <button
+                      onClick={() => handleSendMessage("Analyze my spending by category")}
+                      className="p-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-left"
+                    >
+                      <div className="text-sm font-medium mb-1">📈 Category Analysis</div>
+                      <div className="text-xs text-text-secondary">Analyze my spending by category</div>
+                    </button>
                   </div>
                 </div>
+              ) : (
+                <>
+                  {messages.map((msg, idx) => (
+                    <ChatMessage key={idx} role={msg.role} text={msg.text} time={msg.time} />
+                  ))}
+
+                  {isTyping && (
+                    <div className="chat-message chat-message-assistant">
+                      <div className="chat-message-content">
+                        <div className="typing-indicator">
+                          <span></span><span></span><span></span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Input Area */}
+          <div className="flex-shrink-0 border-t border-white/10 bg-bg-secondary/30">
+            <div className="max-w-4xl mx-auto px-6 py-4">
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                isLoading={isTyping}
+                disabled={!privacyAccepted}
+                quotaExceeded={quotaExceeded}
+              />
+              <div className="mt-3 text-xs text-text-secondary text-center">
+                <strong>Disclaimer:</strong> jualuma Insights are generated by AI for informational purposes only. Generated content may be inaccurate. Consult a qualified professional.
               </div>
-            )}
-            <div ref={messagesEndRef} />
+            </div>
           </div>
-
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            isLoading={isTyping}
-            disabled={!privacyAccepted}
-            quotaExceeded={quotaExceeded}
-          />
-
-          <div className="mt-4 p-4 text-xs text-text-secondary bg-bg-secondary/20 rounded-lg text-center border border-white/5">
-            <p className="mb-0">
-              <strong>Disclaimer:</strong> jualuma Insights are generated by AI for informational purposes only. Do not rely on them for financial decisions.
-              <br />
-              Generated content may be inaccurate. Consult a qualified professional.
-            </p>
-          </div>
-        </div>
+        </main>
       </div>
-
-      <ChatHistoryList items={historyItems} />
-
-      <DocumentList 
-        documents={documents} 
-        onUpload={handleUploadDoc}
-        onDownload={handleDownloadDoc}
-        onPreview={handlePreviewDoc}
-      />
-
-      <div className="glass-panel mt-8">
-        <h2>AI Assistant Features</h2>
-        <div className="grid grid-2">
-          <div className="card">
-            <h3>Budget Analysis</h3>
-            <p>Get insights about your spending patterns and budget performance. Ask questions like &quot;How am I doing with my budget this month?&quot;</p>
-          </div>
-          <div className="card">
-            <h3>Net Worth Tracking</h3>
-            <p>Understand your net worth trends and see what&apos;s driving changes in your financial position over time.</p>
-          </div>
-          <div className="card">
-            <h3>Subscription Review</h3>
-            <p>Review all your recurring subscriptions and identify opportunities to save money.</p>
-          </div>
-          <div className="card">
-            <h3>Spending Insights</h3>
-            <p>Analyze your spending by category, merchant, or time period to identify trends and patterns.</p>
-          </div>
-        </div>
-      </div>
-
-
-    </section>
+    </div>
   );
 }

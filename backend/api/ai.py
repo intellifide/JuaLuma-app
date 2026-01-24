@@ -1,4 +1,4 @@
-# Last Modified: 2026-01-18 03:16 CST
+# Last Modified: 2026-01-23 21:46 CST
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -215,15 +215,24 @@ def get_chat_history(
     messages = []
     for log in logs:
         # Decrypt prompt
+        # Note: encrypted_prompt/encrypted_response are stored as BYTEA (bytes)
+        # but contain UTF-8 encoded strings with encryption prefixes (fernet:/gcpkms:)
+        # We need to decode bytes to string before decrypting
         try:
-            prompt_text = decrypt_prompt(log.encrypted_prompt, user_dek_ref=user_id)
-        except Exception:
+            prompt_bytes = log.encrypted_prompt
+            prompt_str = prompt_bytes.decode("utf-8") if isinstance(prompt_bytes, bytes) else prompt_bytes
+            prompt_text = decrypt_prompt(prompt_str, user_dek_ref=user_id)
+        except Exception as e:
+            logger.error(f"Failed to decrypt prompt for log {log.id}: {e}", exc_info=True)
             prompt_text = "[Encrypted/Unreadable]"
 
         # Decrypt response
         try:
-            response_text = decrypt_prompt(log.encrypted_response, user_dek_ref=user_id)
-        except Exception:
+            response_bytes = log.encrypted_response
+            response_str = response_bytes.decode("utf-8") if isinstance(response_bytes, bytes) else response_bytes
+            response_text = decrypt_prompt(response_str, user_dek_ref=user_id)
+        except Exception as e:
+            logger.error(f"Failed to decrypt response for log {log.id}: {e}", exc_info=True)
             response_text = "[Encrypted/Unreadable]"
 
         messages.append(

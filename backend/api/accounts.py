@@ -786,7 +786,16 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
         ) from e
 
 
-def _sync_cex(account: Account, uid: str) -> list[dict]:
+def _sync_cex(account: Account, uid: str, start_date: date | None = None, end_date: date | None = None) -> list[dict]:
+    """
+    Sync CEX account transactions with optional date range filtering.
+    
+    Args:
+        account: The CEX account to sync
+        uid: User ID for secret retrieval
+        start_date: Optional start date for transaction window (defaults to 90 days ago for expanded window)
+        end_date: Optional end date for transaction window (defaults to today)
+    """
     try:
         secret_json = get_secret(account.secret_ref or "", uid=uid)
         creds = json.loads(secret_json)
@@ -797,7 +806,26 @@ def _sync_cex(account: Account, uid: str) -> list[dict]:
             api_key=creds.get("apiKey"),
             api_secret=creds.get("secret"),
         )
-        normalized_txns = connector.fetch_transactions(account_id=str(account.id))
+        
+        # Convert date range to datetime for connector
+        since_datetime = None
+        if start_date:
+            since_datetime = datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
+        
+        # Fetch transactions with expanded window (500 limit, up from 50)
+        normalized_txns = connector.fetch_transactions(
+            account_id=str(account.id),
+            since=since_datetime,
+            limit=500,
+        )
+        
+        # Filter by end_date if provided (client-side filtering)
+        if end_date:
+            end_datetime = datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
+            normalized_txns = [
+                t for t in normalized_txns 
+                if t.timestamp <= end_datetime
+            ]
 
         return [
             {
@@ -807,7 +835,8 @@ def _sync_cex(account: Account, uid: str) -> list[dict]:
                 "currency": t.currency_code,
                 "category": ["Transfer"] if t.type == "transfer" else None,
                 "merchant_name": t.merchant_name,
-                "name": f"{t.counterparty} {t.type}",
+                # Use merchant_name (which now includes trading pair, side, amount, price) as description
+                "name": t.merchant_name or f"{t.counterparty} {t.type}",
             }
             for t in normalized_txns
         ]
@@ -923,10 +952,22 @@ def _process_single_transaction(
 
 
 def _resolve_sync_dates(
-    start_date: date | None, end_date: date | None
+    start_date: date | None, 
+    end_date: date | None,
+    account_type: str | None = None,
 ) -> tuple[date, date]:
+    """
+    Resolve sync date window with account-type-specific defaults.
+    
+    Args:
+        start_date: Optional start date (if None, uses default based on account type)
+        end_date: Optional end date (if None, defaults to today)
+        account_type: Account type to determine default window (CEX gets 90 days, others get 30 days)
+    """
     today = date.today()
-    resolved_start = start_date or (today - timedelta(days=30))
+    # CEX accounts get expanded 90-day window, others use 30-day default
+    default_days = 90 if account_type == "cex" else 30
+    resolved_start = start_date or (today - timedelta(days=default_days))
     resolved_end = end_date or today
     if resolved_start > resolved_end:
         raise HTTPException(
@@ -951,7 +992,8 @@ def _execute_provider_sync(
     elif account.account_type == "web3":
         fetched, next_cursor, cursor_chain, update_cursor = _sync_web3(account)
     elif account.account_type == "cex":
-        fetched = _sync_cex(account, user.uid)
+        # Pass date range to CEX sync for expanded transaction window
+        fetched = _sync_cex(account, user.uid, start_date=start, end_date=end)
     return fetched, next_cursor, cursor_chain, update_cursor
 
 
@@ -1029,7 +1071,7 @@ def sync_account_transactions(
     if not initial_sync:
         _enforce_sync_limit(db, current_user.uid, plan)
 
-    resolved_start, resolved_end = _resolve_sync_dates(start_date, end_date)
+    resolved_start, resolved_end = _resolve_sync_dates(start_date, end_date, account.account_type)
 
     # Dispatch Sync & process
     fetched_txns, next_cursor, cursor_chain, update_cursor = _execute_provider_sync(

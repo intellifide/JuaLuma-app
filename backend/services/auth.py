@@ -80,7 +80,15 @@ def verify_token(token: str) -> dict[str, Any]:
         raise RuntimeError("Token verification failed.") from exc
 
 
-def create_user_record(db: Session, *, uid: str, email: str) -> User:
+def create_user_record(
+    db: Session, 
+    *, 
+    uid: str, 
+    email: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    username: str | None = None,
+) -> User:
     """
     Create the user and dependent records in a single transaction.
 
@@ -99,6 +107,10 @@ def create_user_record(db: Session, *, uid: str, email: str) -> User:
         status=UserStatus.PENDING_VERIFICATION,
         theme_pref="glass",
         currency_pref="USD",
+        first_name=first_name,
+        last_name=last_name,
+        username=username,
+        display_name_pref="name",  # Default to name (first + last)
     )
     # Subscription starts as free/active but user is gated by status?
     # Task says "Select Plan -> Redirect to Stripe or Free Tier".

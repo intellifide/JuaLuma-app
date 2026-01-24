@@ -1,6 +1,6 @@
 """Transaction API endpoints."""
 
-# Updated 2025-12-10 14:58 CST by ChatGPT
+# Updated 2026-01-23 12:00 CST
 
 import uuid
 from datetime import UTC, date, datetime
@@ -43,6 +43,7 @@ class TransactionResponse(BaseModel):
     is_manual: bool
     archived: bool
     raw_json: dict | None = None
+    user_display_name: str | None = None  # Display name of transaction owner (Ultimate tier/household feature)
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -141,6 +142,94 @@ def _paginate(query, page: int, page_size: int):
         .all()
     )
     return total, items
+
+
+def _should_include_user_names(
+    db: Session, current_user: User, scope: str, household_owner_uid: str | None = None
+) -> bool:
+    """
+    Determine if user display names should be included in transaction responses.
+    Returns True for Ultimate tier subscribers or household members with view permission.
+    """
+    if scope == "household":
+        # Household scope already verified Ultimate subscription
+        return True
+    
+    # Check if current user has Ultimate tier
+    user_sub = (
+        db.query(Subscription)
+        .filter(Subscription.uid == current_user.uid, Subscription.status == "active")
+        .first()
+    )
+    if user_sub and "ultimate" in user_sub.plan.lower():
+        return True
+    
+    # Check if user is a household member with view permission
+    if current_user.household_member and current_user.household_member.can_view_household:
+        # Verify household owner has Ultimate
+        household = (
+            db.query(Household)
+            .filter(Household.id == current_user.household_member.household_id)
+            .first()
+        )
+        if household:
+            owner_sub = (
+                db.query(Subscription)
+                .filter(Subscription.uid == household.owner_uid, Subscription.status == "active")
+                .first()
+            )
+            if owner_sub and "ultimate" in owner_sub.plan.lower():
+                return True
+    
+    return False
+
+
+def _build_transaction_responses(
+    db: Session, items: list[Transaction], include_user_names: bool
+) -> list[TransactionResponse]:
+    """Build transaction responses with optional user display names."""
+    if not include_user_names:
+        return [
+            TransactionResponse(
+                id=txn.id,
+                ts=txn.ts,
+                amount=txn.amount,
+                currency=txn.currency,
+                category=txn.category,
+                merchant_name=txn.merchant_name,
+                description=txn.description,
+                account_id=txn.account_id,
+                external_id=txn.external_id,
+                is_manual=txn.is_manual,
+                archived=txn.archived,
+                raw_json=txn.raw_json,
+                user_display_name=None,
+            )
+            for txn in items
+        ]
+    
+    # Load users for all transaction UIDs
+    transaction_uids = list(set(t.uid for t in items))
+    users = {u.uid: u for u in db.query(User).filter(User.uid.in_(transaction_uids)).all()}
+    
+    return [
+        TransactionResponse(
+            id=txn.id,
+            ts=txn.ts,
+            amount=txn.amount,
+            currency=txn.currency,
+            category=txn.category,
+            merchant_name=txn.merchant_name,
+            description=txn.description,
+            account_id=txn.account_id,
+            external_id=txn.external_id,
+            is_manual=txn.is_manual,
+            archived=txn.archived,
+            raw_json=txn.raw_json,
+            user_display_name=users.get(txn.uid).get_display_name() if users.get(txn.uid) else None,
+        )
+        for txn in items
+    ]
 
 
 def _apply_filters(
@@ -262,8 +351,15 @@ def list_transactions(
         )
 
     total, items = _paginate(query, page, page_size)
+    
+    # Check if we should include user display names
+    should_include_user_names = _should_include_user_names(db, current_user, scope)
+    
+    # Build transaction responses with optional user display names
+    transaction_responses = _build_transaction_responses(db, items, should_include_user_names)
+    
     return TransactionListResponse(
-        transactions=items,
+        transactions=transaction_responses,
         total=total,
         page=page,
         page_size=page_size,
@@ -308,8 +404,15 @@ def search_transactions(
     query = query.filter(ts_vector.op("@@")(ts_query))
 
     total, items = _paginate(query, page, page_size)
+    
+    # Check if we should include user display names (personal scope, but Ultimate tier)
+    should_include_user_names = _should_include_user_names(db, current_user, "personal")
+    
+    # Build transaction responses with optional user display names
+    transaction_responses = _build_transaction_responses(db, items, should_include_user_names)
+    
     return TransactionListResponse(
-        transactions=items,
+        transactions=transaction_responses,
         total=total,
         page=page,
         page_size=page_size,

@@ -1,14 +1,233 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
-// Last Updated 2026-01-20 03:25 CST by Antigravity - standardize button styling and card layouts
+// Last Updated 2026-01-23 12:00 CST
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { changePassword, apiFetch, listSessions, endSession, endOtherSessions, UserSessionData } from '../services/auth';
 import { householdService } from '../services/householdService';
 import type { Household } from '../types/household';
+import type { UserProfile } from '../hooks/useAuth';
 
 import Switch from '../components/ui/Switch';
 import { settingsService, NotificationPreference } from '../services/settingsService';
+import { useToast } from '../components/ui/Toast';
+
+// Profile Form Component
+const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
+  const { refetchProfile } = useAuth();
+  const toast = useToast();
+  const [firstName, setFirstName] = useState(profile?.first_name ?? '');
+  const [lastName, setLastName] = useState(profile?.last_name ?? '');
+  const [username, setUsername] = useState(profile?.username ?? '');
+  const [displayNamePref, setDisplayNamePref] = useState(profile?.display_name_pref ?? 'name');
+  const [saving, setSaving] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name ?? '');
+      setLastName(profile.last_name ?? '');
+      setUsername(profile.username ?? '');
+      setDisplayNamePref(profile.display_name_pref ?? 'name');
+    }
+  }, [profile]);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setUsernameError(null);
+
+    try {
+      // Prepare payload - convert empty strings to null, ensure required fields are not empty
+      if (!firstName.trim()) {
+        toast.show('First name is required', 'error');
+        setSaving(false);
+        return;
+      }
+      if (!lastName.trim()) {
+        toast.show('Last name is required', 'error');
+        setSaving(false);
+        return;
+      }
+      
+      // Prepare payload - ensure we send null for empty strings, not empty strings
+      // Only include fields that have values to avoid validation issues
+      const payload: any = {};
+      
+      if (firstName.trim()) {
+        payload.first_name = firstName.trim();
+      }
+      if (lastName.trim()) {
+        payload.last_name = lastName.trim();
+      }
+      if (username.trim()) {
+        payload.username = username.trim();
+      }
+      if (displayNamePref) {
+        payload.display_name_pref = displayNamePref;
+      }
+      
+      console.log('Sending profile update payload:', payload);
+      
+      // Ensure at least one field is being sent
+      if (Object.keys(payload).length === 0) {
+        toast.show('Please fill in at least one field to update.', 'error');
+        setSaving(false);
+        return;
+      }
+
+      const response = await apiFetch('/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+        throwOnError: false,
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to update profile';
+        let errorData: any = {};
+        try {
+          errorData = await response.json();
+          // Check multiple possible error message fields
+          errorMessage = errorData.detail || errorData.message || errorData.error || JSON.stringify(errorData) || errorMessage;
+          console.error('Profile update error response:', errorData);
+          console.error('Profile update error message:', errorMessage);
+        } catch (e) {
+          const text = await response.text().catch(() => '');
+          console.error('Failed to parse error response as JSON:', e);
+          console.error('Raw error response:', text);
+          errorMessage = text || errorMessage;
+        }
+        
+        // Handle username-specific errors
+        const lowerMsg = errorMessage.toLowerCase();
+        if (lowerMsg.includes('username') || lowerMsg.includes('taken') || lowerMsg.includes('already')) {
+          setUsernameError(errorMessage);
+          toast.show(errorMessage, 'error');
+          return;
+        }
+        
+        // Handle validation errors
+        if (lowerMsg.includes('at least one field') || lowerMsg.includes('provide at least')) {
+          toast.show('Please fill in at least one field to update.', 'error');
+          return;
+        }
+        
+        // Show the actual error message
+        toast.show(errorMessage, 'error');
+        console.error('Profile update failed with message:', errorMessage);
+        return;
+      }
+
+      await refetchProfile();
+      toast.show('Profile updated successfully', 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      toast.show(message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="profile-first-name" className="block text-sm font-medium text-text-secondary mb-1">
+            First Name
+          </label>
+          <input
+            type="text"
+            id="profile-first-name"
+            className="form-input w-full"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="profile-last-name" className="block text-sm font-medium text-text-secondary mb-1">
+            Last Name
+          </label>
+          <input
+            type="text"
+            id="profile-last-name"
+            className="form-input w-full"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="profile-username" className="block text-sm font-medium text-text-secondary mb-1">
+          Username (Optional)
+        </label>
+        <input
+          type="text"
+          id="profile-username"
+          className="form-input w-full"
+          value={username}
+          onChange={(e) => {
+            setUsername(e.target.value);
+            setUsernameError(null);
+          }}
+          minLength={3}
+          maxLength={64}
+          placeholder="Choose a unique username"
+        />
+        {usernameError && (
+          <p className="text-sm text-red-600 mt-1">{usernameError}</p>
+        )}
+        <p className="text-xs text-text-muted mt-1">
+          Username must be at least 3 characters and unique. Leave blank if you don't want one.
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="profile-display-pref" className="block text-sm font-medium text-text-secondary mb-1">
+          Display Name Preference
+        </label>
+        <select
+          id="profile-display-pref"
+          className="form-select w-full"
+          value={displayNamePref}
+          onChange={(e) => setDisplayNamePref(e.target.value)}
+        >
+          <option value="name">First Name + Last Name</option>
+          <option value="username">Username (if set)</option>
+        </select>
+        <p className="text-xs text-text-muted mt-1">
+          How your name appears in transactions and other places.
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="profile-email" className="block text-sm font-medium text-text-secondary mb-1">
+          Email Address
+        </label>
+        <input
+          type="email"
+          id="profile-email"
+          className="form-input w-full"
+          value={profile?.email || ''}
+          disabled
+          readOnly
+        />
+        <p className="text-xs text-text-muted mt-1">Email cannot be changed from this page.</p>
+      </div>
+
+      <button
+        type="submit"
+        disabled={saving}
+        className="btn btn-primary"
+      >
+        {saving ? 'Saving...' : 'Save Changes'}
+      </button>
+    </form>
+  );
+};
 
 // Render the account settings experience with tabbed sections.
 export const Settings = () => {
@@ -364,36 +583,7 @@ export const Settings = () => {
           <div id="profile-tab" role="tabpanel">
             <div className="glass-panel">
               <h2 className="mb-6">Profile Information</h2>
-              <form onSubmit={(e) => e.preventDefault()}>
-                <div className="mb-4">
-                  <label htmlFor="profile-name" className="block text-sm font-medium text-text-secondary mb-1">Full Name</label>
-                  <input type="text" id="profile-name" name="name" className="form-input w-full" defaultValue={user?.displayName || "John Doe"} required />
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="profile-email" className="block text-sm font-medium text-text-secondary mb-1">Email Address</label>
-                  <input type="email" id="profile-email" name="email" className="form-input w-full" defaultValue={user?.email || "john.doe@example.com"} required />
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="profile-phone" className="block text-sm font-medium text-text-secondary mb-1">Phone Number (Optional)</label>
-                  <input type="tel" id="profile-phone" name="phone" className="form-input w-full" defaultValue="+1 (555) 123-4567" />
-                </div>
-
-                {/* Preferred Currency Section Disabled - Future Feature */}
-                {/* <div className="mb-6">
-                  <label htmlFor="profile-currency" className="block text-sm font-medium text-text-secondary mb-1">Preferred Currency</label>
-                  <select id="profile-currency" name="currency" className="form-select w-full">
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="GBP">GBP - British Pound</option>
-                    <option value="CAD">CAD - Canadian Dollar</option>
-                    <option value="AUD">AUD - Australian Dollar</option>
-                  </select>
-                </div> */}
-
-                <button type="submit" className="btn btn-primary">Save Changes</button>
-              </form>
+              <ProfileForm profile={profile} />
             </div>
           </div>
         )}

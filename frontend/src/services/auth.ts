@@ -27,7 +27,7 @@ export interface UserSessionData {
   is_current: boolean
 }
 
-type ApiRequestInit = RequestInit & { skipAuth?: boolean }
+type ApiRequestInit = RequestInit & { skipAuth?: boolean; throwOnError?: boolean }
 
 const TOKEN_MAX_AGE_MS = 4 * 60 * 1000 // refresh cached token every 4 minutes
 let cachedToken: string | null = null
@@ -65,12 +65,22 @@ export const signup = async (
   email: string,
   password: string,
   agreements: AgreementAcceptanceInput[] = [],
+  first_name?: string,
+  last_name?: string,
+  username?: string,
 ): Promise<User> => {
   try {
     // 1. Create user in Backend (seeds Postgres)
     await apiFetch('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ email, password, agreements }),
+      body: JSON.stringify({ 
+        email, 
+        password, 
+        agreements,
+        first_name,
+        last_name,
+        username,
+      }),
       skipAuth: true,
     })
 
@@ -259,11 +269,17 @@ export const apiFetch = async (
     headers,
   })
 
-  if (!response.ok) {
+  if (!response.ok && init.throwOnError !== false) {
     const maybeJson = await response.clone().json().catch(() => null)
-    const message =
-      (maybeJson && (maybeJson.detail || maybeJson.message)) ||
+    let message =
+      (maybeJson && (maybeJson.detail || maybeJson.message || maybeJson.error)) ||
       `Request failed with status ${response.status}`
+    if (!maybeJson) {
+      const text = await response.text().catch(() => '')
+      if (text) {
+        message = text
+      }
+    }
     throw new Error(message as string)
   }
 

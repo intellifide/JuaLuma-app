@@ -1,5 +1,5 @@
 # CORE PURPOSE: Authentication and identity endpoints for user access control.
-# LAST MODIFIED: 2026-01-20 02:50 CST
+# LAST MODIFIED: 2026-01-23 12:00 CST
 import logging
 import random
 import string
@@ -13,6 +13,7 @@ import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from backend.core import settings
@@ -42,7 +43,29 @@ logger = logging.getLogger(__name__)
 class SignupRequest(BaseModel):
     email: EmailStr = Field(example="user@example.com")
     password: str = Field(min_length=8, max_length=128, example="Str0ngPass!")
+    first_name: str = Field(min_length=1, max_length=128, example="John")
+    last_name: str = Field(min_length=1, max_length=128, example="Doe")
+    username: str | None = Field(default=None, max_length=64, example="johndoe")
     agreements: list[AgreementAcceptancePayload] = Field(default_factory=list)
+    
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_username(cls, data: any) -> any:
+        """Convert empty username strings to None."""
+        if isinstance(data, dict) and "username" in data:
+            if isinstance(data["username"], str) and (data["username"] == "" or data["username"].strip() == ""):
+                data["username"] = None
+            elif isinstance(data["username"], str):
+                data["username"] = data["username"].strip()
+        return data
+    
+    @model_validator(mode="after")
+    def validate_username(self) -> "SignupRequest":
+        """Validate username length if provided."""
+        if self.username is not None:
+            if len(self.username) < 3:
+                raise ValueError("Username must be at least 3 characters long.")
+        return self
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -93,15 +116,79 @@ class ChangePasswordRequest(BaseModel):
 
 class ProfileUpdateRequest(BaseModel):
     theme_pref: str | None = Field(default=None, max_length=32, example="dark")
+    first_name: str | None = Field(default=None, max_length=128, example="John")
+    last_name: str | None = Field(default=None, max_length=128, example="Doe")
+    username: str | None = Field(default=None, max_length=64, example="johndoe")
+    display_name_pref: str | None = Field(default=None, max_length=16, example="name")
     # currency_pref: str | None = Field(
     #     default=None, min_length=3, max_length=3, example="USD"
     # )
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_empty_strings(cls, data: any) -> any:
+        """Convert empty strings to None for optional fields."""
+        logger.debug(f"ProfileUpdateRequest before validation - raw data: {data}")
+        if isinstance(data, dict):
+            for field in ["username", "first_name", "last_name"]:
+                if field in data:
+                    value = data[field]
+                    # Convert empty string or whitespace-only string to None
+                    if isinstance(value, str) and (value == "" or value.strip() == ""):
+                        data[field] = None
+                        logger.debug(f"Normalized {field}: empty string -> None")
+                    elif isinstance(value, str):
+                        # Trim whitespace from non-empty strings
+                        original = data[field]
+                        data[field] = value.strip()
+                        if original != data[field]:
+                            logger.debug(f"Normalized {field}: '{original}' -> '{data[field]}'")
+            # Ensure at least one non-empty field is provided based on raw payload.
+            def has_value(value: object) -> bool:
+                if value is None:
+                    return False
+                if isinstance(value, str):
+                    return value.strip() != ""
+                return True
+
+            has_any_field = any(
+                has_value(data.get(field))
+                for field in [
+                    "theme_pref",
+                    "first_name",
+                    "last_name",
+                    "username",
+                    "display_name_pref",
+                ]
+            )
+            logger.debug(
+                "ProfileUpdateRequest pre-validation - has_any_field=%s, data=%s",
+                has_any_field,
+                data,
+            )
+            if not has_any_field:
+                if settings.is_local:
+                    logger.warning(
+                        "ProfileUpdateRequest validation failed: no fields provided (raw payload).",
+                        extra={"payload": data},
+                    )
+                else:
+                    logger.warning(
+                        "ProfileUpdateRequest validation failed: no fields provided."
+                    )
+                raise ValueError("Provide at least one field to update.")
+        logger.debug(f"ProfileUpdateRequest after normalization: {data}")
+        return data
+
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "ProfileUpdateRequest":
-        # if not self.theme_pref and not self.currency_pref:
-        if not self.theme_pref:
-            raise ValueError("Provide at least one field to update.")
+    def validate_fields(self) -> "ProfileUpdateRequest":
+        logger.debug(f"ProfileUpdateRequest after validation - first_name={self.first_name}, last_name={self.last_name}, username={self.username}, display_name_pref={self.display_name_pref}")
+        
+        # Validate username length if provided (after normalization)
+        if self.username is not None and self.username != "":
+            if len(self.username) < 3:
+                logger.warning(f"Username validation failed: '{self.username}' is less than 3 characters")
+                raise ValueError("Username must be at least 3 characters long.")
         return self
 
     model_config = ConfigDict(
@@ -438,9 +525,23 @@ def _handle_existing_firebase_user(email: str, db: Session):
     return existing_user, None
 
 
-def _create_db_user_safe(db: Session, record, is_fresh_firebase_user: bool) -> User:
+def _create_db_user_safe(
+    db: Session, 
+    record, 
+    is_fresh_firebase_user: bool,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    username: str | None = None,
+) -> User:
     try:
-        user = create_user_record(db, uid=record.uid, email=record.email)
+        user = create_user_record(
+            db, 
+            uid=record.uid, 
+            email=record.email,
+            first_name=first_name,
+            last_name=last_name,
+            username=username,
+        )
         return user
     except Exception as exc:
         if isinstance(exc, ValueError):
@@ -590,6 +691,15 @@ def signup(
             detail="Firebase unavailable. Try again shortly.",
         ) from exc
 
+    # Validate username uniqueness if provided (already validated length in model)
+    if payload.username:
+        existing_username = db.query(User).filter(User.username == payload.username).first()
+        if existing_username:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This username is already taken. Please choose another.",
+            )
+
     required_keys = set(REQUIRED_SIGNUP_AGREEMENTS)
     accepted_keys = {agreement.agreement_key for agreement in payload.agreements}
     missing = required_keys - accepted_keys
@@ -612,8 +722,15 @@ def signup(
                 ),
             )
 
-    # Create DB record
-    user = _create_db_user_safe(db, record, is_fresh_firebase_user)
+    # Create DB record with profile fields
+    user = _create_db_user_safe(
+        db, 
+        record, 
+        is_fresh_firebase_user,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        username=payload.username,
+    )
 
     try:
         record_agreement_acceptances(
@@ -826,7 +943,9 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Update theme and currency preferences for the current user."""
+    """Update user profile information including name and username."""
+    logger.info(f"Profile update request for user {current_user.uid}: first_name={payload.first_name}, last_name={payload.last_name}, username={payload.username}, display_name_pref={payload.display_name_pref}")
+    
     user = (
         db.query(User)
         .options(
@@ -845,12 +964,57 @@ def update_profile(
 
     if payload.theme_pref is not None:
         user.theme_pref = payload.theme_pref
+    if payload.first_name is not None:
+        user.first_name = payload.first_name
+    if payload.last_name is not None:
+        user.last_name = payload.last_name
+    if payload.username is not None:
+        # Validate username length
+        if len(payload.username) < 3:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username must be at least 3 characters long.",
+            )
+        # Check if username is already taken by another user
+        existing_user = db.query(User).filter(
+            User.username == payload.username,
+            User.uid != current_user.uid
+        ).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This username is already taken. Please choose another.",
+            )
+        user.username = payload.username
+    elif payload.username is None and user.username:
+        # Allow clearing username by sending null/empty
+        user.username = None
+    if payload.display_name_pref is not None:
+        if payload.display_name_pref not in ["name", "username"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="display_name_pref must be either 'name' or 'username'.",
+            )
+        user.display_name_pref = payload.display_name_pref
     # if payload.currency_pref is not None:
     #     user.currency_pref = payload.currency_pref.upper()
 
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    except IntegrityError as exc:
+        db.rollback()
+        # Check if it's a username uniqueness violation
+        if "username" in str(exc).lower() or "uq_users_username" in str(exc):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This username is already taken. Please choose another.",
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update profile. Please try again.",
+        ) from exc
 
     return {"user": _serialize_profile(user)}
 

@@ -1,4 +1,4 @@
-// Updated 2025-12-09 16:45 CST by ChatGPT
+// Updated 2026-01-23 12:00 CST
 import { FormEvent, useMemo, useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -23,6 +23,9 @@ export const Signup = () => {
   const returnUrl = params.get('returnUrl')
   // Use params.get('email') as initial value
   const [email, setEmail] = useState(params.get('email') || '')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
@@ -65,6 +68,22 @@ export const Signup = () => {
       return
     }
 
+    if (!firstName.trim()) {
+      setError('First name is required.')
+      return
+    }
+
+    if (!lastName.trim()) {
+      setError('Last name is required.')
+      return
+    }
+
+    // Validate username if provided
+    if (username.trim() && username.length < 3) {
+      setError('Username must be at least 3 characters if provided.')
+      return
+    }
+
     setSubmitting(true)
     try {
       const agreements: AgreementAcceptanceInput[] = [
@@ -84,7 +103,7 @@ export const Signup = () => {
           acceptance_method: 'clickwrap',
         },
       ]
-      await signup(email, password, agreements)
+      await signup(email, password, agreements, firstName.trim(), lastName.trim(), username.trim() || undefined)
       // Track successful signup
       eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_COMPLETED, { email })
       // After signup, user status is 'pending_verification'
@@ -122,6 +141,51 @@ export const Signup = () => {
 
           <div className="glass-panel">
             <form className="space-y-4" onSubmit={onSubmit}>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="signup-first-name" className="form-label">First Name</label>
+                  <input
+                    id="signup-first-name"
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="form-input"
+                    placeholder="John"
+                    autoComplete="given-name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="signup-last-name" className="form-label">Last Name</label>
+                  <input
+                    id="signup-last-name"
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="form-input"
+                    placeholder="Doe"
+                    autoComplete="family-name"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="signup-username" className="form-label">Username (Optional)</label>
+                <input
+                  id="signup-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="form-input"
+                  placeholder="johndoe"
+                  autoComplete="username"
+                  minLength={3}
+                  maxLength={64}
+                />
+                <p className="text-xs text-slate-600 mt-1">Must be at least 3 characters and unique</p>
+              </div>
+
               <div>
                 <label htmlFor="signup-email" className="form-label">Email</label>
                 <input
@@ -132,6 +196,7 @@ export const Signup = () => {
                   className="form-input"
                   placeholder="you@example.com"
                   autoComplete="email"
+                  required
                 />
               </div>
 
@@ -145,6 +210,7 @@ export const Signup = () => {
                   className="form-input"
                   placeholder="••••••••"
                   autoComplete="new-password"
+                  required
                 />
               </div>
 

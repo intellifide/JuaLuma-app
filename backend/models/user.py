@@ -1,6 +1,6 @@
 """User model definition."""
 
-# Updated 2025-12-08 17:45 CST by ChatGPT
+# Updated 2026-01-23 12:00 CST
 
 import uuid
 from datetime import datetime
@@ -44,6 +44,16 @@ class User(Base):
         default=False, nullable=False, server_default="false"
     )
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
+    # 2026-01-23 - Add user profile fields for display names
+    first_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    username: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    display_name_pref: Mapped[str | None] = mapped_column(
+        String(16), 
+        nullable=True, 
+        default="name",
+        comment="name|username - preference for displaying user name in transactions"
+    )
     theme_pref: Mapped[str | None] = mapped_column(String(32), nullable=True)
     currency_pref: Mapped[str | None] = mapped_column(String(3), nullable=True)
     developer_payout_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -153,11 +163,28 @@ class User(Base):
     def __repr__(self) -> str:
         return f"User(uid={self.uid!r}, email={self.email!r}, role={self.role!r})"
 
+    def get_display_name(self) -> str:
+        """
+        Get the user's display name based on their preference.
+        Returns first_name + last_name by default, or username if preferred.
+        Falls back to email if no name fields are set.
+        """
+        if self.display_name_pref == "username" and self.username:
+            return self.username
+        if self.first_name or self.last_name:
+            parts = [self.first_name, self.last_name]
+            return " ".join(p for p in parts if p).strip() or self.email
+        return self.email
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "uid": self.uid,
             "email": self.email,
             "role": self.role,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "username": self.username,
+            "display_name_pref": self.display_name_pref,
             "theme_pref": self.theme_pref,
             "currency_pref": self.currency_pref,
             "developer_payout_id": str(self.developer_payout_id)

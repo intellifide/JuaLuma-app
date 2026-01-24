@@ -42,6 +42,8 @@ interface RawTransaction {
   createdAt?: string
   updated_at?: string
   updatedAt?: string
+  user_display_name?: string | null
+  userDisplayName?: string | null
   [key: string]: unknown
 }
 
@@ -68,6 +70,7 @@ const mapTransaction = (data: unknown): Transaction => {
     rawJson: d.raw_json ?? d.rawJson ?? null,
     createdAt: d.created_at ?? d.createdAt,
     updatedAt: d.updated_at ?? d.updatedAt,
+    userDisplayName: d.user_display_name ?? d.userDisplayName ?? null,
   }
 }
 

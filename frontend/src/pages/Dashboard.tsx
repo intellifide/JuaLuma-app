@@ -314,6 +314,8 @@ export default function Dashboard() {
   const isHouseholdAdmin = profile?.household_member?.role === 'admin';
   const canViewHousehold = Boolean(profile?.household_member?.can_view_household);
   const canSeeScopeToggle = (isUltimate && isHouseholdAdmin) || canViewHousehold;
+  // Show responsible person column for Ultimate tier or household members with view permission
+  const shouldShowResponsiblePerson = isUltimate || canViewHousehold;
 
   const [timeframe, setTimeframe] = useState('1m');
   const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
@@ -467,7 +469,7 @@ export default function Dashboard() {
   // Computed Values for Cards
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);
 
-  // Recent Transactions Table (Paginated)
+  // Transactions Table (Paginated)
   const recentTransactions = useMemo(
     () => [...transactions].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()),
     [transactions]
@@ -1147,12 +1149,12 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Recent Transactions */}
+      {/* Transactions */}
       <div className="glass-panel mb-10">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 mb-6">
-          <h2 className="text-xl font-semibold">Recent Transactions</h2>
+          <h2 className="text-xl font-semibold">Transactions</h2>
           <span className="text-xs text-text-muted">
-            Page {transactionsPage} of {totalTransactionPages} · {transactionRangeStart}-{transactionRangeEnd} of {transactionsTotal || 0}
+            {transactionRangeStart}-{transactionRangeEnd} of {transactionsTotal || 0}
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -1162,13 +1164,14 @@ export default function Dashboard() {
                 <th className="pb-3">Date</th>
                 <th className="pb-3">Description</th>
                 <th className="pb-3">Category</th>
+                {shouldShowResponsiblePerson && <th className="pb-3">User</th>}
                 <th className="pb-3">Amount</th>
               </tr>
             </thead>
             <tbody>
               {recentTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-6 text-text-muted italic">No transactions found</td>
+                  <td colSpan={shouldShowResponsiblePerson ? 5 : 4} className="text-center py-6 text-text-muted italic">No transactions found</td>
                 </tr>
               ) : (
                 recentTransactions.map(txn => (
@@ -1187,6 +1190,11 @@ export default function Dashboard() {
                         ))}
                       </select>
                     </td>
+                    {shouldShowResponsiblePerson && (
+                      <td className="py-3 text-sm text-text-muted">
+                        {txn.userDisplayName || '—'}
+                      </td>
+                    )}
                     <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                       {formatCurrency(txn.amount)}
                     </td>

@@ -34,9 +34,4 @@ trigger: always_on
   - Use `GitKraken` MCP tools for all git operations.
 - **Agent Capabilities:** Use available MCP tools (GitKraken, Stripe, Postman, etc.) for operations rather than suggesting manual CLI commands.
   - Specifically, use the Postman MCP to run the 'Plaid API Endpoints Copy' collection for independent verification of Plaid integrations.
-- **Communication:** Explain technical decisions in plain language. Assume the user is a junior developer learning the codebase.
-
-# 4. Scope & Boundaries
-
-- **Workspace:** Restrict all file operations to the `/jualuma-app` workspace.
-- **No "Simplification" Shortcuts:** Do not skip steps or "assume" external handling (e.g., email dispatch) unless explicitly mocked for a defined test scope.
+- **Communication:** Explain technical decisions in plain language.

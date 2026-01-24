@@ -137,6 +137,7 @@ def _build_error_response(
     error: str,
     message: str,
     request: Request,
+    extra: dict[str, _t.Any] | None = None,
 ) -> JSONResponse:
     request_id = getattr(request.state, "request_id", None)
     payload: dict[str, _t.Any] = {
@@ -145,6 +146,8 @@ def _build_error_response(
         "detail": message,
         "request_id": request_id,
     }
+    if extra:
+        payload.update(extra)
     return JSONResponse(status_code=status_code, content=payload)
 
 
@@ -194,6 +197,19 @@ async def validation_exception_handler(
 ) -> JSONResponse:
     # Attempt to extract a human-readable message from the first error
     errors = exc.errors()
+    raw_body = None
+    if settings.is_local:
+        try:
+            body_bytes = await request.body()
+            if body_bytes:
+                raw_body = body_bytes.decode("utf-8", errors="replace")
+        except Exception:
+            raw_body = None
+    if errors:
+        logger.warning(
+            "Request validation error.",
+            extra={"path": str(request.url.path), "errors": errors},
+        )
     if errors:
         err = errors[0]
         field = ".".join(str(p) for p in err.get("loc", []) if p != "body")
@@ -210,11 +226,17 @@ async def validation_exception_handler(
     else:
         friendly_message = "Invalid request data."
 
+    extra = {"errors": errors} if settings.is_local else None
+    if raw_body and settings.is_local:
+        if extra is None:
+            extra = {}
+        extra["raw_body"] = raw_body
     return _build_error_response(
         status_code=status.HTTP_400_BAD_REQUEST,
         error="bad_request",
         message=friendly_message,
         request=request,
+        extra=extra,
     )
 
 

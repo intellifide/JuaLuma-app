@@ -59,6 +59,10 @@ export type UserProfile = {
   subscription_status?: string
   theme_pref?: string | null
   currency_pref?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  username?: string | null
+  display_name_pref?: string | null
   subscriptions?: Subscription[]
   household_member?: HouseholdMemberProfile | null
   ai_settings?: Record<string, unknown> | null
@@ -135,11 +139,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [refetchProfile])
 
   const signup = useCallback(
-    async (email: string, password: string, agreements: AgreementAcceptanceInput[] = []) => {
+    async (
+      email: string, 
+      password: string, 
+      agreements: AgreementAcceptanceInput[] = [],
+      first_name?: string,
+      last_name?: string,
+      username?: string,
+    ) => {
       setError(null)
       setLoading(true)
       try {
-        await signupWithFirebase(email, password, agreements)
+        await signupWithFirebase(email, password, agreements, first_name, last_name, username)
         await refetchProfile()
       } catch (err) {
         const message =

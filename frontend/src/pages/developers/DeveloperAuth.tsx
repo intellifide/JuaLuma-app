@@ -22,6 +22,9 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [acceptDeveloperAgreement, setAcceptDeveloperAgreement] = useState(false);
@@ -53,6 +56,18 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                 setError('You must accept all required legal agreements.');
                 return;
             }
+            if (!firstName.trim()) {
+                setError('First name is required.');
+                return;
+            }
+            if (!lastName.trim()) {
+                setError('Last name is required.');
+                return;
+            }
+            if (username.trim() && username.length < 3) {
+                setError('Username must be at least 3 characters if provided.');
+                return;
+            }
         }
 
         setSubmitting(true);
@@ -81,7 +96,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                         acceptance_method: 'clickwrap',
                     },
                 ];
-                await signup(email, password, agreements);
+                await signup(email, password, agreements, firstName.trim(), lastName.trim(), username.trim() || undefined);
                 
                 // 2. Register as Developer
                 // Note: signup auto-logs in, so we have a token
@@ -131,6 +146,47 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
 
                 <div className="glass-panel p-8 rounded-xl border border-white/10 bg-surface-1/50 backdrop-blur-xl">
                     <form className="space-y-4" onSubmit={onSubmit}>
+                        {mode === 'signup' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1">First Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="input w-full bg-black/20"
+                                            value={firstName}
+                                            onChange={e => setFirstName(e.target.value)}
+                                            placeholder="John"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1">Last Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="input w-full bg-black/20"
+                                            value={lastName}
+                                            onChange={e => setLastName(e.target.value)}
+                                            placeholder="Doe"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary mb-1">Username (Optional)</label>
+                                    <input
+                                        type="text"
+                                        className="input w-full bg-black/20"
+                                        value={username}
+                                        onChange={e => setUsername(e.target.value)}
+                                        placeholder="johndoe"
+                                        minLength={3}
+                                        maxLength={64}
+                                    />
+                                    <p className="text-xs text-text-muted mt-1">Must be at least 3 characters and unique</p>
+                                </div>
+                            </>
+                        )}
                         <div>
                             <label className="block text-sm font-medium text-text-secondary mb-1">Email</label>
                             <input
