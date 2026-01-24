@@ -61,33 +61,33 @@ export const TransactionTable = ({
           <tr>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-200 uppercase tracking-wider cursor-pointer"
+              className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer"
               onClick={() => handleSort('ts')}
             >
               Date
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-200 uppercase tracking-wider cursor-pointer"
+              className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer"
               onClick={() => handleSort('merchant')}
             >
               Merchant
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-200 uppercase tracking-wider cursor-pointer"
+              className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer"
               onClick={() => handleSort('category')}
             >
               Category
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-200 uppercase tracking-wider cursor-pointer"
+              className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer"
               onClick={() => handleSort('amount')}
             >
               Amount
             </th>
-            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-200 uppercase tracking-wider">
+            <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Actions
             </th>
           </tr>
@@ -103,7 +103,7 @@ export const TransactionTable = ({
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
+              <td colSpan={5} className="px-4 py-6 text-center text-sm text-text-muted">
                 No transactions yet.
               </td>
             </tr>
@@ -111,14 +111,14 @@ export const TransactionTable = ({
         </tbody>
       </table>
 
-      <div className="flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-slate-900/60">
-        <p className="text-sm text-slate-600 dark:text-slate-200">
+      <div className="flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700">
+        <p className="text-sm text-text-secondary">
           Page {page} of {totalPages}
         </p>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-50"
+            className="btn btn-outline text-sm"
             onClick={() => onPageChange?.(page - 1)}
             disabled={page <= 1}
           >
@@ -126,7 +126,7 @@ export const TransactionTable = ({
           </button>
           <button
             type="button"
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-50"
+            className="btn btn-outline text-sm"
             onClick={() => onPageChange?.(page + 1)}
             disabled={page >= totalPages}
           >

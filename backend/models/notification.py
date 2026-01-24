@@ -1,6 +1,6 @@
-"""NotificationPreference model definition."""
+"""Core Purpose: Persist notification preferences and in-app notifications."""
 
-# Updated 2025-12-08 17:45 CST by ChatGPT
+# Last Updated: 2026-01-23 22:39 CST
 
 import uuid
 from datetime import datetime, time
@@ -38,8 +38,18 @@ class NotificationPreference(Base):
         String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
     )
     event_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    channel_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    channel_sms: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    channel_email: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    channel_sms: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    channel_push: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    channel_in_app: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     quiet_hours_start: Mapped[time | None] = mapped_column(Time, nullable=True)
     quiet_hours_end: Mapped[time | None] = mapped_column(Time, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -63,12 +73,15 @@ class NotificationPreference(Base):
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-safe view of a notification preference."""
         return {
             "id": str(self.id),
             "uid": self.uid,
             "event_key": self.event_key,
             "channel_email": self.channel_email,
             "channel_sms": self.channel_sms,
+            "channel_push": self.channel_push,
+            "channel_in_app": self.channel_in_app,
             "quiet_hours_start": self.quiet_hours_start.isoformat() if self.quiet_hours_start else None,
             "quiet_hours_end": self.quiet_hours_end.isoformat() if self.quiet_hours_end else None,
             "created_at": self.created_at.isoformat(),

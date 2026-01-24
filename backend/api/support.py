@@ -1,3 +1,7 @@
+"""Core Purpose: Provide customer support ticket APIs."""
+
+# Last Updated: 2026-01-23 22:39 CST
+
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -124,7 +128,7 @@ def _create_resolution_notification_if_needed(
         .filter(
             LocalNotification.uid == ticket.user_id,
             LocalNotification.ticket_id == ticket.id,
-            LocalNotification.event_key == "ticket_resolved",
+            LocalNotification.event_key == "support_updates",
         )
         .first()
     )
@@ -138,9 +142,10 @@ def _create_resolution_notification_if_needed(
 
     return service.create_notification(
         user=user,
+        event_key="support_updates",
         title="Ticket Resolved",
         message=f"Your ticket '{ticket.subject}' has been resolved.",
-        send_email=True,
+        ticket_id=ticket.id,
     )
 
 
@@ -349,9 +354,10 @@ def add_message(
             if user_to_notify:
                 NotificationService(db).create_notification(
                     user=user_to_notify,
+                    event_key="support_updates",
                     title="New Support Message",
                     message=f"Agent replied to ticket '{ticket.subject}'.",
-                    send_email=True,
+                    ticket_id=ticket.id,
                 )
     except Exception as e:
         logger.error(f"Failed to notify user of reply: {e}")

@@ -1,7 +1,6 @@
-# Updated 2026-01-21 00:05 CST
+# Core Purpose: Centralized application configuration using pydantic-settings.
+# Last Updated: 2026-01-23 22:39 CST
 """
-Centralized application configuration using pydantic-settings.
-
 This module validates required environment variables at import time and exposes
 the shared `settings` instance for the rest of the backend to consume.
 """
@@ -135,6 +134,16 @@ class AppSettings(BaseSettings):
     # Testmail Config (for development testing)
     testmail_api_key: str | None = Field(default=None, alias="TESTMAIL_API_KEY")
     testmail_namespace: str | None = Field(default=None, alias="TESTMAIL_NAMESPACE")
+
+    # SMS Config
+    sms_provider: str | None = Field(default=None, alias="SMS_PROVIDER")
+    twilio_account_sid: str | None = Field(default=None, alias="TWILIO_ACCOUNT_SID")
+    twilio_auth_token: str | None = Field(default=None, alias="TWILIO_AUTH_TOKEN")
+    twilio_from_number: str | None = Field(default=None, alias="TWILIO_FROM_NUMBER")
+
+    # Push Config
+    push_provider: str | None = Field(default=None, alias="PUSH_PROVIDER")
+    fcm_server_key: str | None = Field(default=None, alias="FCM_SERVER_KEY")
 
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod

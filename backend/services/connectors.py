@@ -1,4 +1,4 @@
-# Updated 2026-01-23 12:00 CST
+# Updated 2026-01-23 15:00 CST
 """
 Connector abstraction and normalization for CEX/Web3 data sources.
 
@@ -296,7 +296,8 @@ class CcxtConnectorClient:
                     "counterparty": trade.get("side"),
                     "merchant_name": merchant_name,
                     "type": "trade",
-                    "direction": "inflow" if trade.get("side") == "buy" else "outflow",
+                    # Buy = money out (negative), Sell = money in (positive)
+                    "direction": "outflow" if trade.get("side") == "buy" else "inflow",
                     "raw": trade,
                 }
             )

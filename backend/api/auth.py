@@ -1,7 +1,8 @@
 # CORE PURPOSE: Authentication and identity endpoints for user access control.
-# LAST MODIFIED: 2026-01-23 12:00 CST
+# LAST MODIFIED: 2026-01-23 22:39 CST
 import logging
 import random
+import re
 import string
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
@@ -120,6 +121,7 @@ class ProfileUpdateRequest(BaseModel):
     last_name: str | None = Field(default=None, max_length=128, example="Doe")
     username: str | None = Field(default=None, max_length=64, example="johndoe")
     display_name_pref: str | None = Field(default=None, max_length=16, example="name")
+    phone_number: str | None = Field(default=None, max_length=32, example="+12125551234")
     # currency_pref: str | None = Field(
     #     default=None, min_length=3, max_length=3, example="USD"
     # )
@@ -130,7 +132,7 @@ class ProfileUpdateRequest(BaseModel):
         """Convert empty strings to None for optional fields."""
         logger.debug(f"ProfileUpdateRequest before validation - raw data: {data}")
         if isinstance(data, dict):
-            for field in ["username", "first_name", "last_name"]:
+            for field in ["username", "first_name", "last_name", "phone_number"]:
                 if field in data:
                     value = data[field]
                     # Convert empty string or whitespace-only string to None
@@ -159,6 +161,7 @@ class ProfileUpdateRequest(BaseModel):
                     "last_name",
                     "username",
                     "display_name_pref",
+                    "phone_number",
                 ]
             )
             logger.debug(
@@ -189,6 +192,11 @@ class ProfileUpdateRequest(BaseModel):
             if len(self.username) < 3:
                 logger.warning(f"Username validation failed: '{self.username}' is less than 3 characters")
                 raise ValueError("Username must be at least 3 characters long.")
+        if self.phone_number:
+            normalized = re.sub(r"\s+", "", self.phone_number)
+            if not re.match(r"^\+?[1-9]\d{7,14}$", normalized):
+                raise ValueError("phone_number must be in E.164 format.")
+            self.phone_number = normalized
         return self
 
     model_config = ConfigDict(
@@ -996,6 +1004,10 @@ def update_profile(
                 detail="display_name_pref must be either 'name' or 'username'.",
             )
         user.display_name_pref = payload.display_name_pref
+    if payload.phone_number is not None:
+        user.phone_number = payload.phone_number
+    elif payload.phone_number is None and user.phone_number:
+        user.phone_number = None
     # if payload.currency_pref is not None:
     #     user.currency_pref = payload.currency_pref.upper()
 

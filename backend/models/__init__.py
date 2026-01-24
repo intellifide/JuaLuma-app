@@ -1,7 +1,6 @@
-"""Aggregate exports for jualuma backend models.
+"""Core Purpose: Aggregate exports for jualuma backend models."""
 
-2025-12-10 13:50 CST - restored __init__ to expose Base/SessionLocal/models
-"""
+# Last Updated: 2026-01-23 22:39 CST
 
 from .account import Account
 from .ai_settings import AISettings
@@ -15,6 +14,8 @@ from .ledger import LedgerHotEssential, LedgerHotFree
 from .legal import LegalAgreementAcceptance
 from .manual_asset import ManualAsset
 from .notification import LocalNotification, NotificationPreference
+from .notification_device import NotificationDevice
+from .notification_settings import NotificationSettings
 from .payment import Payment
 from .payout import DeveloperPayout
 from .subscription import Subscription
@@ -47,6 +48,8 @@ __all__ = [
     "AISettings",
     "NotificationPreference",
     "LocalNotification",
+    "NotificationDevice",
+    "NotificationSettings",
     "AuditLog",
     "FeaturePreview",
     "LLMLog",

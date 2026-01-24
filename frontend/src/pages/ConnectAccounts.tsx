@@ -1,5 +1,5 @@
 // Core Purpose: UI for connecting various account types (Plaid, Web3, CEX) with household assignment logic.
-// Last Updated 2026-01-20 03:26 CST by Antigravity - consistent card layouts and button positioning
+// Last Updated 2026-01-24 00:20 CST
 import React, { useState, useEffect } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
@@ -336,11 +336,74 @@ const EditAccountModal = ({
   );
 };
 
+const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+  const { create } = useAccounts();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.show('Please enter an account name', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      await create({
+        accountType: 'manual',
+        accountName: name.trim(),
+      });
+      toast.show('Manual account created successfully', 'success');
+      onSuccess();
+    } catch (err) {
+      toast.show((err as ApiError).response?.data?.detail || 'Failed to create account', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
+      <div className="modal-content max-w-md">
+        <div className="modal-header">
+          <h3>Create Manual Account</h3>
+          <button onClick={onClose} className="modal-close">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="form-label text-sm">Account Name</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g. Cash, Savings, Petty Cash"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoFocus
+            />
+            <p className="text-xs text-text-secondary mt-1">
+              Use this account to track manual transactions and cash expenses.
+            </p>
+          </div>
+          <div className="flex gap-3 justify-end mt-8">
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Creating...' : 'Create Account'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const ConnectAccounts = () => {
   const { accounts, loading, remove, sync, update, refetch } = useAccounts();
   const toast = useToast();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showCexModal, setShowCexModal] = useState(false);
+  const [showManualAccountModal, setShowManualAccountModal] = useState(false);
   const [reconnectPayload, setReconnectPayload] = useState<{ exchange: string; name: string } | null>(null);
   const [editingAccount, setEditingAccount] = useState<{ id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null } | null>(null);
 
@@ -405,7 +468,7 @@ export const ConnectAccounts = () => {
             </div>
             <div className="card-footer">
               <button
-                className="btn btn-primary w-full md:w-auto"
+                className="btn btn-primary w-full md:w-[180px]"
                 type="button"
                 onClick={() => setShowWalletModal(true)}
               >
@@ -425,11 +488,32 @@ export const ConnectAccounts = () => {
             </div>
             <div className="card-footer">
               <button
-                className="btn btn-primary w-full md:w-auto"
+                className="btn btn-primary w-full md:w-[180px]"
                 type="button"
                 onClick={() => setShowCexModal(true)}
               >
                 Connect Exchange
+              </button>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="text-lg font-bold">Manual Accounts</h3>
+            </div>
+            <div className="card-body">
+              <p className="mb-4">Create manual accounts to track cash transactions and custom entries.</p>
+              <ul className="list-disc pl-6 mb-4 space-y-1">
+                <li>Required for manual transaction entries</li>
+                <li>Pro and Ultimate tier feature</li>
+              </ul>
+            </div>
+            <div className="card-footer">
+              <button
+                className="btn btn-primary w-full md:w-[180px]"
+                type="button"
+                onClick={() => setShowManualAccountModal(true)}
+              >
+                Create Manual Account
               </button>
             </div>
           </div>
@@ -463,6 +547,12 @@ export const ConnectAccounts = () => {
                 onClose={() => setEditingAccount(null)}
                 onSuccess={handleUpdate}
             />
+        )}
+        {showManualAccountModal && (
+          <AddManualAccountModal
+            onClose={() => setShowManualAccountModal(false)}
+            onSuccess={() => { setShowManualAccountModal(false); refetch(); }}
+          />
         )}
 
         <div className="glass-panel mb-12">

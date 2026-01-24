@@ -1,4 +1,4 @@
-# Updated 2026-01-23 12:00 CST
+# Updated 2026-01-23 15:00 CST
 import json
 import logging
 import re
@@ -735,6 +735,8 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
                         "raw": t.raw,
                         "on_chain_units": t.on_chain_units,
                         "on_chain_symbol": t.on_chain_symbol,
+                        "direction": t.direction,  # Pass direction for sign application
+                        "transaction_type": t.type,  # Pass type for better categorization
                     }
                     for t in normalized_txns
                 ],
@@ -757,10 +759,14 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
                     "currency": t.currency_code,
                     "category": ["Transfer"] if t.type == "transfer" else None,
                     "merchant_name": t.merchant_name,
+                    "direction": t.direction,  # Pass direction for sign application
+                    "transaction_type": t.type,  # Pass type for better categorization
                     "name": t.merchant_name or t.tx_id[:8],
                     "raw": t.raw,
                     "on_chain_units": t.on_chain_units,
                     "on_chain_symbol": t.on_chain_symbol,
+                    "direction": t.direction,  # Pass direction for sign application
+                    "transaction_type": t.type,  # Pass type for better categorization
                 }
                 for t in normalized_txns
             ],
@@ -837,6 +843,8 @@ def _sync_cex(account: Account, uid: str, start_date: date | None = None, end_da
                 "merchant_name": t.merchant_name,
                 # Use merchant_name (which now includes trading pair, side, amount, price) as description
                 "name": t.merchant_name or f"{t.counterparty} {t.type}",
+                "direction": t.direction,  # Pass direction for sign application
+                "transaction_type": t.type,  # Pass type for better categorization
             }
             for t in normalized_txns
         ]
@@ -897,7 +905,14 @@ def _clean_raw(txn_dict: dict) -> dict:
 def _process_single_transaction(
     db: Session, uid: str, account_id: uuid.UUID, txn: dict, currency_fallback: str
 ) -> bool:
-    """Returns True if a new transaction was created, False if updated."""
+    """
+    Returns True if a new transaction was created, False if updated.
+    
+    Applies sign to amount based on direction:
+    - CEX: buy = negative (money out), sell = positive (money in)
+    - Web3: outflow = negative, inflow = positive
+    - Traditional: negative amounts stay negative
+    """
     d = txn["date"]
     if isinstance(d, str):
         d = date.fromisoformat(d)
@@ -913,18 +928,42 @@ def _process_single_transaction(
         .first()
     )
 
-    # Auto categorization
+    # Apply sign based on direction for CEX and Web3 transactions
+    amount = txn["amount"]
+    direction = txn.get("direction")
+    transaction_type = txn.get("transaction_type")
+    
+    # For CEX and Web3, apply sign based on direction
+    if direction:
+        if direction == "outflow":
+            # Money leaving: make negative
+            amount = -abs(amount)
+        elif direction == "inflow":
+            # Money coming in: make positive
+            amount = abs(amount)
+    # For traditional accounts (Plaid), amount already has correct sign
+
+    # Auto categorization with improved logic for crypto
     merchant_key = txn.get("merchant_name") or txn.get("name")
     predicted_category = predict_category(db, uid, merchant_key)
     final_category = predicted_category
+    
+    # If no predicted category, use smarter defaults
     if not final_category:
         cats = txn.get("category")
         if isinstance(cats, list) and cats:
             final_category = cats[0]
+        # Improved categorization for crypto transactions
+        elif transaction_type == "trade":
+            final_category = "Investment"  # Trades are investment activity
+        elif transaction_type == "transfer" and direction == "inflow":
+            final_category = "Income"  # Incoming transfers could be income
+        elif transaction_type == "transfer" and direction == "outflow":
+            final_category = "Transfer"  # Outgoing transfers
 
     if existing:
         existing.ts = txn_ts
-        existing.amount = txn["amount"]
+        existing.amount = amount
         existing.currency = txn.get("currency") or existing.currency
         existing.category = final_category
         existing.merchant_name = txn.get("merchant_name")
@@ -937,7 +976,7 @@ def _process_single_transaction(
         uid=uid,
         account_id=account_id,
         ts=txn_ts,
-        amount=txn["amount"],
+        amount=amount,
         currency=txn.get("currency") or currency_fallback,
         category=final_category,
         merchant_name=txn.get("merchant_name"),

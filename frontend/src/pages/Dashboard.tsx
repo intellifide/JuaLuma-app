@@ -1,12 +1,12 @@
 // Core Purpose: Main dashboard for personal and household financial insights.
-// Last Modified: 2026-01-23 12:00 CST
+// Last Modified: 2026-01-24 01:20 CST
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
-import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { Account } from '../types';
 import { DataPoint } from '../services/analytics';
 import { useToast } from '../components/ui/Toast';
@@ -14,6 +14,7 @@ import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
+import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
 
 // Removed static BUDGET_CAP
 
@@ -67,6 +68,13 @@ const getDateRange = (timeframe: string) => {
       nwInterval = 'monthly';
       cfInterval = 'month';
       break;
+    case 'all':
+      return {
+        start: undefined,
+        end: undefined,
+        nwInterval: 'monthly',
+        cfInterval: 'month',
+      };
     default: // 1m default
       start.setDate(end.getDate() - 30);
   }
@@ -205,9 +213,12 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
 import { useBudget } from '../hooks/useBudget';
 
 const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'personal' | 'household' }) => {
+  const { user } = useAuth();
   const { budgets, saveBudget } = useBudget(scope);
   const [editing, setEditing] = useState<string | null>(null);
   const [tempAmount, setTempAmount] = useState<string>('');
+  const [tempThreshold, setTempThreshold] = useState<string>('80');
+  const [tempAlertEnabled, setTempAlertEnabled] = useState<boolean>(true);
   const [expanded, setExpanded] = useState(false);
 
   // Budgets are only returned if they exist, so activeBudgets is just 'budgets'
@@ -232,14 +243,30 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
     return matchingBudgets.reduce((sum, b) => sum + b.amount, 0);
   };
 
+  const getOwnBudget = (cat: string) => {
+    if (!user) return budgets.find(b => b.category === cat);
+    return budgets.find(b => b.category === cat && b.uid === user.uid);
+  };
+
   const handleEdit = (cat: string) => {
+    const ownBudget = getOwnBudget(cat);
     setEditing(cat);
     setTempAmount(getBudget(cat)?.toString() || '');
+    setTempThreshold(
+      ownBudget ? String(Math.round(ownBudget.alert_threshold_percent * 100)) : '80'
+    );
+    setTempAlertEnabled(ownBudget ? ownBudget.alert_enabled : true);
   };
 
   const handleSave = (cat: string) => {
     const val = tempAmount === '' ? null : parseFloat(tempAmount);
-    saveBudget(cat, val);
+    const thresholdPercent = tempThreshold === '' ? 80 : parseFloat(tempThreshold);
+    saveBudget(
+      cat,
+      val,
+      Math.min(100, Math.max(0, thresholdPercent)) / 100,
+      tempAlertEnabled
+    );
     setEditing(null);
   };
 
@@ -267,7 +294,7 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
               <div key={cat} className="p-4 border border-white/10 rounded-lg flex flex-col gap-2 relative bg-transparent hover:bg-white/5 transition-colors">
                 <span className="font-medium text-sm text-text-muted">{cat}</span>
                 {editing === cat ? (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2">
                     <input
                       type="number"
                       className="input py-1 px-2 text-sm w-full bg-transparent border border-white/20 rounded text-text-primary"
@@ -276,7 +303,26 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
                       placeholder="No Limit"
                       autoFocus
                     />
-                    <button onClick={() => handleSave(cat)} className="btn btn-sm btn-primary">✓</button>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        className="input py-1 px-2 text-xs w-24 bg-transparent border border-white/20 rounded text-text-primary"
+                        value={tempThreshold}
+                        onChange={e => setTempThreshold(e.target.value)}
+                        min="1"
+                        max="100"
+                      />
+                      <span className="text-xs text-text-muted">% alert</span>
+                      <label className="text-xs text-text-muted flex items-center gap-2 ml-auto">
+                        <input
+                          type="checkbox"
+                          checked={tempAlertEnabled}
+                          onChange={(e) => setTempAlertEnabled(e.target.checked)}
+                        />
+                        Enabled
+                      </label>
+                      <button onClick={() => handleSave(cat)} className="btn btn-sm btn-primary">✓</button>
+                    </div>
                   </div>
                 ) : (
                   <div onClick={() => handleEdit(cat)} className="cursor-pointer rounded -ml-1 flex items-center gap-2 group">
@@ -297,11 +343,7 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
 };
 
 
-const CATEGORIES = [
-  "Housing", "Transportation", "Food", "Utilities", "Insurance", "Healthcare",
-  "Savings", "Personal", "Entertainment", "Miscellaneous", "Income", "Transfer",
-  "Groceries", "Dining", "Travel", "Education", "Shopping", "Credit Card Payment", "Investment"
-];
+const CATEGORIES = TRANSACTION_CATEGORIES;
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
@@ -319,17 +361,23 @@ export default function Dashboard() {
 
   const [timeframe, setTimeframe] = useState('1m');
   const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
+  const { start: transactionsStart, end: transactionsEnd } = useMemo(
+    () => getDateRange('all'),
+    [],
+  );
   const [transactionsPage, setTransactionsPage] = useState(1);
   const [transactionsPageSize, setTransactionsPageSize] = useState(10);
   const { transactions, total: transactionsTotal, refetch: refetchTransactions, updateOne } = useTransactions({
     filters: {
       scope: dashboardScope,
-      from: start,
-      to: end,
+      from: transactionsStart,
+      to: transactionsEnd,
       page: transactionsPage,
       pageSize: transactionsPageSize
     }
   });
+  const [notesHoverId, setNotesHoverId] = useState<string | null>(null);
+  const notesHoverTimeout = useRef<number | null>(null);
   const { budgets } = useBudget(dashboardScope);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
   const toast = useToast();
@@ -588,9 +636,6 @@ export default function Dashboard() {
     ? Math.min(transactionsTotal, (transactionsPage - 1) * transactionsPageSize + transactions.length)
     : 0;
 
-  const handlePlaidSuccess = useCallback(async () => {
-    await Promise.all([refetchAccounts(), refetchTransactions()]);
-  }, [refetchAccounts, refetchTransactions]);
 
   // Filter Accounts
   const filteredAccounts = accounts.filter(acc => {
@@ -616,7 +661,6 @@ export default function Dashboard() {
             <span className="block text-sm text-text-muted">Total Balance ({dashboardScope === 'household' ? 'Family' : 'Personal'})</span>
             <span className="block text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
           </div>
-          <PlaidLinkButton onSuccess={handlePlaidSuccess} />
         </div>
       </div>
 
@@ -626,7 +670,7 @@ export default function Dashboard() {
           <div className="section-timeframe-wrapper">
             <span className="section-timeframe-label">View Period:</span>
             <div className="timeframe-selector" role="group" aria-label="Select time period">
-              {['1w', '1m', '3m', '6m', '1y', 'ytd'].map((tf) => (
+              {['1w', '1m', '3m', '6m', '1y', 'ytd', 'all'].map((tf) => (
                 <button
                   key={tf}
                   className={`timeframe-btn ${timeframe === tf ? 'active' : ''}`}
@@ -1177,7 +1221,35 @@ export default function Dashboard() {
                 recentTransactions.map(txn => (
                   <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-3 text-sm">{new Date(txn.ts).toLocaleDateString()}</td>
-                    <td className="py-3 font-medium text-text-primary">{txn.description}</td>
+                    <td className="py-3 font-medium text-text-primary">
+                      <div
+                        className="relative inline-flex items-center"
+                        onMouseEnter={() => {
+                          if (!txn.description) return;
+                          if (notesHoverTimeout.current) {
+                            window.clearTimeout(notesHoverTimeout.current);
+                          }
+                          notesHoverTimeout.current = window.setTimeout(() => {
+                            setNotesHoverId(txn.id);
+                          }, 2000);
+                        }}
+                        onMouseLeave={() => {
+                          if (notesHoverTimeout.current) {
+                            window.clearTimeout(notesHoverTimeout.current);
+                            notesHoverTimeout.current = null;
+                          }
+                          setNotesHoverId(null);
+                        }}
+                      >
+                        <span>{txn.merchantName || txn.description || '—'}</span>
+                        {txn.description && notesHoverId === txn.id && (
+                          <div className="absolute left-0 top-full mt-2 w-64 rounded-lg border border-white/10 bg-surface-1/90 p-3 text-xs text-text-secondary shadow-xl backdrop-blur z-50">
+                            <p className="text-xs font-semibold text-text-primary mb-1">Notes</p>
+                            <p className="text-xs text-text-secondary">{txn.description}</p>
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3">
                       <select
                         className="bg-transparent border-none text-sm text-royal-purple font-medium focus:ring-0 cursor-pointer"

@@ -1,4 +1,5 @@
-// Updated 2025-12-08 20:31 CST by ChatGPT
+// Core Purpose: Provide authentication context and profile state.
+// Last Updated: 2026-01-23 22:39 CST
 import {
   ReactNode,
   createContext,
@@ -63,6 +64,7 @@ export type UserProfile = {
   last_name?: string | null
   username?: string | null
   display_name_pref?: string | null
+  phone_number?: string | null
   subscriptions?: Subscription[]
   household_member?: HouseholdMemberProfile | null
   ai_settings?: Record<string, unknown> | null

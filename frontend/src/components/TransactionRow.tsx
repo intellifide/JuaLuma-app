@@ -1,15 +1,17 @@
-// Updated 2025-12-08 21:49 CST by ChatGPT
+// Core Purpose: Render a single transaction row with edit actions.
+// Last Updated: 2026-01-24 01:12 CST
 import { useEffect, useState } from 'react'
 import { Transaction } from '../types'
+import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
 
 type TransactionRowProps = {
   transaction: Transaction
   categories?: string[]
-  onUpdate?: (id: string, updates: { category?: string; description?: string }) => Promise<void> | void
+  onUpdate?: (id: string, updates?: { category?: string; description?: string }) => Promise<void> | void
   onDelete?: (id: string) => Promise<void> | void
 }
 
-const defaultCategories = ['Income', 'Bills', 'Food', 'Transport', 'Shopping', 'Health', 'Travel', 'Other']
+const defaultCategories = TRANSACTION_CATEGORIES
 
 const formatDate = (iso: string) => {
   const date = new Date(iso)
@@ -54,13 +56,13 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
   }
 
   return (
-    <tr className="hover:bg-slate-50">
-      <td className="px-4 py-3 text-sm text-slate-600">{formatDate(transaction.ts)}</td>
-      <td className="px-4 py-3 text-sm text-slate-800">{transaction.merchantName || transaction.description || '—'}</td>
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+      <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(transaction.ts)}</td>
+      <td className="px-4 py-3 text-sm text-text-primary">{transaction.merchantName || transaction.description || '—'}</td>
       <td className="px-4 py-3 text-sm">
         <div className="flex items-center gap-2">
           <select
-            className="rounded-lg border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-royal-purple"
+            className="form-select px-2 py-1 text-sm"
             value={category}
             disabled={pending}
             onChange={(e) => handleCategoryChange(e.target.value)}
@@ -84,7 +86,7 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">
+      <td className="px-4 py-3 text-right text-sm font-semibold text-text-primary">
         {formatAmount(transaction.amount, transaction.currency)}
       </td>
       <td className="px-4 py-3 text-right">
@@ -92,19 +94,30 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
           <button
             type="button"
             className="text-royal-purple hover:underline"
-            onClick={() => onUpdate?.(transaction.id, {})}
+            onClick={() => onUpdate?.(transaction.id)}
             disabled={pending}
           >
             Edit
           </button>
-          <button
-            type="button"
-            className="text-rose-500 hover:underline"
-            onClick={() => onDelete?.(transaction.id)}
-            disabled={pending}
-          >
-            Delete
-          </button>
+          {transaction.isManual && (
+            <button
+              type="button"
+              className="text-rose-500 hover:underline"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete this transaction?')) {
+                  onDelete?.(transaction.id)
+                }
+              }}
+              disabled={pending}
+            >
+              Delete
+            </button>
+          )}
+          {!transaction.isManual && (
+            <span className="text-slate-400 text-xs" title="Automated transactions cannot be deleted">
+              Auto
+            </span>
+          )}
         </div>
       </td>
     </tr>

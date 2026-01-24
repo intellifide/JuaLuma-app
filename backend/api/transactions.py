@@ -1,6 +1,6 @@
 """Transaction API endpoints."""
 
-# Updated 2026-01-23 12:00 CST
+# Updated 2026-01-24 00:15 CST
 
 import uuid
 from datetime import UTC, date, datetime
@@ -68,13 +68,45 @@ class TransactionResponse(BaseModel):
     )
 
 
+class TransactionCreate(BaseModel):
+    """Schema for creating manual transactions."""
+    account_id: uuid.UUID
+    ts: datetime
+    amount: Decimal = Field(..., description="Transaction amount (positive for income, negative for expenses)")
+    currency: str = Field(default="USD", max_length=16)
+    category: str | None = Field(default=None, max_length=64)
+    merchant_name: str | None = Field(default=None, max_length=256)
+    description: str | None = Field(default=None, max_length=512)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "account_id": "a41d9d49-7b20-4c30-a949-4a4b0b0302ea",
+                    "ts": "2025-12-08T10:00:00Z",
+                    "amount": -120.50,
+                    "currency": "USD",
+                    "category": "Shopping",
+                    "merchant_name": "Amazon",
+                    "description": "Holiday gifts",
+                }
+            ]
+        }
+    )
+
+
 class TransactionUpdate(BaseModel):
+    """Schema for updating transactions. For manual transactions, all fields can be updated."""
     category: str | None = Field(default=None, max_length=64)
     description: str | None = Field(default=None, max_length=512)
+    # Additional fields for manual transactions
+    amount: Decimal | None = Field(default=None, description="Only editable for manual transactions")
+    merchant_name: str | None = Field(default=None, max_length=256, description="Only editable for manual transactions")
+    ts: datetime | None = Field(default=None, description="Only editable for manual transactions")
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "TransactionUpdate":
-        if self.category is None and self.description is None:
+        if all(v is None for v in [self.category, self.description, self.amount, self.merchant_name, self.ts]):
             raise ValueError("Provide at least one field to update.")
         return self
 
@@ -419,6 +451,97 @@ def search_transactions(
     )
 
 
+@router.post("", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
+def create_manual_transaction(
+    payload: TransactionCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TransactionResponse:
+    """
+    Create a manual transaction entry.
+    
+    Restricted to Pro and Ultimate tier subscribers.
+
+    - **account_id**: UUID of the account to associate this transaction with.
+    - **ts**: Transaction timestamp.
+    - **amount**: Transaction amount (positive for income, negative for expenses).
+    - **currency**: Currency code (default: USD).
+    - **category**: Optional category.
+    - **merchant_name**: Optional merchant name.
+    - **description**: Optional description.
+    """
+    # Check subscription tier - manual transactions are Pro/Ultimate only
+    from backend.api.accounts import _get_subscription_plan
+    plan = _get_subscription_plan(db, current_user.uid)
+    if plan not in ["pro", "ultimate"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manual transaction entry is only available for Pro and Ultimate tier subscribers.",
+        )
+    
+    # Verify account belongs to user and is a manual account
+    from backend.models import Account
+    
+    account = (
+        db.query(Account)
+        .filter(
+            Account.id == payload.account_id,
+            Account.uid == current_user.uid,
+        )
+        .first()
+    )
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The specified account could not be found.",
+        )
+    
+    if account.account_type != "manual":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Manual transactions can only be created for manual accounts.",
+        )
+
+    # Create the transaction
+    txn = Transaction(
+        uid=current_user.uid,
+        account_id=payload.account_id,
+        ts=payload.ts,
+        amount=payload.amount,
+        currency=payload.currency,
+        category=payload.category,
+        merchant_name=payload.merchant_name,
+        description=payload.description,
+        external_id=None,  # Manual transactions don't have external IDs
+        is_manual=True,
+        archived=False,
+        raw_json={"source": "manual", "created_by": current_user.uid},
+    )
+    
+    db.add(txn)
+    
+    # Create audit log
+    audit = AuditLog(
+        actor_uid=current_user.uid,
+        target_uid=current_user.uid,
+        action="transaction_manual_created",
+        source="backend",
+        metadata_json={
+            "transaction_id": str(txn.id),
+            "account_id": str(payload.account_id),
+            "amount": float(payload.amount),
+            "currency": payload.currency,
+        },
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(txn)
+
+    invalidate_analytics_cache(current_user.uid)
+
+    return txn
+
+
 @router.get("/{transaction_id}", response_model=TransactionResponse)
 def get_transaction(
     transaction_id: uuid.UUID,
@@ -509,7 +632,12 @@ def update_transaction(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TransactionResponse:
-    """Update category/description for a transaction."""
+    """
+    Update transaction fields.
+    
+    For manual transactions, all fields (amount, merchant_name, ts, category, description) can be updated.
+    For automated transactions, only category and description can be updated.
+    """
     txn = (
         db.query(Transaction)
         .filter(Transaction.id == transaction_id, Transaction.uid == current_user.uid)
@@ -520,15 +648,51 @@ def update_transaction(
             status_code=status.HTTP_404_NOT_FOUND, detail="The specified transaction could not be found."
         )
 
-    old_category = txn.category
-    old_description = txn.description
+    # Track old values for audit log
+    old_values = {
+        "category": txn.category,
+        "description": txn.description,
+        "amount": float(txn.amount) if txn.is_manual else None,
+        "merchant_name": txn.merchant_name if txn.is_manual else None,
+        "ts": txn.ts.isoformat() if txn.is_manual else None,
+    }
 
+    # Update fields that are always editable
     if payload.category is not None:
         txn.category = payload.category
     if payload.description is not None:
         txn.description = payload.description
 
+    # For manual transactions, allow updating additional fields
+    if txn.is_manual:
+        if payload.amount is not None:
+            txn.amount = payload.amount
+        if payload.merchant_name is not None:
+            txn.merchant_name = payload.merchant_name
+        if payload.ts is not None:
+            txn.ts = payload.ts
+    else:
+        # Reject attempts to edit restricted fields for automated transactions
+        if payload.amount is not None or payload.merchant_name is not None or payload.ts is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Amount, merchant name, and timestamp can only be edited for manual transactions.",
+            )
+
     db.add(txn)
+    
+    # Build audit metadata
+    new_values = {
+        "category": txn.category,
+        "description": txn.description,
+    }
+    if txn.is_manual:
+        new_values.update({
+            "amount": float(txn.amount),
+            "merchant_name": txn.merchant_name,
+            "ts": txn.ts.isoformat(),
+        })
+    
     audit = AuditLog(
         actor_uid=current_user.uid,
         target_uid=current_user.uid,
@@ -536,10 +700,9 @@ def update_transaction(
         source="backend",
         metadata_json={
             "transaction_id": str(txn.id),
-            "old_category": old_category,
-            "new_category": txn.category,
-            "old_description": old_description,
-            "new_description": txn.description,
+            "is_manual": txn.is_manual,
+            "old_values": old_values,
+            "new_values": new_values,
         },
     )
     db.add(audit)

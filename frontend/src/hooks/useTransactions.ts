@@ -3,6 +3,7 @@ import useSWR from 'swr'
 import { PaginatedResponse, Transaction, TransactionFilters } from '../types'
 import {
   bulkUpdateTransactions,
+  createTransaction,
   deleteTransaction,
   getTransactions,
   searchTransactions,
@@ -68,6 +69,22 @@ export const useTransactions = (options?: UseTransactionsOptions) => {
     )
   }
 
+  const create = async (payload: Parameters<typeof createTransaction>[0]) => {
+    const newTransaction = await createTransaction(payload)
+    mutate(
+      (prev) =>
+        prev
+          ? {
+              ...prev,
+              data: [newTransaction, ...prev.data],
+              total: prev.total + 1,
+            }
+          : { data: [newTransaction], total: 1, page: 1, pageSize: 50 },
+      { revalidate: false },
+    )
+    return newTransaction
+  }
+
   return {
     transactions: data?.data ?? [],
     total: data?.total ?? 0,
@@ -79,5 +96,6 @@ export const useTransactions = (options?: UseTransactionsOptions) => {
     updateOne,
     bulkUpdate,
     remove,
+    create,
   }
 }

@@ -126,13 +126,21 @@ export const getTransaction = async (id: string): Promise<Transaction> => {
 
 export const updateTransaction = async (
   id: string,
-  payload: TransactionUpdatePayload,
+  payload: TransactionUpdatePayload & {
+    amount?: number
+    merchantName?: string | null
+    ts?: string
+  },
 ): Promise<Transaction> => {
   try {
-    const { data } = await api.patch(`/transactions/${id}`, {
-      category: payload.category,
-      description: payload.description,
-    })
+    const updateData: Record<string, unknown> = {}
+    if (payload.category !== undefined) updateData.category = payload.category
+    if (payload.description !== undefined) updateData.description = payload.description
+    if (payload.amount !== undefined) updateData.amount = payload.amount
+    if (payload.merchantName !== undefined) updateData.merchant_name = payload.merchantName
+    if (payload.ts !== undefined) updateData.ts = payload.ts
+    
+    const { data } = await api.patch(`/transactions/${id}`, updateData)
     return mapTransaction(data)
   } catch (error) {
     handleError(error)
@@ -163,6 +171,32 @@ export const deleteTransaction = async (id: string): Promise<void> => {
     await api.delete(`/transactions/${id}`)
   } catch (error) {
     handleError(error)
+  }
+}
+
+export const createTransaction = async (payload: {
+  accountId: string
+  ts: string
+  amount: number
+  currency?: string
+  category?: string | null
+  merchantName?: string | null
+  description?: string | null
+}): Promise<Transaction> => {
+  try {
+    const { data } = await api.post('/transactions', {
+      account_id: payload.accountId,
+      ts: payload.ts,
+      amount: payload.amount,
+      currency: payload.currency || 'USD',
+      category: payload.category,
+      merchant_name: payload.merchantName,
+      description: payload.description,
+    })
+    return mapTransaction(data)
+  } catch (error) {
+    handleError(error)
+    throw error
   }
 }
 

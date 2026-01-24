@@ -1,5 +1,5 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
-// Last Updated 2026-01-23 12:00 CST
+// Last Updated 2026-01-24 01:20 CST
 
 import React, { useCallback, useEffect, useState, FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -19,6 +19,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   const [lastName, setLastName] = useState(profile?.last_name ?? '');
   const [username, setUsername] = useState(profile?.username ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number ?? '');
   const [displayNamePref, setDisplayNamePref] = useState(profile?.display_name_pref ?? 'name');
   const [saving, setSaving] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
       setFirstName(profile.first_name ?? '');
       setLastName(profile.last_name ?? '');
       setUsername(profile.username ?? '');
+      setPhoneNumber(profile.phone_number ?? '');
       setDisplayNamePref(profile.display_name_pref ?? 'name');
     }
   }, [profile]);
@@ -62,6 +64,11 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
       }
       if (username.trim()) {
         payload.username = username.trim();
+      }
+      if (phoneNumber.trim()) {
+        payload.phone_number = phoneNumber.trim();
+      } else if (profile?.phone_number) {
+        payload.phone_number = null;
       }
       if (displayNamePref) {
         payload.display_name_pref = displayNamePref;
@@ -218,6 +225,23 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
         <p className="text-xs text-text-muted mt-1">Email cannot be changed from this page.</p>
       </div>
 
+      <div>
+        <label htmlFor="profile-phone" className="block text-sm font-medium text-text-secondary mb-1">
+          SMS Phone Number
+        </label>
+        <input
+          type="tel"
+          id="profile-phone"
+          className="form-input w-full"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="+12125551234"
+        />
+        <p className="text-xs text-text-muted mt-1">
+          Used for SMS alerts. Enter in E.164 format (example: +12125551234).
+        </p>
+      </div>
+
       <button
         type="submit"
         disabled={saving}
@@ -232,6 +256,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
 // Render the account settings experience with tabbed sections.
 export const Settings = () => {
   const { user, profile } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('profile');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -249,27 +274,67 @@ export const Settings = () => {
       budgetThreshold: true,
       recurringBill: true,
       syncFailure: true,
-      weeklyDigest: false,
+      weeklyDigest: true,
+      supportUpdates: true,
+      subscriptionUpdates: true,
     },
     sms: {
-      lowBalance: false,
-      largeTransaction: false,
+      lowBalance: true,
+      largeTransaction: true,
+      budgetThreshold: true,
+      recurringBill: true,
+      syncFailure: true,
+      weeklyDigest: true,
+      supportUpdates: true,
+      subscriptionUpdates: true,
+    },
+    push: {
+      lowBalance: true,
+      largeTransaction: true,
+      budgetThreshold: true,
+      recurringBill: true,
+      syncFailure: true,
+      weeklyDigest: true,
+      supportUpdates: true,
+      subscriptionUpdates: true,
+    },
+    inApp: {
+      lowBalance: true,
+      largeTransaction: true,
+      budgetThreshold: true,
+      recurringBill: true,
+      syncFailure: true,
+      weeklyDigest: true,
+      supportUpdates: true,
+      subscriptionUpdates: true,
+    },
+    quietHours: {
+      start: '22:00',
+      end: '08:00',
+      timezone: 'UTC',
+    },
+    triggers: {
+      lowBalanceThreshold: '100',
+      largeTransactionThreshold: '500',
     },
     privacy: {
       dataSharing: false,
-      marketingEmails: false,
+      marketingEmails: true,
     }
   });
+
+  const [notificationSaving, setNotificationSaving] = useState(false);
 
   // Load Settings from Backend
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const [prefs, userProfile] = await Promise.all([
+        const [prefs, userProfile, notificationSettings] = await Promise.all([
           settingsService.getNotificationPreferences(),
           // Use auth profile if available, but for data_sharing_consent we might need fresh fetch or check if profile includes it
           // Assuming profile from useAuth is up to date or we fetch /me
-          apiFetch('/users/me').then(res => res.json()) 
+          apiFetch('/users/me').then(res => res.json()),
+          settingsService.getNotificationSettings(),
         ]);
 
         const newSettings = { ...settings };
@@ -296,6 +361,16 @@ export const Settings = () => {
              newSettings.sms[camelKey as keyof typeof newSettings.sms] = p.channel_sms;
            }
 
+           // Handle known push categories
+           if (camelKey in newSettings.push) {
+             newSettings.push[camelKey as keyof typeof newSettings.push] = p.channel_push;
+           }
+
+           // Handle known in-app categories
+           if (camelKey in newSettings.inApp) {
+             newSettings.inApp[camelKey as keyof typeof newSettings.inApp] = p.channel_in_app;
+           }
+
            // Handle marketing emails (mapped to privacy in UI)
            if (p.event_key === 'marketing_updates') {
              newSettings.privacy.marketingEmails = p.channel_email;
@@ -305,6 +380,20 @@ export const Settings = () => {
         // Map Privacy Settings
         if (userProfile.data_sharing_consent !== undefined) {
           newSettings.privacy.dataSharing = userProfile.data_sharing_consent;
+        }
+
+        if (notificationSettings) {
+          newSettings.quietHours.start = notificationSettings.quiet_hours_start?.slice(0, 5) ?? '22:00';
+          newSettings.quietHours.end = notificationSettings.quiet_hours_end?.slice(0, 5) ?? '08:00';
+          newSettings.quietHours.timezone = notificationSettings.timezone || 'UTC';
+          newSettings.triggers.lowBalanceThreshold =
+            notificationSettings.low_balance_threshold !== null && notificationSettings.low_balance_threshold !== undefined
+              ? String(notificationSettings.low_balance_threshold)
+              : newSettings.triggers.lowBalanceThreshold;
+          newSettings.triggers.largeTransactionThreshold =
+            notificationSettings.large_transaction_threshold !== null && notificationSettings.large_transaction_threshold !== undefined
+              ? String(notificationSettings.large_transaction_threshold)
+              : newSettings.triggers.largeTransactionThreshold;
         }
 
         setSettings(newSettings);
@@ -345,6 +434,34 @@ export const Settings = () => {
     }
   };
 
+  // Update push notification preferences in the backend and local state.
+  const handlePushToggle = async (key: keyof typeof settings.push, value: boolean) => {
+    setSettings(s => ({ ...s, push: { ...s.push, [key]: value } }));
+    try {
+      await settingsService.updateNotificationPreference({
+        event_key: toSnakeCase(key),
+        channel_push: value
+      });
+    } catch (e) {
+      console.error(e);
+      setSettings(s => ({ ...s, push: { ...s.push, [key]: !value } }));
+    }
+  };
+
+  // Update in-app notification preferences in the backend and local state.
+  const handleInAppToggle = async (key: keyof typeof settings.inApp, value: boolean) => {
+    setSettings(s => ({ ...s, inApp: { ...s.inApp, [key]: value } }));
+    try {
+      await settingsService.updateNotificationPreference({
+        event_key: toSnakeCase(key),
+        channel_in_app: value
+      });
+    } catch (e) {
+      console.error(e);
+      setSettings(s => ({ ...s, inApp: { ...s.inApp, [key]: !value } }));
+    }
+  };
+
   const handlePrivacyToggle = async (key: keyof typeof settings.privacy, value: boolean) => {
     setSettings(s => ({ ...s, privacy: { ...s.privacy, [key]: value } }));
     try {
@@ -359,6 +476,31 @@ export const Settings = () => {
     } catch (e) {
       console.error(e);
       setSettings(s => ({ ...s, privacy: { ...s.privacy, [key]: !value } }));
+    }
+  };
+
+  // Persist quiet hours to the backend notification settings.
+  const handleNotificationSave = async () => {
+    setNotificationSaving(true);
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || settings.quietHours.timezone;
+      await settingsService.updateNotificationSettings({
+        timezone,
+        quiet_hours_start: settings.quietHours.start ? `${settings.quietHours.start}:00` : null,
+        quiet_hours_end: settings.quietHours.end ? `${settings.quietHours.end}:00` : null,
+        low_balance_threshold: settings.triggers.lowBalanceThreshold
+          ? Number(settings.triggers.lowBalanceThreshold)
+          : null,
+        large_transaction_threshold: settings.triggers.largeTransactionThreshold
+          ? Number(settings.triggers.largeTransactionThreshold)
+          : null,
+      });
+      toast.show('Notification settings updated', 'success');
+    } catch (e) {
+      console.error(e);
+      toast.show('Failed to update notification settings', 'error');
+    } finally {
+      setNotificationSaving(false);
     }
   };
 
@@ -883,7 +1025,7 @@ export const Settings = () => {
           <div id="notifications-tab" role="tabpanel">
             <div className="glass-panel">
               <h2 className="mb-6">Notification Preferences</h2>
-              <form onSubmit={(e) => e.preventDefault()}>
+              <form onSubmit={(e) => { e.preventDefault(); handleNotificationSave(); }}>
                 <h3 className="mt-6 mb-4 font-semibold">Email Notifications</h3>
                 <div className="space-y-4">
                   <Switch
@@ -916,6 +1058,16 @@ export const Settings = () => {
                     onChange={(c) => handleEmailToggle('weeklyDigest', c)}
                     label="Weekly financial digest"
                   />
+                  <Switch
+                    checked={settings.email.supportUpdates}
+                    onChange={(c) => handleEmailToggle('supportUpdates', c)}
+                    label="Support ticket updates"
+                  />
+                  <Switch
+                    checked={settings.email.subscriptionUpdates}
+                    onChange={(c) => handleEmailToggle('subscriptionUpdates', c)}
+                    label="Subscription updates"
+                  />
                 </div>
 
                 <h3 className="mt-8 mb-4 font-semibold">SMS Notifications</h3>
@@ -930,21 +1082,213 @@ export const Settings = () => {
                     onChange={(c) => handleSmsToggle('largeTransaction', c)}
                     label="Large transaction notifications"
                   />
+                  <Switch
+                    checked={settings.sms.budgetThreshold}
+                    onChange={(c) => handleSmsToggle('budgetThreshold', c)}
+                    label="Budget threshold alerts"
+                  />
+                  <Switch
+                    checked={settings.sms.recurringBill}
+                    onChange={(c) => handleSmsToggle('recurringBill', c)}
+                    label="Upcoming recurring bills"
+                  />
+                  <Switch
+                    checked={settings.sms.syncFailure}
+                    onChange={(c) => handleSmsToggle('syncFailure', c)}
+                    label="Sync failure notifications"
+                  />
+                  <Switch
+                    checked={settings.sms.weeklyDigest}
+                    onChange={(c) => handleSmsToggle('weeklyDigest', c)}
+                    label="Weekly financial digest"
+                  />
+                  <Switch
+                    checked={settings.sms.supportUpdates}
+                    onChange={(c) => handleSmsToggle('supportUpdates', c)}
+                    label="Support ticket updates"
+                  />
+                  <Switch
+                    checked={settings.sms.subscriptionUpdates}
+                    onChange={(c) => handleSmsToggle('subscriptionUpdates', c)}
+                    label="Subscription updates"
+                  />
+                </div>
+
+                <h3 className="mt-8 mb-4 font-semibold">Push Notifications</h3>
+                <div className="space-y-4">
+                  <Switch
+                    checked={settings.push.lowBalance}
+                    onChange={(c) => handlePushToggle('lowBalance', c)}
+                    label="Low balance alerts"
+                  />
+                  <Switch
+                    checked={settings.push.largeTransaction}
+                    onChange={(c) => handlePushToggle('largeTransaction', c)}
+                    label="Large transaction notifications"
+                  />
+                  <Switch
+                    checked={settings.push.budgetThreshold}
+                    onChange={(c) => handlePushToggle('budgetThreshold', c)}
+                    label="Budget threshold alerts"
+                  />
+                  <Switch
+                    checked={settings.push.recurringBill}
+                    onChange={(c) => handlePushToggle('recurringBill', c)}
+                    label="Upcoming recurring bills"
+                  />
+                  <Switch
+                    checked={settings.push.syncFailure}
+                    onChange={(c) => handlePushToggle('syncFailure', c)}
+                    label="Sync failure notifications"
+                  />
+                  <Switch
+                    checked={settings.push.weeklyDigest}
+                    onChange={(c) => handlePushToggle('weeklyDigest', c)}
+                    label="Weekly financial digest"
+                  />
+                  <Switch
+                    checked={settings.push.supportUpdates}
+                    onChange={(c) => handlePushToggle('supportUpdates', c)}
+                    label="Support ticket updates"
+                  />
+                  <Switch
+                    checked={settings.push.subscriptionUpdates}
+                    onChange={(c) => handlePushToggle('subscriptionUpdates', c)}
+                    label="Subscription updates"
+                  />
+                </div>
+
+                <h3 className="mt-8 mb-4 font-semibold">In-App Notifications</h3>
+                <div className="space-y-4">
+                  <Switch
+                    checked={settings.inApp.lowBalance}
+                    onChange={(c) => handleInAppToggle('lowBalance', c)}
+                    label="Low balance alerts"
+                  />
+                  <Switch
+                    checked={settings.inApp.largeTransaction}
+                    onChange={(c) => handleInAppToggle('largeTransaction', c)}
+                    label="Large transaction notifications"
+                  />
+                  <Switch
+                    checked={settings.inApp.budgetThreshold}
+                    onChange={(c) => handleInAppToggle('budgetThreshold', c)}
+                    label="Budget threshold alerts"
+                  />
+                  <Switch
+                    checked={settings.inApp.recurringBill}
+                    onChange={(c) => handleInAppToggle('recurringBill', c)}
+                    label="Upcoming recurring bills"
+                  />
+                  <Switch
+                    checked={settings.inApp.syncFailure}
+                    onChange={(c) => handleInAppToggle('syncFailure', c)}
+                    label="Sync failure notifications"
+                  />
+                  <Switch
+                    checked={settings.inApp.weeklyDigest}
+                    onChange={(c) => handleInAppToggle('weeklyDigest', c)}
+                    label="Weekly financial digest"
+                  />
+                  <Switch
+                    checked={settings.inApp.supportUpdates}
+                    onChange={(c) => handleInAppToggle('supportUpdates', c)}
+                    label="Support ticket updates"
+                  />
+                  <Switch
+                    checked={settings.inApp.subscriptionUpdates}
+                    onChange={(c) => handleInAppToggle('subscriptionUpdates', c)}
+                    label="Subscription updates"
+                  />
+                </div>
+
+                <h3 className="mt-8 mb-4 font-semibold">Notification Triggers</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="trigger-low-balance" className="block text-sm font-medium text-text-secondary mb-1">
+                      Low balance threshold
+                    </label>
+                    <div className="relative">
+                      <span
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-muted"
+                        style={{ width: '1.5rem', textAlign: 'center' }}
+                      >
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        id="trigger-low-balance"
+                        className="form-input w-full"
+                        style={{ paddingLeft: '2.55rem' }}
+                        value={settings.triggers.lowBalanceThreshold}
+                        onChange={(e) => setSettings(s => ({ ...s, triggers: { ...s.triggers, lowBalanceThreshold: e.target.value } }))}
+                        min="0"
+                        step="1"
+                        inputMode="decimal"
+                      />
+                    </div>
+                    <p className="text-xs text-text-muted mt-1">
+                      Send low balance alerts when any account falls below this amount.
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="trigger-large-transaction" className="block text-sm font-medium text-text-secondary mb-1">
+                      Large transaction threshold
+                    </label>
+                    <div className="relative">
+                      <span
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-muted"
+                        style={{ width: '1.5rem', textAlign: 'center' }}
+                      >
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        id="trigger-large-transaction"
+                        className="form-input w-full"
+                        style={{ paddingLeft: '2.55rem' }}
+                        value={settings.triggers.largeTransactionThreshold}
+                        onChange={(e) => setSettings(s => ({ ...s, triggers: { ...s.triggers, largeTransactionThreshold: e.target.value } }))}
+                        min="0"
+                        step="1"
+                        inputMode="decimal"
+                      />
+                    </div>
+                    <p className="text-xs text-text-muted mt-1">
+                      Notify when a transaction exceeds this amount.
+                    </p>
+                  </div>
                 </div>
 
                 <h3 className="mt-8 mb-4 font-semibold">Quiet Hours</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="mb-4">
                     <label htmlFor="quiet-start" className="block text-sm font-medium text-text-secondary mb-1">Start Time</label>
-                    <input type="time" id="quiet-start" name="quiet-start" className="form-input w-full" defaultValue="22:00" />
+                    <input
+                      type="time"
+                      id="quiet-start"
+                      name="quiet-start"
+                      className="form-input w-full"
+                      value={settings.quietHours.start}
+                      onChange={(e) => setSettings(s => ({ ...s, quietHours: { ...s.quietHours, start: e.target.value } }))}
+                    />
                   </div>
                   <div className="mb-4">
                     <label htmlFor="quiet-end" className="block text-sm font-medium text-text-secondary mb-1">End Time</label>
-                    <input type="time" id="quiet-end" name="quiet-end" className="form-input w-full" defaultValue="08:00" />
+                    <input
+                      type="time"
+                      id="quiet-end"
+                      name="quiet-end"
+                      className="form-input w-full"
+                      value={settings.quietHours.end}
+                      onChange={(e) => setSettings(s => ({ ...s, quietHours: { ...s.quietHours, end: e.target.value } }))}
+                    />
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary mt-6">Save Preferences</button>
+                <button type="submit" className="btn btn-primary mt-6" disabled={notificationSaving}>
+                  {notificationSaving ? 'Saving...' : 'Save Preferences'}
+                </button>
               </form>
             </div>
           </div>

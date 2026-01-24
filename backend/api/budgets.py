@@ -1,5 +1,5 @@
 # Core Purpose: Budget API endpoints for listing and creating budgets.
-# Last Modified: 2025-12-26
+# Last Modified: 2026-01-23 23:05 CST
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,10 +19,13 @@ class BudgetSchema(BaseModel):
     category: str
     amount: float
     period: str = "monthly"
+    alert_enabled: bool = True
+    alert_threshold_percent: float = 0.8
 
 
 class BudgetResponse(BudgetSchema):
     id: str
+    uid: str
 
 
 @router.get("/", response_model=list[BudgetResponse])
@@ -40,7 +43,13 @@ def list_budgets(
     result = db.execute(stmt)
     return [
         BudgetResponse(
-            id=str(row.id), category=row.category, amount=row.amount, period=row.period
+            id=str(row.id),
+            uid=row.uid,
+            category=row.category,
+            amount=row.amount,
+            period=row.period,
+            alert_enabled=row.alert_enabled,
+            alert_threshold_percent=row.alert_threshold_percent,
         )
         for row in result.scalars().all()
     ]
@@ -63,13 +72,18 @@ def upsert_budget(
     if existing_budget:
         existing_budget.amount = budget_in.amount
         existing_budget.period = budget_in.period
+        existing_budget.alert_enabled = budget_in.alert_enabled
+        existing_budget.alert_threshold_percent = budget_in.alert_threshold_percent
         db.commit()
         db.refresh(existing_budget)
         return BudgetResponse(
             id=str(existing_budget.id),
+            uid=existing_budget.uid,
             category=existing_budget.category,
             amount=existing_budget.amount,
             period=existing_budget.period,
+            alert_enabled=existing_budget.alert_enabled,
+            alert_threshold_percent=existing_budget.alert_threshold_percent,
         )
     else:
         new_budget = Budget(
@@ -77,15 +91,20 @@ def upsert_budget(
             category=budget_in.category,
             amount=budget_in.amount,
             period=budget_in.period,
+            alert_enabled=budget_in.alert_enabled,
+            alert_threshold_percent=budget_in.alert_threshold_percent,
         )
         db.add(new_budget)
         db.commit()
         db.refresh(new_budget)
         return BudgetResponse(
             id=str(new_budget.id),
+            uid=new_budget.uid,
             category=new_budget.category,
             amount=new_budget.amount,
             period=new_budget.period,
+            alert_enabled=new_budget.alert_enabled,
+            alert_threshold_percent=new_budget.alert_threshold_percent,
         )
 
 

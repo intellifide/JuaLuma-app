@@ -1,6 +1,6 @@
-"""User model definition."""
+"""Core Purpose: Persist user profiles and relationships."""
 
-# Updated 2026-01-23 12:00 CST
+# Last Updated: 2026-01-23 22:39 CST
 
 import uuid
 from datetime import datetime
@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from .legal import LegalAgreementAcceptance
     from .manual_asset import ManualAsset
     from .notification import NotificationPreference
+    from .notification_device import NotificationDevice
+    from .notification_settings import NotificationSettings
     from .payment import Payment
     from .payout import DeveloperPayout
     from .subscription import Subscription
@@ -33,6 +35,7 @@ class User(Base):
 
     uid: Mapped[str] = mapped_column(String(128), primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
@@ -128,6 +131,19 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    notification_devices: Mapped[list["NotificationDevice"]] = relationship(
+        "NotificationDevice",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    notification_settings: Mapped[Optional["NotificationSettings"]] = relationship(
+        "NotificationSettings",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+        lazy="selectin",
+    )
     manual_assets: Mapped[list["ManualAsset"]] = relationship(
         "ManualAsset",
         back_populates="user",
@@ -180,6 +196,7 @@ class User(Base):
         return {
             "uid": self.uid,
             "email": self.email,
+            "phone_number": self.phone_number,
             "role": self.role,
             "first_name": self.first_name,
             "last_name": self.last_name,

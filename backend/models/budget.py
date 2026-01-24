@@ -1,10 +1,12 @@
-"""Budget model definition."""
+"""Core Purpose: Persist budget targets and alert triggers."""
+
+# Last Updated: 2026-01-23 23:05 CST
 
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +28,12 @@ class Budget(Base):
     category: Mapped[str] = mapped_column(String(64), nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     period: Mapped[str] = mapped_column(String(16), default="monthly", nullable=False)
+    alert_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    alert_threshold_percent: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.8, server_default="0.8"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -49,6 +57,8 @@ class Budget(Base):
             "category": self.category,
             "amount": float(self.amount),
             "period": self.period,
+            "alert_enabled": self.alert_enabled,
+            "alert_threshold_percent": float(self.alert_threshold_percent),
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }

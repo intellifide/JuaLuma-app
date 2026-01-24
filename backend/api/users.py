@@ -1,7 +1,9 @@
+"""Core Purpose: User profile, settings, and subscription APIs."""
+
+# Last Updated: 2026-01-23 22:39 CST
+
 import json
 import logging
-
-# Updated 2025-12-10 21:27 CST (Central Time) - removed unused imports
 from datetime import datetime, timezone
 from typing import Any
 
@@ -292,9 +294,9 @@ def update_subscription(
     try:
         NotificationService(db).create_notification(
             user=current_user,
+            event_key="subscription_updates",
             title="Subscription Updated",
             message=f"Your subscription has been updated to {payload.plan.title()}.",
-            send_email=True,
         )
     except Exception as e:
         logger.error(f"Failed to send subscription notification: {e}")
