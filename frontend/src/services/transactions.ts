@@ -99,6 +99,10 @@ const buildQueryParams = (filters?: TransactionFilters) => {
   if (filters.page) params.set('page', String(filters.page))
   if (filters.pageSize) params.set('page_size', String(filters.pageSize))
   if (filters.scope) params.set('scope', filters.scope)
+  if (filters.accountType) params.set('account_type', filters.accountType)
+  if (filters.excludeAccountTypes) params.set('exclude_account_types', filters.excludeAccountTypes)
+  if (filters.isManual !== undefined) params.set('is_manual', String(filters.isManual))
+  if (filters.sortBy) params.set('sort_by', filters.sortBy)
   return params
 }
 

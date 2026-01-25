@@ -1,5 +1,5 @@
 // Core Purpose: Main dashboard for personal and household financial insights.
-// Last Modified: 2026-01-25 01:50 CST
+// Last Modified: 2026-01-25 13:30 CST
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -16,6 +16,7 @@ import Switch from '../components/ui/Switch';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
+import { loadTransactionPreferences } from '../utils/transactionPreferences';
 
 // Removed static BUDGET_CAP
 
@@ -425,19 +426,79 @@ export default function Dashboard() {
   const [expandedChart, setExpandedChart] = useState<'networth' | 'cashflow' | null>(null);
   const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
   const { start: fullStart, end: fullEnd } = useMemo(() => getDateRange('all'), []);
-  // For transactions list, use undefined dates to get ALL transactions (no date filter)
-  // This ensures Dashboard and Transactions page show the same data
+  
+  // Load transaction preferences from localStorage and listen for changes
+  const [transactionPreferences, setTransactionPreferences] = useState(() => loadTransactionPreferences());
+  
+  // Listen for localStorage changes to update preferences in real-time
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'jualuma_transaction_preferences' && e.newValue) {
+        try {
+          setTransactionPreferences(JSON.parse(e.newValue));
+        } catch (err) {
+          console.warn('Failed to parse transaction preferences from storage event:', err);
+        }
+      }
+    };
+    
+    // Also check for changes periodically (in case storage event doesn't fire in same tab)
+    const intervalId = setInterval(() => {
+      const current = loadTransactionPreferences();
+      setTransactionPreferences(prev => {
+        // Only update if preferences actually changed
+        if (JSON.stringify(prev) !== JSON.stringify(current)) {
+          return current;
+        }
+        return prev;
+      });
+    }, 2000); // Check every 2 seconds
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(intervalId);
+    };
+  }, []);
+  
+  // For transactions list, use saved preferences for filters
+  // Build exclude account types based on saved preferences
+  const excludeAccountTypes = useMemo(() => {
+    const excludes: string[] = []
+    if (!transactionPreferences.includeWeb3) excludes.push('web3')
+    if (!transactionPreferences.includeCEX) excludes.push('cex')
+    return excludes.length > 0 ? excludes.join(',') : undefined
+  }, [transactionPreferences.includeWeb3, transactionPreferences.includeCEX])
+
+  // Build isManual filter from preferences
+  const isManualFilterValue = useMemo(() => {
+    if (transactionPreferences.isManualFilter === 'all') return undefined
+    return transactionPreferences.isManualFilter === 'manual'
+  }, [transactionPreferences.isManualFilter])
+
+  // Build analytics filters from transaction preferences
+  const analyticsFilters = useMemo(() => ({
+    excludeAccountTypes,
+    category: transactionPreferences.category || undefined,
+    isManual: isManualFilterValue,
+  }), [excludeAccountTypes, transactionPreferences.category, isManualFilterValue])
+
+  // Use saved timeframe preference, but allow override for dashboard charts
   const transactionsStart = undefined;
   const transactionsEnd = undefined;
   const [transactionsPage, setTransactionsPage] = useState(1);
-  const [transactionsPageSize, setTransactionsPageSize] = useState(10);
+  const [transactionsPageSize, setTransactionsPageSize] = useState(transactionPreferences.pageSize);
   const { transactions, total: transactionsTotal, refetch: refetchTransactions, updateOne } = useTransactions({
     filters: {
       scope: dashboardScope,
       from: transactionsStart,
       to: transactionsEnd,
       page: transactionsPage,
-      pageSize: transactionsPageSize
+      pageSize: transactionsPageSize,
+      category: transactionPreferences.category || undefined,
+      excludeAccountTypes,
+      isManual: isManualFilterValue,
+      sortBy: transactionPreferences.sortBy,
     }
   });
   const [notesHoverId, setNotesHoverId] = useState<string | null>(null);
@@ -574,11 +635,11 @@ export default function Dashboard() {
     }
   }, [toast]);
 
-  const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval, dashboardScope);
-  const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval, dashboardScope);
-  const { data: nwFullData, loading: nwFullLoading } = useNetWorth(fullStart, fullEnd, 'monthly', dashboardScope);
-  const { data: cfFullData, loading: cfFullLoading } = useCashFlow(fullStart, fullEnd, 'month', dashboardScope);
-  const { data: spendData, loading: spendLoading } = useSpendingByCategory(start, end, dashboardScope);
+  const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval, dashboardScope, analyticsFilters);
+  const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval, dashboardScope, analyticsFilters);
+  const { data: nwFullData, loading: nwFullLoading } = useNetWorth(fullStart, fullEnd, 'monthly', dashboardScope, analyticsFilters);
+  const { data: cfFullData, loading: cfFullLoading } = useCashFlow(fullStart, fullEnd, 'month', dashboardScope, analyticsFilters);
+  const { data: spendData, loading: spendLoading } = useSpendingByCategory(start, end, dashboardScope, analyticsFilters);
 
   // Computed Values for Cards
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);

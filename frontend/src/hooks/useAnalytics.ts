@@ -1,11 +1,17 @@
 // Core Purpose: Hooks for accessing analytics data (Personal/Household).
 // Created 2025-12-18 20:50 CST by Antigravity
-// Last Modified: 2025-12-26
+// Last Modified: 2026-01-25 13:30 CST
 import { useState, useCallback, useEffect } from 'react';
-import { AnalyticsService, NetWorthResponse, CashFlowResponse, SpendingByCategoryResponse } from '../services/analytics';
+import { AnalyticsService, NetWorthResponse, CashFlowResponse, SpendingByCategoryResponse, AnalyticsFilters } from '../services/analytics';
 import { useAuth } from './useAuth';
 
-export const useNetWorth = (startDate: string, endDate: string, interval: 'daily' | 'weekly' | 'monthly', scope: 'personal' | 'household' = 'personal') => {
+export const useNetWorth = (
+    startDate: string,
+    endDate: string,
+    interval: 'daily' | 'weekly' | 'monthly',
+    scope: 'personal' | 'household' = 'personal',
+    filters?: AnalyticsFilters
+) => {
     const { user } = useAuth();
     const [data, setData] = useState<NetWorthResponse | null>(null);
     const [loading, setLoading] = useState(false);
@@ -16,7 +22,7 @@ export const useNetWorth = (startDate: string, endDate: string, interval: 'daily
         setLoading(true);
         setError(null);
         try {
-            const result = await AnalyticsService.getNetWorth(startDate, endDate, interval, scope);
+            const result = await AnalyticsService.getNetWorth(startDate, endDate, interval, scope, filters);
             setData(result);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to fetch net worth';
@@ -24,7 +30,7 @@ export const useNetWorth = (startDate: string, endDate: string, interval: 'daily
         } finally {
             setLoading(false);
         }
-    }, [user, startDate, endDate, interval, scope]);
+    }, [user, startDate, endDate, interval, scope, filters]);
 
     useEffect(() => {
         fetch();
@@ -33,7 +39,13 @@ export const useNetWorth = (startDate: string, endDate: string, interval: 'daily
     return { data, loading, error, refetch: fetch };
 };
 
-export const useCashFlow = (startDate: string, endDate: string, interval: 'day' | 'week' | 'month', scope: 'personal' | 'household' = 'personal') => {
+export const useCashFlow = (
+    startDate: string,
+    endDate: string,
+    interval: 'day' | 'week' | 'month',
+    scope: 'personal' | 'household' = 'personal',
+    filters?: AnalyticsFilters
+) => {
     const { user } = useAuth();
     const [data, setData] = useState<CashFlowResponse | null>(null);
     const [loading, setLoading] = useState(false);
@@ -44,7 +56,7 @@ export const useCashFlow = (startDate: string, endDate: string, interval: 'day' 
         setLoading(true);
         setError(null);
         try {
-            const result = await AnalyticsService.getCashFlow(startDate, endDate, interval, scope);
+            const result = await AnalyticsService.getCashFlow(startDate, endDate, interval, scope, filters);
             setData(result);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to fetch cash flow';
@@ -52,7 +64,7 @@ export const useCashFlow = (startDate: string, endDate: string, interval: 'day' 
         } finally {
             setLoading(false);
         }
-    }, [user, startDate, endDate, interval, scope]);
+    }, [user, startDate, endDate, interval, scope, filters]);
 
     useEffect(() => {
         fetch();
@@ -61,7 +73,12 @@ export const useCashFlow = (startDate: string, endDate: string, interval: 'day' 
     return { data, loading, error, refetch: fetch };
 };
 
-export const useSpendingByCategory = (startDate: string, endDate: string, scope: 'personal' | 'household' = 'personal') => {
+export const useSpendingByCategory = (
+    startDate: string,
+    endDate: string,
+    scope: 'personal' | 'household' = 'personal',
+    filters?: AnalyticsFilters
+) => {
     const { user } = useAuth();
     const [data, setData] = useState<SpendingByCategoryResponse | null>(null);
     const [loading, setLoading] = useState(false);
@@ -72,7 +89,7 @@ export const useSpendingByCategory = (startDate: string, endDate: string, scope:
         setLoading(true);
         setError(null);
         try {
-            const result = await AnalyticsService.getSpendingByCategory(startDate, endDate, scope);
+            const result = await AnalyticsService.getSpendingByCategory(startDate, endDate, scope, filters);
             setData(result);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to fetch spending data';
@@ -80,7 +97,7 @@ export const useSpendingByCategory = (startDate: string, endDate: string, scope:
         } finally {
             setLoading(false);
         }
-    }, [user, startDate, endDate, scope]);
+    }, [user, startDate, endDate, scope, filters]);
 
     useEffect(() => {
         fetch();

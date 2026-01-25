@@ -1,14 +1,16 @@
 // Core Purpose: Transactions list with filters, search, and bulk actions.
-// Last Updated: 2026-01-24 03:00 CST
+// Last Updated: 2026-01-25 13:00 CST
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/ui/Toast'
 import { AddManualTransactionModal } from '../components/AddManualTransactionModal'
 import { EditTransactionModal } from '../components/EditTransactionModal'
+import Switch from '../components/ui/Switch'
 import { Transaction } from '../types'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
+import { loadTransactionPreferences, saveTransactionPreferences, type TransactionPreferences } from '../utils/transactionPreferences'
 
 const CATEGORIES = TRANSACTION_CATEGORIES
 
@@ -58,13 +60,23 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
 
 export const Transactions = () => {
+  // Load preferences from localStorage on mount
+  const savedPreferences = useMemo(() => loadTransactionPreferences(), [])
+  
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
+  const [category, setCategory] = useState(savedPreferences.category)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(savedPreferences.pageSize)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
-  const [timeframe, setTimeframe] = useState('all')
+  const [timeframe, setTimeframe] = useState(savedPreferences.timeframe)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(savedPreferences.showAdvancedFilters)
+  
+  // New filter states with saved preferences
+  const [includeWeb3, setIncludeWeb3] = useState(savedPreferences.includeWeb3)
+  const [includeCEX, setIncludeCEX] = useState(savedPreferences.includeCEX)
+  const [sortBy, setSortBy] = useState<'ts_desc' | 'ts_asc' | 'amount_desc' | 'amount_asc' | 'merchant_asc' | 'merchant_desc'>(savedPreferences.sortBy)
+  const [isManualFilter, setIsManualFilter] = useState<'all' | 'manual' | 'auto'>(savedPreferences.isManualFilter)
 
   const { profile } = useAuth()
   const toast = useToast()
@@ -82,6 +94,20 @@ export const Transactions = () => {
   const [notesHoverId, setNotesHoverId] = useState<string | null>(null)
   const notesHoverTimeout = useRef<number | null>(null)
 
+  // Build exclude account types based on include flags
+  const excludeAccountTypes = useMemo(() => {
+    const excludes: string[] = []
+    if (!includeWeb3) excludes.push('web3')
+    if (!includeCEX) excludes.push('cex')
+    return excludes.length > 0 ? excludes.join(',') : undefined
+  }, [includeWeb3, includeCEX])
+
+  // Build isManual filter
+  const isManualFilterValue = useMemo(() => {
+    if (isManualFilter === 'all') return undefined
+    return isManualFilter === 'manual'
+  }, [isManualFilter])
+
   const { transactions, total, pageSize: actualPageSize, loading, refetch, updateOne, remove } = useTransactions({
     filters: {
       category: category || undefined,
@@ -90,6 +116,9 @@ export const Transactions = () => {
       scope,
       from: start,
       to: end,
+      excludeAccountTypes,
+      isManual: isManualFilterValue,
+      sortBy,
     },
     search: search || undefined,
   })
@@ -100,10 +129,55 @@ export const Transactions = () => {
   const hasPrevPage = page > 1
   const hasNextPage = page < totalPages
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Save preferences whenever filter/sort settings change
+  useEffect(() => {
+    saveTransactionPreferences({
+      includeWeb3,
+      includeCEX,
+      category,
+      timeframe,
+      isManualFilter,
+      sortBy,
+      pageSize,
+      showAdvancedFilters,
+    })
+  }, [includeWeb3, includeCEX, category, timeframe, isManualFilter, sortBy, pageSize, showAdvancedFilters])
+
+  // Track if this is the initial mount to avoid unnecessary refetch
+  const isInitialMountRef = useRef(true)
+
+  // Auto-apply search with debouncing to avoid excessive API calls while typing
+  useEffect(() => {
+    // Skip on initial mount (search is empty by default)
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      if (search === '') {
+        return
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      setPage(1)
+      refetch()
+    }, 500) // 500ms debounce delay - waits for user to stop typing
+
+    return () => clearTimeout(timeoutId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]) // Only trigger when search value changes
+
+  const handleFilterChange = () => {
     setPage(1)
+    // SWR will automatically refetch when filters change, but we call refetch to ensure immediate update
     refetch()
+  }
+
+  // Handle Enter key in search input for immediate search
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      setPage(1)
+      refetch()
+    }
   }
 
   const handleEdit = (id: string) => {
@@ -153,18 +227,22 @@ export const Transactions = () => {
       </div>
 
       {/* Filters */}
-      <div className="glass-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3 flex-1">
+      <div className="glass-panel mb-8 space-y-4">
+        <div className="flex flex-col md:flex-row gap-3">
           <input
             type="text"
             placeholder="Search merchant or description"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             className="form-input"
           />
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => {
+              setCategory(e.target.value)
+              handleFilterChange()
+            }}
             className="form-select"
           >
             <option value="">All categories</option>
@@ -190,48 +268,116 @@ export const Transactions = () => {
             <option value="1y">Last 12 months</option>
             <option value="ytd">Year to date</option>
           </select>
-          <button
-            type="submit"
-            className="btn btn-primary"
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value as typeof sortBy)
+              handleFilterChange()
+            }}
+            className="form-select"
           >
-            Apply
+            <option value="ts_desc">Date (Newest First)</option>
+            <option value="ts_asc">Date (Oldest First)</option>
+            <option value="amount_desc">Amount (High to Low)</option>
+            <option value="amount_asc">Amount (Low to High)</option>
+            <option value="merchant_asc">Merchant (A-Z)</option>
+            <option value="merchant_desc">Merchant (Z-A)</option>
+          </select>
+        </div>
+
+        {/* Advanced Filters Toggle */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="text-sm text-royal-purple hover:underline flex items-center gap-2"
+          >
+            <span>{showAdvancedFilters ? '▼' : '▶'}</span>
+            {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
           </button>
-        </form>
-        
-        {/* Scope Toggle */}
-        <div className="flex items-center gap-4">
-          <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => setScope('personal')}
-              className={`px-3 py-1 text-sm rounded-md transition-all ${
-                scope === 'personal'
-                  ? 'bg-royal-purple text-white shadow font-medium'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-            >
-              Personal
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
-                if (!isUltimate) {
-                  toast.show("Upgrade to Ultimate to view Family transactions.", "error");
-                  return;
-                }
-                setScope('household');
-              }}
-              className={`px-3 py-1 text-sm rounded-md transition-all ${
-                scope === 'household'
-                  ? 'bg-royal-purple text-white shadow font-medium'
-                  : 'text-text-muted hover:text-text-secondary'
-              } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              Family
-            </button>
+
+          {/* Scope Toggle */}
+          <div className="flex items-center gap-4">
+            <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setScope('personal')}
+                className={`px-3 py-1 text-sm rounded-md transition-all ${
+                  scope === 'personal'
+                    ? 'bg-royal-purple text-white shadow font-medium'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                Personal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
+                  if (!isUltimate) {
+                    toast.show("Upgrade to Ultimate to view Family transactions.", "error");
+                    return;
+                  }
+                  setScope('household');
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-all ${
+                  scope === 'household'
+                    ? 'bg-royal-purple text-white shadow font-medium'
+                    : 'text-text-muted hover:text-text-secondary'
+                } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Family
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Advanced Filters Panel */}
+        {showAdvancedFilters && (
+          <div className="border-t border-white/10 pt-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Account Type Filters */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-text-primary">Account Types</label>
+                <div className="space-y-3">
+                  <Switch
+                    checked={includeWeb3}
+                    onChange={(checked) => {
+                      setIncludeWeb3(checked)
+                      handleFilterChange()
+                    }}
+                    label="Include Web3"
+                  />
+                  <Switch
+                    checked={includeCEX}
+                    onChange={(checked) => {
+                      setIncludeCEX(checked)
+                      handleFilterChange()
+                    }}
+                    label="Include CEX"
+                  />
+                </div>
+              </div>
+
+              {/* Transaction Type Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-text-primary">Transaction Type</label>
+                <select
+                  value={isManualFilter}
+                  onChange={(e) => {
+                    setIsManualFilter(e.target.value as typeof isManualFilter)
+                    handleFilterChange()
+                  }}
+                  className="form-select text-sm"
+                >
+                  <option value="all">All Transactions</option>
+                  <option value="manual">Manual Only</option>
+                  <option value="auto">Automated Only</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Transactions Table */}

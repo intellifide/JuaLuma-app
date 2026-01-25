@@ -1,5 +1,5 @@
 # Core Purpose: Analytics aggregation and caching helpers for dashboard insights.
-# Last Modified: 2026-01-24 12:16 CST
+# Last Modified: 2026-01-25 13:30 CST
 import logging
 from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from backend.models import Account, Transaction, User
 from backend.services.household_service import get_household_member_uids
 from backend.utils.firestore import get_firestore_client
+from sqlalchemy import or_
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,29 @@ def _get_date_range(start_date: date, end_date: date, interval: str) -> list[dat
         current = next_date
 
     return dates
+
+
+def _apply_transaction_filters(
+    query,
+    *,
+    account_type: str | None = None,
+    exclude_account_types: list[str] | None = None,
+    category: str | None = None,
+    is_manual: bool | None = None,
+):
+    """Apply transaction filters to a query, including account type filtering."""
+    if account_type or exclude_account_types:
+        # Join with Account table to filter by account_type
+        query = query.join(Account, Transaction.account_id == Account.id)
+        if account_type:
+            query = query.filter(Account.account_type == account_type)
+        if exclude_account_types:
+            query = query.filter(~Account.account_type.in_(exclude_account_types))
+    if category:
+        query = query.filter(Transaction.category == category)
+    if is_manual is not None:
+        query = query.filter(Transaction.is_manual == is_manual)
+    return query
 
 
 def _get_cash_flow_periods(start_date: date, end_date: date, interval: str) -> list[date]:
@@ -212,6 +236,10 @@ def get_net_worth(
     end_date: date,
     interval: str,
     scope: str = "personal",
+    account_type: str | None = None,
+    exclude_account_types: list[str] | None = None,
+    category: str | None = None,
+    is_manual: bool | None = None,
 ) -> NetWorthResponse:
     cache_key = (
         f"net_worth:{uid}:{start_date.isoformat()}:{end_date.isoformat()}:{interval}:{scope}"
@@ -236,7 +264,7 @@ def get_net_worth(
 
     balance_at_end = _calculate_balance_at_end(db, target_uids, end_date)
 
-    all_txns_in_range = (
+    query = (
         db.query(Transaction)
         .filter(
             Transaction.uid.in_(target_uids),
@@ -246,9 +274,18 @@ def get_net_worth(
             >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
             Transaction.archived.is_(False),
         )
-        .order_by(Transaction.ts.desc())
-        .all()
     )
+    
+    # Apply transaction filters
+    query = _apply_transaction_filters(
+        query,
+        account_type=account_type,
+        exclude_account_types=exclude_account_types,
+        category=category,
+        is_manual=is_manual,
+    )
+    
+    all_txns_in_range = query.order_by(Transaction.ts.desc()).all()
 
     series = _generate_net_worth_series(dates, balance_at_end, all_txns_in_range)
     resp = NetWorthResponse(data=series)
@@ -263,6 +300,10 @@ def get_cash_flow(
     end_date: date,
     interval: str,
     scope: str = "personal",
+    account_type: str | None = None,
+    exclude_account_types: list[str] | None = None,
+    category: str | None = None,
+    is_manual: bool | None = None,
 ) -> CashFlowResponse:
     """Aggregate cash flow into ordered periods and include empty buckets."""
     target_uids = [uid]
@@ -275,6 +316,28 @@ def get_cash_flow(
     else:
         period_expr = func.date_trunc(interval, base_ts)
 
+    # Build base filter conditions
+    base_filters = [
+        Transaction.uid.in_(target_uids),
+        Transaction.ts >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
+        Transaction.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+        Transaction.archived.is_(False),
+    ]
+    
+    # Apply account type filters if needed
+    if account_type or exclude_account_types:
+        base_filters.append(Transaction.account_id.in_(
+            select(Account.id).where(
+                *([Account.account_type == account_type] if account_type else []),
+                *([~Account.account_type.in_(exclude_account_types)] if exclude_account_types else [])
+            )
+        ))
+    
+    if category:
+        base_filters.append(Transaction.category == category)
+    if is_manual is not None:
+        base_filters.append(Transaction.is_manual == is_manual)
+
     # Income
     income_query = (
         select(
@@ -282,13 +345,8 @@ def get_cash_flow(
             func.sum(Transaction.amount).label("total"),
         )
         .where(
-            Transaction.uid.in_(target_uids),
-            Transaction.ts
-            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
-            Transaction.ts
-            <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+            *base_filters,
             Transaction.amount > 0,
-            Transaction.archived.is_(False),
         )
         .group_by("period")
         .order_by("period")
@@ -301,13 +359,8 @@ def get_cash_flow(
             func.sum(Transaction.amount).label("total"),
         )
         .where(
-            Transaction.uid.in_(target_uids),
-            Transaction.ts
-            >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
-            Transaction.ts
-            <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+            *base_filters,
             Transaction.amount < 0,
-            Transaction.archived.is_(False),
         )
         .group_by("period")
         .order_by("period")
@@ -338,6 +391,10 @@ def get_spending_by_category(
     start_date: date,
     end_date: date,
     scope: str = "personal",
+    account_type: str | None = None,
+    exclude_account_types: list[str] | None = None,
+    category: str | None = None,
+    is_manual: bool | None = None,
 ) -> SpendingByCategoryResponse:
     start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
     end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
@@ -353,17 +410,34 @@ def get_spending_by_category(
         "Investment",
     ]
 
+    # Build base filter conditions
+    base_filters = [
+        Transaction.uid.in_(target_uids),
+        Transaction.ts >= start_dt,
+        Transaction.ts <= end_dt,
+        Transaction.category.not_in(exclude_cats),
+        Transaction.archived.is_(False),
+    ]
+    
+    # Apply account type filters if needed
+    if account_type or exclude_account_types:
+        base_filters.append(Transaction.account_id.in_(
+            select(Account.id).where(
+                *([Account.account_type == account_type] if account_type else []),
+                *([~Account.account_type.in_(exclude_account_types)] if exclude_account_types else [])
+            )
+        ))
+    
+    if category:
+        base_filters.append(Transaction.category == category)
+    if is_manual is not None:
+        base_filters.append(Transaction.is_manual == is_manual)
+
     query = (
         select(
             Transaction.category, func.sum(func.abs(Transaction.amount)).label("total")
         )
-        .where(
-            Transaction.uid.in_(target_uids),
-            Transaction.ts >= start_dt,
-            Transaction.ts <= end_dt,
-            Transaction.category.not_in(exclude_cats),
-            Transaction.archived.is_(False),
-        )
+        .where(*base_filters)
         .group_by(Transaction.category)
     )
 

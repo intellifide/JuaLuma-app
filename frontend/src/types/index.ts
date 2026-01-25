@@ -104,6 +104,10 @@ export type TransactionFilters = Partial<{
   page: number
   pageSize: number
   scope: 'personal' | 'household'
+  accountType?: string
+  excludeAccountTypes?: string
+  isManual?: boolean
+  sortBy?: 'ts_desc' | 'ts_asc' | 'amount_desc' | 'amount_asc' | 'merchant_asc' | 'merchant_desc'
 }>
 
 export interface PaginatedResponse<T> {

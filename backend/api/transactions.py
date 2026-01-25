@@ -1,6 +1,6 @@
 """Transaction API endpoints."""
 
-# Updated 2026-01-25 01:35 CST
+# Updated 2026-01-25 12:00 CST
 
 import uuid
 from datetime import UTC, date, datetime
@@ -9,11 +9,12 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, desc, asc
+from sqlalchemy.orm import Session, joinedload
 
 from backend.middleware.auth import get_current_user
 from backend.models import (
+    Account,
     AuditLog,
     Household,
     HouseholdMember,
@@ -167,10 +168,10 @@ class BulkUpdateRequest(BaseModel):
 
 
 def _paginate(query, page: int, page_size: int):
+    """Paginate query results. Note: sorting should be applied before calling this function."""
     total = query.count()
     items = (
-        query.order_by(Transaction.ts.desc())
-        .offset((page - 1) * page_size)
+        query.offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
@@ -272,7 +273,11 @@ def _apply_filters(
     category: str | None,
     start_date: date | None,
     end_date: date | None,
+    account_type: str | None = None,
+    exclude_account_types: list[str] | None = None,
+    is_manual: bool | None = None,
 ):
+    """Apply filters to transaction query, including account type filtering."""
     if account_id:
         db_query = db_query.filter(Transaction.account_id == account_id)
     if category:
@@ -287,6 +292,15 @@ def _apply_filters(
             Transaction.ts
             <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
         )
+    if account_type or exclude_account_types:
+        # Join with Account table to filter by account_type
+        db_query = db_query.join(Account, Transaction.account_id == Account.id)
+        if account_type:
+            db_query = db_query.filter(Account.account_type == account_type)
+        if exclude_account_types:
+            db_query = db_query.filter(~Account.account_type.in_(exclude_account_types))
+    if is_manual is not None:
+        db_query = db_query.filter(Transaction.is_manual == is_manual)
     return db_query
 
 
@@ -298,6 +312,18 @@ def list_transactions(
     end_date: date | None = Query(default=None),
     search: str | None = Query(
         default=None, description="Search merchant or description."
+    ),
+    account_type: str | None = Query(
+        default=None, description="Filter by account type (e.g., 'web3', 'cex', 'traditional')"
+    ),
+    exclude_account_types: str | None = Query(
+        default=None, description="Comma-separated list of account types to exclude (e.g., 'web3,cex')"
+    ),
+    is_manual: bool | None = Query(
+        default=None, description="Filter by manual transactions (true) or automated (false)"
+    ),
+    sort_by: str | None = Query(
+        default="ts_desc", description="Sort field and direction: 'ts_desc', 'ts_asc', 'amount_desc', 'amount_asc', 'merchant_asc', 'merchant_desc'"
     ),
     scope: str = Query(default="personal", description="personal or household"),
     page: int = Query(default=1, ge=1),
@@ -366,12 +392,20 @@ def list_transactions(
         Transaction.archived.is_(False),
     )
 
+    # Parse exclude_account_types if provided
+    exclude_types_list = None
+    if exclude_account_types:
+        exclude_types_list = [t.strip() for t in exclude_account_types.split(",") if t.strip()]
+
     query = _apply_filters(
         query,
         account_id=account_id,
         category=category,
         start_date=start_date,
         end_date=end_date,
+        account_type=account_type,
+        exclude_account_types=exclude_types_list,
+        is_manual=is_manual,
     )
 
     if search:
@@ -382,6 +416,27 @@ def list_transactions(
                 Transaction.description.ilike(pattern),
             )
         )
+
+    # Apply sorting
+    if sort_by:
+        if sort_by == "ts_desc":
+            query = query.order_by(desc(Transaction.ts))
+        elif sort_by == "ts_asc":
+            query = query.order_by(asc(Transaction.ts))
+        elif sort_by == "amount_desc":
+            query = query.order_by(desc(Transaction.amount))
+        elif sort_by == "amount_asc":
+            query = query.order_by(asc(Transaction.amount))
+        elif sort_by == "merchant_asc":
+            query = query.order_by(asc(Transaction.merchant_name))
+        elif sort_by == "merchant_desc":
+            query = query.order_by(desc(Transaction.merchant_name))
+        else:
+            # Default to ts_desc if invalid sort_by
+            query = query.order_by(desc(Transaction.ts))
+    else:
+        # Default sorting
+        query = query.order_by(desc(Transaction.ts))
 
     total, items = _paginate(query, page, page_size)
     
@@ -406,6 +461,18 @@ def search_transactions(
     category: str | None = Query(default=None),
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
+    account_type: str | None = Query(
+        default=None, description="Filter by account type (e.g., 'web3', 'cex', 'traditional')"
+    ),
+    exclude_account_types: str | None = Query(
+        default=None, description="Comma-separated list of account types to exclude (e.g., 'web3,cex')"
+    ),
+    is_manual: bool | None = Query(
+        default=None, description="Filter by manual transactions (true) or automated (false)"
+    ),
+    sort_by: str | None = Query(
+        default="ts_desc", description="Sort field and direction: 'ts_desc', 'ts_asc', 'amount_desc', 'amount_asc', 'merchant_asc', 'merchant_desc'"
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     current_user: User = Depends(get_current_user),
@@ -417,12 +484,21 @@ def search_transactions(
         Transaction.uid == current_user.uid,
         Transaction.archived.is_(False),
     )
+    
+    # Parse exclude_account_types if provided
+    exclude_types_list = None
+    if exclude_account_types:
+        exclude_types_list = [t.strip() for t in exclude_account_types.split(",") if t.strip()]
+
     query = _apply_filters(
         query,
         account_id=account_id,
         category=category,
         start_date=start_date,
         end_date=end_date,
+        account_type=account_type,
+        exclude_account_types=exclude_types_list,
+        is_manual=is_manual,
     )
 
     ts_vector = func.to_tsvector(
@@ -435,6 +511,27 @@ def search_transactions(
     )
     ts_query = func.plainto_tsquery("english", q)
     query = query.filter(ts_vector.op("@@")(ts_query))
+
+    # Apply sorting
+    if sort_by:
+        if sort_by == "ts_desc":
+            query = query.order_by(desc(Transaction.ts))
+        elif sort_by == "ts_asc":
+            query = query.order_by(asc(Transaction.ts))
+        elif sort_by == "amount_desc":
+            query = query.order_by(desc(Transaction.amount))
+        elif sort_by == "amount_asc":
+            query = query.order_by(asc(Transaction.amount))
+        elif sort_by == "merchant_asc":
+            query = query.order_by(asc(Transaction.merchant_name))
+        elif sort_by == "merchant_desc":
+            query = query.order_by(desc(Transaction.merchant_name))
+        else:
+            # Default to ts_desc if invalid sort_by
+            query = query.order_by(desc(Transaction.ts))
+    else:
+        # Default sorting
+        query = query.order_by(desc(Transaction.ts))
 
     total, items = _paginate(query, page, page_size)
     
