@@ -1,6 +1,6 @@
 """Transaction API endpoints."""
 
-# Updated 2026-01-24 00:15 CST
+# Updated 2026-01-25 01:35 CST
 
 import uuid
 from datetime import UTC, date, datetime
@@ -21,6 +21,7 @@ from backend.models import (
     Transaction,
     User,
 )
+from backend.core.constants import SubscriptionPlans
 from backend.services.analytics import invalidate_analytics_cache
 from backend.utils import get_db
 
@@ -472,8 +473,10 @@ def create_manual_transaction(
     """
     # Check subscription tier - manual transactions are Pro/Ultimate only
     from backend.api.accounts import _get_subscription_plan
-    plan = _get_subscription_plan(db, current_user.uid)
-    if plan not in ["pro", "ultimate"]:
+    plan_code = _get_subscription_plan(db, current_user.uid)
+    # Normalize plan code (e.g., "pro_monthly" -> "pro", "ultimate_annual" -> "ultimate")
+    base_tier = SubscriptionPlans.get_base_tier(plan_code)
+    if base_tier not in ["pro", "ultimate"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Manual transaction entry is only available for Pro and Ultimate tier subscribers.",
@@ -520,6 +523,13 @@ def create_manual_transaction(
     
     db.add(txn)
     
+    # Update the account balance to reflect the manual transaction
+    # Inflows (positive amounts) increase balance, outflows (negative amounts) decrease balance
+    from decimal import Decimal as Dec
+    current_balance = account.balance or Dec(0)
+    account.balance = current_balance + payload.amount
+    logger.info(f"Updated account {account.id} balance: {current_balance} -> {account.balance} (delta: {payload.amount})")
+    
     # Create audit log
     audit = AuditLog(
         actor_uid=current_user.uid,
@@ -531,6 +541,8 @@ def create_manual_transaction(
             "account_id": str(payload.account_id),
             "amount": float(payload.amount),
             "currency": payload.currency,
+            "balance_before": float(current_balance),
+            "balance_after": float(account.balance),
         },
     )
     db.add(audit)
@@ -727,6 +739,9 @@ def delete_transaction(
     db: Session = Depends(get_db),
 ) -> dict:
     """Soft delete a manual transaction."""
+    from backend.models import Account
+    from decimal import Decimal as Dec
+    
     txn = (
         db.query(Transaction)
         .filter(Transaction.id == transaction_id, Transaction.uid == current_user.uid)
@@ -742,6 +757,18 @@ def delete_transaction(
             detail="Automated transactions cannot be deleted manually.",
         )
 
+    # Reverse the balance change when deleting a manual transaction
+    account = db.query(Account).filter(Account.id == txn.account_id).first()
+    balance_before = None
+    balance_after = None
+    if account:
+        balance_before = float(account.balance or Dec(0))
+        current_balance = account.balance or Dec(0)
+        # Reverse the transaction: subtract the original amount
+        account.balance = current_balance - (txn.amount or Dec(0))
+        balance_after = float(account.balance)
+        logger.info(f"Reversed account {account.id} balance: {balance_before} -> {balance_after} (reversed delta: {txn.amount})")
+
     txn.archived = True
     db.add(txn)
 
@@ -750,7 +777,13 @@ def delete_transaction(
         target_uid=current_user.uid,
         action="transaction_deleted",
         source="backend",
-        metadata_json={"transaction_id": str(txn.id), "is_manual": txn.is_manual},
+        metadata_json={
+            "transaction_id": str(txn.id),
+            "is_manual": txn.is_manual,
+            "amount_reversed": float(txn.amount or 0),
+            "balance_before": balance_before,
+            "balance_after": balance_after,
+        },
     )
     db.add(audit)
     db.commit()

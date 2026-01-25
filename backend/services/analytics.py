@@ -1,3 +1,5 @@
+# Core Purpose: Analytics aggregation and caching helpers for dashboard insights.
+# Last Modified: 2026-01-24 12:16 CST
 import logging
 from calendar import monthrange
 from datetime import UTC, date, datetime, timedelta
@@ -93,6 +95,42 @@ def _get_date_range(start_date: date, end_date: date, interval: str) -> list[dat
         current = next_date
 
     return dates
+
+
+def _get_cash_flow_periods(start_date: date, end_date: date, interval: str) -> list[date]:
+    """Build a complete cash flow timeline so empty periods return zero values."""
+    if start_date > end_date:
+        return []
+
+    if interval == "day":
+        total_days = (end_date - start_date).days
+        return [start_date + timedelta(days=offset) for offset in range(total_days + 1)]
+
+    if interval == "week":
+        # Align weeks to Sunday to match date_trunc('week') + interval '6 days'.
+        start_week_start = start_date - timedelta(days=start_date.weekday())
+        end_week_start = end_date - timedelta(days=end_date.weekday())
+        current = start_week_start + timedelta(days=6)
+        last = end_week_start + timedelta(days=6)
+        periods = []
+        while current <= last:
+            periods.append(current)
+            current += timedelta(days=7)
+        return periods
+
+    if interval == "month":
+        # Align to first day of month to match date_trunc('month').
+        current = date(start_date.year, start_date.month, 1)
+        last = date(end_date.year, end_date.month, 1)
+        periods = []
+        while current <= last:
+            periods.append(current)
+            next_year = current.year + (1 if current.month == 12 else 0)
+            next_month = 1 if current.month == 12 else current.month + 1
+            current = date(next_year, next_month, 1)
+        return periods
+
+    return []
 
 def _get_cached_net_worth(db_fs, cache_key: str) -> NetWorthResponse | None:
     if not db_fs:
@@ -226,6 +264,7 @@ def get_cash_flow(
     interval: str,
     scope: str = "personal",
 ) -> CashFlowResponse:
+    """Aggregate cash flow into ordered periods and include empty buckets."""
     target_uids = [uid]
     if scope == "household":
         target_uids = get_household_member_uids(db, uid)
@@ -277,11 +316,18 @@ def get_cash_flow(
     income_res = db.execute(income_query).all()
     expense_res = db.execute(expense_query).all()
 
+    income_by_period = {row.period.date(): float(row.total) for row in income_res}
+    expense_by_period = {row.period.date(): float(row.total) for row in expense_res}
+    periods = _get_cash_flow_periods(start_date, end_date, interval)
+
+    # Build aligned series so charts can render zero-value periods.
     income_data = [
-        DataPoint(date=row.period.date(), value=float(row.total)) for row in income_res
+        DataPoint(date=period, value=income_by_period.get(period, 0.0))
+        for period in periods
     ]
     expense_data = [
-        DataPoint(date=row.period.date(), value=float(row.total)) for row in expense_res
+        DataPoint(date=period, value=expense_by_period.get(period, 0.0))
+        for period in periods
     ]
 
     return CashFlowResponse(income=income_data, expenses=expense_data)

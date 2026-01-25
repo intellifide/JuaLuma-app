@@ -1,5 +1,5 @@
 // Core Purpose: Transactions list with filters, search, and bulk actions.
-// Last Updated: 2026-01-24 01:12 CST
+// Last Updated: 2026-01-24 03:00 CST
 
 import { useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
@@ -288,9 +288,9 @@ export const Transactions = () => {
                       >
                         <span>{txn.merchantName || txn.description || '—'}</span>
                         {txn.description && notesHoverId === txn.id && (
-                          <div className="absolute left-0 top-full mt-2 w-64 rounded-lg border border-white/10 bg-surface-1/90 p-3 text-xs text-text-secondary shadow-xl backdrop-blur z-50">
+                          <div className="absolute left-0 top-full mt-2 min-w-64 max-w-md rounded-lg border border-white/10 bg-surface-1/90 p-3 text-xs text-text-secondary shadow-xl backdrop-blur z-50 break-words">
                             <p className="text-xs font-semibold text-text-primary mb-1">Notes</p>
-                            <p className="text-xs text-text-secondary">{txn.description}</p>
+                            <p className="text-xs text-text-secondary whitespace-pre-wrap break-all">{txn.description}</p>
                           </div>
                         )}
                       </div>
