@@ -946,10 +946,10 @@ export const Settings = () => {
                               className="py-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div>
-                                <p className="font-medium text-text-primary">{member.email || member.uid}</p>
-                                {member.email && (
-                                  <p className="text-xs text-text-muted">{member.uid}</p>
+                                {member.username && (
+                                  <p className="text-lg font-semibold text-text-primary mb-0.5">{member.username}</p>
                                 )}
+                                <p className="text-sm text-text-muted">{member.email || 'No email'}</p>
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">

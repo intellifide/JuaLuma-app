@@ -220,7 +220,10 @@ export const HouseholdPage: React.FC = () => {
                                 {(member.email?.[0] || 'U').toUpperCase()}
                             </div>
                             <div>
-                                <p className="font-medium text-deep-indigo">{member.email || 'Unknown User'}</p>
+                                {member.username && (
+                                    <p className="text-lg font-semibold text-deep-indigo mb-0.5">{member.username}</p>
+                                )}
+                                <p className="text-sm text-deep-indigo">{member.email || 'Unknown User'}</p>
                                 <p className="text-xs text-text-muted capitalize">{member.role}</p>
                             </div>
                         </div>

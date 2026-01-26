@@ -18,7 +18,7 @@ interface ApiError {
 
 const formatHouseholdMemberLabel = (member: HouseholdMember) => {
   const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ').trim();
-  return fullName || member.email || `Member (${member.uid.substring(0, 4)}...)`;
+  return fullName || member.email || 'Member';
 };
 
 const getAssignableMembers = (household: Household) => {
