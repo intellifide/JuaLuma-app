@@ -2,11 +2,11 @@ FROM node:20-bullseye
 
 WORKDIR /app
 
-COPY frontend/package*.json /app/
+COPY frontend-app/package*.json /app/
 
 RUN npm ci
 
-COPY frontend /app
+COPY frontend-app /app
 
 ENV HOST=0.0.0.0 \
     PORT=5175

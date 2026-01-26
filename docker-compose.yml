@@ -42,7 +42,7 @@ services:
   user-frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: frontend-app/Dockerfile
     container_name: jualuma-user-frontend
     env_file: .env
     environment:
@@ -52,7 +52,22 @@ services:
     ports:
       - "5175:5175"
     volumes:
-      - ./frontend:/app
+      - ./frontend-app:/app
+      - /app/node_modules
+    networks:
+      - jualuma-network
+
+  marketing-site:
+    build:
+      context: .
+      dockerfile: frontend-marketing/Dockerfile
+    container_name: jualuma-marketing-site
+    env_file: .env
+    ports:
+      - "5177:3000"
+    volumes:
+      - ./frontend-marketing:/app
+      - /app/.next
       - /app/node_modules
     networks:
       - jualuma-network
