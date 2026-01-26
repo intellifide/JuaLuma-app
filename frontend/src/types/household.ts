@@ -6,6 +6,8 @@ export type HouseholdRole = 'admin' | 'member' | 'restricted_member'
 export interface HouseholdMember {
   uid: string
   email?: string
+  first_name?: string
+  last_name?: string
   role: HouseholdRole
   joined_at?: string // backend sends joined_at
   ai_access_enabled?: boolean // backend sends ai_access_enabled

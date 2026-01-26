@@ -1,4 +1,4 @@
-<!-- Last Updated: 2026-01-18 03:06 CST -->
+<!-- Last Updated: 2026-01-25 14:45 CST -->
 
 ## App Development Guide v2\.4 \(Master Technical Specification\)
 
@@ -30,6 +30,17 @@ All engineering decisions must strictly adhere to these six non\-negotiable pill
   - **App Tools:** Backend exposes standardized Agent Tools at `http://localhost:8001/mcp` (Application Logic) and `/mcp-dev` (Maintenance Scripts).
 - Ports: expose backend `8001:8001`, frontend `5175:5175`; emulator ports are mapped for browser access.
 - API quirk: widget endpoints require trailing slashes (`/widgets/…`) to avoid 307 redirects in-browser.
+
+### 1\.2 GCP Production Architecture (Authoritative)
+
+The production target is **Cloud Run v2 + Cloud SQL (Postgres, private IP) + Artifact Registry + Cloud Storage + Cloud Scheduler + Cloud Workflows + Secret Manager**. All implementation decisions must preserve portability from local emulators to GCP services.
+
+**Connectivity (Cloud Run v2 → Cloud SQL, private IP):**
+
+- Use Cloud Run v2 direct VPC egress with private IP for Cloud SQL.
+- Configure Cloud Run v2 with `vpc_access` using a custom VPC + subnet and route **ALL_TRAFFIC** through VPC.
+- Cloud SQL runs with private IP only and requires private service connection.
+- Enforce TLS for database connections; never use insecure connection modes in production.
 
 ### 1\.3 Operational Tooling (jualuma Dev Tools)
 
@@ -1048,10 +1059,15 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 1. **Lint & Format:** Ruff \(Python\), ESLint/Prettier \(React\), Terraform fmt/validate\.
 2. **Typecheck:** mypy \(Python\), TypeScript compiler \(React\)\.
 3. **Tests:** Unit tests \(pytest, vitest\), contract tests \(OpenAPI validation\), integration tests \(emulators\)\.
-4. **Build:** Backend Docker → Artifact Registry, Frontend React Build → GCS Bucket\.
-5. **Deploy:** Dev environment auto\-deploys on merge to `main`\. Stage/Prod require manual approval\.
-6. **Smoke Tests:** E2E smoke tests \(dashboard + AI chat happy path\) post\-deploy\.
-7. **Perf Sanity:** Lighthouse CI for frontend, API latency checks for backend\.
+4. **Build & Push:** Docker builds → Artifact Registry \(auto-scanning enabled\).
+5. **Attest & Enforce:** Binary Authorization attestation required before deploy.
+6. **Deploy:** Cloud Run v2 deployment via CI/CD.
+7. **Post-Deploy:** Smoke tests + Lighthouse CI + API latency checks.
+
+**CI/CD Authentication (GitHub Actions):**
+
+- Use Workload Identity Federation \(OIDC\) with GitHub Actions.
+- No long-lived JSON keys. Use short-lived tokens mapped to a dedicated CI service account.
 
 **Testing Strategy:**
 
@@ -1061,83 +1077,50 @@ ALTER TABLE audit.support_portal_actions ENABLE ROW LEVEL SECURITY;
 - **E2E Tests:** Complete user workflows \(signup → link account → view transactions\), feature preview/paywall interactions, tier\-based access control\.
 - **Perf Tests:** Dashboard load time, AI chat round\-trip latency, transaction feed pagination\.
 
-### 9\.1 Development Milestones
+### 9\.1 Development Purpose \(Core Outcomes\)
 
-**M0: Foundation & Scaffolding**
+- **Local-first velocity:** Build and validate product workflows quickly with Docker + emulators.
+- **Portability:** Ensure every feature is deployable to GCP without re-architecture.
+- **Governance:** Centralize feature gating, legal acceptance, and audit logging.
+- **Reliability:** Enforce quality gates, monitoring, and operational safety.
+- **Compliance:** Maintain GLBA/CCPA readiness, security posture, and retention rules.
 
-- Repository structure \(frontend Vite/TS, backend FastAPI, shared types\)
-- Toolchain setup \(Docker Compose, CI skeleton, env templates\)
-- Feature registry YAML source + generation script
-- Database schema migrations \(Cloud SQL, Firestore\)
+### 9\.2 Development Stages \(Purpose-Only\)
 
-**M1: Authentication & Base Infrastructure**
+- **Stage 1: Local iteration** — Rapid product validation and workflow completeness.
+- **Stage 2: Pre-production portability** — IaC and CI/CD definitions to guarantee GCP parity.
+- **Stage 3: GCP execution** — Deploy and integrate managed services with least-privilege IAM.
+- **Stage 4: Production readiness** — Security hardening, monitoring, and compliance workflows.
+- **Stage 5: Advanced features** — ML pipelines, vector search, and marketplace expansion.
+- **Stage 6: Mobile + distribution** — Native packaging and store readiness.
 
-- Auth/session \(Firebase Auth, JWT validation\)
-- Base UI shell \(React router, theme system, navigation\)
-- Feature registry wired \(TS/Python modules, enforcement middleware\)
-- Observability plumbed \(OpenTelemetry logging/metrics/traces\)
+#### 9\.3 CI/CD Pipeline \(Purpose-Only\)
 
-**M2: Aggregation & Unified Feed**
+- **Quality gates:** Lint, typecheck, tests, and accessibility checks before deployment.
+- **Security gates:** Image scanning and Binary Authorization attestation enforced.
+- **Deployment:** Cloud Run v2 releases managed via CI/CD with post-deploy smoke tests.
 
-- Aggregation ingest \(bank/investment/Web3/CEX\) with freshness tracking
-- Unified feed \(transactions, search, filter, pagination\)
-- Audit logging \(Cloud SQL audit tables, log\-ledger\-archiver job\)
+#### 9\.4 CI/CD & IaC Principles
 
-**M3: Budgets, Recurring & Notifications**
+- **WIF-first:** GitHub Actions uses OIDC with Workload Identity Federation.
+- **Supply-chain security:** Artifact Registry scanning + Binary Authorization enforced.
+- **Secrets:** All production secrets live in Secret Manager.
+- **IaC:** GCS state backend with CMEK, separate env configs per stage.
 
-- Budget management \(limits, rollover, threshold alerts\)
-- Recurring engine \(detection, flagging workflow\)
-- Notification preferences \(per\-event toggles, quiet hours\)
+#### 9\.5 Production Security Requirements (GCP)
 
-**M4: AI Chat End\-to\-End**
+- **Private Networking:** Cloud SQL private IP only; Cloud Run v2 with direct VPC egress.
+- **Binary Authorization:** Enforced for production deployments.
+- **Artifact Registry Scanning:** Block deploys on high/critical vulnerabilities.
+- **IAM Least Privilege:** Dedicated service accounts per service with minimal roles.
+- **OIDC Invocations:** Cloud Scheduler → Cloud Run Jobs/Workflows must use OIDC tokens.
 
-- AI chat interface \(UI, streaming, error handling\)
-- Policy enforcement \(quota checks, feature flags, cost caps\)
-- Logging & encryption \(LLM logs with User DEK, audit trail\)
-- Disclaimers & acceptance \(modal, tracking, access control\)
+#### 9\.6 Provider Production Readiness
 
-**M5: Marketplace & Developer Tools**
-
-- Marketplace preview \(widget catalog, tier\-based access\)
-- Developer SDK mock \(MCP tools, synthetic datasets\)
-- Support portal mock \(ticket management interface\)
-- MCP server implementation \(auth, tools, observability\)
-
-**M6: Hardening & Launch Readiness**
-
-- Performance optimization \(latency, bundle size, Core Web Vitals\)
-- Security review \(penetration testing, vulnerability scanning\)
-- SLO validation \(error budgets healthy, alerts configured\)
-- Documentation complete \(API docs, deployment guides, runbooks\)
-
-#### 9\.1 Pipeline \(Cloud Build\)
-
-- **Lint & Format:** Ruff \(Python\), ESLint/Prettier \(React\)\.
-- **Security Scan:** trivy fs \. \(Fail on secrets/vulns\)\.
-- **Accessibility Scan:** axe\-core on composite glass UI\. \(Fail on contrast < 4\.5:1\)\.
-- **Test:** Pytest \(Unit\) plus Postgres integration tests using the local Cloud SQL mirror container\.
-- **Build:** Backend: Docker $\\rightarrow$ Artifact Registry\. Frontend: React Build $\\rightarrow$ GCS Bucket\.
-- **Deploy:** gcloud run deploy \(Backend\)\. Invalidate Cloud CDN \(Frontend\)\.
-
-#### 9\.1\.1 CI/CD & IaC Instantiation Requirements
-
-**Before Development Begins:** The following infrastructure and automation must be instantiated \(created and configured\) to enable development workflows:
-
-**CI/CD Pipeline Setup:**
-
-- **Cloud Build Configuration:** Create `cloudbuild.yaml` in repository root with stages for lint, test, build, and deploy
-- **GitHub Actions / Cloud Build Triggers:** Configure webhook triggers on `push` to `main` and `pull_request` events
-- **Service Accounts:** Create dedicated service accounts for Cloud Build with minimal required permissions \(Cloud Run Deployer, Storage Admin, Artifact Registry Writer\)
-- **Secrets Management:** Store API keys, database credentials, and OAuth tokens in Secret Manager; reference via `secretEnv` in Cloud Build config
-- **Remote Config Flags:** Create Firebase Remote Config project and initialize required feature flags \(`ENABLE_GLOBAL_SYNC`, `ENABLE_AI_GATEWAY`, `MAINTENANCE_MODE`, `feature_preview.enabled`\)
-
-**Infrastructure as Code \(IaC\) Instantiation:**
-
-- **Terraform State Backend:** Create GCS bucket for Terraform state with versioning and KMS encryption enabled
-- **State Locking:** Configure Cloud Storage backend with DynamoDB\-style locking \(via `terraform-state-lock` GCS bucket object or Cloud SQL table\)
-- **Environment Scaffolding:** Run `terraform init` and `terraform workspace new dev/stage/prod` for each environment
-- **Initial Infrastructure:** Apply base Terraform modules \(network, Cloud SQL, Cloud Run, load balancer\) to `dev` environment only
-- **State Management:** Never commit `.tfstate` files; ensure `.gitignore` excludes all Terraform state and lock files
+- **Twilio:** Complete A2P 10DLC Authentication+ before production SMS.
+- **SendGrid:** Domain authentication required \(SPF/DKIM\).
+- **Plaid:** Production readiness checklist + Launch Center approvals for Link + Investments.
+- **Stripe:** Production keys + tax configuration required; Texas SaaS tax basis \(80% taxable\) enforced in billing logic.
 
 **Pre\-Development Checklist:**
 

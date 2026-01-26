@@ -1,5 +1,5 @@
 // Core Purpose: Provide an accessible, styled toggle switch UI component.
-// Last Modified: 2026-01-17 23:40 CST
+// Last Modified: 2026-01-25 14:45 CST
 
 import { useId, ReactNode } from 'react'
 import React from 'react'
@@ -11,10 +11,11 @@ type SwitchProps = {
   description?: ReactNode
   disabled?: boolean
   className?: string
+  compact?: boolean
 }
 
 // Renders a labeled toggle switch with optional description text.
-export default function Switch({ checked, onChange, label, description, disabled, className = '' }: SwitchProps) {
+export default function Switch({ checked, onChange, label, description, disabled, className = '', compact = false }: SwitchProps) {
   const labelId = useId()
   const descriptionId = useId()
   const hasLabel = Boolean(label)
@@ -24,6 +25,38 @@ export default function Switch({ checked, onChange, label, description, disabled
   const handleToggle = () => {
     if (disabled) return
     onChange(!checked)
+  }
+
+  if (compact) {
+    return (
+      <div className={`flex items-center gap-1.5 ${className}`}>
+        {label && (
+          <span id={labelId} className="text-xs text-text-muted whitespace-nowrap">
+            {label}
+          </span>
+        )}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          aria-labelledby={hasLabel ? labelId : undefined}
+          aria-label={hasLabel ? undefined : 'Toggle'}
+          aria-disabled={disabled ? true : undefined}
+          disabled={disabled}
+          onClick={handleToggle}
+          className={`${
+            checked ? 'bg-royal-purple' : 'bg-gray-200'
+          } relative inline-flex h-4 w-8 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-royal-purple focus:ring-offset-1 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          <span
+            aria-hidden="true"
+            className={`${
+              checked ? 'translate-x-4' : 'translate-x-0'
+            } pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+          />
+        </button>
+      </div>
+    )
   }
 
   return (

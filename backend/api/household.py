@@ -246,6 +246,8 @@ def _format_household_response(household: Household) -> dict:
             {
                 "uid": m.uid,
                 "email": m.user.email if m.user else None,
+                "first_name": m.user.first_name if m.user else None,
+                "last_name": m.user.last_name if m.user else None,
                 "role": m.role,
                 "joined_at": m.joined_at,
                 "ai_access_enabled": m.ai_access_enabled,

@@ -24,16 +24,16 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
 
     // Fetch notifications only when drawer is open
     const { data: notifications = [] } = useSWR<LocalNotification[]>(
-        isOpen ? '/api/notifications' : null,
+        isOpen ? '/notifications' : null,
         fetcher,
         { refreshInterval: 30000 }
     );
 
     const markAsRead = async (id: string) => {
         try {
-            await api.post(`/api/notifications/${id}/read`);
+            await api.post(`/notifications/${id}/read`);
             // Optimistic update or revalidate
-            mutate('/api/notifications');
+            mutate('/notifications');
         } catch (err) {
             console.error(err);
             toast.show("Failed to mark as read", "error");

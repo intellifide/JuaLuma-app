@@ -2,7 +2,7 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* Last Modified: 2026-01-20 03:17 CST */
+/* Last Modified: 2026-01-25 14:45 CST */
 
 /* jualuma Platform - Engineered Liquid Glass Theme */
 /* Base Variables */
@@ -1948,6 +1948,18 @@ textarea:focus-visible {
 .section-timeframe:focus {
   outline: none;
   border-color: var(--color-primary);
+}
+
+/* Hide number input spinners */
+input[type="number"].no-spinner::-webkit-outer-spin-button,
+input[type="number"].no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"].no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* AI Assistant Styles */

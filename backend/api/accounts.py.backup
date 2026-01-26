@@ -1,4 +1,4 @@
-# Updated 2026-01-24 03:00 CST
+# Updated 2026-01-23 15:00 CST
 import json
 import logging
 import re
@@ -906,56 +906,6 @@ def _clean_raw(txn_dict: dict) -> dict:
     return {"value": cleaned}
 
 
-
-
-def _build_web3_merchant_name(txn: dict, account: Account | None = None) -> str | None:
-    """
-    Build a user-friendly merchant name for Web3 transactions.
-    Instead of showing truncated hashes, show descriptive names like "Ethereum Received" or "Bitcoin Sent".
-    """
-    merchant = txn.get("merchant_name")
-    
-    # If merchant name looks like a truncated hash (short alphanumeric), replace it
-    if merchant and len(merchant) <= 10 and merchant.replace('0x', '').isalnum():
-        direction = txn.get("direction")
-        transaction_type = txn.get("transaction_type")
-        
-        # Get chain name from account if available
-        chain_name = "Crypto"
-        if account:
-            chain_name = account.provider.capitalize()
-        
-        # Build descriptive name
-        if direction == "inflow":
-            return f"{chain_name} Received"
-        elif direction == "outflow":
-            return f"{chain_name} Sent"
-        elif transaction_type == "trade":
-            return f"{chain_name} Trade"
-        else:
-            return f"{chain_name} Transfer"
-    
-    return merchant
-
-
-def _build_web3_description(txn: dict) -> str | None:
-    """
-    Build a user-friendly description for Web3 transactions.
-    Includes the full transaction hash as a note.
-    """
-    tx_id = txn.get("transaction_id")
-    
-    if tx_id:
-        # Extract the actual hash (remove any suffix like :native, :token:0, etc.)
-        tx_hash = tx_id.split(':')[0]
-        
-        # Only return the transaction hash, don't include truncated hash from name/merchant_name
-        return f"Transaction Hash: {tx_hash}"
-    
-    # If no transaction_id, fall back to name or merchant_name
-    return txn.get("name") or txn.get("merchant_name") or None
-
-
 def _process_single_transaction(
     db: Session, uid: str, account_id: uuid.UUID, txn: dict, currency_fallback: str
 ) -> bool:
@@ -1033,8 +983,8 @@ def _process_single_transaction(
         amount=amount,
         currency=txn.get("currency") or currency_fallback,
         category=final_category,
-        merchant_name=_build_web3_merchant_name(txn, db.query(Account).filter(Account.id == account_id).first()),
-        description=_build_web3_description(txn),
+        merchant_name=txn.get("merchant_name"),
+        description=txn.get("name") or txn.get("merchant_name"),
         external_id=txn.get("transaction_id"),
         is_manual=False,
         archived=False,

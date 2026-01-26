@@ -3,7 +3,7 @@ trigger: always_on
 ---
 
 # jualuma App Core Development Rules
-
+- prioritize the use of terminal commands instead of inline editing.
 - all files must be prepended with its core purpose
 - every codeblock needs to have a comment on the purpose of its function.
 - every file update requires a date and time stamp at the top of the file to identify the last time the file was modified.

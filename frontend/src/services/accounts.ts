@@ -6,6 +6,8 @@ type ManualAccountPayload = {
   accountType: 'manual'
   provider?: string
   accountName: string
+  assignedMemberUid?: string | null
+  customLabel?: string | null
 }
 
 type AccountUpdatePayload = Partial<{
@@ -82,6 +84,8 @@ export const createManualAccount = async (
       account_type: payload.accountType,
       provider: payload.provider,
       account_name: payload.accountName,
+      assigned_member_uid: payload.assignedMemberUid,
+      custom_label: payload.customLabel,
     })
     return mapAccount(data)
   } catch (error) {

@@ -1,5 +1,5 @@
 // Core Purpose: Modal for editing manual transaction entries.
-// Last Updated: 2026-01-24 01:12 CST
+// Last Updated: 2026-01-24 07:30 CST
 
 import { useState, useEffect } from 'react'
 import { Modal } from './ui/Modal'
@@ -181,7 +181,18 @@ export const EditTransactionModal = ({ open, transaction, onClose, onSuccess }: 
             <p>This transaction was imported from a connected account. Only category and description can be edited.</p>
             <div className="mt-2 space-y-1">
               <p><strong>Date:</strong> {new Date(transaction.ts).toLocaleString()}</p>
-              <p><strong>Amount:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: transaction.currency }).format(transaction.amount)}</p>
+              <p><strong>Amount:</strong> {(() => {
+                // Handle crypto currencies that aren't valid ISO 4217 codes
+                const isCrypto = !['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY'].includes(transaction.currency.toUpperCase())
+                if (isCrypto) {
+                  return `${transaction.amount >= 0 ? '+' : ''}${transaction.amount.toFixed(2)} ${transaction.currency}`
+                }
+                try {
+                  return new Intl.NumberFormat('en-US', { style: 'currency', currency: transaction.currency }).format(transaction.amount)
+                } catch {
+                  return `${transaction.amount >= 0 ? '+' : ''}${transaction.amount.toFixed(2)} ${transaction.currency}`
+                }
+              })()}</p>
               {transaction.merchantName && <p><strong>Merchant:</strong> {transaction.merchantName}</p>}
             </div>
           </div>

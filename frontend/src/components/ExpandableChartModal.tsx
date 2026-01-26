@@ -1,5 +1,5 @@
 // Core Purpose: TradingView-style expandable chart modal with zoom and pan
-// Last Updated: 2026-01-24 18:54 CST
+// Last Updated: 2026-01-25 17:55 CST
 
 import React, { useMemo, useState, useRef, useEffect } from 'react'
 import { Modal } from './ui/Modal'
@@ -52,6 +52,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
   // Generate line chart for net worth
   const lineChartData = useMemo(() => {
     if (type !== 'line' || !data || data.length === 0) return null
+    const sortedData = [...data].sort((a, b) => b.date.localeCompare(a.date))
 
     const width = 1400
     const height = 700
@@ -59,13 +60,13 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const drawWidth = width - padding.left - padding.right
     const drawHeight = height - padding.top - padding.bottom
 
-    const values = data.map(d => d.value)
+    const values = sortedData.map(d => d.value)
     const min = Math.min(...values) * 0.95
     const max = Math.max(...values) * 1.05
     const range = max - min || 1
 
-    const points = data.map((d, i) => {
-      const x = padding.left + (i / (data.length - 1)) * drawWidth
+    const points = sortedData.map((d, i) => {
+      const x = padding.left + (i / (sortedData.length - 1)) * drawWidth
       const y = padding.top + drawHeight - ((d.value - min) / range) * drawHeight
       return { x, y, value: d.value, date: d.date }
     })
@@ -84,20 +85,20 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     })
 
     // More X-axis labels based on data length
-    const numXLabels = Math.min(Math.max(12, Math.floor(data.length / 10)), 24)
+    const numXLabels = Math.min(Math.max(12, Math.floor(sortedData.length / 10)), 24)
     const xLabelIndices = Array.from({ length: numXLabels }, (_, i) =>
-      Math.floor((i * (data.length - 1)) / (numXLabels - 1))
-    ).filter(i => i < data.length && data[i])
+      Math.floor((i * (sortedData.length - 1)) / (numXLabels - 1))
+    ).filter(i => i < sortedData.length && sortedData[i])
     
     const xLabels = xLabelIndices.map(i => {
-      const dateValue = parseDateUTC(data[i].date)
-      const includeYear = data.length > 90
+      const dateValue = parseDateUTC(sortedData[i].date)
+      const includeYear = sortedData.length > 90
       const label = includeYear
         ? formatMonthYearLabel(dateValue)
         : dateValue.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
       return {
         label,
-        x: padding.left + (i / (data.length - 1)) * drawWidth,
+        x: padding.left + (i / (sortedData.length - 1)) * drawWidth,
       }
     })
 
@@ -115,8 +116,12 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const drawHeight = height - padding.top - padding.bottom
 
     // Normalize cash flow values so bar heights are always positive.
-    const normalizedIncome = incomeData.map(d => ({ ...d, value: Math.max(0, d.value) }))
-    const normalizedExpenses = expensesData.map(d => ({ ...d, value: Math.abs(d.value) }))
+    const normalizedIncome = [...incomeData]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map(d => ({ ...d, value: Math.max(0, d.value) }))
+    const normalizedExpenses = [...expensesData]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map(d => ({ ...d, value: Math.abs(d.value) }))
     const allValues = [...normalizedIncome.map(d => d.value), ...normalizedExpenses.map(d => d.value)]
     const max = Math.max(1, ...allValues) * 1.1
     const barWidth = Math.max(12, Math.min(40, drawWidth / normalizedIncome.length / 2.5))

@@ -6,7 +6,7 @@ import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
 import { api as apiClient } from '../services/api';
 import { householdService } from '../services/householdService';
-import { Household } from '../types/household';
+import { Household, HouseholdMember } from '../types/household';
 
 interface ApiError {
   response?: {
@@ -15,6 +15,25 @@ interface ApiError {
     };
   };
 }
+
+const formatHouseholdMemberLabel = (member: HouseholdMember) => {
+  const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ').trim();
+  return fullName || member.email || `Member (${member.uid.substring(0, 4)}...)`;
+};
+
+const getAssignableMembers = (household: Household) => {
+  const seen = new Set<string>();
+  return household.members.filter((member) => {
+    if (member.role !== 'admin' && member.role !== 'member') {
+      return false;
+    }
+    if (seen.has(member.uid)) {
+      return false;
+    }
+    seen.add(member.uid);
+    return true;
+  });
+};
 
 const CHAIN_PRESETS = [
   { id: 'eip155:1', name: 'Ethereum', supported: true },
@@ -246,7 +265,6 @@ const EditAccountModal = ({
   onClose: () => void;
   onSuccess: (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null }) => void;
 }) => {
-  const [label, setLabel] = useState(account.customLabel || '');
   const [name, setName] = useState(account.accountName || '');
   const [assignedUid, setAssignedUid] = useState(account.assignedMemberUid || '');
   const [household, setHousehold] = useState<Household | null>(null);
@@ -266,7 +284,6 @@ const EditAccountModal = ({
     e.preventDefault();
     onSuccess(account.id, {
       accountName: name,
-      customLabel: label || null,
       assignedMemberUid: assignedUid || null
     });
   };
@@ -288,18 +305,6 @@ const EditAccountModal = ({
               onChange={(e) => setName(e.target.value)}
               placeholder="Official bank name"
             />
-             <p className="text-xs text-text-secondary mt-1">Found inside your bank/app.</p>
-          </div>
-          <div>
-            <label className="form-label">Custom Label</label>
-            <input
-              type="text"
-              className="input"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Vacation Fund, Bobby's Allowance"
-            />
-            <p className="text-xs text-text-secondary mt-1">Your personal nickname for this account.</p>
           </div>
           <div>
             <label className="form-label">Assign to Household Member</label>
@@ -311,12 +316,11 @@ const EditAccountModal = ({
                 value={assignedUid}
                 onChange={(e) => setAssignedUid(e.target.value)}
               >
-                <option value="">(Unassigned / Me)</option>
-                <option value={household.owner_uid}>Myself (Owner)</option>
-                {household.members.map(m => (
-                   <option key={m.uid} value={m.uid}>
-                     {m.email || `Member (${m.uid.substring(0, 4)}...)`} ({m.role})
-                   </option>
+                <option value="">(Unassigned)</option>
+                {getAssignableMembers(household).map((member) => (
+                  <option key={member.uid} value={member.uid}>
+                    {formatHouseholdMemberLabel(member)} ({member.role})
+                  </option>
                 ))}
               </select>
             ) : (
@@ -338,9 +342,21 @@ const EditAccountModal = ({
 
 const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [name, setName] = useState('');
+  const [assignedUid, setAssignedUid] = useState('');
+  const [household, setHousehold] = useState<Household | null>(null);
+  const [householdLoading, setHouseholdLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
   const { create } = useAccounts();
+
+  useEffect(() => {
+    householdService.getMyHousehold()
+      .then(setHousehold)
+      .catch(() => {
+        // Ignore error if not in household
+      })
+      .finally(() => setHouseholdLoading(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -353,6 +369,7 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
       await create({
         accountType: 'manual',
         accountName: name.trim(),
+        assignedMemberUid: assignedUid || null,
       });
       toast.show('Manual account created successfully', 'success');
       onSuccess();
@@ -386,6 +403,30 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
               Use this account to track manual transactions and cash expenses.
             </p>
           </div>
+          <div>
+            <label className="form-label">Assign to Household Member</label>
+            {householdLoading ? (
+              <div className="animate-pulse h-10 w-full bg-surface-2 rounded"></div>
+            ) : household ? (
+              <select
+                className="input"
+                value={assignedUid}
+                onChange={(e) => setAssignedUid(e.target.value)}
+              >
+                <option value="">(Unassigned)</option>
+                {getAssignableMembers(household).map((member) => (
+                  <option key={member.uid} value={member.uid}>
+                    {formatHouseholdMemberLabel(member)} ({member.role})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-text-secondary p-2 bg-surface-2 rounded border border-border">
+                You are not in a household.
+              </div>
+            )}
+            <p className="text-xs text-text-secondary mt-1">Transactions will be tagged to this member in Family View.</p>
+          </div>
           <div className="flex gap-3 justify-end mt-8">
             <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
@@ -406,6 +447,18 @@ export const ConnectAccounts = () => {
   const [showManualAccountModal, setShowManualAccountModal] = useState(false);
   const [reconnectPayload, setReconnectPayload] = useState<{ exchange: string; name: string } | null>(null);
   const [editingAccount, setEditingAccount] = useState<{ id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null } | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest('[data-actions-menu]')) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
   const handlePlaidSuccess = () => {
     toast.show('Account connected successfully', 'success');
@@ -614,35 +667,58 @@ export const ConnectAccounts = () => {
                               Reconnect
                             </button>
                           )}
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            onClick={() => setEditingAccount(account)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline"
-                            onClick={async () => {
-                              try {
-                                await sync(account.id);
-                                toast.show('Account synced successfully', 'success');
-                              } catch (err) {
-                                // Error already toasted by useAccounts/api logic or we catch it here
-                                // Check if the error object has a message we should display
-                                const msg = err instanceof Error ? err.message : 'Sync failed';
-                                toast.show(msg, 'error');
-                              }
-                            }}
-                            disabled={account.syncStatus === 'needs_reauth'}
-                          >
-                            Refresh
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => remove(account.id)}
-                          >
-                            Remove
-                          </button>
+                          <div className="relative" data-actions-menu>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => setOpenMenuId((prev) => (prev === account.id ? null : account.id))}
+                              aria-haspopup="menu"
+                              aria-expanded={openMenuId === account.id}
+                              aria-label="Open actions menu"
+                            >
+                              ▼
+                            </button>
+                            {openMenuId === account.id && (
+                              <div className="absolute right-0 z-10 mt-2 w-44 rounded border border-border bg-surface-1 p-2 shadow-lg space-y-2">
+                                <button
+                                  className="btn btn-sm btn-ghost w-full justify-start"
+                                  onClick={() => {
+                                    setEditingAccount(account);
+                                    setOpenMenuId(null);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                {account.accountType !== 'manual' && (
+                                  <button
+                                    className="btn btn-sm btn-ghost w-full justify-start"
+                                    onClick={async () => {
+                                      try {
+                                        await sync(account.id);
+                                        toast.show('Account synced successfully', 'success');
+                                      } catch (err) {
+                                        const msg = err instanceof Error ? err.message : 'Sync failed';
+                                        toast.show(msg, 'error');
+                                      } finally {
+                                        setOpenMenuId(null);
+                                      }
+                                    }}
+                                    disabled={account.syncStatus === 'needs_reauth'}
+                                  >
+                                    Refresh
+                                  </button>
+                                )}
+                                <button
+                                  className="btn btn-sm btn-ghost w-full justify-start text-danger"
+                                  onClick={() => {
+                                    remove(account.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
