@@ -53,7 +53,7 @@ def seed_plans():
                 "10 CEX Accounts",
                 "40 AI Queries/Day",
                 "Full History Retention",
-                "7-Day Free Trial",
+                "14-Day Free Trial",
                 "Full Marketplace Access"
             ]
         },
@@ -67,8 +67,7 @@ def seed_plans():
             "price_id": "price_1SftXERQfRSwy2Aa84D0XrhT",
             "features": [
                 "Everything in Pro Monthly",
-                "Save $50/year",
-                "Priority Support"
+                "Save $50/year"
             ]
         },
         {
@@ -81,10 +80,11 @@ def seed_plans():
             "price_id": "price_1SftXFRQfRSwy2Aas3bHnACi",
             "features": [
                 "20 Accounts (All Types)",
-                "200 AI Queries/Day",
+                "80 AI Queries/Day",
                 "Family Features",
                 "Full History Retention",
-                "Full Marketplace Access"
+                "Full Marketplace Access",
+                "14-Day Free Trial"
             ]
         },
         {

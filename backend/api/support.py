@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import desc
 from sqlalchemy.orm import Session, selectinload
 
+from backend.core.config import settings
 from backend.core.events import publish_event
 from backend.middleware.auth import (
     get_current_user,
@@ -24,6 +25,7 @@ from backend.models.support import (
     SupportTicketMessage,
     SupportTicketRating,
 )
+from backend.services.email import get_email_client
 from backend.services.notifications import NotificationService
 from backend.utils import get_db
 
@@ -149,6 +151,16 @@ def _create_resolution_notification_if_needed(
     )
 
 
+def _resolve_queue_status(ticket: SupportTicket) -> str:
+    if ticket.status in {"resolved", "closed"}:
+        return ticket.status
+    if ticket.escalated_to_developer:
+        return "escalated"
+    if ticket.assigned_agent_uid:
+        return "assigned"
+    return "queued"
+
+
 # --- Endpoints ---
 
 
@@ -167,6 +179,7 @@ def create_ticket(
         description=payload.description,
         category=payload.category,
         status="open",
+        queue_status="queued",
     )
     db.add(ticket)
     db.commit()
@@ -190,6 +203,19 @@ def create_ticket(
         logger.error(f"Failed to publish ticket_created event: {e}")
 
     logger.info(f"Ticket created: {ticket.id} by user {current_user.uid}")
+
+    # Notify support team
+    try:
+        get_email_client().send_support_ticket_notification(
+            to_email=settings.support_email,
+            subject=ticket.subject,
+            ticket_id=str(ticket.id),
+            user_email=current_user.email,
+            description=ticket.description,
+            event_type="Ticket Created",
+        )
+    except Exception as e:
+        logger.error(f"Failed to notify support of new ticket: {e}")
 
     return ticket
 
@@ -280,6 +306,7 @@ def update_ticket_status(
 
     if payload.status != ticket.status:
         ticket.status = payload.status
+        ticket.queue_status = _resolve_queue_status(ticket)
         ticket.updated_at = datetime.now(UTC)
 
         if old_status == "open" and payload.status == "resolved":
@@ -317,6 +344,7 @@ def add_message(
     # For now, let's auto-open if it's not closed.
     if ticket.status == "resolved":
         ticket.status = "open"
+        ticket.queue_status = _resolve_queue_status(ticket)
 
     message = SupportTicketMessage(
         ticket_id=ticket.id,
@@ -328,6 +356,7 @@ def add_message(
     )
     db.add(message)
     ticket.updated_at = datetime.now(UTC)  # Force update updated_at
+    ticket.queue_status = _resolve_queue_status(ticket)
     db.commit()
     db.refresh(message)
 
@@ -364,6 +393,20 @@ def add_message(
 
     logger.info(f"Message added to ticket {ticket.id} by user {current_user.uid}")
 
+    # Notify support team if user replied
+    if message.sender_type == "user":
+        try:
+            get_email_client().send_support_ticket_notification(
+                to_email=settings.support_email,
+                subject=ticket.subject,
+                ticket_id=str(ticket.id),
+                user_email=current_user.email,
+                description=message.message,
+                event_type="New User Message",
+            )
+        except Exception as e:
+            logger.error(f"Failed to notify support of user reply: {e}")
+
     return message
 
 
@@ -383,6 +426,7 @@ def close_ticket(
         )
 
     ticket.status = "closed"
+    ticket.queue_status = "closed"
     db.commit()
     db.refresh(ticket)
 

@@ -44,7 +44,7 @@ TIERS = [
         "amount_cents": 1999,
         "currency": "usd",
         "interval": "month",
-        "features": ["Everything in Essential", "AI Financial Assistant", "Custom reports", "Priority support"],
+        "features": ["Everything in Essential", "AI Financial Assistant", "Custom reports"],
         "is_active": True,
     },
     {
@@ -55,7 +55,7 @@ TIERS = [
         "amount_cents": 19990,
         "currency": "usd",
         "interval": "year",
-        "features": ["Everything in Essential", "AI Financial Assistant", "Custom reports", "Priority support"],
+        "features": ["Everything in Essential", "AI Financial Assistant", "Custom reports"],
         "is_active": True,
     },
     {

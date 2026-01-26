@@ -83,6 +83,8 @@ class AppSettings(BaseSettings):
     smtp_from_email: str | None = Field(
         default="no-reply@jualuma.com", alias="SMTP_FROM_EMAIL"
     )
+    support_email: str = Field(default="intellifidellc@gmail.com", alias="SUPPORT_EMAIL")
+    developer_email: str | None = Field(default=None, alias="DEVELOPER_EMAIL")
 
     # Web3 / RPC Configuration
     eth_rpc_url: str = Field(default="https://cloudflare-eth.com", alias="ETH_RPC_URL")

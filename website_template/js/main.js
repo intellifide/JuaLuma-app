@@ -628,7 +628,7 @@
                 <li>75 AI queries/day</li>
                 <li>Investment accounts</li>
                 <li>Full data retention</li>
-                <li>7-day free trial</li>
+                <li>14-day free trial</li>
               </ul>
               <a href="pricing.html" class="btn btn-primary">View Plans</a>
             </div>

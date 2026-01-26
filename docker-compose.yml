@@ -23,7 +23,7 @@ services:
       GCP_KMS_KEY_NAME: ${GCP_KMS_KEY_NAME:-}
       GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT_ID:-jualuma-local}
       ENABLE_AI_GATEWAY: "false"
-      BACKEND_CORS_ORIGINS: "http://localhost:5175,http://localhost:5176"
+      BACKEND_CORS_ORIGINS: "http://localhost:5175,http://localhost:5176,http://localhost:5177"
 
     depends_on:
       - postgres

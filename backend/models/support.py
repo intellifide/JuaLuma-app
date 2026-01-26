@@ -124,6 +124,22 @@ class SupportTicket(Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="open"
     )  # open, resolved, closed
+    queue_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="queued"
+    )  # queued, assigned, in_progress, escalated, resolved, closed
+    assigned_agent_uid: Mapped[str | None] = mapped_column(
+        String(128), ForeignKey("users.uid", ondelete="SET NULL"), nullable=True
+    )
+    assigned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    escalated_to_developer: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    escalated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    escalated_by_uid: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -152,7 +168,13 @@ class SupportTicket(Base):
     # 2025-12-11 14:20 CST - wire back-populates for user exports
     user: Mapped["User"] = relationship(
         "User",
+        foreign_keys=[user_id],
         back_populates="support_tickets",
+        lazy="selectin",
+    )
+    assigned_agent: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[assigned_agent_uid],
         lazy="selectin",
     )
 

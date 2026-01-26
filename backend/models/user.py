@@ -121,6 +121,7 @@ class User(Base):
     # 2025-12-11 14:20 CST - expose support tickets for export usage
     support_tickets: Mapped[list["SupportTicket"]] = relationship(
         "SupportTicket",
+        foreign_keys="[SupportTicket.user_id]",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",

@@ -127,3 +127,20 @@ def delete_budget(
     db.delete(existing_budget)
     db.commit()
     return {"status": "deleted"}
+
+
+@router.delete("/")
+def reset_budgets(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Delete all budgets for the authenticated user."""
+    stmt = select(Budget).where(Budget.uid == current_user.uid)
+    result = db.execute(stmt)
+    budgets_to_delete = result.scalars().all()
+    
+    for b in budgets_to_delete:
+        db.delete(b)
+    
+    db.commit()
+    return {"status": "all budgets reset"}

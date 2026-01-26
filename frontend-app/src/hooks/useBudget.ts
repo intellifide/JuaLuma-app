@@ -73,5 +73,17 @@ export const useBudget = (scope: 'personal' | 'household' = 'personal') => {
         }
     };
 
-    return { budgets, saveBudget, loading, refetch: fetchBudgets };
+    const resetBudgets = async () => {
+        if (!user) return;
+        try {
+            await apiFetch('/budgets/', {
+                method: 'DELETE'
+            });
+            await fetchBudgets();
+        } catch (e) {
+            console.error("Failed to reset budgets", e);
+        }
+    };
+
+    return { budgets, saveBudget, resetBudgets, loading, refetch: fetchBudgets };
 };

@@ -1,5 +1,5 @@
 # CORE PURPOSE: Service for handling Stripe billing, customer creation, checkout sessions, and webhooks.
-# LAST MODIFIED: 2025-12-21 16:50 CST
+# LAST MODIFIED: 2026-01-25 CST
 import logging
 from datetime import datetime
 from typing import Any
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 if settings.stripe_secret_key:
     stripe.api_key = settings.stripe_secret_key
 
-# Updated 2025-12-19 02:40 CST
+# Updated 2026-01-25 CST
 # Replace with actual Stripe Price IDs from your Stripe Dashboard
 STRIPE_PLANS = {
     "essential_monthly": "price_1SftXDRQfRSwy2AaP2V5zy32",
@@ -40,6 +40,15 @@ STRIPE_PRICE_TO_TIER = {
 
 # Keeping this for legacy compatibility or reverse lookups if needed, but preferable to use above.
 STRIPE_PRICE_TO_PLAN = STRIPE_PRICE_TO_TIER
+
+# Trial period configuration (in days) for each plan type
+# Pro and Ultimate tiers include a 14-day free trial
+TRIAL_PERIOD_DAYS = {
+    "pro_monthly": 14,
+    "pro_annual": 14,
+    "ultimate_monthly": 14,
+    "ultimate_annual": 14,
+}
 
 
 def create_stripe_customer(db: Session, uid: str, email: str) -> str:
@@ -92,6 +101,7 @@ def create_checkout_session(
 ) -> str:
     """
     Creates a Stripe Checkout Session for a subscription.
+    Pro and Ultimate tiers include a 14-day free trial.
     """
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
@@ -107,6 +117,13 @@ def create_checkout_session(
 
         customer_id = create_stripe_customer(db, uid, user.email)
 
+        # Build subscription_data with trial period if applicable
+        subscription_data = {"metadata": {"uid": uid, "plan": plan_type}}
+        trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
+        if trial_days:
+            subscription_data["trial_period_days"] = trial_days
+            logger.info(f"Creating checkout session with {trial_days}-day trial for plan {plan_type}")
+
         session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=["card"],
@@ -116,6 +133,7 @@ def create_checkout_session(
             cancel_url=return_url,
             allow_promotion_codes=True,
             metadata={"uid": uid, "plan": plan_type},
+            subscription_data=subscription_data,
         )
         return session.url
 

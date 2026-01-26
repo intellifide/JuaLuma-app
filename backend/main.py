@@ -290,29 +290,90 @@ async def health_check():
     if settings.firestore_healthcheck_enabled:
         try:
             from backend.utils.firestore import get_firestore_client
-
             client = await asyncio.to_thread(get_firestore_client)
-
             def _probe_firestore() -> None:
                 iterator = iter(client.collections())
                 try:
                     next(iterator)
                 except StopIteration:
-                    # No collections yet, but connectivity is successful
                     pass
-
             await asyncio.to_thread(_probe_firestore)
             checks["firestore"] = "connected"
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except Exception as exc:
             overall_healthy = False
             checks["firestore"] = f"error:{exc.__class__.__name__}"
             logger.exception("Firestore health check failed.")
 
-    status_code = (
-        status.HTTP_200_OK if overall_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
-    payload = {"status": "healthy" if overall_healthy else "unhealthy", **checks}
-    return JSONResponse(content=payload, status_code=status_code)
+    # Plaid Connectivity
+    try:
+        from backend.services.plaid import get_plaid_client
+        plaid_client = get_plaid_client()
+        # categories_get is a free, unauthenticated endpoint to verify API reachability
+        await asyncio.to_thread(plaid_client.categories_get, {})
+        checks["plaid"] = "connected"
+    except Exception as exc:
+        overall_healthy = False
+        checks["plaid"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Plaid health check failed: {exc}")
+
+    # AI Assistant (Gemini) Connectivity
+    try:
+        from backend.services.ai import get_ai_client
+        ai_client = get_ai_client()
+        # Verify model object exists and client initialized
+        if ai_client and ai_client.model:
+            checks["ai_assistant"] = "connected"
+        else:
+            overall_healthy = False
+            checks["ai_assistant"] = "initialization_failed"
+    except Exception as exc:
+        overall_healthy = False
+        checks["ai_assistant"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"AI Assistant health check failed: {exc}")
+
+    # Web3 Connectivity (ETH RPC)
+    try:
+        from web3 import Web3, HTTPProvider
+        w3 = Web3(HTTPProvider(settings.eth_rpc_url))
+        if await asyncio.to_thread(w3.is_connected):
+            checks["web3"] = "connected"
+        else:
+            overall_healthy = False
+            checks["web3"] = "disconnected"
+    except Exception as exc:
+        overall_healthy = False
+        checks["web3"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Web3 health check failed: {exc}")
+
+    # CEX Connectivity (CCXT)
+    try:
+        import ccxt
+        # Minimal check: ensure ccxt can hit a public endpoint (e.g. Binance time)
+        binance = ccxt.binance()
+        await asyncio.to_thread(binance.fetch_time)
+        checks["cex"] = "connected"
+    except Exception as exc:
+        overall_healthy = False
+        checks["cex"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"CEX health check failed: {exc}")
+
+    # Marketplace Connectivity
+    try:
+        # Marketplace relies on DB and API, but we check for Widget existence as a probe
+        def _probe_marketplace() -> None:
+            with engine.connect() as connection:
+                connection.execute(text("SELECT 1 FROM widgets LIMIT 1"))
+        
+        await asyncio.to_thread(_probe_marketplace)
+        checks["marketplace"] = "connected"
+    except Exception as exc:
+        overall_healthy = False
+        checks["marketplace"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Marketplace health check failed: {exc}")
+
+    overall_status = "healthy" if overall_healthy else "degraded"
+    payload = {"status": overall_status, **checks}
+    return JSONResponse(content=payload, status_code=status.HTTP_200_OK)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,8 @@ import {
   Bell, 
   Menu, 
   X,
-  ChevronLeft
+  ChevronLeft,
+  LifeBuoy
 } from 'lucide-react'
 
 const sidebarLinks = [
@@ -25,6 +26,7 @@ const sidebarLinks = [
   { name: 'Marketplace', path: '/marketplace', icon: Store },
   { name: 'AI Assistant', path: '/ai-assistant', icon: Bot },
   { name: 'Settings', path: '/settings', icon: Settings },
+  { name: 'Support', path: '/support', icon: LifeBuoy },
 ]
 
 export const AppLayout: React.FC = () => {

@@ -454,7 +454,7 @@ User → POST /chat
 - Free Tier: 5 cloud queries/day (Vertex AI Gemini 2.5 Flash)
 - Essential Tier: 75 cloud queries/day limit
 - Pro Tier: 75 cloud queries/day limit (shared with Essential Tier)
-- Ultimate Tier: 100 cloud queries/day limit
+- Ultimate Tier: 80 cloud queries/day limit
 - Hard limit: 5 requests/minute (burst protection)
 
 **Checkpoint 2: Feature Flag**

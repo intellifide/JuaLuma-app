@@ -9,7 +9,7 @@ def test_health_reports_database_connected(test_client):
     response = test_client.get("/health")
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "healthy"
+    assert body["status"] in {"healthy", "degraded"}
     assert body["database"] == "connected"
 
 

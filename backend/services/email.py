@@ -36,6 +36,18 @@ class EmailClient(Protocol):
         """Send welcome email to new household member."""
         ...
 
+    def send_support_ticket_notification(
+        self,
+        to_email: str,
+        subject: str,
+        ticket_id: str,
+        user_email: str,
+        description: str,
+        event_type: str = "Ticket Created",
+    ) -> None:
+        """Notify support team about a ticket update."""
+        ...
+
 
 class TestmailEmailClient:
     """Email client using Testmail.app API for development testing."""
@@ -165,6 +177,27 @@ class TestmailEmailClient:
         )
         self._send_via_api(to_email, subject, body)
 
+    def send_support_ticket_notification(
+        self,
+        to_email: str,
+        subject: str,
+        ticket_id: str,
+        user_email: str,
+        description: str,
+        event_type: str = "Ticket Created",
+    ) -> None:
+        """Notify support team via Testmail."""
+        email_subject = f"[SUPPORT] {event_type}: {subject}"
+        body = (
+            f"Event: {event_type}\n"
+            f"Ticket ID: {ticket_id}\n"
+            f"User: {user_email}\n"
+            f"Subject: {subject}\n\n"
+            f"Description/Message:\n{description}\n\n"
+            f"View in Portal: {settings.frontend_url}/support-portal/tickets/{ticket_id}"
+        )
+        self._send_via_api(to_email, email_subject, body)
+
 
 class SmtpEmailClient:
     def __init__(self):
@@ -173,6 +206,15 @@ class SmtpEmailClient:
         self.username = settings.smtp_username
         self.password = settings.smtp_password
         self.from_email = settings.smtp_from_email or "no-reply@jualuma.com"
+
+    def _login_if_configured(self, server: smtplib.SMTP) -> None:
+        if self.username and self.password:
+            server.login(self.username, self.password)
+        elif self.username or self.password:
+            logger.warning(
+                "SMTP credentials incomplete; skipping authentication for host %s.",
+                self.host,
+            )
 
     def send_generic_alert(self, to_email: str, title: str) -> None:
         """
@@ -202,7 +244,7 @@ class SmtpEmailClient:
 
             with smtplib.SMTP(self.host, self.port) as server:
                 server.starttls()
-                server.login(self.username, self.password)
+                self._login_if_configured(server)
                 server.send_message(msg)
 
             logger.info(f"Sent generic alert to {to_email}")
@@ -233,7 +275,7 @@ class SmtpEmailClient:
 
             with smtplib.SMTP(self.host, self.port) as server:
                 server.starttls()
-                server.login(self.username, self.password)
+                self._login_if_configured(server)
                 server.send_message(msg)
 
             logger.info(f"Sent subscription welcome email to {to_email}")
@@ -264,7 +306,7 @@ class SmtpEmailClient:
 
             with smtplib.SMTP(self.host, self.port) as server:
                 server.starttls()
-                server.login(self.username, self.password)
+                self._login_if_configured(server)
                 server.send_message(msg)
 
             logger.info(f"Sent OTP to {to_email}")
@@ -295,7 +337,7 @@ class SmtpEmailClient:
 
             with smtplib.SMTP(self.host, self.port) as server:
                 server.starttls()
-                server.login(self.username, self.password)
+                self._login_if_configured(server)
                 server.send_message(msg)
 
             logger.info(f"Sent password reset link to {to_email}")
@@ -356,7 +398,7 @@ class SmtpEmailClient:
 
             with smtplib.SMTP(self.host, self.port) as server:
                 server.starttls()
-                server.login(self.username, self.password)
+                self._login_if_configured(server)
                 server.send_message(msg)
 
             logger.info(f"Sent household invite to {to_email}")
@@ -393,12 +435,57 @@ class SmtpEmailClient:
 
             with smtplib.SMTP(self.host, self.port) as server:
                 server.starttls()
-                server.login(self.username, self.password)
+                self._login_if_configured(server)
                 server.send_message(msg)
 
             logger.info(f"Sent household welcome email to {to_email}")
         except Exception as e:
             logger.error(f"Failed to send household welcome email: {e}")
+
+    def send_support_ticket_notification(
+        self,
+        to_email: str,
+        subject: str,
+        ticket_id: str,
+        user_email: str,
+        description: str,
+        event_type: str = "Ticket Created",
+    ) -> None:
+        """Notify support team via SMTP."""
+        target_email = to_email or settings.support_email
+        if not target_email:
+            logger.error("Support email not configured. Skipping notification send.")
+            return
+        msg = MIMEMultipart()
+        msg["From"] = self.from_email
+        msg["To"] = target_email
+        msg["Subject"] = f"[SUPPORT] {event_type}: {subject}"
+
+        body = (
+            f"Event: {event_type}\n"
+            f"Ticket ID: {ticket_id}\n"
+            f"User: {user_email}\n"
+            f"Subject: {subject}\n\n"
+            f"Description/Message:\n{description}\n\n"
+            f"View in Portal: {settings.frontend_url}/support-portal/tickets/{ticket_id}"
+        )
+        msg.attach(MIMEText(body, "plain"))
+
+        try:
+            if self.host == "mock":
+                logger.info(
+                    f"[SMTP-SUPPORT-NOTIFICATION] To: {target_email} | Ticket: {ticket_id}"
+                )
+                return
+
+            with smtplib.SMTP(self.host, self.port) as server:
+                server.starttls()
+                self._login_if_configured(server)
+                server.send_message(msg)
+
+            logger.info(f"Sent support notification email to {target_email}")
+        except Exception as e:
+            logger.error(f"Failed to send support notification email: {e}")
 
 
 def get_email_client() -> EmailClient:
@@ -408,8 +495,11 @@ def get_email_client() -> EmailClient:
     Testmail credentials in .env are used by E2E tests for verification only.
     """
     if settings.smtp_host:
-        logger.info(f"Using SmtpEmailClient with host: {settings.smtp_host}")
+        logger.info("Using SmtpEmailClient with host: %s", settings.smtp_host)
         return SmtpEmailClient()
+    if settings.testmail_api_key and settings.testmail_namespace:
+        logger.info("Using TestmailEmailClient for development.")
+        return TestmailEmailClient()
 
     logger.warning("SMTP_HOST not set. Email functionality disabled.")
     return SmtpEmailClient()  # Will likely fail or log if host is missing

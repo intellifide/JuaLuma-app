@@ -3,6 +3,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
@@ -277,36 +278,36 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
 };
 
 
-import { useBudget } from '../hooks/useBudget';
+import { useBudget, Budget } from '../hooks/useBudget';
 
-const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'personal' | 'household' }) => {
+const BudgetTool = ({ 
+  categories, 
+  scope, 
+  budgets, 
+  saveBudget, 
+  resetBudgets 
+}: { 
+  categories: string[], 
+  scope: 'personal' | 'household',
+  budgets: Budget[],
+  saveBudget: (cat: string, amount: number | null, threshold?: number, enabled?: boolean) => Promise<void>,
+  resetBudgets: () => Promise<void>
+}) => {
   const { user } = useAuth();
-  const { budgets, saveBudget } = useBudget(scope);
   const [editing, setEditing] = useState<string | null>(null);
   const [tempAmount, setTempAmount] = useState<string>('');
   const [tempThreshold, setTempThreshold] = useState<string>('80');
   const [tempAlertEnabled, setTempAlertEnabled] = useState<boolean>(true);
   const [expanded, setExpanded] = useState(false);
 
-  // Budgets are only returned if they exist, so activeBudgets is just 'budgets'
   const activeBudgets = budgets;
   const showAll = expanded || activeBudgets.length === 0;
-
-  // If showing all, use all categories. If collapsed, use only active budget categories.
-  // Exception: If no budgets are set at all, we show all (or a message/CTA) but logically 'showAll' covers it if we force expansion or just render nothing?
-  // User asked: "only displays what current budgets are set by default in its collapse view. if no budgets are set, the container should display a friendly message stating set your budget by category here."
-
   const categoriesToDisplay = showAll ? categories : activeBudgets.map(b => b.category);
-
-  // If collapsed and no budgets, we display a message, so categoriesToDisplay might be empty or irrelevant
   const showEmptyMessage = !expanded && activeBudgets.length === 0;
 
   const getBudget = (cat: string) => {
-    // In household scope, we might have multiple budget entries for the same category from different users.
-    // We should sum them up for display.
     const matchingBudgets = budgets.filter(b => b.category === cat);
     if (matchingBudgets.length === 0) return undefined;
-    
     return matchingBudgets.reduce((sum, b) => sum + b.amount, 0);
   };
 
@@ -325,32 +326,49 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
     setTempAlertEnabled(ownBudget ? ownBudget.alert_enabled : true);
   };
 
-  const handleSave = (cat: string) => {
-    const val = tempAmount === '' ? null : parseFloat(tempAmount);
-    // Prevent negative amounts for income categories
-    if (val !== null && val < 0 && cat === 'Income') {
-      return; // Don't save negative income budgets
-    }
-    const thresholdPercent = tempThreshold === '' ? 80 : parseFloat(tempThreshold);
+  const handleSave = (cat: string, finalAmount?: string, finalThreshold?: string, finalEnabled?: boolean) => {
+    const amountStr = finalAmount !== undefined ? finalAmount : tempAmount;
+    const thresholdStr = finalThreshold !== undefined ? finalThreshold : tempThreshold;
+    const enabled = finalEnabled !== undefined ? finalEnabled : tempAlertEnabled;
+
+    const val = amountStr === '' ? null : parseFloat(amountStr);
+    if (val !== null && val < 0 && cat === 'Income') return;
+    
+    const thresholdPercent = thresholdStr === '' ? 80 : parseFloat(thresholdStr);
     saveBudget(
       cat,
       val,
       Math.min(100, Math.max(0, thresholdPercent)) / 100,
-      tempAlertEnabled
+      enabled
     );
-    setEditing(null);
+  };
+
+  const handleReset = async () => {
+    if (window.confirm('Are you sure you want to reset all budget goals? This action cannot be undone.')) {
+      await resetBudgets();
+    }
   };
 
   return (
     <div className="glass-panel mb-10 transition-all duration-300">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Budget Goals</h2>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="text-sm font-medium text-primary hover:underline"
-        >
-          {expanded ? 'Collapse' : (activeBudgets.length > 0 ? 'Edit / Show All' : 'Expand')}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {expanded ? 'Collapse' : (activeBudgets.length > 0 ? 'Edit / Show All' : 'Expand')}
+          </button>
+          {activeBudgets.length > 0 && (
+            <button
+              onClick={handleReset}
+              className="text-[10px] font-medium text-rose-400/70 hover:text-rose-400 transition-colors uppercase tracking-wider"
+            >
+              Reset All
+            </button>
+          )}
+        </div>
       </div>
 
       {showEmptyMessage ? (
@@ -362,8 +380,24 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
         <div className="overflow-x-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {categoriesToDisplay.map(cat => (
-              <div key={cat} className="p-4 border border-white/10 rounded-lg flex flex-col gap-2 relative bg-transparent hover:bg-white/5 transition-colors">
-                <span className="font-medium text-sm text-text-muted">{cat}</span>
+              <div key={cat} className="p-4 border border-white/10 rounded-lg flex flex-col gap-2 relative bg-transparent hover:bg-white/5 transition-colors group">
+                <div className="flex justify-between items-start">
+                  <span className="font-medium text-sm text-text-muted">{cat}</span>
+                  {getBudget(cat) !== undefined && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Clear budget for ${cat}?`)) {
+                          saveBudget(cat, null);
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 -mr-1 -mt-1 text-text-muted hover:text-rose-400 transition-all"
+                      title="Reset category"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
                 {editing === cat ? (
                   <div className="flex flex-col gap-2">
                     <input
@@ -372,9 +406,15 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
                       value={tempAmount}
                       onChange={e => {
                         const val = e.target.value;
-                        // Prevent negative values for Income category
                         if (cat === 'Income' && parseFloat(val) < 0) return;
                         setTempAmount(val);
+                      }}
+                      onBlur={() => { handleSave(cat); setEditing(null); }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          handleSave(cat);
+                          setEditing(null);
+                        }
                       }}
                       placeholder="No Limit"
                       min={cat === 'Income' ? '0' : undefined}
@@ -386,6 +426,8 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
                         className="input py-1 px-2 text-xs w-16 bg-transparent border border-white/20 rounded text-text-primary no-spinner"
                         value={tempThreshold}
                         onChange={e => setTempThreshold(e.target.value)}
+                        onBlur={() => handleSave(cat)}
+                        onKeyDown={e => e.key === 'Enter' && handleSave(cat)}
                         min="1"
                         max="100"
                       />
@@ -393,11 +435,13 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
                       <div className="ml-auto flex items-center gap-2">
                         <Switch
                           checked={tempAlertEnabled}
-                          onChange={setTempAlertEnabled}
+                          onChange={(val) => {
+                            setTempAlertEnabled(val);
+                            handleSave(cat, tempAmount, tempThreshold, val);
+                          }}
                           label="Enabled"
                           compact
                         />
-                        <button onClick={() => handleSave(cat)} className="btn btn-sm btn-primary">✓</button>
                       </div>
                     </div>
                   </div>
@@ -407,12 +451,15 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
                       {getBudget(cat) ? formatCurrency(getBudget(cat)!) : 'Not Set'}
                     </span>
                     <span className="opacity-0 group-hover:opacity-100 text-xs text-primary">✎</span>
+                    {!getOwnBudget(cat)?.alert_enabled && getBudget(cat) !== undefined && (
+                      <span className="text-[10px] text-rose-400 font-medium ml-auto">Disabled</span>
+                    )}
                   </div>
                 )}
               </div>
             ))}
           </div>
-          {expanded && <p className="text-xs text-text-muted mt-4">* Click on an amount to edit. Leave blank for no limit.</p>}
+          {expanded && <p className="text-xs text-text-muted mt-4">* Changes are saved automatically on change or blur.</p>}
         </div>
       )}
     </div>
@@ -517,7 +564,7 @@ export default function Dashboard() {
   });
   const [notesHoverId, setNotesHoverId] = useState<string | null>(null);
   const notesHoverTimeout = useRef<number | null>(null);
-  const { budgets } = useBudget(dashboardScope);
+  const { budgets, saveBudget, resetBudgets } = useBudget(dashboardScope);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
   const toast = useToast();
 
@@ -685,17 +732,19 @@ export default function Dashboard() {
       return { budgetSpent: 0, totalBudget: 0 };
     }
     
-    // Create a map of budget amounts by category
+    // Create a map of budget amounts by category, only for enabled budgets
     const budgetsByCategory = new Map<string, number>();
     budgets.forEach(b => {
-      const existing = budgetsByCategory.get(b.category) || 0;
-      budgetsByCategory.set(b.category, existing + b.amount);
+      if (b.alert_enabled) {
+        const existing = budgetsByCategory.get(b.category) || 0;
+        budgetsByCategory.set(b.category, existing + b.amount);
+      }
     });
     
-    // Calculate total budget
+    // Calculate total budget (enabled only)
     const total = Array.from(budgetsByCategory.values()).reduce((sum, amount) => sum + amount, 0);
     
-    // Calculate spending only for categories with budgets
+    // Calculate spending only for categories with enabled budgets
     const spent = spendData.data
       .filter(item => budgetsByCategory.has(item.category))
       .reduce((sum, item) => sum + item.amount, 0);
@@ -985,7 +1034,13 @@ export default function Dashboard() {
       </div>
 
       {/* Budgeting Tool */}
-      <BudgetTool categories={CATEGORIES} scope={dashboardScope} />
+      <BudgetTool 
+        categories={CATEGORIES} 
+        scope={dashboardScope} 
+        budgets={budgets} 
+        saveBudget={saveBudget} 
+        resetBudgets={resetBudgets} 
+      />
 
       {/* Infographics & Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">

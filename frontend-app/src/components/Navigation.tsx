@@ -65,18 +65,18 @@ export const Navigation = () => {
 
   const GuestLinks = () => (
     <>
-      <NavLink to="/features" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+      <a href="http://localhost:5177/features" className={linkClass}>
         Features
-      </NavLink>
-      <NavLink to="/pricing" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+      </a>
+      <a href="http://localhost:5177/pricing" className={linkClass}>
         Pricing
-      </NavLink>
-      <NavLink to="/about" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+      </a>
+      <a href="http://localhost:5177/about" className={linkClass}>
         About
-      </NavLink>
-      <NavLink to="/developers" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+      </a>
+      <a href="http://localhost:5177/developers" className={linkClass}>
          Developers
-      </NavLink>
+      </a>
       <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Login
       </NavLink>
@@ -90,15 +90,15 @@ export const Navigation = () => {
     <>
       <header className="header">
         <div className="header-container">
-          <Link to="/" className="logo" aria-label="jualuma home">
+          <a href="http://localhost:5177" className="logo" aria-label="jualuma home">
             <img src="/assets/jualuma-logo.png" alt="jualuma logo" className="logo-img" />
             <span className="sr-only">jualuma</span>
-          </Link>
+          </a>
 
           <nav className="nav" aria-label="Main navigation">
-            <NavLink to="/" className={({ isActive }) => (isActive ? activeClass : linkClass)} end>
+            <a href="http://localhost:5177" className={linkClass}>
               Home
-            </NavLink>
+            </a>
             {user ? <AuthLinks /> : <GuestLinks />}
           </nav>
 
@@ -117,9 +117,9 @@ export const Navigation = () => {
 
         <nav className={`nav-mobile ${open ? 'open' : ''}`} aria-label="Mobile navigation">
           {/* Mobile nav items... reusing AuthLinks components logic lightly or duplicating */}
-          <NavLink to="/" className={({ isActive }) => (isActive ? activeClass : linkClass)} end onClick={toggleMenu}>
+          <a href="http://localhost:5177" className={linkClass} onClick={toggleMenu}>
             Home
-          </NavLink>
+          </a>
           {user ? (
             <>
               <NavLink to="/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>

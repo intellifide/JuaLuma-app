@@ -168,9 +168,9 @@ TIER_LIMITS = {
     "pro": 40,
     "pro_monthly": 40,
     "pro_annual": 40,
-    "ultimate": 200,
-    "ultimate_monthly": 200,
-    "ultimate_annual": 200,
+    "ultimate": 80,
+    "ultimate_monthly": 80,
+    "ultimate_annual": 80,
 }
 
 

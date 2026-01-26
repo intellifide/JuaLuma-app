@@ -188,15 +188,16 @@ The product goal is to abstract financial complexity and provide a simple, autom
   - **CEX Support:** Up to 10 CEX accounts \(API/OAuth support for Coinbase, Kraken, etc\.\)
 - **AI Model:** Access to Vertex AI Gemini 2.5 Flash (cloud AI) with encrypted RAG prompts.
   - **Quota:** 40 Cloud AI queries/day \(Metered, resets daily\)\.
-  - **Trial:** 7\-day free trial with full Pro features\.
+  - **Trial:** 14\-day free trial with full Pro features\.
   - **Tax Compliance:** Billing logic applies Texas SaaS Tax rules: Tax is applied to only 80% of the subscription fee \(20% exemption for data processing services\)\.
   - **Data Retention:** AI chat history has no retention limits; all transactions remain fully visible.
   - **Note:** Investment accounts count separately from traditional accounts\.
 - **Ultimate Tier \($60/month or $600/year\):**
   - **All Pro Tier Features:** Includes all Pro Tier capabilities.
   - **AI Model:** Vertex AI Gemini 2.5 Pro (Production) with smart routing. local dev uses Flash.
-  - **Quota:** 200 Cloud AI queries/day \(Metered, shared across household\).
+  - **Quota:** 80 Cloud AI queries/day \(Metered, shared across household\).
   - **Account Limits:** Up to 20 account connections total for the household.
+  - **Trial:** 14\-day free trial with full Ultimate features\.
   - **Household Architecture (Family Plan):**
     - **Structure:** One "Administrator" (Head of Household) holds the subscription. Other members link to this account via an invite system.
     - **Roles:**

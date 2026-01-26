@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class AgentReplyRequest(BaseModel):
@@ -10,20 +10,42 @@ class AgentReplyRequest(BaseModel):
 
 
 class TicketStatusUpdate(BaseModel):
-    status: str  # open, in_progress, resolved, closed
+    status: str  # open, resolved, closed
+
+
+class TicketAssignmentRequest(BaseModel):
+    assignee_uid: str | None = None
+
+
+class TicketEscalationRequest(BaseModel):
+    note: str | None = None
+
+
+class AgentSummary(BaseModel):
+    uid: str
+    display_name: str
+
+
+class TicketMessageResponse(BaseModel):
+    sender: str
+    message: str
+    created_at: datetime
 
 
 class TicketResponse(BaseModel):
     id: UUID
-    customer_uid: str
+    customer_reference: str
     subject: str
-    Status: str  # Keeping db column name case for now, should normalize later if possible or use alias
+    category: str
+    status: str
+    queue_status: str
+    assigned_agent: AgentSummary | None = None
+    escalated_to_developer: bool
+    escalated_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketDetailResponse(TicketResponse):
     description: str
-    messages: list[dict]  # Simplified for now, or use Message schema if available
+    messages: list[TicketMessageResponse]

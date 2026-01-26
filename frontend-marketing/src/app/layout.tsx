@@ -7,7 +7,7 @@ import { Footer } from '../components/Footer'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'jualuma - Master Your Finances',
+  title: 'JuaLuma - Master Your Finances',
   description: 'The ultimate financial aggregation and tracking platform.',
 }
 
@@ -21,7 +21,9 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen flex flex-col bg-bg-primary text-text-primary`}>
         <Navbar />
         <main className="flex-grow pt-20">
-          {children}
+          <div className="container mx-auto px-6">
+            {children}
+          </div>
         </main>
         <Footer />
       </body>

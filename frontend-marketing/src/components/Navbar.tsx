@@ -8,6 +8,7 @@ import { ThemeToggle } from './ThemeToggle'
 const navLinks = [
   { name: 'Features', path: '/features' },
   { name: 'Pricing', path: '/pricing' },
+  { name: 'Marketplace', path: '/marketplace' },
   { name: 'About', path: '/about' },
   { name: 'Developers', path: '/developers' },
   { name: 'Support', path: '/support' },
@@ -41,7 +42,7 @@ export const Navbar: React.FC = () => {
              J
           </div>
           <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight">
-            jualuma
+            JuaLuma
           </span>
         </Link>
 

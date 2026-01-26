@@ -104,7 +104,7 @@ This document expands on Section 3.2 of the business plan and provides comprehen
 - "Access to cloud AI models powered by Vertex AI Gemini 2.5 Flash"
 - "Link up to 5 traditional accounts, 5 investment accounts, and 5 Web3 wallets"
 - "75 cloud AI queries per day included for Pro (Essential Tier shares this limit)"
-- "7-day free trial available"
+- "14-day free trial available"
 
 **APPROVED - Ultimate Tier (Phase 3):**
 

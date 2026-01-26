@@ -24,6 +24,7 @@ import { Transactions } from './pages/Transactions'
 import { ConnectAccounts } from './pages/ConnectAccounts'
 import AIAssistant from './pages/AIAssistant'
 import { Settings } from './pages/Settings'
+import { Support } from './pages/Support'
 import { TicketDetail } from './pages/TicketDetail'
 import { FeatureRequest } from './pages/FeatureRequest'
 import { HouseholdPage } from './pages/Household/HouseholdPage'
@@ -66,6 +67,7 @@ function App() {
               <Route path="/ai-assistant" element={<AIAssistant />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/household" element={<HouseholdPage />} />
+              <Route path="/support" element={<Support />} />
               
               {/* Nested or Specific App Pages */}
               <Route path="/support/tickets/:ticketId" element={<TicketDetail />} />

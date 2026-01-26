@@ -65,4 +65,9 @@ export const supportService = {
     rateTicket: async (ticketId: string, data: TicketRatingCreate): Promise<void> => {
         await api.post(`/support/tickets/${ticketId}/rate`, data);
     },
+
+    getHealth: async (): Promise<any> => {
+        const response = await api.get('/health');
+        return response.data;
+    },
 };
