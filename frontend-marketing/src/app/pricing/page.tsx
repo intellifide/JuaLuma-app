@@ -1,7 +1,12 @@
+/**
+ * Core Purpose: Pricing page component displaying subscription plans, feature comparisons, and FAQs.
+ * Last Modified: 2026-01-25T23:50:00-06:00
+ */
 'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Check, Minus, Zap, Shield, Globe, Database, Activity, Users, Star } from 'lucide-react'
 
 interface SubscriptionPlan {
     code: string
@@ -303,92 +308,74 @@ export default function Pricing() {
                     </div>
 
                     {/* Feature Comparison Table */}
-                    <div className="glass-panel mb-12">
-                        <h2 className="text-center mb-12">Feature Comparison</h2>
-                        <div className="overflow-x-auto">
-                            <table className="table w-full text-center">
-                                <thead>
-                                    <tr>
-                                        <th className="text-left">Feature</th>
-                                        <th>Free</th>
-                                        <th>Essential</th>
-                                        <th>Pro</th>
-                                        <th>Ultimate</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td className="text-left"><strong>Traditional Accounts</strong></td>
-                                        <td>2</td>
-                                        <td>3</td>
-                                        <td>5</td>
-                                        <td>20</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>Investment Accounts</strong></td>
-                                        <td>1</td>
-                                        <td>2</td>
-                                        <td>5</td>
-                                        <td>20</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>Web3 Wallets</strong></td>
-                                        <td>1</td>
-                                        <td>1</td>
-                                        <td>5</td>
-                                        <td>20</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>CEX Accounts</strong></td>
-                                        <td>1</td>
-                                        <td>3</td>
-                                        <td>10</td>
-                                        <td>20</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>AI Queries/Day</strong></td>
-                                        <td>20</td>
-                                        <td>30</td>
-                                        <td>40</td>
-                                        <td>80</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>Data Retention</strong></td>
-                                        <td>45 days</td>
-                                        <td>Current + Prev Year</td>
-                                        <td>Full history</td>
-                                        <td>Full history</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>Sync Cadence</strong></td>
-                                        <td>Manual (10/day)</td>
-                                        <td>Daily automated</td>
-                                        <td>Faster scheduled</td>
-                                        <td>Faster scheduled</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>Family Features</strong></td>
-                                        <td>—</td>
-                                        <td>—</td>
-                                        <td>—</td>
-                                        <td>✓</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>Free Trial</strong></td>
-                                        <td>—</td>
-                                        <td>—</td>
-                                        <td>14 days</td>
-                                        <td>14 days</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-left"><strong>Developer Marketplace</strong></td>
-                                        <td>No Access</td>
-                                        <td>No Access</td>
-                                        <td>Full access</td>
-                                        <td>Full access</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div className="glass-panel mb-12 relative overflow-hidden p-0">
+                        {/* Gradient Header Background */}
+                        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+                        
+                        <div className="p-8 sm:p-12">
+                            <div className="text-center mb-12">
+                                <h2 className="mb-4">Feature Comparison</h2>
+                                <p className="text-text-secondary max-w-2xl mx-auto">
+                                    Detailed breakdown of what's included in each plan so you can choose the perfect fit for your financial journey.
+                                </p>
+                            </div>
+
+                            <div className="overflow-x-auto -mx-8 sm:mx-0 pb-4">
+                                <table className="w-full text-sm sm:text-base border-collapse min-w-[800px]">
+                                    <thead>
+                                        <tr>
+                                            <th className="text-left p-4 pb-8 w-1/4"></th>
+                                            <th className="p-4 pb-8 text-center w-[18%]">
+                                                <div className="text-xl font-bold text-gray-400 mb-1">Free</div>
+                                                <div className="text-sm font-normal text-gray-500">Starter</div>
+                                            </th>
+                                            <th className="p-4 pb-8 text-center w-[18%]">
+                                                <div className="text-xl font-bold text-blue-400 mb-1">Essential</div>
+                                                <div className="text-sm font-normal text-blue-500/80">Growth</div>
+                                            </th>
+                                            <th className="p-4 pb-8 text-center w-[18%] relative">
+                                                {/* Highlight Background for Header */}
+                                                <div className="absolute inset-x-2 top-0 bottom-0 bg-primary/10 rounded-t-2xl -z-10" />
+                                                <div className="text-xl font-bold text-primary mb-1">Pro</div>
+                                                <div className="text-sm font-normal text-primary/80">Most Popular</div>
+                                            </th>
+                                            <th className="p-4 pb-8 text-center w-[18%]">
+                                                <div className="text-xl font-bold text-accent mb-1">Ultimate</div>
+                                                <div className="text-sm font-normal text-accent/80">Power User</div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-text-secondary">
+                                        {[
+                                            { label: 'Traditional Accounts', free: '2', essential: '3', pro: '5', ultimate: '20', icon: Globe },
+                                            { label: 'Investment Accounts', free: '1', essential: '2', pro: '5', ultimate: '20', icon: Activity },
+                                            { label: 'Web3 Wallets', free: '1', essential: '1', pro: '5', ultimate: '20', icon: Database },
+                                            { label: 'CEX Accounts', free: '1', essential: '3', pro: '10', ultimate: '20', icon: Shield },
+                                            { label: 'AI Queries/Day', free: '20', essential: '30', pro: '40', ultimate: '80', icon: Zap },
+                                            { label: 'Data Retention', free: '45 days', essential: 'Current + Prev', pro: 'Full History', ultimate: 'Full History', icon: Database },
+                                            { label: 'Sync Cadence', free: 'Manual', essential: 'Daily', pro: 'Expidited', ultimate: 'Expedited', icon: Activity },
+                                            { label: 'Family Features', free: false, essential: false, pro: false, ultimate: true, icon: Users },
+                                            { label: 'Free Trial', free: false, essential: false, pro: '14 days', ultimate: '14 days', icon: Star },
+                                            { label: 'Developer Marketplace', free: false, essential: false, pro: true, ultimate: true, icon: Globe },
+                                        ].map((row, idx) => (
+                                            <tr key={idx} className="group hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
+                                                <td className="p-4 py-5 text-left font-medium text-text-primary flex items-center gap-3">
+                                                    <row.icon className="w-4 h-4 text-text-muted opacity-70" />
+                                                    {row.label}
+                                                </td>
+                                                <td className="p-4 py-5 text-center font-medium">{row.free === false ? <Minus className="w-5 h-5 mx-auto text-gray-600" /> : row.free === true ? <Check className="w-5 h-5 mx-auto text-green-500" /> : row.free}</td>
+                                                <td className="p-4 py-5 text-center font-medium text-blue-300/90">{row.essential === false ? <Minus className="w-5 h-5 mx-auto text-gray-600" /> : row.essential === true ? <Check className="w-5 h-5 mx-auto text-blue-500" /> : row.essential}</td>
+                                                <td className="p-4 py-5 text-center font-bold text-primary relative">
+                                                    {/* Highlight Background for Cell */}
+                                                    <div className="absolute inset-x-2 inset-y-0 bg-primary/5 -z-10 group-hover:bg-primary/10 transition-colors" />
+                                                    {row.pro === false ? <Minus className="w-5 h-5 mx-auto text-gray-600/50" /> : row.pro === true ? <Check className="w-5 h-5 mx-auto text-primary" /> : row.pro}
+                                                </td>
+                                                <td className="p-4 py-5 text-center font-medium text-accent/90">{row.ultimate === false ? <Minus className="w-5 h-5 mx-auto text-gray-600" /> : row.ultimate === true ? <Check className="w-5 h-5 mx-auto text-accent" /> : row.ultimate}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
