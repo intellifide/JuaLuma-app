@@ -140,3 +140,4 @@ notes.md
 scripts/debug_*.py
 
 firebase_data/
+.tmp.driveupload/

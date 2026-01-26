@@ -7,44 +7,43 @@
 /* jualuma Platform - Engineered Liquid Glass Theme */
 /* Base Variables */
 :root {
-  /* Colors - Royal Purple, Deep Indigo, Aqua */
-  --color-primary: #6b46c1;
-  /* Royal Purple */
-  --color-primary-dark: #553c9a;
-  --color-secondary: #4f46e5;
-  /* Deep Indigo */
-  --color-accent: #06b6d4;
-  /* Aqua */
-  --color-accent-light: #22d3ee;
+  /* Colors - Cosmic Palette */
+  --color-primary: #8b5cf6; /* Violet 500 - Vibrant Core */
+  --color-primary-dark: #7c3aed; /* Violet 600 */
+  --color-secondary: #0ea5e9; /* Sky 500 - Electric Accents */
+  --color-accent: #14b8a6; /* Teal 500 - Success/Action */
+  --color-accent-light: #2dd4bf;
 
-  /* Glass Theme */
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-blur: blur(12px);
+  /* Glass Theme - High Clarity */
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-blur: blur(20px);
   --glass-saturate: saturate(180%);
+  --glass-border: rgba(255, 255, 255, 0.4);
 
   /* Text Colors */
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
+  --text-primary: #0f172a; /* Slate 900 */
+  --text-secondary: #334155; /* Slate 700 */
+  --text-muted: #64748b; /* Slate 500 */
   --text-inverse: #ffffff;
 
-  /* Background */
-  --bg-primary: #f9fafb;
+  /* Backgrounds */
+  --bg-primary: #f1f5f9; /* Slate 100 */
   --bg-secondary: #ffffff;
-  --bg-overlay: rgba(0, 0, 0, 0.5);
+  --bg-overlay: rgba(15, 23, 42, 0.6);
 
   /* Borders */
-  --border-color: rgba(107, 70, 193, 0.2);
-  --border-radius: 12px;
-  --border-radius-lg: 16px;
+  --border-color: rgba(148, 163, 184, 0.3);
+  --border-radius: 16px; /* More rounded */
+  --border-radius-lg: 24px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  /* Shadows - Soft & Colored */
+  --shadow-sm: 0 2px 4px rgba(148, 163, 184, 0.1);
+  --shadow-md: 0 4px 12px rgba(139, 92, 246, 0.1);
+  --shadow-lg: 0 12px 32px rgba(139, 92, 246, 0.15);
+  --shadow-xl: 0 24px 48px rgba(15, 23, 42, 0.2);
+  --shadow-inner-glow: inset 0 0 20px rgba(139, 92, 246, 0.05);
 
-  /* Spacing */
+  /* Spacing & Type */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
@@ -52,43 +51,46 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
 
-  /* Typography */
-  --font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+  --font-family: "Outfit", "Inter", system-ui, sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
   --font-size-lg: 1.125rem;
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 2.5rem;
+  --font-size-5xl: 3.5rem;
 
   /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-base: 250ms ease;
-  --transition-slow: 350ms ease;
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Dark Mode */
+/* Dark Mode - Deep Space */
 [data-theme="dark"] {
-  --glass-bg: rgba(31, 41, 55, 0.9);
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  --text-muted: #9ca3af;
-  --bg-primary: #111827;
-  --bg-secondary: #1f2937;
-  --bg-overlay: rgba(0, 0, 0, 0.7);
-  --border-color: rgba(107, 70, 193, 0.3);
+  --glass-bg: rgba(15, 23, 42, 0.75); /* Slate 900 with opacity */
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --text-primary: #f8fafc; /* Slate 50 */
+  --text-secondary: #cbd5e1; /* Slate 300 */
+  --text-muted: #94a3b8; /* Slate 400 */
+
+  --bg-primary: #020617; /* Slate 950 - Almost Black */
+  --bg-secondary: #0f172a; /* Slate 900 */
+  --bg-overlay: rgba(0, 0, 0, 0.85);
+
+  --border-color: rgba(255, 255, 255, 0.08);
 
   /* Brand Colors adapted for Dark Mode */
-  --color-primary: #a78bfa;
-  /* Purple 400 */
-  --color-primary-dark: #8b5cf6;
-  /* Purple 500 */
-  --color-secondary: #818cf8;
-  /* Indigo 400 */
+  --color-primary: #a78bfa; /* Violet 400 */
+  --color-primary-dark: #8b5cf6; /* Violet 500 */
+  --color-secondary: #38bdf8; /* Sky 400 */
+
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-inner-glow: inset 0 0 20px rgba(139, 92, 246, 0.1);
 }
 
 /* Reset & Base */

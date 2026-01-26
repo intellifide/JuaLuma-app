@@ -1,5 +1,5 @@
 // Core Purpose: Main dashboard for personal and household financial insights.
-// Last Modified: 2026-01-25 17:55 CST
+// Last Modified: 2026-01-26 09:30 CST
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -347,14 +347,14 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
         <h2 className="text-xl font-semibold">Budget Goals</h2>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-sm font-medium text-royal-purple hover:underline"
+          className="text-sm font-medium text-primary hover:underline"
         >
           {expanded ? 'Collapse' : (activeBudgets.length > 0 ? 'Edit / Show All' : 'Expand')}
         </button>
       </div>
 
       {showEmptyMessage ? (
-        <div className="text-center py-6 rounded-lg border-2 border-dashed border-white/10 cursor-pointer hover:border-royal-purple/50 transition-colors" onClick={() => setExpanded(true)}>
+        <div className="text-center py-6 rounded-lg border-2 border-dashed border-white/10 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setExpanded(true)}>
           <p className="text-text-muted font-medium">Set your budget by category here</p>
           <p className="text-xs text-text-secondary mt-1">Click to expand and set goals</p>
         </div>
@@ -403,10 +403,10 @@ const BudgetTool = ({ categories, scope }: { categories: string[], scope: 'perso
                   </div>
                 ) : (
                   <div onClick={() => handleEdit(cat)} className="cursor-pointer rounded -ml-1 flex items-center gap-2 group">
-                    <span className={`text-lg font-bold ${getBudget(cat) ? 'text-royal-purple' : 'text-text-muted italic'}`}>
+                    <span className={`text-lg font-bold ${getBudget(cat) ? 'text-primary' : 'text-text-muted italic'}`}>
                       {getBudget(cat) ? formatCurrency(getBudget(cat)!) : 'Not Set'}
                     </span>
-                    <span className="opacity-0 group-hover:opacity-100 text-xs text-royal-purple">✎</span>
+                    <span className="opacity-0 group-hover:opacity-100 text-xs text-primary">✎</span>
                   </div>
                 )}
               </div>
@@ -862,13 +862,13 @@ export default function Dashboard() {
       {/* Header */}
       <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-deep-indigo">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
           <p className="text-text-secondary mt-1">Welcome back, {user?.displayName || user?.email}</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-4">
           <div className="text-right mr-4 hidden md:block">
             <span className="block text-sm text-text-muted">Total Balance ({dashboardScope === 'household' ? 'Family' : 'Personal'})</span>
-            <span className="block text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
+            <span className="block text-2xl font-bold text-primary">{formatCurrency(totalBalance)}</span>
           </div>
         </div>
       </div>
@@ -900,7 +900,7 @@ export default function Dashboard() {
                 onClick={() => setDashboardScope('personal')}
                 className={`px-3 py-1 text-sm rounded-md transition-all ${
                   dashboardScope === 'personal'
-                    ? 'bg-royal-purple text-white shadow font-medium'
+                    ? 'bg-primary text-white shadow font-medium'
                     : 'text-text-muted hover:text-text-secondary'
                 }`}
               >
@@ -919,7 +919,7 @@ export default function Dashboard() {
                 }}
                 className={`px-3 py-1 text-sm rounded-md transition-all ${
                   dashboardScope === 'household'
-                    ? 'bg-royal-purple text-white shadow font-medium'
+                    ? 'bg-primary text-white shadow font-medium'
                     : 'text-text-muted hover:text-text-secondary'
                 } ${!profile?.plan?.toLowerCase().includes('ultimate') && !profile?.household_member?.can_view_household ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -931,7 +931,7 @@ export default function Dashboard() {
           {profile?.plan?.toLowerCase().includes('ultimate') && (
             <button 
               onClick={handleInviteClick}
-              className="text-xs font-medium text-royal-purple border border-royal-purple/30 rounded px-2 py-1.5 hover:bg-royal-purple/10 transition-colors flex items-center gap-1"
+              className="text-xs font-medium text-primary border border-primary/30 rounded px-2 py-1.5 hover:bg-primary/10 transition-colors flex items-center gap-1"
             >
               <span>+</span> Invite Member
             </button>
@@ -944,7 +944,7 @@ export default function Dashboard() {
         {/* Net Worth */}
         <div className="card">
           <h3 className="text-sm text-text-muted mb-2">Net Worth</h3>
-          <p id="net-worth-value" className="text-3xl font-bold text-royal-purple">
+          <p id="net-worth-value" className="text-3xl font-bold text-primary">
             {nwLoading ? '...' : formatCurrency(nwData?.data?.[nwData.data.length - 1]?.value || totalBalance)}
           </p>
           <div className="text-sm mt-1">
@@ -956,23 +956,23 @@ export default function Dashboard() {
         {/* Cash Flow */}
         <div className="card">
           <h3 className="text-sm text-text-muted mb-2">Cash Flow</h3>
-          <p id="cashflow-value" className={`text-3xl font-bold ${cashFlowStats.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <p id="cashflow-value" className={`text-3xl font-bold ${cashFlowStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {cfLoading ? '...' : formatCurrency(cashFlowStats.net)}
           </p>
           <p className="text-sm text-text-muted mt-1">
-            In: <span className="text-emerald-600">{formatCompactCurrency(cashFlowStats.income)}</span> • Out: <span className="text-rose-600">{formatCompactCurrency(cashFlowStats.expense)}</span>
+            In: <span className="text-emerald-400">{formatCompactCurrency(cashFlowStats.income)}</span> • Out: <span className="text-rose-400">{formatCompactCurrency(cashFlowStats.expense)}</span>
           </p>
         </div>
 
         {/* Budget */}
         <div className="card">
           <h3 className="text-sm text-text-muted mb-2">Budget Status</h3>
-          <p className="text-3xl font-bold text-royal-purple">{budgetPercent.toFixed(0)}%</p>
+          <p className="text-3xl font-bold text-primary">{budgetPercent.toFixed(0)}%</p>
           <p className="text-sm text-text-muted mt-1">
             {formatCompactCurrency(budgetSpent)} of {formatCompactCurrency(totalBudget)} spent
           </p>
-          <div className="w-full bg-slate-100 rounded-full h-2 mt-2" aria-label="Budget usage">
-            <div className="h-2 rounded-full bg-royal-purple" style={{ width: `${budgetPercent}%` }} />
+          <div className="w-full bg-white/10 rounded-full h-2 mt-2" aria-label="Budget usage">
+            <div className="h-2 rounded-full bg-primary" style={{ width: `${budgetPercent}%` }} />
           </div>
         </div>
 
@@ -1280,8 +1280,8 @@ export default function Dashboard() {
                         <span className="font-medium text-text-primary">{cat.category}</span>
                         <span>{formatCompactCurrency(cat.amount)} ({percent.toFixed(0)}%)</span>
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5">
-                        <div className="h-1.5 rounded-full bg-royal-purple" style={{ width: `${percent}%` }} />
+                      <div className="w-full bg-white/10 rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full bg-primary" style={{ width: `${percent}%` }} />
                       </div>
                     </div>
                   )
@@ -1330,21 +1330,21 @@ export default function Dashboard() {
                       <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
                       <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
                     </div>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        // Trigger sync for all accounts sequentially to prevent rate limits
-                        for (const acc of filteredAccounts) {
-                          if (!syncingAccounts.has(acc.id)) {
-                            // We await each sync to ensure sequential execution
-                            await handleSync(acc.id, e);
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          // Trigger sync for all accounts sequentially to prevent rate limits
+                          for (const acc of filteredAccounts) {
+                            if (!syncingAccounts.has(acc.id)) {
+                              // We await each sync to ensure sequential execution
+                              await handleSync(acc.id, e);
+                            }
                           }
-                        }
-                      }}
-                       className="text-xs bg-royal-purple/10 text-royal-purple px-2 py-1 rounded hover:bg-royal-purple/20 flex items-center gap-1 transition-colors"
-                    >
-                      <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
-                    </button>
+                        }}
+                         className="text-xs bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 flex items-center gap-1 transition-colors"
+                      >
+                        <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
+                      </button>
                   </div>
               </>
             )}
@@ -1353,11 +1353,11 @@ export default function Dashboard() {
           <>
             <div className="tabs mb-6">
               <ul className="tab-list flex gap-4 border-b border-white/10" role="tablist">
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'web3' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3 Wallets</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cex' ? 'border-royal-purple text-royal-purple font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX Accounts</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'web3' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3 Wallets</button></li>
+                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cex' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX Accounts</button></li>
               </ul>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1372,12 +1372,12 @@ export default function Dashboard() {
                       <button
                         onClick={(e) => handleSync(account.id, e)}
                         disabled={syncingAccounts.has(account.id)}
-                        className="text-xs bg-royal-purple/20 text-royal-purple px-2 py-1 rounded hover:bg-royal-purple/30 disabled:opacity-50 flex items-center gap-1"
+                        className="text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 disabled:opacity-50 flex items-center gap-1"
                         title="Sync latest transactions"
                       >
                         {syncingAccounts.has(account.id) ? (
                           <>
-                            <span className="animate-spin text-royal-purple">↻</span> Syncing...
+                            <span className="animate-spin text-primary">↻</span> Syncing...
                           </>
                         ) : (
                           <>
@@ -1387,7 +1387,7 @@ export default function Dashboard() {
                       </button>
                     </div>
                     <h3 className="font-semibold text-lg">{account.accountName}</h3>
-                    <p className="text-2xl font-bold text-royal-purple my-2">
+                    <p className="text-2xl font-bold text-primary my-2">
                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
                     </p>
                     <div className="flex justify-between items-center mt-auto pt-2">
@@ -1419,7 +1419,7 @@ export default function Dashboard() {
         <div className="overflow-x-auto">
           <table className="table w-full">
             <thead>
-              <tr className="text-left text-text-muted border-b border-slate-200">
+              <tr className="text-left text-text-muted border-b border-white/10">
                 <th className="pb-3">Date</th>
                 <th className="pb-3">Description</th>
                 <th className="pb-3">Category</th>
@@ -1434,7 +1434,7 @@ export default function Dashboard() {
                 </tr>
               ) : (
                 recentTransactions.map(txn => (
-                  <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={txn.id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3 text-sm">{new Date(txn.ts).toLocaleDateString()}</td>
                     <td className="py-3 font-medium text-text-primary">
                       <div
@@ -1467,7 +1467,7 @@ export default function Dashboard() {
                     </td>
                     <td className="py-3">
                       <select
-                        className="bg-transparent border-none text-sm text-royal-purple font-medium focus:ring-0 cursor-pointer"
+                        className="bg-transparent border-none text-sm text-primary font-medium focus:ring-0 cursor-pointer"
                         value={txn.category || "Uncategorized"}
                         onChange={(e) => handleCategoryChange(txn.id, e.target.value)}
                       >
@@ -1482,7 +1482,7 @@ export default function Dashboard() {
                         {txn.userDisplayName || '—'}
                       </td>
                     )}
-                    <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                       {formatCurrency(txn.amount)}
                     </td>
                   </tr>

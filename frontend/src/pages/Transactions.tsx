@@ -1,5 +1,5 @@
 // Core Purpose: Transactions list with filters, search, and bulk actions.
-// Last Updated: 2026-01-25 13:00 CST
+// Last Updated: 2026-01-26 12:50 CST
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
@@ -205,13 +205,13 @@ export const Transactions = () => {
       {/* Header */}
       <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-deep-indigo">Transactions</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Transactions</h1>
           <p className="text-text-secondary mt-1">Filter, search, and bulk edit your transactions.</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-4">
           <button
             type="button"
-            className="px-4 py-2 rounded-lg bg-royal-purple text-white hover:bg-deep-indigo transition-colors text-sm font-medium"
+            className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors text-sm font-medium"
             onClick={() => setShowAddModal(true)}
           >
             Add Transaction
@@ -290,7 +290,7 @@ export const Transactions = () => {
           <button
             type="button"
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="text-sm text-royal-purple hover:underline flex items-center gap-2"
+            className="text-sm text-primary hover:underline flex items-center gap-2"
           >
             <span>{showAdvancedFilters ? '▼' : '▶'}</span>
             {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
@@ -304,7 +304,7 @@ export const Transactions = () => {
                 onClick={() => setScope('personal')}
                 className={`px-3 py-1 text-sm rounded-md transition-all ${
                   scope === 'personal'
-                    ? 'bg-royal-purple text-white shadow font-medium'
+                    ? 'bg-primary text-white shadow font-medium'
                     : 'text-text-muted hover:text-text-secondary'
                 }`}
               >
@@ -322,7 +322,7 @@ export const Transactions = () => {
                 }}
                 className={`px-3 py-1 text-sm rounded-md transition-all ${
                   scope === 'household'
-                    ? 'bg-royal-purple text-white shadow font-medium'
+                    ? 'bg-primary text-white shadow font-medium'
                     : 'text-text-muted hover:text-text-secondary'
                 } ${!profile?.plan?.toLowerCase().includes('ultimate') ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -391,7 +391,7 @@ export const Transactions = () => {
         <div className="overflow-x-auto">
           <table className="table w-full">
             <thead>
-              <tr className="text-left text-text-muted border-b border-slate-200">
+              <tr className="text-left text-text-muted border-b border-white/10">
                 <th className="pb-3">Date</th>
                 <th className="pb-3">Description</th>
                 <th className="pb-3">Category</th>
@@ -410,7 +410,7 @@ export const Transactions = () => {
                 </tr>
               ) : (
                 transactions.map(txn => (
-                  <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={txn.id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3 text-sm">{new Date(txn.ts).toLocaleDateString()}</td>
                     <td className="py-3 font-medium text-text-primary">
                       <div
@@ -443,7 +443,7 @@ export const Transactions = () => {
                     </td>
                     <td className="py-3">
                       <select
-                        className="bg-transparent border-none text-sm text-royal-purple font-medium focus:ring-0 cursor-pointer"
+                        className="bg-transparent border-none text-sm text-primary font-medium focus:ring-0 cursor-pointer"
                         value={txn.category || "Uncategorized"}
                         onChange={(e) => handleCategoryChange(txn.id, e.target.value)}
                       >
@@ -453,14 +453,14 @@ export const Transactions = () => {
                         ))}
                       </select>
                     </td>
-                    <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                       {formatCurrency(txn.amount)}
                     </td>
                     <td className="py-3 text-right">
                       <div className="flex justify-end gap-3 text-sm">
                         <button
                           type="button"
-                          className="text-royal-purple hover:underline"
+                          className="text-primary hover:underline"
                           onClick={() => handleEdit(txn.id)}
                         >
                           Edit

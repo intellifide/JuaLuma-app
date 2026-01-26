@@ -1,5 +1,5 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
-// Last Updated 2026-01-24 01:20 CST
+// Last Updated 2026-01-26 13:00 CST
 
 import React, { useCallback, useEffect, useState, FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -705,7 +705,7 @@ export const Settings = () => {
               <li key={tab.id}>
                 <button
                   className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === tab.id
-                    ? 'border-royal-purple text-royal-purple'
+                    ? 'border-primary text-primary'
                     : 'border-transparent text-text-muted hover:text-text-primary'
                     }`}
                   onClick={() => setActiveTab(tab.id)}
@@ -764,7 +764,7 @@ export const Settings = () => {
                       <p className="mb-2"><strong>Status:</strong> <span className={`px-2 py-0.5 rounded text-xs font-semibold ${profile?.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{profile?.subscription_status || 'Inactive'}</span></p>
 
                       {profile?.plan?.includes('pro') && (
-                        <p className="mt-4 p-2 bg-royal-purple/10 rounded text-sm">
+                        <p className="mt-4 p-2 bg-primary/10 rounded text-sm">
                           <strong>Tax Note:</strong> Billing includes Texas sales tax on 80% of subscription fee (20% exemption for data processing services)
                         </p>
                       )}
@@ -850,7 +850,7 @@ export const Settings = () => {
                               </td>
                               <td className="py-3">
                                 {invoice.invoice_pdf ? (
-                                  <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-royal-purple hover:underline text-sm font-medium">
+                                  <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm font-medium">
                                     Download PDF
                                   </a>
                                 ) : (
@@ -1527,7 +1527,7 @@ export const Settings = () => {
                         <tr key={session.id} className="border-b border-border/50 last:border-0 hover:bg-surface-2 transition-colors">
                           <td className="py-3">
                             <div className="font-medium text-text-primary">
-                              {session.device_type} {session.is_current && <span className="ml-2 px-1.5 py-0.5 bg-royal-purple/10 text-royal-purple text-[10px] rounded font-bold uppercase">Current</span>}
+                              {session.device_type} {session.is_current && <span className="ml-2 px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded font-bold uppercase">Current</span>}
                             </div>
                             <div className="text-xs text-text-muted">{session.ip_address || 'Unknown IP'}</div>
                           </td>
