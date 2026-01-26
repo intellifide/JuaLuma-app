@@ -151,7 +151,11 @@ describe('HouseholdPage Integration', () => {
         const sendBtn = screen.getByText('Send Invite')
         await user.click(sendBtn)
 
-        expect(householdService.inviteMember).toHaveBeenCalledWith({ email: 'new@example.com', is_minor: false })
+        expect(householdService.inviteMember).toHaveBeenCalledWith({
+            email: 'new@example.com',
+            is_minor: false,
+            can_view_household: true,
+        })
     })
 
     it('allows leaving the household', async () => {

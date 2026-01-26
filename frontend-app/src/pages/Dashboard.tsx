@@ -1,18 +1,16 @@
 // Core Purpose: Main dashboard for personal and household financial insights.
 // Last Modified: 2026-01-26 09:30 CST
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { RotateCcw } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
+import { useBudget } from '../hooks/useBudget';
 import { useTransactions } from '../hooks/useTransactions';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
-import { Account, Transaction } from '../types';
-import { DataPoint } from '../services/analytics';
+import { Transaction } from '../types';
 import { useToast } from '../components/ui/Toast';
+import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { Modal } from '../components/ui/Modal';
-import { ExpandableChartModal } from '../components/ExpandableChartModal';
 import Switch from '../components/ui/Switch';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
@@ -30,32 +28,39 @@ const formatDateParam = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-// Parse YYYY-MM-DD in UTC for stable chart labels.
-const parseDateUTC = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
-};
+// Transactions date range mirrors Transactions page behavior.
+const getTransactionsDateRange = (timeframe: string) => {
+  const end = new Date();
+  const start = new Date(end);
 
-// Format month/year labels with apostrophe to avoid day/month ambiguity.
-const formatMonthYearLabel = (value: Date) => {
-  const month = value.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' });
-  const year = value.getUTCFullYear().toString().slice(-2);
-  return `${month} \u2019${year}`;
-};
-
-// Sort data points to ensure charts render newest-to-oldest along the x-axis.
-const sortDataPointsDesc = (points: DataPoint[]) =>
-  [...points].sort((a, b) => b.date.localeCompare(a.date));
-
-// Align x-axis labels based on index position within the chart track.
-const getXAxisLabelStyle = (index: number, total: number, x: number) => {
-  if (index === 0) {
-    return { left: x, transform: 'translateX(0%)' };
+  switch (timeframe) {
+    case '1w':
+      start.setDate(end.getDate() - 7);
+      break;
+    case '1m':
+      start.setDate(end.getDate() - 30);
+      break;
+    case '3m':
+      start.setDate(end.getDate() - 90);
+      break;
+    case '6m':
+      start.setDate(end.getDate() - 180);
+      break;
+    case '1y':
+      start.setDate(end.getDate() - 365);
+      break;
+    case 'ytd':
+      start.setFullYear(end.getFullYear(), 0, 1);
+      break;
+    case 'all':
+      return { start: undefined, end: undefined };
+    default:
+      start.setDate(end.getDate() - 30);
   }
-  if (index === total - 1) {
-    return { left: x, transform: 'translateX(-100%)' };
-  }
-  return { left: x, transform: 'translateX(-50%)' };
+  return {
+    start: formatDateParam(start),
+    end: formatDateParam(end),
+  };
 };
 
 // Resolve a comparable timestamp for consistent transaction ordering.
@@ -151,329 +156,13 @@ const formatCurrency = (value: number) =>
 const formatCompactCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: "compact", maximumFractionDigits: 1 }).format(value);
 
-
-// SVG Generators
-// SVG Generators
-const generateLinePath = (data: DataPoint[], width: number, height: number, labelMode: 'day' | 'monthYear') => {
-  const padding = { top: 10, right: 30, bottom: 20, left: 12 };
-  const drawWidth = width - padding.left - padding.right;
-  const drawHeight = height - padding.top - padding.bottom;
-
-  if (!data || data.length === 0) return { path: '', areaPath: '', dots: [], yLabels: [], xLabels: [], padding, points: [] };
-
-  const values = data.map(d => d.value);
-  const min = Math.min(...values) * 0.98;
-  const max = Math.max(...values) * 1.02;
-  const range = max - min || 1;
-
-  const points = data.map((d, i) => {
-    const x = padding.left + (i / (data.length - 1)) * drawWidth;
-    const y = padding.top + drawHeight - ((d.value - min) / range) * drawHeight;
-    return { x, y, value: d.value, date: d.date };
-  });
-
-  const path = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const areaPath = `${padding.left},${padding.top + drawHeight} ${path} ${padding.left + drawWidth},${padding.top + drawHeight}`;
-
-  // Y-axis labels (Value)
-  const yLabels = [min, (min + max) / 2, max].map(val => ({
-    label: formatCompactCurrency(val),
-    y: padding.top + drawHeight - ((val - min) / range) * drawHeight
-  }));
-
-  // X-axis labels (Timeframe - start, mid, end)
-  const labelIndices = Array.from(
-    new Set([0, Math.floor(data.length / 2), data.length - 1])
-  ).filter((i) => i >= 0 && i < data.length);
-  const xLabels = labelIndices.map(i => {
-    const value = parseDateUTC(data[i].date);
-    const label = labelMode === 'monthYear'
-      ? formatMonthYearLabel(value)
-      : value.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-    return {
-      label,
-      x: padding.left + (i / (data.length - 1)) * drawWidth
-    };
-  });
-
-  // Select a few points to show dots (start, middle, end)
-  const dotIndices = [0, Math.floor(data.length / 2), data.length - 1];
-  const dots = dotIndices.map(i => ({ cx: points[i].x, cy: points[i].y }));
-
-  return {
-    path,
-    areaPath,
-    dots,
-    yLabels,
-    xLabels,
-    padding,
-    points
-  };
-};
-
-const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: number, height: number, cfInterval: string) => {
-  const padding = { top: 10, right: 10, bottom: 20, left: 12 };
-  const drawWidth = width - padding.left - padding.right;
-  const drawHeight = height - padding.top - padding.bottom;
-
-  // Merge dates to ensure alignment
-  const allDates = new Set([...income.map(d => d.date), ...expenses.map(d => d.date)]);
-  const sortedDates = Array.from(allDates).sort((a, b) => b.localeCompare(a));
-
-  if (sortedDates.length === 0) return { bars: [], yLabels: [], padding };
-
-  const dataMap: Record<string, { inc: number, exp: number }> = {};
-  sortedDates.forEach(d => dataMap[d] = { inc: 0, exp: 0 });
-
-  income.forEach(d => { if (dataMap[d.date]) dataMap[d.date].inc = d.value; });
-  expenses.forEach(d => { if (dataMap[d.date]) dataMap[d.date].exp = Math.abs(d.value); });
-
-  // Calculate max for scale
-  let maxVal = 0;
-  Object.values(dataMap).forEach(v => {
-    maxVal = Math.max(maxVal, v.inc, v.exp);
-  });
-  maxVal = maxVal * 1.1 || 1000;
-
-  const slotWidth = drawWidth / sortedDates.length;
-  const barWidth = slotWidth * 0.4;
-  const gap = slotWidth * 0.1;
-
-  const bars = sortedDates.map((date, i) => {
-    const xBase = padding.left + slotWidth * i + gap;
-    const vals = dataMap[date];
-
-    const hInc = (vals.inc / maxVal) * drawHeight;
-    const hExp = (vals.exp / maxVal) * drawHeight;
-
-    return {
-      date,
-      inc: vals.inc,
-      exp: vals.exp,
-      xCenter: padding.left + slotWidth * i + slotWidth / 2,
-      xInc: xBase,
-      yInc: padding.top + drawHeight - hInc,
-      hInc,
-      xExp: xBase + barWidth,
-      yExp: padding.top + drawHeight - hExp,
-      hExp,
-      labelX: xBase + barWidth,
-      label: (() => {
-        const d = parseDateUTC(date);
-        if (cfInterval === 'week') {
-          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-        }
-        return formatMonthYearLabel(d);
-      })()
-    };
-  });
-
-  // Y-axis labels
-  const yLabels = [0, maxVal / 2, maxVal].map(val => ({
-    label: formatCompactCurrency(val),
-    y: padding.top + drawHeight - (val / maxVal) * drawHeight
-  }));
-
-  return { bars, yLabels, padding };
-};
-
-
-import { useBudget, Budget } from '../hooks/useBudget';
-
-const BudgetTool = ({ 
-  categories, 
-  scope, 
-  budgets, 
-  saveBudget, 
-  resetBudgets 
-}: { 
-  categories: string[], 
-  scope: 'personal' | 'household',
-  budgets: Budget[],
-  saveBudget: (cat: string, amount: number | null, threshold?: number, enabled?: boolean) => Promise<void>,
-  resetBudgets: () => Promise<void>
-}) => {
-  const { user } = useAuth();
-  const [editing, setEditing] = useState<string | null>(null);
-  const [tempAmount, setTempAmount] = useState<string>('');
-  const [tempThreshold, setTempThreshold] = useState<string>('80');
-  const [tempAlertEnabled, setTempAlertEnabled] = useState<boolean>(true);
-  const [expanded, setExpanded] = useState(false);
-
-  const activeBudgets = budgets;
-  const showAll = expanded || activeBudgets.length === 0;
-  const categoriesToDisplay = showAll ? categories : activeBudgets.map(b => b.category);
-  const showEmptyMessage = !expanded && activeBudgets.length === 0;
-
-  const getBudget = (cat: string) => {
-    const matchingBudgets = budgets.filter(b => b.category === cat);
-    if (matchingBudgets.length === 0) return undefined;
-    return matchingBudgets.reduce((sum, b) => sum + b.amount, 0);
-  };
-
-  const getOwnBudget = (cat: string) => {
-    if (!user) return budgets.find(b => b.category === cat);
-    return budgets.find(b => b.category === cat && b.uid === user.uid);
-  };
-
-  const handleEdit = (cat: string) => {
-    const ownBudget = getOwnBudget(cat);
-    setEditing(cat);
-    setTempAmount(getBudget(cat)?.toString() || '');
-    setTempThreshold(
-      ownBudget ? String(Math.round(ownBudget.alert_threshold_percent * 100)) : '80'
-    );
-    setTempAlertEnabled(ownBudget ? ownBudget.alert_enabled : true);
-  };
-
-  const handleSave = (cat: string, finalAmount?: string, finalThreshold?: string, finalEnabled?: boolean) => {
-    const amountStr = finalAmount !== undefined ? finalAmount : tempAmount;
-    const thresholdStr = finalThreshold !== undefined ? finalThreshold : tempThreshold;
-    const enabled = finalEnabled !== undefined ? finalEnabled : tempAlertEnabled;
-
-    const val = amountStr === '' ? null : parseFloat(amountStr);
-    if (val !== null && val < 0 && cat === 'Income') return;
-    
-    const thresholdPercent = thresholdStr === '' ? 80 : parseFloat(thresholdStr);
-    saveBudget(
-      cat,
-      val,
-      Math.min(100, Math.max(0, thresholdPercent)) / 100,
-      enabled
-    );
-  };
-
-  const handleReset = async () => {
-    if (window.confirm('Are you sure you want to reset all budget goals? This action cannot be undone.')) {
-      await resetBudgets();
-    }
-  };
-
-  return (
-    <div className="glass-panel mb-10 transition-all duration-300">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Budget Goals</h2>
-        <div className="flex flex-col items-end gap-1">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            {expanded ? 'Collapse' : (activeBudgets.length > 0 ? 'Edit / Show All' : 'Expand')}
-          </button>
-          {activeBudgets.length > 0 && (
-            <button
-              onClick={handleReset}
-              className="text-[10px] font-medium text-rose-400/70 hover:text-rose-400 transition-colors uppercase tracking-wider"
-            >
-              Reset All
-            </button>
-          )}
-        </div>
-      </div>
-
-      {showEmptyMessage ? (
-        <div className="text-center py-6 rounded-lg border-2 border-dashed border-white/10 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setExpanded(true)}>
-          <p className="text-text-muted font-medium">Set your budget by category here</p>
-          <p className="text-xs text-text-secondary mt-1">Click to expand and set goals</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {categoriesToDisplay.map(cat => (
-              <div key={cat} className="p-4 border border-white/10 rounded-lg flex flex-col gap-2 relative bg-transparent hover:bg-white/5 transition-colors group">
-                <div className="flex justify-between items-start">
-                  <span className="font-medium text-sm text-text-muted">{cat}</span>
-                  {getBudget(cat) !== undefined && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Clear budget for ${cat}?`)) {
-                          saveBudget(cat, null);
-                        }
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 -mr-1 -mt-1 text-text-muted hover:text-rose-400 transition-all"
-                      title="Reset category"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-                {editing === cat ? (
-                  <div className="flex flex-col gap-2">
-                    <input
-                      type="number"
-                      className="input py-1 px-2 text-sm w-full bg-transparent border border-white/20 rounded text-text-primary no-spinner"
-                      value={tempAmount}
-                      onChange={e => {
-                        const val = e.target.value;
-                        if (cat === 'Income' && parseFloat(val) < 0) return;
-                        setTempAmount(val);
-                      }}
-                      onBlur={() => { handleSave(cat); setEditing(null); }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          handleSave(cat);
-                          setEditing(null);
-                        }
-                      }}
-                      placeholder="No Limit"
-                      min={cat === 'Income' ? '0' : undefined}
-                      autoFocus
-                    />
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <input
-                        type="number"
-                        className="input py-1 px-2 text-xs w-16 bg-transparent border border-white/20 rounded text-text-primary no-spinner"
-                        value={tempThreshold}
-                        onChange={e => setTempThreshold(e.target.value)}
-                        onBlur={() => handleSave(cat)}
-                        onKeyDown={e => e.key === 'Enter' && handleSave(cat)}
-                        min="1"
-                        max="100"
-                      />
-                      <span className="text-xs text-text-muted whitespace-nowrap">% alert</span>
-                      <div className="ml-auto flex items-center gap-2">
-                        <Switch
-                          checked={tempAlertEnabled}
-                          onChange={(val) => {
-                            setTempAlertEnabled(val);
-                            handleSave(cat, tempAmount, tempThreshold, val);
-                          }}
-                          label="Enabled"
-                          compact
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div onClick={() => handleEdit(cat)} className="cursor-pointer rounded -ml-1 flex items-center gap-2 group">
-                    <span className={`text-lg font-bold ${getBudget(cat) ? 'text-primary' : 'text-text-muted italic'}`}>
-                      {getBudget(cat) ? formatCurrency(getBudget(cat)!) : 'Not Set'}
-                    </span>
-                    <span className="opacity-0 group-hover:opacity-100 text-xs text-primary">✎</span>
-                    {!getOwnBudget(cat)?.alert_enabled && getBudget(cat) !== undefined && (
-                      <span className="text-[10px] text-rose-400 font-medium ml-auto">Disabled</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          {expanded && <p className="text-xs text-text-muted mt-4">* Changes are saved automatically on change or blur.</p>}
-        </div>
-      )}
-    </div>
-  );
-};
-
-
 const CATEGORIES = TRANSACTION_CATEGORIES;
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
-  const { accounts, refetch: refetchAccounts, sync } = useAccounts({
+  const { accounts, refetch: refetchAccounts } = useAccounts({
     filters: { scope: dashboardScope }
   });
   const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
@@ -484,9 +173,7 @@ export default function Dashboard() {
   const shouldShowResponsiblePerson = isUltimate || canViewHousehold;
 
   const [timeframe, setTimeframe] = useState('1m');
-  const [expandedChart, setExpandedChart] = useState<'networth' | 'cashflow' | null>(null);
   const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
-  const { start: fullStart, end: fullEnd } = useMemo(() => getDateRange('all'), []);
   
   // Load transaction preferences from localStorage and listen for changes
   const [transactionPreferences, setTransactionPreferences] = useState(() => loadTransactionPreferences());
@@ -544,12 +231,14 @@ export default function Dashboard() {
     isManual: isManualFilterValue,
   }), [excludeAccountTypes, transactionPreferences.category, isManualFilterValue])
 
-  // Use saved timeframe preference, but allow override for dashboard charts
-  const transactionsStart = undefined;
-  const transactionsEnd = undefined;
+  // Use saved transaction timeframe to keep dashboard in sync with transactions page
+  const { start: transactionsStart, end: transactionsEnd } = useMemo(
+    () => getTransactionsDateRange(transactionPreferences.timeframe),
+    [transactionPreferences.timeframe],
+  );
   const [transactionsPage, setTransactionsPage] = useState(1);
   const [transactionsPageSize, setTransactionsPageSize] = useState(transactionPreferences.pageSize);
-  const { transactions, total: transactionsTotal, refetch: refetchTransactions, updateOne } = useTransactions({
+  const { transactions, total: transactionsTotal, updateOne, refetch: refetchTransactions } = useTransactions({
     filters: {
       scope: dashboardScope,
       from: transactionsStart,
@@ -564,9 +253,18 @@ export default function Dashboard() {
   });
   const [notesHoverId, setNotesHoverId] = useState<string | null>(null);
   const notesHoverTimeout = useRef<number | null>(null);
-  const { budgets, saveBudget, resetBudgets } = useBudget(dashboardScope);
-  const [accountsExpanded, setAccountsExpanded] = useState(false);
+  const { budgets } = useBudget(dashboardScope);
   const toast = useToast();
+
+  const handlePlaidSuccess = () => {
+    toast.show('Account connected successfully', 'success');
+    refetchAccounts();
+    refetchTransactions();
+  };
+
+  const handlePlaidError = (message: string) => {
+    toast.show(message, 'error');
+  };
 
   const handleCategoryChange = async (id: string, newCategory: string) => {
     try {
@@ -577,32 +275,7 @@ export default function Dashboard() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState('all-accounts');
-  const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
-
-  const handleSync = async (accountId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // prevent card click
-    if (syncingAccounts.has(accountId)) return;
-
-    setSyncingAccounts(prev => new Set(prev).add(accountId));
-    toast.show('Syncing account in background...', 'success');
-    try {
-      await sync(accountId);
-      await refetchTransactions();
-      toast.show('Account synced successfully', 'success');
-    } catch (err: any) {
-      console.error("Sync failed", err);
-      // Try to extract backend error message
-      const msg = err.response?.data?.detail || err.message || 'Failed to sync account';
-      toast.show(msg, 'error');
-    } finally {
-      setSyncingAccounts(prev => {
-        const next = new Set(prev);
-        next.delete(accountId);
-        return next;
-      });
-    }
-  };
+  
 
 
   // Invite Member State
@@ -621,7 +294,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     setTransactionsPage(1);
-  }, [timeframe, dashboardScope, transactionsPageSize]);
+  }, [
+    dashboardScope,
+    transactionsPageSize,
+    transactionPreferences.timeframe,
+    transactionPreferences.category,
+    excludeAccountTypes,
+    isManualFilterValue,
+    transactionPreferences.sortBy,
+  ]);
 
   const handleInviteClick = async () => {
     const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
@@ -698,9 +379,7 @@ export default function Dashboard() {
 
   const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval, dashboardScope, analyticsFilters);
   const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval, dashboardScope, analyticsFilters);
-  const { data: nwFullData, loading: nwFullLoading } = useNetWorth(fullStart, fullEnd, 'monthly', dashboardScope, analyticsFilters);
-  const { data: cfFullData, loading: cfFullLoading } = useCashFlow(fullStart, fullEnd, 'month', dashboardScope, analyticsFilters);
-  const { data: spendData, loading: spendLoading } = useSpendingByCategory(start, end, dashboardScope, analyticsFilters);
+  const { data: spendData } = useSpendingByCategory(start, end, dashboardScope, analyticsFilters);
 
   // Computed Values for Cards
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);
@@ -718,13 +397,6 @@ export default function Dashboard() {
 
 
 
-
-  // Spending Stats
-  const { totalExpense, topCategories } = useMemo(() => {
-    if (!spendData?.data) return { totalExpense: 0, topCategories: [] };
-    const total = spendData.data.reduce((sum, item) => sum + item.amount, 0);
-    return { totalExpense: total, topCategories: spendData.data };
-  }, [spendData]);
 
   // Budget calculations - only include categories with budgets set
   const { budgetSpent, totalBudget } = useMemo(() => {
@@ -754,51 +426,6 @@ export default function Dashboard() {
 
   const budgetPercent = totalBudget > 0 ? Math.min(100, (budgetSpent / totalBudget) * 100) : 0;
 
-  // Chart Generators
-  const netWorthPointWidth = nwInterval === 'daily' ? 22 : nwInterval === 'weekly' ? 26 : 30;
-  const cashFlowPointWidth = cfInterval === 'week' ? 30 : 42;
-  const netWorthLabelMode = timeframe === '1w' || timeframe === '1m' ? 'day' : 'monthYear';
-  const netWorthSeries = useMemo(
-    () => sortDataPointsDesc(nwData?.data || []),
-    [nwData?.data],
-  );
-  const cashFlowIncomeSeries = useMemo(
-    () => sortDataPointsDesc(cfData?.income || []),
-    [cfData?.income],
-  );
-  const cashFlowExpenseSeries = useMemo(
-    () => sortDataPointsDesc(cfData?.expenses || []),
-    [cfData?.expenses],
-  );
-  const netWorthFullSeries = useMemo(
-    () => sortDataPointsDesc(nwFullData?.data || []),
-    [nwFullData?.data],
-  );
-  const cashFlowFullIncomeSeries = useMemo(
-    () => sortDataPointsDesc(cfFullData?.income || []),
-    [cfFullData?.income],
-  );
-  const cashFlowFullExpenseSeries = useMemo(
-    () => sortDataPointsDesc(cfFullData?.expenses || []),
-    [cfFullData?.expenses],
-  );
-  const netWorthChartWidth = useMemo(
-    () => Math.max(320, netWorthSeries.length * netWorthPointWidth),
-    [netWorthSeries.length, netWorthPointWidth],
-  );
-  const cashFlowChartWidth = useMemo(
-    () => Math.max(320, cashFlowIncomeSeries.length * cashFlowPointWidth),
-    [cashFlowIncomeSeries.length, cashFlowPointWidth],
-  );
-  const netWorthChart = useMemo(
-    () => generateLinePath(netWorthSeries, netWorthChartWidth, 140, netWorthLabelMode),
-    [netWorthSeries, netWorthChartWidth, netWorthLabelMode],
-  ); // Height 140 match SVG
-  const cashFlowChart = useMemo(
-    () => generateBarChart(cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, 160, cfInterval),
-    [cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, cfInterval],
-  );
-
   // Cash Flow Card Sums
   const cashFlowStats = useMemo(() => {
     if (!cfData) return { income: 0, expense: 0, net: 0 };
@@ -806,80 +433,6 @@ export default function Dashboard() {
     const expense = cfData.expenses.reduce((sum, d) => sum + Math.abs(d.value), 0); // Display as positive
     return { income, expense, net: income - expense };
   }, [cfData]);
-
-  const [netWorthHover, setNetWorthHover] = useState<{
-    x: number;
-    y: number;
-    xPct: number;
-    yPct: number;
-    value: number;
-    date: string;
-  } | null>(null);
-  const [cashFlowHover, setCashFlowHover] = useState<{
-    x: number;
-    y: number;
-    xPct: number;
-    yPct: number;
-    label: string;
-    date: string;
-    income: number;
-    expense: number;
-    kind: 'income' | 'expense';
-  } | null>(null);
-  const netWorthSvgSize = { width: netWorthChartWidth, height: 140 };
-  const cashFlowSvgSize = { width: cashFlowChartWidth, height: 160 };
-
-  const handleNetWorthMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-    if (!netWorthChart.points.length) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * netWorthSvgSize.width;
-    const points = netWorthChart.points;
-    let closestIndex = 0;
-    for (let i = 1; i < points.length; i += 1) {
-      if (Math.abs(points[i].x - x) < Math.abs(points[closestIndex].x - x)) {
-        closestIndex = i;
-      }
-    }
-    const point = points[closestIndex];
-    setNetWorthHover({
-      x: point.x,
-      y: point.y,
-      xPct: (point.x / netWorthSvgSize.width) * 100,
-      yPct: (point.y / netWorthSvgSize.height) * 100,
-      value: point.value,
-      date: point.date,
-    });
-  }, [netWorthChart.points, netWorthSvgSize.width, netWorthSvgSize.height]);
-
-  const handleCashFlowMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-    if (!cashFlowChart.bars.length) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * cashFlowSvgSize.width;
-    const y = ((event.clientY - rect.top) / rect.height) * cashFlowSvgSize.height;
-    const drawWidth = cashFlowSvgSize.width - cashFlowChart.padding.left - cashFlowChart.padding.right;
-    const slotWidth = drawWidth / cashFlowChart.bars.length;
-    const rawIndex = Math.floor((x - cashFlowChart.padding.left) / slotWidth);
-    const index = Math.min(Math.max(rawIndex, 0), cashFlowChart.bars.length - 1);
-    const bar = cashFlowChart.bars[index];
-    const candidates = [
-      { y: bar.yInc, kind: 'income' as const },
-      { y: bar.yExp, kind: 'expense' as const },
-    ];
-    const chosen = candidates.reduce((prev, curr) => (
-      Math.abs(curr.y - y) < Math.abs(prev.y - y) ? curr : prev
-    ));
-    setCashFlowHover({
-      x: bar.xCenter,
-      y: chosen.y,
-      xPct: (bar.xCenter / cashFlowSvgSize.width) * 100,
-      yPct: (chosen.y / cashFlowSvgSize.height) * 100,
-      label: bar.label,
-      date: bar.date,
-      income: bar.inc,
-      expense: bar.exp,
-      kind: chosen.kind,
-    });
-  }, [cashFlowChart.bars, cashFlowChart.padding, cashFlowSvgSize.width, cashFlowSvgSize.height]);
 
   const totalTransactionPages = Math.max(
     1,
@@ -894,17 +447,6 @@ export default function Dashboard() {
     ? Math.min(transactionsTotal, (transactionsPage - 1) * transactionsPageSize + transactions.length)
     : 0;
 
-
-  // Filter Accounts
-  const filteredAccounts = accounts.filter(acc => {
-    if (activeTab === 'all-accounts') return true;
-    if (activeTab === 'checking') return acc.accountType === 'traditional';
-    if (activeTab === 'investment') return acc.accountType === 'investment';
-    if (activeTab === 'web3') return acc.accountType === 'web3';
-    if (activeTab === 'cex') return acc.accountType === 'cex';
-    return false;
-  });
-
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
 
@@ -912,13 +454,7 @@ export default function Dashboard() {
       <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
-          <p className="text-text-secondary mt-1">Welcome back, {user?.displayName || user?.email}</p>
-        </div>
-        <div className="mt-4 md:mt-0 flex items-center gap-4">
-          <div className="text-right mr-4 hidden md:block">
-            <span className="block text-sm text-text-muted">Total Balance ({dashboardScope === 'household' ? 'Family' : 'Personal'})</span>
-            <span className="block text-2xl font-bold text-primary">{formatCurrency(totalBalance)}</span>
-          </div>
+          <p className="text-text-secondary mt-1">Welcome back, {profile?.username || user?.displayName || 'there'}</p>
         </div>
       </div>
 
@@ -1033,434 +569,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Budgeting Tool */}
-      <BudgetTool 
-        categories={CATEGORIES} 
-        scope={dashboardScope} 
-        budgets={budgets} 
-        saveBudget={saveBudget} 
-        resetBudgets={resetBudgets} 
-      />
-
-      {/* Infographics & Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-        {/* Net Worth Trend */}
-        <div className="chart-card cursor-pointer hover:shadow-lg transition-shadow" id="networth-chart" onClick={() => setExpandedChart('networth')} title="Click to expand chart">
-          <div className="chart-title flex items-center justify-between">
-            <span>Net Worth Trend</span>
-            <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-          </div>
-          <div className="chart-subtitle">Historical Balance</div>
-
-          {nwLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
-            <div className="mt-4 grid grid-cols-[64px_1fr] gap-3">
-              <div className="relative h-[140px] text-[10px] text-text-muted">
-                <div className="absolute right-0 top-0 h-full w-px bg-white/10" />
-                {netWorthChart.yLabels?.map((label, i) => (
-                  <div
-                    key={i}
-                    style={{ position: 'absolute', top: `${(label.y / 140) * 100}%`, transform: 'translateY(-50%)', right: 8 }}
-                  >
-                    {label.label}
-                  </div>
-                ))}
-              </div>
-              <div className="overflow-x-auto">
-                <div className="relative" style={{ width: netWorthChartWidth }}>
-                  <svg
-                    className="chart-svg"
-                    viewBox={`0 0 ${netWorthChartWidth} 140`}
-                    style={{ width: '100%', minWidth: 320 }}
-                    role="img"
-                    aria-label="Net worth trend"
-                    onMouseMove={handleNetWorthMove}
-                    onMouseLeave={() => setNetWorthHover(null)}
-                  >
-                    <defs>
-                      <linearGradient id="networthGradient" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-
-                    {/* Grid Lines */}
-                    {netWorthChart.yLabels?.map((l, i) => (
-                      <line
-                        key={i}
-                        x1={netWorthChart.padding.left}
-                        y1={l.y}
-                        x2={netWorthChartWidth - netWorthChart.padding.right}
-                        y2={l.y}
-                        stroke="var(--border-color)"
-                        strokeWidth="1"
-                        strokeOpacity="0.1"
-                      />
-                    ))}
-
-                    {/* X Axis */}
-                    <line
-                      x1={netWorthChart.padding.left}
-                      y1={140 - netWorthChart.padding.bottom}
-                      x2={netWorthChartWidth - netWorthChart.padding.right}
-                      y2={140 - netWorthChart.padding.bottom}
-                      stroke="var(--border-color)"
-                      strokeWidth="1"
-                      strokeOpacity="0.3"
-                    />
-
-                    <g id="networth-area">
-                      <polyline fill="url(#networthGradient)" stroke="none" points={netWorthChart.areaPath} />
-                    </g>
-                    <g id="networth-line">
-                      <polyline fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={netWorthChart.path} />
-                    </g>
-                    <g id="networth-dots" fill="var(--color-primary)">
-                      {netWorthChart.dots.map((d, i) => <circle key={i} cx={d.cx} cy={d.cy} r="4" />)}
-                    </g>
-
-                    {netWorthHover && (
-                      <g>
-                        <line
-                          x1={netWorthHover.x}
-                          y1={netWorthChart.padding.top}
-                          x2={netWorthHover.x}
-                          y2={140 - netWorthChart.padding.bottom}
-                          stroke="var(--text-muted)"
-                          strokeDasharray="3 3"
-                          strokeOpacity="0.5"
-                        />
-                        <line
-                          x1={netWorthChart.padding.left}
-                          y1={netWorthHover.y}
-                          x2={netWorthChartWidth - netWorthChart.padding.right}
-                          y2={netWorthHover.y}
-                          stroke="var(--text-muted)"
-                          strokeDasharray="3 3"
-                          strokeOpacity="0.5"
-                        />
-                        <circle
-                          cx={netWorthHover.x}
-                          cy={netWorthHover.y}
-                          r="4"
-                          fill="var(--bg-secondary)"
-                          stroke="var(--color-primary)"
-                          strokeWidth="2"
-                        />
-                      </g>
-                    )}
-                  </svg>
-                  {netWorthHover && (
-                    <div
-                      className="absolute z-10 rounded-md bg-slate-900/90 text-white text-xs px-2 py-1 pointer-events-none shadow-md"
-                      style={{
-                        left: `${netWorthHover.xPct}%`,
-                        top: `${netWorthHover.yPct}%`,
-                        transform: 'translate(-50%, -120%)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <div>{parseDateUTC(netWorthHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</div>
-                      <div className="font-semibold">{formatCurrency(netWorthHover.value)}</div>
-                    </div>
-                  )}
-                  <div className="relative h-5 mt-2 text-[10px] text-text-muted">
-                    {netWorthChart.xLabels.map((label, index) => (
-                      <span
-                        key={`${label.label}-${index}`}
-                        className="absolute"
-                        style={getXAxisLabelStyle(index, netWorthChart.xLabels.length, label.x)}
-                      >
-                        {label.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Cash Flow Chart */}
-        <div className="chart-card cursor-pointer hover:shadow-lg transition-shadow" id="cashflow-chart" onClick={() => setExpandedChart('cashflow')} title="Click to expand chart">
-          <div className="chart-title flex items-center justify-between">
-            <span>Cash Flow</span>
-            <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-          </div>
-          <div className="chart-subtitle">&nbsp;</div>
-
-          {cfLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
-            <div className="mt-4 grid grid-cols-[64px_1fr] gap-3">
-              <div className="relative h-[160px] text-[10px] text-text-muted">
-                <div className="absolute right-0 top-0 h-full w-px bg-white/10" />
-                {cashFlowChart.yLabels?.map((label, i) => (
-                  <div
-                    key={i}
-                    style={{ position: 'absolute', top: `${(label.y / 160) * 100}%`, transform: 'translateY(-50%)', right: 8 }}
-                  >
-                    {label.label}
-                  </div>
-                ))}
-              </div>
-              <div className="overflow-x-auto">
-                <div className="relative" style={{ width: cashFlowChartWidth }}>
-                  <svg
-                    className="chart-svg"
-                    viewBox={`0 0 ${cashFlowChartWidth} 160`}
-                    style={{ width: '100%', minWidth: 320 }}
-                    role="img"
-                    aria-label="Cash flow bar chart"
-                    onMouseMove={handleCashFlowMove}
-                    onMouseLeave={() => setCashFlowHover(null)}
-                  >
-                    {/* Grid Lines */}
-                    {cashFlowChart.yLabels?.map((l, i) => (
-                      <line
-                        key={i}
-                        x1={cashFlowChart.padding.left}
-                        y1={l.y}
-                        x2={cashFlowChartWidth - cashFlowChart.padding.right}
-                        y2={l.y}
-                        stroke="var(--border-color)"
-                        strokeWidth="1"
-                        strokeOpacity="0.1"
-                      />
-                    ))}
-
-                    {/* X Axis */}
-                    <line
-                      x1={cashFlowChart.padding.left}
-                      y1={160 - cashFlowChart.padding.bottom}
-                      x2={cashFlowChartWidth - cashFlowChart.padding.right}
-                      y2={160 - cashFlowChart.padding.bottom}
-                      stroke="var(--border-color)"
-                      strokeWidth="1"
-                      strokeOpacity="0.3"
-                    />
-
-                    {cashFlowChart.bars.map((bar, i) => (
-                      <g key={i}>
-                        {/* Inflow Bar (Cyan) */}
-                        <rect x={bar.xInc} y={bar.yInc} width={((cashFlowChartWidth - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hInc} rx="2" fill="var(--color-accent)" />
-                        {/* Outflow Bar (Red) */}
-                        <rect x={bar.xExp} y={bar.yExp} width={((cashFlowChartWidth - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hExp} rx="2" fill="#DC2626" />
-                      </g>
-                    ))}
-
-                    {cashFlowHover && (
-                      <g>
-                        <line
-                          x1={cashFlowHover.x}
-                          y1={cashFlowChart.padding.top}
-                          x2={cashFlowHover.x}
-                          y2={160 - cashFlowChart.padding.bottom}
-                          stroke="var(--text-muted)"
-                          strokeDasharray="3 3"
-                          strokeOpacity="0.5"
-                        />
-                        <line
-                          x1={cashFlowChart.padding.left}
-                          y1={cashFlowHover.y}
-                          x2={cashFlowChartWidth - cashFlowChart.padding.right}
-                          y2={cashFlowHover.y}
-                          stroke="var(--text-muted)"
-                          strokeDasharray="3 3"
-                          strokeOpacity="0.5"
-                        />
-                        <circle
-                          cx={cashFlowHover.x}
-                          cy={cashFlowHover.y}
-                          r="4"
-                          fill="var(--bg-secondary)"
-                          stroke={cashFlowHover.kind === 'income' ? 'var(--color-accent)' : '#DC2626'}
-                          strokeWidth="2"
-                        />
-                      </g>
-                    )}
-                  </svg>
-                  {cashFlowHover && (
-                    <div
-                      className="absolute z-10 rounded-md bg-slate-900/90 text-white text-xs px-2 py-1 pointer-events-none shadow-md"
-                      style={{
-                        left: `${cashFlowHover.xPct}%`,
-                        top: `${cashFlowHover.yPct}%`,
-                        transform: 'translate(-50%, -120%)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <div>{parseDateUTC(cashFlowHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</div>
-                      <div className="text-cyan-300">Inflow: {formatCurrency(cashFlowHover.income)}</div>
-                      <div className="text-red-300">Outflow: {formatCurrency(cashFlowHover.expense)}</div>
-                    </div>
-                  )}
-                  <div className="relative h-5 mt-2 text-[10px] text-text-muted">
-                    {cashFlowChart.bars.map((bar, index) => (
-                      <span
-                        key={`${bar.date}-${index}`}
-                        className="absolute"
-                        style={getXAxisLabelStyle(index, cashFlowChart.bars.length, bar.labelX)}
-                      >
-                        {bar.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="chart-legend mt-2 flex justify-center gap-4 text-xs">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-cyan-400 rounded-sm"></span>Inflow</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-600 rounded-sm"></span>Outflow</span>
-          </div>
-        </div>
-
-        {/* Spending By Category */}
-        <div className="chart-card">
-          <div className="chart-title">Spending by Category</div>
-          <div className="chart-subtitle">{spendData?.data.length || 0} Categories</div>
-
-          {spendLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
-            <div className="space-y-3 mt-4">
-              {topCategories.length === 0 ? (
-                <div className="text-center text-text-muted py-4">No spending data</div>
-              ) : (
-                topCategories.map(cat => {
-                  const percent = totalExpense > 0 ? (cat.amount / totalExpense) * 100 : 0;
-                  return (
-                    <div key={cat.category}>
-                      <div className="flex justify-between text-xs text-text-secondary mb-1">
-                        <span className="font-medium text-text-primary">{cat.category}</span>
-                        <span>{formatCompactCurrency(cat.amount)} ({percent.toFixed(0)}%)</span>
-                      </div>
-                      <div className="w-full bg-white/10 rounded-full h-1.5">
-                        <div className="h-1.5 rounded-full bg-primary" style={{ width: `${percent}%` }} />
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Account Overview */}
-      <div className="glass-panel mb-10 transition-all duration-300">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Account Overview</h2>
-          <button
-            onClick={() => setAccountsExpanded(!accountsExpanded)}
-            className="text-sm font-medium text-royal-purple hover:underline"
-          >
-            {accountsExpanded ? 'Collapse' : 'Manage / Details'}
-          </button>
-        </div>
-
-        {!accountsExpanded ? (
-          <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-transparent border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setAccountsExpanded(true)}>
-            {accounts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center w-full text-center">
-                <p className="text-text-muted font-medium">Link your first financial account to see your net worth and cash flow.</p>
-                <p className="text-xs text-text-secondary mt-1">Connect with Plaid above to securely sync your data.</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex gap-8">
-                  <div>
-                    <span className="block text-xs text-text-muted uppercase tracking-wider">Connected</span>
-                    <span className="text-lg font-bold text-text-primary">{accounts.length} Accounts</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-text-muted uppercase tracking-wider">Types</span>
-                    <span className="text-lg font-bold text-text-primary">
-                      {[...new Set(accounts.map(a => a.accountType))].join(', ')}
-                    </span>
-                  </div>
-                </div>
-                  <div className="text-right mt-4 md:mt-0 flex flex-col items-end gap-2">
-                    <div>
-                      <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
-                      <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
-                    </div>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          // Trigger sync for all accounts sequentially to prevent rate limits
-                          for (const acc of filteredAccounts) {
-                            if (!syncingAccounts.has(acc.id)) {
-                              // We await each sync to ensure sequential execution
-                              await handleSync(acc.id, e);
-                            }
-                          }
-                        }}
-                         className="text-xs bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 flex items-center gap-1 transition-colors"
-                      >
-                        <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
-                      </button>
-                  </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="tabs mb-6">
-              <ul className="tab-list flex gap-4 border-b border-white/10" role="tablist">
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'web3' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3 Wallets</button></li>
-                <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cex' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX Accounts</button></li>
-              </ul>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredAccounts.length === 0 ? (
-                <div className="col-span-full text-center py-10 text-text-muted italic">
-                  No accounts found. {accounts.length === 0 && "Use the button above to link an account."}
-                </div>
-              ) : (
-                filteredAccounts.map((account: Account) => (
-                  <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5 relative group">
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => handleSync(account.id, e)}
-                        disabled={syncingAccounts.has(account.id)}
-                        className="text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 disabled:opacity-50 flex items-center gap-1"
-                        title="Sync latest transactions"
-                      >
-                        {syncingAccounts.has(account.id) ? (
-                          <>
-                            <span className="animate-spin text-primary">↻</span> Syncing...
-                          </>
-                        ) : (
-                          <>
-                            <span>↻</span> Sync
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <h3 className="font-semibold text-lg">{account.accountName}</h3>
-                    <p className="text-2xl font-bold text-primary my-2">
-                       {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
-                    </p>
-                    <div className="flex justify-between items-center mt-auto pt-2">
-                      <span className="text-xs font-mono text-text-muted uppercase tracking-tighter">
-                        {account.accountNumberMasked ? `Ending in ${account.accountNumberMasked}` : account.accountType}
-                      </span>
-                      {account.provider && (
-                        <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-text-secondary">
-                          {account.provider}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
+      <div className="flex justify-end mb-10">
+        <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
       </div>
 
       {/* Transactions */}
@@ -1632,29 +742,6 @@ export default function Dashboard() {
           </div>
         </div>
       </Modal>
-
-      {/* Expandable Chart Modals */}
-      <ExpandableChartModal
-        isOpen={expandedChart === 'networth'}
-        onClose={() => setExpandedChart(null)}
-        title="Net Worth Trend - Full History"
-        data={netWorthFullSeries.length ? netWorthFullSeries : null}
-        type="line"
-        loading={nwFullLoading}
-      />
-      
-      <ExpandableChartModal
-        isOpen={expandedChart === 'cashflow'}
-        onClose={() => setExpandedChart(null)}
-        title="Cash Flow - Full History"
-        data={null}
-        type="bar"
-        loading={cfFullLoading}
-        incomeData={cashFlowFullIncomeSeries}
-        expensesData={cashFlowFullExpenseSeries}
-        interval="month"
-      />
-
 
     </section>
   );

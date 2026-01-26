@@ -26,6 +26,9 @@ export const Navigation = () => {
       <NavLink to="/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Dashboard
       </NavLink>
+      <NavLink to="/financial-analysis" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
+        Financial Analysis
+      </NavLink>
       <NavLink to="/transactions" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
         Transactions
       </NavLink>
@@ -124,6 +127,9 @@ export const Navigation = () => {
             <>
               <NavLink to="/dashboard" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 Dashboard
+              </NavLink>
+              <NavLink to="/financial-analysis" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+                Financial Analysis
               </NavLink>
               <NavLink to="/transactions" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 Transactions

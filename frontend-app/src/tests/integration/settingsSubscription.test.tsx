@@ -5,6 +5,7 @@ import type { User } from 'firebase/auth'
 import { Settings } from '../../pages/Settings'
 import { useAuth } from '../../hooks/useAuth'
 import { apiFetch } from '../../services/auth'
+import { ToastProvider } from '../../components/ui/Toast'
 
 type AuthContextType = ReturnType<typeof useAuth>
 
@@ -78,7 +79,11 @@ describe('Settings Subscription Management', () => {
 
         const user = userEvent.setup()
 
-        render(<Settings />)
+        render(
+            <ToastProvider>
+                <Settings />
+            </ToastProvider>
+        )
 
         await user.click(screen.getByRole('tab', { name: 'Subscription' }))
 
@@ -122,7 +127,11 @@ describe('Settings Subscription Management', () => {
 
         const user = userEvent.setup()
 
-        render(<Settings />)
+        render(
+            <ToastProvider>
+                <Settings />
+            </ToastProvider>
+        )
 
         await user.click(screen.getByRole('tab', { name: 'Subscription' }))
 

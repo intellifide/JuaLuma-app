@@ -6,6 +6,7 @@ import { ThemeToggle } from '../components/ThemeToggle'
 import { NotificationDrawer } from '../components/notifications/NotificationDrawer'
 import { 
   LayoutDashboard, 
+  LineChart,
   CreditCard, 
   Wallet, 
   Store, 
@@ -21,6 +22,7 @@ import {
 
 const sidebarLinks = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { name: 'Financial Analysis', path: '/financial-analysis', icon: LineChart },
   { name: 'Transactions', path: '/transactions', icon: CreditCard },
   { name: 'Connect Accounts', path: '/connect-accounts', icon: Wallet },
   { name: 'Marketplace', path: '/marketplace', icon: Store },

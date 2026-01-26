@@ -20,6 +20,7 @@ import { DeveloperAuth } from './pages/developers/DeveloperAuth'
 
 // Protected App Pages
 import Dashboard from './pages/Dashboard'
+import FinancialAnalysis from './pages/FinancialAnalysis'
 import { Transactions } from './pages/Transactions'
 import { ConnectAccounts } from './pages/ConnectAccounts'
 import AIAssistant from './pages/AIAssistant'
@@ -61,8 +62,9 @@ function App() {
 
              {/* --- Application Routes (Protected Dashboard) --- */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/transactions" element={<Transactions />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/financial-analysis" element={<FinancialAnalysis />} />
+            <Route path="/transactions" element={<Transactions />} />
               <Route path="/connect-accounts" element={<ConnectAccounts />} />
               <Route path="/ai-assistant" element={<AIAssistant />} />
               <Route path="/settings" element={<Settings />} />

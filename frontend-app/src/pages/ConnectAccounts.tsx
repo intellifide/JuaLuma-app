@@ -1,6 +1,6 @@
 // Core Purpose: UI for connecting various account types (Plaid, Web3, CEX) with household assignment logic.
 // Last Updated 2026-01-24 00:20 CST
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAccounts } from '../hooks/useAccounts';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
@@ -20,6 +20,9 @@ const formatHouseholdMemberLabel = (member: HouseholdMember) => {
   const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ').trim();
   return fullName || member.email || 'Member';
 };
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 
 const getAssignableMembers = (household: Household) => {
   const seen = new Set<string>();
@@ -448,6 +451,9 @@ export const ConnectAccounts = () => {
   const [reconnectPayload, setReconnectPayload] = useState<{ exchange: string; name: string } | null>(null);
   const [editingAccount, setEditingAccount] = useState<{ id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [accountsExpanded, setAccountsExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState('all-accounts');
+  const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -477,6 +483,45 @@ export const ConnectAccounts = () => {
       } catch (err: unknown) {
           toast.show((err as Error).message || 'Failed to update', 'error');
       }
+  };
+
+  const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);
+
+  const filteredAccounts = useMemo(() => accounts.filter(acc => {
+    if (activeTab === 'all-accounts') return true;
+    if (activeTab === 'checking') return acc.accountType === 'traditional';
+    if (activeTab === 'investment') return acc.accountType === 'investment';
+    if (activeTab === 'web3') return acc.accountType === 'web3';
+    if (activeTab === 'cex') return acc.accountType === 'cex';
+    return false;
+  }), [accounts, activeTab]);
+
+  const syncableAccounts = useMemo(
+    () => filteredAccounts.filter((account) => account.accountType !== 'manual'),
+    [filteredAccounts],
+  );
+
+  const handleSync = async (accountId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent card click
+    if (syncingAccounts.has(accountId)) return;
+
+    setSyncingAccounts(prev => new Set(prev).add(accountId));
+    toast.show('Syncing account in background...', 'success');
+    try {
+      await sync(accountId);
+      await refetch();
+      toast.show('Account synced successfully', 'success');
+    } catch (err: any) {
+      console.error("Sync failed", err);
+      const msg = err.response?.data?.detail || err.message || 'Failed to sync account';
+      toast.show(msg, 'error');
+    } finally {
+      setSyncingAccounts(prev => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
   };
 
   return (
@@ -607,6 +652,124 @@ export const ConnectAccounts = () => {
             onSuccess={() => { setShowManualAccountModal(false); refetch(); }}
           />
         )}
+
+        {/* Account Overview */}
+        <div className="glass-panel mb-10 transition-all duration-300">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Account Overview</h2>
+            <button
+              onClick={() => setAccountsExpanded(!accountsExpanded)}
+              className="text-sm font-medium text-royal-purple hover:underline"
+            >
+              {accountsExpanded ? 'Collapse' : 'Manage / Details'}
+            </button>
+          </div>
+
+          {!accountsExpanded ? (
+            <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-transparent border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setAccountsExpanded(true)}>
+              {accounts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center w-full text-center">
+                  <p className="text-text-muted font-medium">Link your first financial account to see your net worth and cash flow.</p>
+                  <p className="text-xs text-text-secondary mt-1">Connect with Plaid above to securely sync your data.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-8">
+                    <div>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Connected</span>
+                      <span className="text-lg font-bold text-text-primary">{accounts.length} Accounts</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Types</span>
+                      <span className="text-lg font-bold text-text-primary">
+                        {[...new Set(accounts.map(a => a.accountType))].join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right mt-4 md:mt-0 flex flex-col items-end gap-2">
+                    <div>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
+                      <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
+                    </div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        // Trigger sync for all accounts sequentially to prevent rate limits
+                        for (const acc of syncableAccounts) {
+                          if (!syncingAccounts.has(acc.id)) {
+                            // We await each sync to ensure sequential execution
+                            await handleSync(acc.id, e);
+                          }
+                        }
+                      }}
+                      className="text-xs bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 flex items-center gap-1 transition-colors"
+                    >
+                      <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="tabs mb-6">
+                <ul className="tab-list flex gap-4 border-b border-white/10" role="tablist">
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'web3' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3 Wallets</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cex' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX Accounts</button></li>
+                </ul>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredAccounts.length === 0 ? (
+                  <div className="col-span-full text-center py-10 text-text-muted italic">
+                    No accounts found. {accounts.length === 0 && "Use the button above to link an account."}
+                  </div>
+                ) : (
+                  filteredAccounts.map((account) => (
+                    <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5 relative group">
+                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {account.accountType !== 'manual' && (
+                        <button
+                          onClick={(e) => handleSync(account.id, e)}
+                          disabled={syncingAccounts.has(account.id)}
+                          className="text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 disabled:opacity-50 flex items-center gap-1"
+                          title="Sync latest transactions"
+                        >
+                          {syncingAccounts.has(account.id) ? (
+                            <>
+                              <span className="animate-spin text-primary">↻</span> Syncing...
+                            </>
+                          ) : (
+                            <>
+                              <span>↻</span> Sync
+                            </>
+                          )}
+                        </button>
+                      )}
+                      </div>
+                      <h3 className="font-semibold text-lg">{account.accountName}</h3>
+                      <p className="text-2xl font-bold text-primary my-2">
+                         {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
+                      </p>
+                      <div className="flex justify-between items-center mt-auto pt-2">
+                        <span className="text-xs font-mono text-text-muted uppercase tracking-tighter">
+                          {account.accountNumberMasked ? `Ending in ${account.accountNumberMasked}` : account.accountType}
+                        </span>
+                        {account.provider && (
+                          <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-text-secondary">
+                            {account.provider}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="glass-panel mb-12">
           <h2 className="mb-6">Linked Accounts</h2>
