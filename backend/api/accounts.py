@@ -1,4 +1,4 @@
-# Updated 2026-01-24 03:00 CST
+# Updated 2026-01-27 16:30 CST
 import json
 import logging
 import re
@@ -9,11 +9,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from backend.core.config import settings
-from backend.core.dependencies import enforce_account_limit
+from backend.core.constants import SubscriptionPlans, TierLimits
+from backend.core.dependencies import enforce_account_limit, get_current_active_subscription
 from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.analytics import invalidate_analytics_cache
@@ -443,6 +444,33 @@ def _serialize_account(
     )
 
 
+class AccountLimitsResponse(BaseModel):
+    """Response model for account limits summary."""
+    tier: str
+    tier_display: str
+    limits: dict[str, int]
+    current: dict[str, int]
+    total_connected: int
+    total_limit: int
+    upgrade_url: str = "/settings/billing"
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "tier": "free",
+                    "tier_display": "Free",
+                    "limits": {"traditional": 2, "web3": 1, "cex": 1, "manual": 5},
+                    "current": {"traditional": 1, "web3": 0, "cex": 0, "manual": 0},
+                    "total_connected": 1,
+                    "total_limit": 9,
+                    "upgrade_url": "/settings/billing"
+                }
+            ]
+        }
+    )
+
+
 @router.get("", response_model=list[AccountResponse])
 def list_accounts(
     account_type: str | None = Query(
@@ -492,6 +520,55 @@ def list_accounts(
         _serialize_account(account, include_balance=include_balance)
         for account in accounts
     ]
+
+
+@router.get("/limits", response_model=AccountLimitsResponse)
+def get_account_limits(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AccountLimitsResponse:
+    """
+    Get current account limits for the authenticated user's subscription tier.
+    
+    Returns the limits for each account type, current usage, and upgrade information.
+    """
+    sub = get_current_active_subscription(current_user)
+    plan_code = sub.plan if sub else SubscriptionPlans.FREE
+    base_tier = SubscriptionPlans.get_base_tier(plan_code)
+    
+    tier_limits = TierLimits.LIMITS_BY_TIER.get(base_tier, TierLimits.FREE_LIMITS)
+    
+    # Get current counts for each account type
+    current_counts = {}
+    total_connected = 0
+    
+    for account_type in ["traditional", "investment", "web3", "cex", "manual"]:
+        count = (
+            db.query(func.count(Account.id))
+            .filter(Account.uid == current_user.uid, Account.account_type == account_type)
+            .scalar() or 0
+        )
+        current_counts[account_type] = count
+        total_connected += count
+    
+    tier_display = {
+        "free": "Free",
+        "essential": "Essential", 
+        "pro": "Pro",
+        "ultimate": "Ultimate"
+    }.get(base_tier, base_tier.capitalize())
+    
+    total_limit = sum(tier_limits.values())
+    
+    return AccountLimitsResponse(
+        tier=base_tier,
+        tier_display=tier_display,
+        limits=tier_limits,
+        current=current_counts,
+        total_connected=total_connected,
+        total_limit=total_limit,
+        upgrade_url="/settings/billing"
+    )
 
 
 @router.get("/{account_id}", response_model=AccountResponse)

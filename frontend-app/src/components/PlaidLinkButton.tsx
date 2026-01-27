@@ -8,9 +8,10 @@ import { ExternalLinkModal } from './ExternalLinkModal'
 type PlaidLinkButtonProps = {
   onSuccess?: () => void | Promise<void>
   onError?: (message: string) => void
+  onBeforeOpen?: () => boolean
 }
 
-export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) => {
+export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkButtonProps) => {
   const [linkToken, setLinkToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [opening, setOpening] = useState(false)
@@ -106,8 +107,14 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
 
   const handleOpenModal = useCallback(() => {
     if (!linkConfig || !ready) return
+    
+    // Check limit before opening if callback provided
+    if (onBeforeOpen && !onBeforeOpen()) {
+      return
+    }
+    
     setShowModal(true)
-  }, [linkConfig, ready])
+  }, [linkConfig, ready, onBeforeOpen])
 
   const handleConfirm = useCallback(() => {
     setShowModal(false)

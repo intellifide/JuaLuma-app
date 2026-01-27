@@ -48,7 +48,7 @@ def require_pro_or_ultimate(current_user: User = Depends(get_current_user)) -> U
 def enforce_account_limit(user: User, db: Session, account_type: str):
     """
     Enforces account limits based on user tier and account type.
-    Raises 403 if limit exceeded.
+    Raises 403 if limit exceeded with upgrade guidance.
     """
     sub = get_current_active_subscription(user)
     plan_code = sub.plan if sub else SubscriptionPlans.FREE
@@ -64,7 +64,48 @@ def enforce_account_limit(user: User, db: Session, account_type: str):
     )
 
     if count >= limit:
+        # Build friendly tier display name
+        tier_display = {
+            "free": "Free",
+            "essential": "Essential",
+            "pro": "Pro",
+            "ultimate": "Ultimate"
+        }.get(base_tier, base_tier.capitalize())
+        
+        # Get next tier recommendation
+        next_tier_info = _get_next_tier_recommendation(base_tier, account_type)
+        
+        # Build upgrade message
+        upgrade_msg = (
+            f"You've reached your {tier_display} plan limit of {limit} {account_type} "
+            f"account{'s' if limit != 1 else ''}. {next_tier_info}"
+        )
+        
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"{plan_code.capitalize()} tier is restricted to {limit} {account_type} accounts. Please upgrade to add more.",
+            detail=upgrade_msg,
         )
+
+
+def _get_next_tier_recommendation(current_tier: str, account_type: str) -> str:
+    """Generate upgrade recommendation based on current tier and account type."""
+    if current_tier == "free":
+        essential_limit = TierLimits.ESSENTIAL_LIMITS.get(account_type, 0)
+        return (
+            f"Upgrade to Essential ($12/mo) for {essential_limit} {account_type} accounts, "
+            f"or Pro ($25/mo) for even more connections. Visit /settings/billing to upgrade."
+        )
+    elif current_tier == "essential":
+        pro_limit = TierLimits.PRO_LIMITS.get(account_type, 0)
+        return (
+            f"Upgrade to Pro ($25/mo or $250/yr) for {pro_limit} {account_type} accounts "
+            f"and unlock AI insights. Visit /settings/billing to upgrade."
+        )
+    elif current_tier == "pro":
+        ultimate_limit = TierLimits.ULTIMATE_LIMITS.get(account_type, 0)
+        return (
+            f"Upgrade to Ultimate ($60/mo or $600/yr) for {ultimate_limit} {account_type} accounts "
+            f"and developer SDK access. Visit /settings/billing to upgrade."
+        )
+    else:  # ultimate
+        return "You're on our highest tier. Contact support if you need additional capacity."
