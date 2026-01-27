@@ -17,8 +17,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
     const [value, setValue] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const MAX_CHARS = 2000;
-
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -43,16 +41,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
-        if (newValue.length <= MAX_CHARS) {
-            setValue(newValue);
-        }
+        setValue(e.target.value);
     };
 
     const isInputDisabled = disabled || isLoading || quotaExceeded;
 
     return (
-        <div className="flex flex-col gap-2 p-4 border-t border-border bg-transparent">
+        <div className="flex flex-col gap-2 p-4 bg-transparent">
             <div className="relative w-full">
                 <textarea
                     ref={textareaRef}
@@ -80,11 +75,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                         </svg>
                     )}
                 </button>
-            </div>
-            <div className="flex justify-end">
-                <span className={`text-xs ${value.length >= MAX_CHARS ? 'text-red-500' : 'text-text-muted'}`}>
-                    {value.length}/{MAX_CHARS}
-                </span>
             </div>
         </div>
     );

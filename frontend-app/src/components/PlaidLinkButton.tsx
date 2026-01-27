@@ -128,7 +128,7 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
         type="button"
         onClick={handleOpenModal}
         disabled={!linkConfig || !ready || loading || opening}
-        className="btn btn-primary w-full md:w-[180px]"
+        className="btn btn-primary btn-sm w-full md:w-[170px]"
       >
         {loading ? 'Preparing...' : 'Connect with Plaid'}
       </button>

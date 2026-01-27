@@ -33,6 +33,46 @@ interface Project {
   createdAt: string;
 }
 
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'to', 'for', 'of', 'on', 'in', 'at', 'by', 'with',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'do', 'does', 'did', 'can', 'could',
+  'should', 'would', 'may', 'might', 'will', 'just', 'please', 'show', 'tell', 'give',
+  'my', 'your', 'our', 'their', 'me', 'us', 'you', 'i', 'we', 'they', 'this', 'that',
+  'these', 'those', 'about', 'from', 'into', 'over', 'under', 'what', 'whats', 'how',
+  'when', 'where', 'why', 'who', 's'
+]);
+
+const generateThreadTitle = (query: string) => {
+  const trimmed = query.trim();
+  if (!trimmed) return 'New Chat';
+  const normalized = trimmed.toLowerCase();
+  const patterns: Array<[RegExp, string]> = [
+    [/net worth/, 'Net Worth Snapshot'],
+    [/cash flow/, 'Cash Flow Update'],
+    [/subscription/, 'Subscription Review'],
+    [/budget/, 'Budget Check'],
+    [/spend|spending/, 'Spending Summary'],
+    [/category|categories/, 'Category Breakdown'],
+    [/income/, 'Income Overview'],
+    [/investment/, 'Investment Overview'],
+    [/debt|loan/, 'Debt Overview'],
+  ];
+
+  for (const [pattern, title] of patterns) {
+    if (pattern.test(normalized)) {
+      return title.toLowerCase() === normalized ? `${title} Overview` : title;
+    }
+  }
+
+  const tokens = normalized.match(/[a-z0-9]+/g) ?? [];
+  const keywords = tokens.filter((token) => !STOP_WORDS.has(token));
+  const unique = Array.from(new Set(keywords)).slice(0, 4);
+  if (unique.length === 0) return 'New Chat';
+  const base = unique.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  const title = `${base} Overview`;
+  return title.toLowerCase() === normalized ? `${base} Insights` : title;
+};
+
 
 export default function AIAssistant() {
   const { user } = useAuth();
@@ -289,7 +329,7 @@ export default function AIAssistant() {
           // Update existing thread
           updatedThreads[threadIndex] = {
             ...updatedThreads[threadIndex],
-            title: text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+            title: updatedThreads[threadIndex].title || generateThreadTitle(text),
             timestamp: new Date().toISOString(),
             preview: response.response.slice(0, 60) + (response.response.length > 60 ? '...' : ''),
             messages: updated
@@ -298,7 +338,7 @@ export default function AIAssistant() {
           // Create new thread entry
           const newThread: Thread = {
             id: threadId!,
-            title: text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+            title: generateThreadTitle(text),
             timestamp: new Date().toISOString(),
             preview: response.response.slice(0, 60) + (response.response.length > 60 ? '...' : ''),
             messages: updated,
@@ -390,12 +430,23 @@ export default function AIAssistant() {
               </svg>
             </button>
           </div>
-          <QuotaDisplay
-            used={quota?.used ?? 0}
-            limit={quota?.limit ?? 20}
-            tier={quota?.tier ?? 'free'}
-            loading={!quota}
-          />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleNewChat}
+              className="p-2 rounded-full border border-white/10 bg-white/5 text-text-primary hover:bg-white/10 transition-colors"
+              title="New chat"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <QuotaDisplay
+              used={quota?.used ?? 0}
+              limit={quota?.limit ?? 20}
+              tier={quota?.tier ?? 'free'}
+              loading={!quota}
+            />
+          </div>
         </div>
       </header>
 
@@ -409,7 +460,6 @@ export default function AIAssistant() {
               projects={projects}
               threads={threads}
               currentThreadId={currentThreadId}
-              onNewChat={handleNewChat}
               onSelectThread={handleSelectThread}
               onDeleteThread={handleDeleteThread}
               onCreateProject={handleCreateProject}
@@ -503,7 +553,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Input Area */}
-          <div className="flex-shrink-0 border-t border-white/10 bg-transparent">
+          <div className="flex-shrink-0 bg-transparent">
             <div className="max-w-4xl mx-auto px-6 py-4">
               <ChatInput
                 onSendMessage={handleSendMessage}

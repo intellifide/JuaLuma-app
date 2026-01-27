@@ -1,24 +1,28 @@
 import { Account } from '../types'
 
 export type PrimaryAccountCategory =
-  | 'cash'
+  | 'checking'
+  | 'savings'
   | 'credit'
   | 'loan'
   | 'mortgage'
   | 'investment'
-  | 'crypto'
+  | 'web3'
+  | 'cex'
   | 'real_estate'
   | 'other'
 
 export type InvestmentBucket = 'traditional' | 'cex' | 'web3' | 'other'
 
 const PRIMARY_LABELS: Record<PrimaryAccountCategory, string> = {
-  cash: 'Cash',
+  checking: 'Checking Account',
+  savings: 'Savings Account',
   credit: 'Credit',
   loan: 'Loan',
   mortgage: 'Mortgage',
   investment: 'Investments',
-  crypto: 'Crypto',
+  web3: 'Web3',
+  cex: 'Centralized Exchange (CEX)',
   real_estate: 'Real Estate',
   other: 'Other',
 }
@@ -39,6 +43,22 @@ const titleCase = (value: string) =>
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
 
+const inferCashCategoryFromSubtype = (subtype?: string | null): 'checking' | 'savings' | null => {
+  if (!subtype) return null
+  const value = normalize(subtype)
+  if (value.includes('savings') || value.includes('money_market')) return 'savings'
+  if (value.includes('checking') || value.includes('cash_management') || value.includes('prepaid')) return 'checking'
+  return null
+}
+
+const inferCashCategoryFromName = (name?: string | null): 'checking' | 'savings' | null => {
+  if (!name) return null
+  const value = name.toLowerCase()
+  if (value.includes('savings') || value.includes('money market')) return 'savings'
+  if (value.includes('checking') || value.includes('cash management')) return 'checking'
+  return null
+}
+
 const inferCategoryFromSubtype = (subtype: string): PrimaryAccountCategory | null => {
   if (!subtype) return null
   const value = normalize(subtype)
@@ -46,14 +66,12 @@ const inferCategoryFromSubtype = (subtype: string): PrimaryAccountCategory | nul
   if (value.includes('credit') || value.includes('charge') || value.includes('card')) return 'credit'
   if (value.includes('student') || value.includes('auto') || value.includes('loan') || value.includes('personal')) return 'loan'
   if (value.includes('cd') || value.includes('certificate') || value.includes('time_deposit')) return 'investment'
+  const cashCategory = inferCashCategoryFromSubtype(subtype)
+  if (cashCategory) return cashCategory
   if (
-    value.includes('checking') ||
-    value.includes('savings') ||
-    value.includes('money_market') ||
-    value.includes('cash_management') ||
-    value.includes('prepaid')
+    value.includes('money_market')
   ) {
-    return 'cash'
+    return 'savings'
   }
   if (
     value.includes('401') ||
@@ -80,7 +98,8 @@ const inferCategoryFromName = (name?: string | null): PrimaryAccountCategory | n
   if (value.includes('cd') || value.includes('certificate of deposit')) return 'investment'
   if (value.includes('credit card') || value.includes('card')) return 'credit'
   if (value.includes('student loan') || value.includes('auto loan') || value.includes('loan')) return 'loan'
-  if (value.includes('checking') || value.includes('savings') || value.includes('cash')) return 'cash'
+  const cashCategory = inferCashCategoryFromName(name)
+  if (cashCategory) return cashCategory
   if (value.includes('ira') || value.includes('401') || value.includes('brokerage') || value.includes('investment')) return 'investment'
   return null
 }
@@ -92,9 +111,11 @@ const getPlaidCategory = (account: Account): PrimaryAccountCategory => {
   if (plaidType === 'depository') {
     const subtypeCategory = inferCategoryFromSubtype(plaidSubtype)
     if (subtypeCategory === 'investment') return 'investment'
+    if (subtypeCategory) return subtypeCategory
     const nameCategory = inferCategoryFromName(account.accountName)
     if (nameCategory === 'investment') return 'investment'
-    return 'cash'
+    if (nameCategory) return nameCategory
+    return 'checking'
   }
   if (plaidType === 'investment') return 'investment'
   if (plaidType === 'credit') return 'credit'
@@ -108,27 +129,49 @@ const getPlaidCategory = (account: Account): PrimaryAccountCategory => {
   if (subtypeCategory) return subtypeCategory
   const nameCategory = inferCategoryFromName(account.accountName)
   if (nameCategory) return nameCategory
-  return 'cash'
+  return 'checking'
 }
 
 const getCryptoDetail = (account: Account) => {
   if (account.accountType === 'web3') return account.provider ? titleCase(normalize(account.provider)) : 'Web3 Wallet'
-  if (account.accountType === 'cex') return account.provider ? titleCase(normalize(account.provider)) : 'Exchange'
+  if (account.accountType === 'cex') return account.provider ? titleCase(normalize(account.provider)) : 'Centralized Exchange'
+  return null
+}
+
+const mapLegacyOverride = (override: string, account: Account): PrimaryAccountCategory | null => {
+  if (!override) return null
+  const normalized = normalize(override)
+  if (normalized === 'cash') {
+    return (
+      inferCashCategoryFromSubtype(account.plaidSubtype) ||
+      inferCashCategoryFromName(account.accountName) ||
+      'checking'
+    )
+  }
+  if (normalized === 'crypto') {
+    if (account.accountType === 'web3') return 'web3'
+    if (account.accountType === 'cex') return 'cex'
+    return 'cex'
+  }
+  if (normalized in PRIMARY_LABELS) {
+    return normalized as PrimaryAccountCategory
+  }
   return null
 }
 
 export const getAccountPrimaryCategory = (account: Account) => {
   let category: PrimaryAccountCategory = 'other'
 
-  const override = normalize(account.categoryOverride)
-  if (override && override in PRIMARY_LABELS) {
-    category = override as PrimaryAccountCategory
+  const overrideCategory = mapLegacyOverride(account.categoryOverride || '', account)
+  if (overrideCategory) {
+    category = overrideCategory
   } else if (account.accountType === 'web3' || account.accountType === 'cex') {
-    category = 'crypto'
+    category = account.accountType === 'web3' ? 'web3' : 'cex'
   } else if (account.accountType === 'investment') {
     category = 'investment'
   } else if (account.accountType === 'manual') {
-    category = 'other'
+    const nameCategory = inferCategoryFromName(account.accountName)
+    category = nameCategory || 'other'
   } else {
     category = getPlaidCategory(account)
   }
@@ -147,9 +190,9 @@ export const getAccountCategoryDetail = (account: Account) => {
     return getCryptoDetail(account)
   }
 
-  const override = normalize(account.categoryOverride)
-  if (override && override in PRIMARY_LABELS) {
-    return PRIMARY_LABELS[override as PrimaryAccountCategory]
+  const overrideCategory = mapLegacyOverride(account.categoryOverride || '', account)
+  if (overrideCategory) {
+    return PRIMARY_LABELS[overrideCategory]
   }
 
   if (account.accountType === 'manual') {
@@ -182,9 +225,12 @@ export const getInvestmentBucket = (account: Account): InvestmentBucket | null =
   if (account.accountType === 'web3') return 'web3'
   if (account.accountType === 'investment') return 'traditional'
 
-  const override = normalize(account.categoryOverride)
-  if (override && override in PRIMARY_LABELS) {
-    return override === 'investment' ? 'other' : null
+  const overrideCategory = mapLegacyOverride(account.categoryOverride || '', account)
+  if (overrideCategory) {
+    if (overrideCategory === 'investment') return 'other'
+    if (overrideCategory === 'web3') return 'web3'
+    if (overrideCategory === 'cex') return 'cex'
+    return null
   }
 
   if (account.accountType === 'traditional') {

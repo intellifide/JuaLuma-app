@@ -299,7 +299,7 @@ export default function Dashboard() {
         liabilities += Math.abs(balance);
       } else {
         assets += balance;
-        if (category.key === 'cash') {
+        if (category.key === 'checking' || category.key === 'savings') {
           liquid += balance;
         }
       }

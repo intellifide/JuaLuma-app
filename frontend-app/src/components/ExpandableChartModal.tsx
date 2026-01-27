@@ -52,7 +52,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const sortedData = [...data].sort((a, b) => b.date.localeCompare(a.date))
 
     const height = 520
-    const padding = { top: 40, right: 40, bottom: 60, left: 20 }
+    const padding = { top: 40, right: 40, bottom: 80, left: 20 }
     const minPointSpacing = 64
     const minWidth = 900
     const width = Math.max(
@@ -109,7 +109,19 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
       }
     })
 
-    return { path, areaPath, points, yLabels, xLabels, padding, width, height, min, max, range }
+    const yearIndexMap = new Map<number, number>()
+    sortedData.forEach((point, index) => {
+      const year = parseDateUTC(point.date).getUTCFullYear()
+      yearIndexMap.set(year, index)
+    })
+    const yearMarkers = Array.from(yearIndexMap.entries())
+      .map(([year, index]) => ({
+        year,
+        x: padding.left + (index / span) * drawWidth,
+      }))
+      .sort((a, b) => a.x - b.x)
+
+    return { path, areaPath, points, yLabels, xLabels, yearMarkers, padding, width, height, min, max, range }
   }, [data, type])
 
   // Generate bar chart for cash flow
@@ -125,7 +137,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
       .map(d => ({ ...d, value: Math.abs(d.value) }))
 
     const height = 520
-    const padding = { top: 40, right: 40, bottom: 60, left: 20 }
+    const padding = { top: 40, right: 40, bottom: 80, left: 20 }
     const minGroupSpacing = 72
     const minWidth = 900
     const seriesLength = Math.max(normalizedIncome.length, normalizedExpenses.length, 1)
@@ -187,7 +199,19 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
       }
     })
 
-    return { incomeBars, expensesBars, yLabels, xLabels, padding, width, height, max }
+    const yearIndexMap = new Map<number, number>()
+    normalizedIncome.forEach((point, index) => {
+      const year = parseDateUTC(point.date).getUTCFullYear()
+      yearIndexMap.set(year, index)
+    })
+    const yearMarkers = Array.from(yearIndexMap.entries())
+      .map(([year, index]) => ({
+        year,
+        x: padding.left + index * groupWidth + barWidth / 2,
+      }))
+      .sort((a, b) => a.x - b.x)
+
+    return { incomeBars, expensesBars, yLabels, xLabels, yearMarkers, padding, width, height, max }
   }, [incomeData, expensesData, interval, type])
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -308,6 +332,21 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   />
                 ))}
 
+                {/* Year boundaries */}
+                {lineChartData.yearMarkers.map((marker) => (
+                  <line
+                    key={`year-${marker.year}`}
+                    x1={marker.x}
+                    y1={lineChartData.padding.top}
+                    x2={marker.x}
+                    y2={lineChartData.height - lineChartData.padding.bottom}
+                    stroke="currentColor"
+                    strokeOpacity="0.18"
+                    strokeDasharray="2 6"
+                    className="text-text-secondary"
+                  />
+                ))}
+
                 {/* Area fill */}
                 <polygon
                   points={lineChartData.areaPath}
@@ -388,11 +427,24 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   <text
                     key={i}
                     x={label.x}
-                    y={lineChartData.height - lineChartData.padding.bottom + 30}
+                    y={lineChartData.height - lineChartData.padding.bottom + 28}
                     textAnchor="middle"
                     className="text-sm fill-text-secondary"
                   >
                     {label.label}
+                  </text>
+                ))}
+
+                {/* Year labels */}
+                {lineChartData.yearMarkers.map((marker) => (
+                  <text
+                    key={`year-label-${marker.year}`}
+                    x={marker.x}
+                    y={lineChartData.height - lineChartData.padding.bottom + 54}
+                    textAnchor="middle"
+                    className="text-xs fill-text-secondary font-medium"
+                  >
+                    {marker.year}
                   </text>
                 ))}
 
@@ -446,6 +498,21 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   />
                 ))}
 
+                {/* Year boundaries */}
+                {barChartData.yearMarkers.map((marker) => (
+                  <line
+                    key={`year-${marker.year}`}
+                    x1={marker.x}
+                    y1={barChartData.padding.top}
+                    x2={marker.x}
+                    y2={barChartData.height - barChartData.padding.bottom}
+                    stroke="currentColor"
+                    strokeOpacity="0.18"
+                    strokeDasharray="2 6"
+                    className="text-text-secondary"
+                  />
+                ))}
+
                 {/* Income bars */}
                 {barChartData.incomeBars.map((bar, i) => (
                   <g key={`income-${i}`}>
@@ -481,11 +548,24 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   <text
                     key={i}
                     x={label.x}
-                    y={barChartData.height - barChartData.padding.bottom + 30}
+                    y={barChartData.height - barChartData.padding.bottom + 28}
                     textAnchor="middle"
                     className="text-sm fill-text-secondary"
                   >
                     {label.label}
+                  </text>
+                ))}
+
+                {/* Year labels */}
+                {barChartData.yearMarkers.map((marker) => (
+                  <text
+                    key={`year-label-${marker.year}`}
+                    x={marker.x}
+                    y={barChartData.height - barChartData.padding.bottom + 54}
+                    textAnchor="middle"
+                    className="text-xs fill-text-secondary font-medium"
+                  >
+                    {marker.year}
                   </text>
                 ))}
 

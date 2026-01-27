@@ -1,5 +1,6 @@
 // Last Modified: 2026-01-23 22:15 CST
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Document } from '../services/documentService';
 
 interface Thread {
@@ -21,7 +22,6 @@ interface AISidebarProps {
     projects: Project[];
     threads: Thread[];
     currentThreadId: string | null;
-    onNewChat: () => void;
     onSelectThread: (threadId: string) => void;
     onDeleteThread: (threadId: string) => void;
     onCreateProject: (name: string) => void;
@@ -36,7 +36,6 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     projects,
     threads,
     currentThreadId,
-    onNewChat,
     onSelectThread,
     onDeleteThread,
     onCreateProject,
@@ -46,8 +45,10 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     onDownloadDoc,
 }) => {
     const [expandedSection, setExpandedSection] = useState<'documents' | 'history' | 'projects' | null>('documents');
-    const [projectName, setProjectName] = useState('');
     const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+    const [expandedProjectChats, setExpandedProjectChats] = useState<Set<string>>(new Set());
+    const [openThreadMenu, setOpenThreadMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+    const [openProjectMenu, setOpenProjectMenu] = useState<{ id: string; x: number; y: number } | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const toggleSection = (section: 'documents' | 'history' | 'projects') => {
@@ -56,6 +57,29 @@ export const AISidebar: React.FC<AISidebarProps> = ({
 
     const toggleProject = (projectId: string) => {
         setExpandedProjects(prev => {
+            const next = new Set(prev);
+            const willOpen = !next.has(projectId);
+            if (willOpen) {
+                next.add(projectId);
+                setExpandedProjectChats(prevChats => {
+                    const chatNext = new Set(prevChats);
+                    chatNext.add(projectId);
+                    return chatNext;
+                });
+            } else {
+                next.delete(projectId);
+                setExpandedProjectChats(prevChats => {
+                    const chatNext = new Set(prevChats);
+                    chatNext.delete(projectId);
+                    return chatNext;
+                });
+            }
+            return next;
+        });
+    };
+
+    const toggleProjectChats = (projectId: string) => {
+        setExpandedProjectChats(prev => {
             const next = new Set(prev);
             if (next.has(projectId)) {
                 next.delete(projectId);
@@ -66,6 +90,23 @@ export const AISidebar: React.FC<AISidebarProps> = ({
         });
     };
 
+    const handleCreateProject = () => {
+        const name = window.prompt('New project name');
+        if (!name || !name.trim()) return;
+        onCreateProject(name.trim());
+    };
+
+    const getMenuPosition = (anchor: HTMLElement, menuWidth: number) => {
+        const rect = anchor.getBoundingClientRect();
+        const padding = 8;
+        const left = Math.min(
+            Math.max(padding, rect.right - menuWidth),
+            window.innerWidth - menuWidth - padding,
+        );
+        const top = Math.min(rect.bottom + 8, window.innerHeight - padding);
+        return { x: left, y: top };
+    };
+
     const getFileIcon = (fileType: string) => {
         const type = fileType.toLowerCase();
         if (['pdf'].includes(type)) return '📄';
@@ -74,104 +115,97 @@ export const AISidebar: React.FC<AISidebarProps> = ({
         return '📎';
     };
 
-    const renderThreadItem = (thread: Thread) => (
+    const renderThreadItem = (thread: Thread, options?: { showPreview?: boolean; nested?: boolean }) => {
+        const showPreview = options?.showPreview ?? true;
+        const nested = options?.nested ?? false;
+        return (
         <div
             key={thread.id}
-            className={`group relative rounded-lg transition-colors ${
+            className={`group relative rounded-xl transition-colors ${
                 currentThreadId === thread.id
                     ? 'bg-white/10'
                     : 'hover:bg-white/5'
-            }`}
+            } ${nested ? 'ml-4' : ''}`}
         >
             <button
                 onClick={() => onSelectThread(thread.id)}
-                className="w-full flex items-start gap-2 px-3 py-2 text-left"
+                className={`w-full flex items-start gap-2 px-3 py-2 text-left ${nested ? 'py-1.5' : ''}`}
             >
-                <svg className="w-4 h-4 mt-0.5 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm text-text-primary truncate">
                         {thread.title}
                     </p>
-                    <p className="text-xs text-text-secondary truncate">
-                        {thread.preview}
-                    </p>
+                    {showPreview && (
+                        <p className="text-xs text-text-secondary truncate">
+                            {thread.preview}
+                        </p>
+                    )}
                 </div>
             </button>
-            {projects.length > 0 && (
-                <div className="absolute right-9 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <select
-                        className="text-[10px] bg-white/10 border border-white/10 rounded px-2 py-1 text-text-secondary"
-                        value={thread.projectId || ''}
-                        onChange={(e) => onAssignThreadToProject(thread.id, e.target.value || null)}
-                    >
-                        <option value="">No project</option>
-                        {projects.map((project) => (
-                            <option key={project.id} value={project.id}>{project.name}</option>
-                        ))}
-                    </select>
-                </div>
-            )}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteThread(thread.id);
-                }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-text-secondary hover:text-red-400 transition-all"
-                title="Delete conversation"
+            <div
+                className={`absolute right-2 top-1/2 -translate-y-1/2 transition-opacity ${openThreadMenu?.id === thread.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </button>
-        </div>
-    );
-
-    return (
-        <div className="h-full flex flex-col bg-bg-secondary/30 border-r border-white/10">
-            {/* Header */}
-            <div className="p-4 border-b border-white/10">
                 <button
-                    onClick={onNewChat}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (openThreadMenu?.id === thread.id) {
+                            setOpenThreadMenu(null);
+                            return;
+                        }
+                        const pos = getMenuPosition(e.currentTarget, 192);
+                        setOpenThreadMenu({ id: thread.id, ...pos });
+                        setOpenProjectMenu(null);
+                    }}
+                    className="p-1.5 rounded-md hover:bg-white/10 text-text-secondary hover:text-text-primary transition-all"
+                    title="More actions"
+                    aria-haspopup="menu"
+                    aria-expanded={openThreadMenu?.id === thread.id}
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="5" cy="12" r="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <circle cx="19" cy="12" r="2" />
                     </svg>
-                    <span className="font-medium">New chat</span>
                 </button>
             </div>
+        </div>
+        );
+    };
 
+    const activeThread = openThreadMenu ? threads.find((thread) => thread.id === openThreadMenu.id) : null;
+    const threadMenuProjects = activeThread
+        ? projects.filter((project) => project.id !== activeThread.projectId)
+        : [];
+    const activeProject = openProjectMenu ? projects.find((project) => project.id === openProjectMenu.id) : null;
+
+    return (
+        <div className="h-full flex flex-col bg-bg-secondary/80 border-r border-white/5">
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto px-3 py-4">
                 {/* Documents Section */}
-                <div className="border-b border-white/10">
+                <div className="mb-4">
                     <button
                         onClick={() => toggleSection('documents')}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                        className="w-full flex items-center justify-between px-2 py-2 text-left text-text-muted hover:text-text-primary transition-colors"
                     >
+                        <span className="text-xs uppercase tracking-widest">Files</span>
                         <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="text-sm font-medium">Files</span>
-                            <span className="text-xs text-text-secondary bg-white/10 px-1.5 py-0.5 rounded-full">
+                            <span className="text-[10px] text-text-secondary bg-white/5 px-1.5 py-0.5 rounded-full">
                                 {documents.length}
                             </span>
+                            <svg 
+                                className={`w-3.5 h-3.5 text-text-secondary transition-transform ${expandedSection === 'documents' ? 'rotate-180' : ''}`} 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
                         </div>
-                        <svg 
-                            className={`w-4 h-4 text-text-secondary transition-transform ${expandedSection === 'documents' ? 'rotate-180' : ''}`} 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
                     </button>
                     
                     {expandedSection === 'documents' && (
-                        <div className="px-2 pb-3">
+                        <div className="px-1 pb-3">
                             {documents.length === 0 ? (
                                 <div className="px-4 py-6 text-center">
                                     <p className="text-xs text-text-secondary mb-2">No files yet</p>
@@ -189,7 +223,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                                             <button
                                                 key={doc.id}
                                                 onClick={() => onDownloadDoc(doc)}
-                                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
+                                                className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
                                             >
                                                 <span className="text-lg">{getFileIcon(doc.fileType)}</span>
                                                 <div className="flex-1 min-w-0">
@@ -205,7 +239,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                                     </div>
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="w-full mt-2 px-3 py-2 text-xs text-text-secondary hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
+                                        className="w-full mt-2 px-2 py-2 text-xs text-text-secondary hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
                                     >
                                         + Upload file
                                     </button>
@@ -216,22 +250,14 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                 </div>
 
                 {/* Projects Section */}
-                <div className="border-b border-white/10">
+                <div className="mb-6">
                     <button
                         onClick={() => toggleSection('projects')}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                        className="w-full flex items-center justify-between px-2 py-2 text-left text-text-muted hover:text-text-primary transition-colors"
                     >
-                        <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-                            </svg>
-                            <span className="text-sm font-medium">Projects</span>
-                            <span className="text-xs text-text-secondary bg-white/10 px-1.5 py-0.5 rounded-full">
-                                {projects.length}
-                            </span>
-                        </div>
+                        <span className="text-xs uppercase tracking-widest">Projects</span>
                         <svg
-                            className={`w-4 h-4 text-text-secondary transition-transform ${expandedSection === 'projects' ? 'rotate-180' : ''}`}
+                            className={`w-3.5 h-3.5 text-text-secondary transition-transform ${expandedSection === 'projects' ? 'rotate-180' : ''}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -241,72 +267,87 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                     </button>
 
                     {expandedSection === 'projects' && (
-                        <div className="px-2 pb-3 space-y-3">
-                            <div className="flex items-center gap-2 px-3">
-                                <input
-                                    type="text"
-                                    value={projectName}
-                                    onChange={(e) => setProjectName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            if (!projectName.trim()) return;
-                                            onCreateProject(projectName);
-                                            setProjectName('');
-                                        }
-                                    }}
-                                    placeholder="New project name"
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-text-primary"
-                                />
-                                <button
-                                    className="text-xs px-3 py-2 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
-                                    onClick={() => {
-                                        if (!projectName.trim()) return;
-                                        onCreateProject(projectName);
-                                        setProjectName('');
-                                    }}
-                                >
-                                    Create
-                                </button>
-                            </div>
+                        <div className="px-1 pb-3 space-y-2">
+                            <button
+                                className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-text-primary hover:bg-white/5 transition-colors"
+                                onClick={handleCreateProject}
+                            >
+                                <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
+                                </svg>
+                                <span>New project</span>
+                            </button>
 
                             {projects.length === 0 ? (
                                 <div className="px-4 py-4 text-center text-xs text-text-secondary">
                                     No projects yet. Group chats by goal or topic.
                                 </div>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                     {projects.map((project) => {
                                         const projectThreads = threads.filter((thread) => thread.projectId === project.id);
                                         const expanded = expandedProjects.has(project.id);
+                                        const chatsExpanded = expandedProjectChats.has(project.id);
                                         return (
-                                            <div key={project.id} className="rounded-lg border border-white/5 bg-white/5">
-                                                <div className="flex items-center justify-between px-3 py-2">
+                                            <div key={project.id} className="rounded-xl">
+                                                <div className={`flex items-center justify-between px-2 py-2 rounded-xl ${expanded ? 'bg-white/5' : 'hover:bg-white/5'}`}>
                                                     <button
-                                                        className="flex items-center gap-2 text-left"
+                                                        className="flex items-center gap-2 text-left w-full"
                                                         onClick={() => toggleProject(project.id)}
                                                     >
-                                                        <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-                                                        </svg>
                                                         <div>
                                                             <p className="text-sm text-text-primary">{project.name}</p>
-                                                            <p className="text-[10px] text-text-secondary">{projectThreads.length} chats</p>
                                                         </div>
                                                     </button>
-                                                    <button
-                                                        className="text-xs text-text-secondary hover:text-danger"
-                                                        onClick={() => onDeleteProject(project.id)}
-                                                    >
-                                                        Remove
-                                                    </button>
+                                                    <div className="relative">
+                                                        <button
+                                                            className="p-1.5 rounded-md hover:bg-white/10 text-text-secondary hover:text-text-primary transition-all"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (openProjectMenu?.id === project.id) {
+                                                                    setOpenProjectMenu(null);
+                                                                    return;
+                                                                }
+                                                                const pos = getMenuPosition(e.currentTarget, 176);
+                                                                setOpenProjectMenu({ id: project.id, ...pos });
+                                                                setOpenThreadMenu(null);
+                                                            }}
+                                                            title="Project actions"
+                                                            aria-haspopup="menu"
+                                                            aria-expanded={openProjectMenu?.id === project.id}
+                                                        >
+                                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                                <circle cx="5" cy="12" r="2" />
+                                                                <circle cx="12" cy="12" r="2" />
+                                                                <circle cx="19" cy="12" r="2" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 {expanded && (
-                                                    <div className="px-3 pb-3 space-y-1">
-                                                        {projectThreads.length === 0 ? (
-                                                            <p className="text-[11px] text-text-secondary">No chats yet.</p>
-                                                        ) : (
-                                                            projectThreads.map(renderThreadItem)
+                                                    <div className="px-3 pb-3 space-y-2">
+                                                        <button
+                                                            className="flex items-center justify-between w-full text-left text-[11px] text-text-secondary hover:text-text-primary"
+                                                            onClick={() => toggleProjectChats(project.id)}
+                                                        >
+                                                            <span className="uppercase tracking-wider">Chats</span>
+                                                            <svg
+                                                                className={`w-3.5 h-3.5 transition-transform ${chatsExpanded ? 'rotate-180' : ''}`}
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        </button>
+                                                        {chatsExpanded && (
+                                                            <div className="pl-3 border-l border-white/5 space-y-1">
+                                                                {projectThreads.length === 0 ? (
+                                                                    <p className="text-[11px] text-text-secondary">No chats yet.</p>
+                                                                ) : (
+                                                                    projectThreads.map((thread) => renderThreadItem(thread, { showPreview: false, nested: true }))
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 )}
@@ -323,16 +364,11 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                 <div>
                     <button
                         onClick={() => toggleSection('history')}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                        className="w-full flex items-center justify-between px-2 py-2 text-left text-text-muted hover:text-text-primary transition-colors"
                     >
-                        <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-sm font-medium">Chats</span>
-                        </div>
+                        <span className="text-xs uppercase tracking-widest">Your chats</span>
                         <svg 
-                            className={`w-4 h-4 text-text-secondary transition-transform ${expandedSection === 'history' ? 'rotate-180' : ''}`} 
+                            className={`w-3.5 h-3.5 text-text-secondary transition-transform ${expandedSection === 'history' ? 'rotate-180' : ''}`} 
                             fill="none" 
                             stroke="currentColor" 
                             viewBox="0 0 24 24"
@@ -342,14 +378,14 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                     </button>
                     
                     {expandedSection === 'history' && (
-                        <div className="px-2 pb-3">
+                        <div className="px-1 pb-3">
                             {threads.filter((thread) => !thread.projectId).length === 0 ? (
                                 <div className="px-4 py-6 text-center">
                                     <p className="text-xs text-text-secondary">No chats yet</p>
                                 </div>
                             ) : (
                                 <div className="space-y-1">
-                                    {threads.filter((thread) => !thread.projectId).map(renderThreadItem)}
+                                    {threads.filter((thread) => !thread.projectId).map((thread) => renderThreadItem(thread, { showPreview: false }))}
                                 </div>
                             )}
                         </div>
@@ -368,6 +404,90 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                     }
                 }} 
             />
+            {openThreadMenu && activeThread && createPortal(
+                <div className="fixed inset-0 z-[1000]">
+                    <button
+                        type="button"
+                        className="absolute inset-0 cursor-default"
+                        onClick={() => setOpenThreadMenu(null)}
+                        aria-label="Close chat menu"
+                    />
+                    <div
+                        className="absolute w-48 rounded-lg border border-white/10 p-2 shadow-xl space-y-1"
+                        style={{ left: openThreadMenu.x, top: openThreadMenu.y, backgroundColor: 'var(--bg-secondary)' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md"
+                            onClick={() => {
+                                onDeleteThread(activeThread.id);
+                                setOpenThreadMenu(null);
+                            }}
+                        >
+                            Delete chat
+                        </button>
+                        <div className="px-3 pt-2 text-[10px] uppercase tracking-wider text-text-muted">
+                            Move to
+                        </div>
+                        {activeThread.projectId && (
+                            <button
+                                className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md"
+                                onClick={() => {
+                                    onAssignThreadToProject(activeThread.id, null);
+                                    setOpenThreadMenu(null);
+                                }}
+                            >
+                                Chats
+                            </button>
+                        )}
+                        {threadMenuProjects.length === 0 ? (
+                            <div className="px-3 py-2 text-[11px] text-text-muted">
+                                No other projects
+                            </div>
+                        ) : (
+                            threadMenuProjects.map((project) => (
+                                <button
+                                    key={project.id}
+                                    className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md"
+                                    onClick={() => {
+                                        onAssignThreadToProject(activeThread.id, project.id);
+                                        setOpenThreadMenu(null);
+                                    }}
+                                >
+                                    {project.name}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>,
+                document.body
+            )}
+            {openProjectMenu && activeProject && createPortal(
+                <div className="fixed inset-0 z-[1000]">
+                    <button
+                        type="button"
+                        className="absolute inset-0 cursor-default"
+                        onClick={() => setOpenProjectMenu(null)}
+                        aria-label="Close project menu"
+                    />
+                    <div
+                        className="absolute w-44 rounded-lg border border-white/10 p-2 shadow-xl space-y-1"
+                        style={{ left: openProjectMenu.x, top: openProjectMenu.y, backgroundColor: 'var(--bg-secondary)' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md"
+                            onClick={() => {
+                                onDeleteProject(activeProject.id);
+                                setOpenProjectMenu(null);
+                            }}
+                        >
+                            Delete project
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

@@ -78,13 +78,15 @@ const ACCOUNT_LIMITS: Record<'bank' | 'web3' | 'cex' | 'manual', Record<PlanTier
 };
 
 const MANUAL_ACCOUNT_CATEGORY_OPTIONS = [
-  { value: 'cash', label: 'Cash' },
+  { value: 'checking', label: 'Checking Account' },
+  { value: 'savings', label: 'Savings Account' },
   { value: 'investment', label: 'Investments' },
   { value: 'real_estate', label: 'Real Estate' },
   { value: 'credit', label: 'Credit' },
   { value: 'loan', label: 'Loan' },
   { value: 'mortgage', label: 'Mortgage' },
-  { value: 'crypto', label: 'Crypto' },
+  { value: 'web3', label: 'Web3' },
+  { value: 'cex', label: 'Centralized Exchange (CEX)' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -337,7 +339,18 @@ const EditAccountModal = ({
 }) => {
   const [name, setName] = useState(account.accountName || '');
   const [assignedUid, setAssignedUid] = useState(account.assignedMemberUid || '');
-  const [categoryOverride, setCategoryOverride] = useState(account.categoryOverride || '');
+  const mapLegacyOverride = (override?: string | null) => {
+    if (!override) return '';
+    const normalized = override.toLowerCase();
+    if (normalized === 'cash') return 'checking';
+    if (normalized === 'crypto') {
+      if (account.accountType === 'web3') return 'web3';
+      if (account.accountType === 'cex') return 'cex';
+      return 'cex';
+    }
+    return override;
+  };
+  const [categoryOverride, setCategoryOverride] = useState(mapLegacyOverride(account.categoryOverride));
   const [balanceType, setBalanceType] = useState<'asset' | 'liability'>(account.balanceType || 'asset');
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
@@ -465,7 +478,7 @@ const EditAccountModal = ({
 const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [name, setName] = useState('');
   const [assignedUid, setAssignedUid] = useState('');
-  const [categoryOverride, setCategoryOverride] = useState('cash');
+  const [categoryOverride, setCategoryOverride] = useState('checking');
   const [balanceType, setBalanceType] = useState<'asset' | 'liability'>('asset');
   const [household, setHousehold] = useState<Household | null>(null);
   const [householdLoading, setHouseholdLoading] = useState(true);
@@ -519,7 +532,7 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
             <input
               type="text"
               className="input"
-              placeholder="e.g. Cash, Savings, Petty Cash"
+              placeholder="e.g. Checking, Savings, Cash on hand"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -820,11 +833,11 @@ export const ConnectAccounts = () => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
   const [connectMenuOpen, setConnectMenuOpen] = useState(true);
-  const [expandedConnectSection, setExpandedConnectSection] = useState<'bank' | 'web3' | 'cex' | 'manual' | null>('bank');
-  const [activeTab, setActiveTab] = useState<'all' | 'cash' | 'credit' | 'loans' | 'investment' | 'real_estate' | 'crypto' | 'manual'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'checking' | 'savings' | 'credit' | 'loans' | 'investment' | 'real_estate' | 'web3' | 'cex' | 'manual'>('all');
   const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
   const [linkedAccountsPage, setLinkedAccountsPage] = useState(1);
   const [linkedAccountsPageSize, setLinkedAccountsPageSize] = useState(10);
+  const [linkedAccountsExpanded, setLinkedAccountsExpanded] = useState(true);
   const [confirmAction, setConfirmAction] = useState<{
     type: 'refresh' | 'remove';
     account: typeof accounts[number];
@@ -961,7 +974,6 @@ export const ConnectAccounts = () => {
     description: string;
     connected: number;
     allowed: string;
-    helper?: string;
     badge?: string;
     disabled?: boolean;
   };
@@ -973,7 +985,6 @@ export const ConnectAccounts = () => {
       description: 'Secure read-only sync via Plaid.',
       connected: connectedCounts.bank,
       allowed: bankLimitLabel,
-      helper: 'Sandbox: user_good / pass_good',
     },
     {
       id: 'web3' as const,
@@ -995,7 +1006,6 @@ export const ConnectAccounts = () => {
       description: 'Track manual accounts for transactions and balances.',
       connected: connectedCounts.manual,
       allowed: manualLimitLabel,
-      badge: 'Pro / Ultimate',
       disabled: !hasManualAccess,
     },
   ];
@@ -1169,12 +1179,14 @@ export const ConnectAccounts = () => {
               <div className="tabs mb-6">
                 <ul className="tab-list flex gap-4 border-b border-white/10 flex-wrap" role="tablist">
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all')}>All Accounts</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cash' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cash')}>Cash</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'savings' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('savings')}>Savings</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'credit' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('credit')}>Credit</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'loans' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('loans')}>Loans</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investments</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'real_estate' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('real_estate')}>Real Estate</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'crypto' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('crypto')}>Crypto</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'web3' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cex' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'manual' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('manual')}>Manual</button></li>
                 </ul>
               </div>
@@ -1267,53 +1279,30 @@ export const ConnectAccounts = () => {
           </div>
           {connectMenuOpen && (
             <div className="space-y-3">
-              {connectSections.map((section) => {
-                const isOpen = expandedConnectSection === section.id;
-                return (
-                  <div key={section.id} className="rounded-2xl border border-white/10 bg-surface-1/40 p-4">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedConnectSection(isOpen ? null : section.id)}
-                      className="w-full flex items-start justify-between gap-4 text-left"
-                    >
-                      <div>
-                        <h3 className="text-base font-semibold text-text-primary">{section.title}</h3>
-                        <p className="text-xs text-text-secondary mt-1">{section.description}</p>
-                      </div>
+              {connectSections.map((section) => (
+                <div key={section.id} className="rounded-2xl border border-white/10 bg-surface-1/40 p-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-text-primary">{section.title}</h3>
+                      <p className="text-xs text-text-secondary mt-1">{section.description}</p>
+                    </div>
+                    <div className="flex flex-col items-start md:items-end gap-2">
                       <div className="flex items-center gap-3 text-xs text-text-muted">
                         <span>Connected {section.connected}</span>
                         <span>Allowed {section.allowed} ({planLabel})</span>
-                        <svg
-                          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
                       </div>
-                    </button>
-                    {isOpen && (
-                      <div className="mt-4 border-t border-white/10 pt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="space-y-2 text-xs text-text-secondary">
-                          {section.helper && (
-                            <p>
-                              {section.helper}
-                            </p>
-                          )}
-                          {section.badge && (
-                            <span className="badge badge-neutral text-[10px] w-fit">
-                              {section.badge}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          {section.id === 'bank' && (
-                            <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
-                          )}
+                      {section.badge && (
+                        <span className="badge badge-neutral text-[10px] w-fit">
+                          {section.badge}
+                        </span>
+                      )}
+                      <div>
+                        {section.id === 'bank' && (
+                          <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
+                        )}
                           {section.id === 'web3' && (
                             <button
-                              className="btn btn-primary w-full md:w-[180px]"
+                              className="btn btn-primary btn-sm w-full md:w-[170px]"
                               type="button"
                               onClick={() => setShowWalletModal(true)}
                             >
@@ -1322,7 +1311,7 @@ export const ConnectAccounts = () => {
                           )}
                           {section.id === 'cex' && (
                             <button
-                              className="btn btn-primary w-full md:w-[180px]"
+                              className="btn btn-primary btn-sm w-full md:w-[170px]"
                               type="button"
                               onClick={() => setShowCexModal(true)}
                             >
@@ -1331,7 +1320,7 @@ export const ConnectAccounts = () => {
                           )}
                           {section.id === 'manual' && (
                             <button
-                              className="btn btn-primary w-full md:w-[200px]"
+                              className="btn btn-primary btn-sm w-full md:w-[170px]"
                               type="button"
                               onClick={() => hasManualAccess && setShowManualAccountModal(true)}
                               disabled={section.disabled}
@@ -1339,12 +1328,11 @@ export const ConnectAccounts = () => {
                               {hasManualAccess ? 'Create Manual Account' : 'Upgrade Required'}
                             </button>
                           )}
-                        </div>
                       </div>
-                    )}
+                    </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1426,7 +1414,7 @@ export const ConnectAccounts = () => {
               </p>
             </div>
             <button
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm w-full md:w-[170px]"
               type="button"
               onClick={() => {
                 setEditingManualAsset(null);
@@ -1502,159 +1490,171 @@ export const ConnectAccounts = () => {
         </div>
 
         <div className="glass-panel mb-12">
-          <h2 className="mb-6">Linked Accounts</h2>
-          <div className="overflow-x-auto">
-            <table className="table w-full text-left">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-3 font-semibold">Account / Label</th>
-                  <th className="pb-3 font-semibold">Category</th>
-                  <th className="pb-3 font-semibold">Assigned To</th>
-                  <th className="pb-3 font-semibold">Status</th>
-                  <th className="pb-3 font-semibold">Last Sync</th>
-                  <th className="pb-3 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-center text-text-muted">Loading accounts...</td>
-                  </tr>
-                ) : accounts.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-center text-text-muted">No accounts connected yet.</td>
-                  </tr>
-                ) : (
-                  paginatedLinkedAccounts.map((account) => {
-                    const display = getAccountCategoryDisplay(account);
-                    return (
-                      <tr key={account.id} className="border-b border-border/50 hover:bg-surface-2 transition-colors">
-                        <td className="py-4">
-                            <div className="font-medium">{account.customLabel || account.accountName || 'Unnamed Account'}</div>
-                            {account.customLabel && <div className="text-xs text-text-secondary">{account.accountName}</div>}
-                        </td>
-                        <td className="py-4">
-                          <div className="font-medium">{display.label}</div>
-                          {display.detail && (
-                            <div className="text-xs text-text-secondary">{display.detail}</div>
-                          )}
-                          {account.balanceType && (
-                            <div className="text-[10px] uppercase tracking-widest text-text-muted mt-1">
-                              {account.balanceType === 'liability' ? 'Liability' : 'Asset'}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-4 text-sm text-text-secondary">
-                          {householdLoading ? 'Loading...' : resolveAssignedLabel(account.assignedMemberUid)}
-                        </td>
-                        <td className="py-4">
-                          {account.syncStatus === 'needs_reauth' ? (
-                            <span className="badge badge-warning">Reconnect needed</span>
-                          ) : (
-                            <span className="badge badge-success">Connected</span>
-                          )}
-                        </td>
-                        <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'Just now'}</td>
-                        <td className="py-4">
-                          <div className="flex gap-2 items-center">
-                            {account.syncStatus === 'needs_reauth' && account.accountType === 'cex' && (
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => setReconnectPayload({
-                                  exchange: account.provider || 'coinbase',
-                                  name: account.accountName || 'My Exchange'
-                                })}
-                              >
-                                Reconnect
-                              </button>
-                            )}
-                            <div className="relative" data-actions-menu>
-                              <button
-                                className="btn btn-sm btn-outline flex items-center gap-1"
-                                onClick={() => setOpenMenuId((prev) => (prev === account.id ? null : account.id))}
-                                aria-haspopup="menu"
-                                aria-expanded={openMenuId === account.id}
-                                aria-label="Open actions menu"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                                <span className="hidden md:inline">Actions</span>
-                              </button>
-                              {openMenuId === account.id && (
-                                <div className="absolute right-0 z-10 mt-2 w-48 rounded border border-border bg-surface-1 p-2 shadow-lg space-y-2">
-                                  <button
-                                    className="btn btn-sm btn-ghost w-full justify-start"
-                                    onClick={() => {
-                                      setEditingAccount(account);
-                                      setOpenMenuId(null);
-                                    }}
-                                  >
-                                    Edit Details
-                                  </button>
-                                  {account.accountType !== 'manual' && (
-                                    <button
-                                      className="btn btn-sm btn-ghost w-full justify-start"
-                                      onClick={() => {
-                                        setConfirmAction({ type: 'refresh', account });
-                                        setOpenMenuId(null);
-                                      }}
-                                      disabled={account.syncStatus === 'needs_reauth'}
-                                    >
-                                      Refresh Sync
-                                    </button>
-                                  )}
-                                  <button
-                                    className="btn btn-sm btn-ghost w-full justify-start text-danger"
-                                    onClick={() => {
-                                      setConfirmAction({ type: 'remove', account });
-                                      setOpenMenuId(null);
-                                    }}
-                                  >
-                                    Remove Account
-                                  </button>
+          <div className="flex items-center justify-between mb-6">
+            <h2>Linked Accounts</h2>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setLinkedAccountsExpanded((prev) => !prev)}
+            >
+              {linkedAccountsExpanded ? 'Collapse' : 'Expand'}
+            </button>
+          </div>
+          {linkedAccountsExpanded && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="table w-full text-left">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="pb-3 font-semibold">Account / Label</th>
+                      <th className="pb-3 font-semibold">Category</th>
+                      <th className="pb-3 font-semibold">Assigned To</th>
+                      <th className="pb-3 font-semibold">Status</th>
+                      <th className="pb-3 font-semibold">Last Sync</th>
+                      <th className="pb-3 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-text-muted">Loading accounts...</td>
+                      </tr>
+                    ) : accounts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-text-muted">No accounts connected yet.</td>
+                      </tr>
+                    ) : (
+                      paginatedLinkedAccounts.map((account) => {
+                        const display = getAccountCategoryDisplay(account);
+                        return (
+                          <tr key={account.id} className="border-b border-border/50 hover:bg-surface-2 transition-colors">
+                            <td className="py-4">
+                                <div className="font-medium">{account.customLabel || account.accountName || 'Unnamed Account'}</div>
+                                {account.customLabel && <div className="text-xs text-text-secondary">{account.accountName}</div>}
+                            </td>
+                            <td className="py-4">
+                              <div className="font-medium">{display.label}</div>
+                              {display.detail && (
+                                <div className="text-xs text-text-secondary">{display.detail}</div>
+                              )}
+                              {account.balanceType && (
+                                <div className="text-[10px] uppercase tracking-widest text-text-muted mt-1">
+                                  {account.balanceType === 'liability' ? 'Liability' : 'Asset'}
                                 </div>
                               )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-6 flex justify-center">
-            <div className="flex items-center gap-3">
-              <label className="text-xs text-text-muted" htmlFor="linked-accounts-page-size">Rows</label>
-              <select
-                id="linked-accounts-page-size"
-                className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary"
-                value={linkedAccountsPageSize}
-                onChange={(e) => {
-                  setLinkedAccountsPageSize(Number(e.target.value));
-                  setLinkedAccountsPage(1);
-                }}
-              >
-                {[10, 25, 50, 100].map((size) => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
-              <button
-                className="btn btn-sm btn-outline"
-                onClick={() => setLinkedAccountsPage((prev) => Math.max(1, prev - 1))}
-                disabled={!hasLinkedPrevPage}
-              >
-                Prev
-              </button>
-              <button
-                className="btn btn-sm btn-outline"
-                onClick={() => setLinkedAccountsPage((prev) => Math.min(totalLinkedAccountsPages, prev + 1))}
-                disabled={!hasLinkedNextPage}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+                            </td>
+                            <td className="py-4 text-sm text-text-secondary">
+                              {householdLoading ? 'Loading...' : resolveAssignedLabel(account.assignedMemberUid)}
+                            </td>
+                            <td className="py-4">
+                              {account.syncStatus === 'needs_reauth' ? (
+                                <span className="badge badge-warning">Reconnect needed</span>
+                              ) : (
+                                <span className="badge badge-success">Connected</span>
+                              )}
+                            </td>
+                            <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'Just now'}</td>
+                            <td className="py-4">
+                              <div className="flex gap-2 items-center">
+                                {account.syncStatus === 'needs_reauth' && account.accountType === 'cex' && (
+                                  <button
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => setReconnectPayload({
+                                      exchange: account.provider || 'coinbase',
+                                      name: account.accountName || 'My Exchange'
+                                    })}
+                                  >
+                                    Reconnect
+                                  </button>
+                                )}
+                                <div className="relative" data-actions-menu>
+                                  <button
+                                    className="btn btn-sm btn-outline flex items-center"
+                                    onClick={() => setOpenMenuId((prev) => (prev === account.id ? null : account.id))}
+                                    aria-haspopup="menu"
+                                    aria-expanded={openMenuId === account.id}
+                                    aria-label="Open actions menu"
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+                                  {openMenuId === account.id && (
+                                    <div className="absolute right-0 z-10 mt-2 w-48 rounded border border-border bg-surface-1 p-2 shadow-lg space-y-2">
+                                      <button
+                                        className="btn btn-sm btn-ghost w-full justify-start"
+                                        onClick={() => {
+                                          setEditingAccount(account);
+                                          setOpenMenuId(null);
+                                        }}
+                                      >
+                                        Edit Details
+                                      </button>
+                                      {account.accountType !== 'manual' && (
+                                        <button
+                                          className="btn btn-sm btn-ghost w-full justify-start"
+                                          onClick={() => {
+                                            setConfirmAction({ type: 'refresh', account });
+                                            setOpenMenuId(null);
+                                          }}
+                                          disabled={account.syncStatus === 'needs_reauth'}
+                                        >
+                                          Refresh Sync
+                                        </button>
+                                      )}
+                                      <button
+                                        className="btn btn-sm btn-ghost w-full justify-start text-danger"
+                                        onClick={() => {
+                                          setConfirmAction({ type: 'remove', account });
+                                          setOpenMenuId(null);
+                                        }}
+                                      >
+                                        Remove Account
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 flex justify-center">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-text-muted" htmlFor="linked-accounts-page-size">Rows</label>
+                  <select
+                    id="linked-accounts-page-size"
+                    className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary"
+                    value={linkedAccountsPageSize}
+                    onChange={(e) => {
+                      setLinkedAccountsPageSize(Number(e.target.value));
+                      setLinkedAccountsPage(1);
+                    }}
+                  >
+                    {[10, 25, 50, 100].map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={() => setLinkedAccountsPage((prev) => Math.max(1, prev - 1))}
+                    disabled={!hasLinkedPrevPage}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={() => setLinkedAccountsPage((prev) => Math.min(totalLinkedAccountsPages, prev + 1))}
+                    disabled={!hasLinkedNextPage}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="alert alert-info mb-8">
