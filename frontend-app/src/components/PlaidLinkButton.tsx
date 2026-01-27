@@ -96,13 +96,13 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
     }
   }, [linkToken, onError, onSuccess])
 
-  const { open, ready } = usePlaidLink(
-    linkConfig ?? {
-      token: null,
-      onSuccess: () => { },
-      onExit: () => { }
-    }
-  )
+  const fallbackConfig = useMemo(() => ({
+    token: null,
+    onSuccess: () => {},
+    onExit: () => {},
+  }), [])
+
+  const { open, ready } = usePlaidLink(linkConfig ?? fallbackConfig)
 
   const handleOpenModal = useCallback(() => {
     if (!linkConfig || !ready) return
