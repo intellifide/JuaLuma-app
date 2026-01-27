@@ -25,7 +25,7 @@ const sidebarLinks = [
   { name: 'Financial Analysis', path: '/financial-analysis', icon: LineChart },
   { name: 'Transactions', path: '/transactions', icon: CreditCard },
   { name: 'Connect Accounts', path: '/connect-accounts', icon: Wallet },
-  { name: 'Marketplace', path: '/marketplace', icon: Store },
+  { name: 'Marketplace', path: '/marketplace', icon: Store, comingSoon: true },
   { name: 'AI Assistant', path: '/ai-assistant', icon: Bot },
   { name: 'Settings', path: '/settings', icon: Settings },
   { name: 'Support', path: '/support', icon: LifeBuoy },
@@ -74,7 +74,7 @@ export const AppLayout: React.FC = () => {
                    
                    <button 
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="absolute -right-3 top-24 w-6 h-6 rounded-full bg-surface-2 border border-white/10 flex items-center justify-center text-text-secondary hover:text-white transition-colors shadow-sm"
+                    className="absolute -right-3 top-24 w-6 h-6 rounded-full bg-surface-2 border border-white/10 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shadow-sm"
                    >
                      <ChevronLeft className={`w-3 h-3 transition-transform ${!sidebarOpen ? 'rotate-180' : ''}`} />
                    </button>
@@ -82,51 +82,72 @@ export const AppLayout: React.FC = () => {
 
                 {/* Navigation */}
                 <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-                    {sidebarLinks.map((link) => (
-                        <NavLink
-                            key={link.path}
-                            to={link.path}
-                            className={({ isActive }) => `
-                                flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative overflow-hidden
-                                ${isActive 
-                                    ? 'bg-primary/10 text-primary font-medium shadow-inner-glow' 
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5'
-                                }
-                            `}
-                        >
-                            {({ isActive }) => (
-                                <>
-                                    <link.icon className={`w-5 h-5 shrink-0 transition-colors ${sidebarOpen ? '' : 'mx-auto'}`} />
+                    {sidebarLinks.map((link) => {
+                        if (link.comingSoon) {
+                            return (
+                                <div
+                                    key={link.path}
+                                    aria-disabled="true"
+                                    title="Marketplace coming soon"
+                                    className="flex items-center gap-3 px-3 py-3 rounded-xl text-text-muted opacity-70 cursor-not-allowed"
+                                >
+                                    <link.icon className={`w-5 h-5 shrink-0 ${sidebarOpen ? '' : 'mx-auto'}`} />
                                     {sidebarOpen && <span>{link.name}</span>}
-                                    
-                                    {/* Active Indicator Bar */}
-                                    {isActive && (
-                                        <motion.div
-                                            layoutId="activeTab"
-                                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                        />
+                                    {sidebarOpen && (
+                                        <span className="ml-auto text-[10px] uppercase tracking-wider border border-border/60 text-text-muted px-2 py-0.5 rounded-full">
+                                          Soon
+                                        </span>
                                     )}
-                                </>
-                            )}
-                        </NavLink>
-                    ))}
+                                </div>
+                            )
+                        }
+
+                        return (
+                            <NavLink
+                                key={link.path}
+                                to={link.path}
+                                className={({ isActive }) => `
+                                    flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative overflow-hidden
+                                    ${isActive 
+                                        ? 'bg-primary/10 text-primary font-medium shadow-inner-glow' 
+                                        : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                                    }
+                                `}
+                            >
+                                {({ isActive }) => (
+                                    <>
+                                        <link.icon className={`w-5 h-5 shrink-0 transition-colors ${sidebarOpen ? '' : 'mx-auto'}`} />
+                                        {sidebarOpen && <span>{link.name}</span>}
+                                        
+                                        {/* Active Indicator Bar */}
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="activeTab"
+                                                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                            />
+                                        )}
+                                    </>
+                                )}
+                            </NavLink>
+                        )
+                    })}
                 </nav>
 
                 {/* Footer Actions */}
                 <div className="p-4 border-t border-white/5 space-y-2">
                     <button
                         onClick={() => setDrawerOpen(true)}
-                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:text-white hover:bg-white/5 transition-colors ${!sidebarOpen && 'justify-center'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors ${!sidebarOpen && 'justify-center'}`}
                     >
                         <Bell className="w-5 h-5" />
                         {sidebarOpen && <span>Notifications</span>}
                     </button>
                     <button
                         onClick={handleLogout}
-                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors ${!sidebarOpen && 'justify-center'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors ${!sidebarOpen && 'justify-center'}`}
                     >
                         <LogOut className="w-5 h-5" />
                         {sidebarOpen && <span>Sign Out</span>}
@@ -143,7 +164,7 @@ export const AppLayout: React.FC = () => {
             <header className="md:hidden flex items-center justify-between px-6 h-20 bg-surface-1/80 backdrop-blur-md border-b border-white/5 fixed top-0 w-full z-40">
                 <Link to="/" className="font-bold text-xl text-primary">jualuma</Link>
                 <div className="flex items-center gap-4">
-                    <button onClick={() => setDrawerOpen(true)} className="p-2 text-text-secondary hover:text-white"><Bell className="w-5 h-5" /></button>
+                    <button onClick={() => setDrawerOpen(true)} className="p-2 text-text-secondary hover:text-text-primary"><Bell className="w-5 h-5" /></button>
                      <button onClick={() => setMobileMenuOpen(true)} className="p-2 text-text-primary"><Menu className="w-6 h-6" /></button>
                 </div>
             </header>
@@ -167,26 +188,45 @@ export const AppLayout: React.FC = () => {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex justify-end mb-8">
-                                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-text-secondary hover:text-white">
+                                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-text-secondary hover:text-text-primary">
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
                             
                             <nav className="flex-1 space-y-2">
-                                {sidebarLinks.map((link) => (
-                                    <NavLink
-                                        key={link.path}
-                                        to={link.path}
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className={({ isActive }) => `
-                                            flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium transition-colors
-                                            ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-white'}
-                                        `}
-                                    >
-                                        <link.icon className="w-6 h-6" />
-                                        {link.name}
-                                    </NavLink>
-                                ))}
+                                {sidebarLinks.map((link) => {
+                                    if (link.comingSoon) {
+                                        return (
+                                            <div
+                                                key={link.path}
+                                                className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-text-muted opacity-70 cursor-not-allowed"
+                                                aria-disabled="true"
+                                                title="Marketplace coming soon"
+                                            >
+                                                <link.icon className="w-6 h-6" />
+                                                {link.name}
+                                                <span className="ml-auto text-[10px] uppercase tracking-wider border border-border/60 text-text-muted px-2 py-0.5 rounded-full">
+                                                  Soon
+                                                </span>
+                                            </div>
+                                        )
+                                    }
+
+                                    return (
+                                        <NavLink
+                                            key={link.path}
+                                            to={link.path}
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className={({ isActive }) => `
+                                                flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium transition-colors
+                                                ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-text-primary'}
+                                            `}
+                                        >
+                                            <link.icon className="w-6 h-6" />
+                                            {link.name}
+                                        </NavLink>
+                                    )
+                                })}
                             </nav>
 
                             <div className="pt-8 border-t border-white/10 space-y-4">

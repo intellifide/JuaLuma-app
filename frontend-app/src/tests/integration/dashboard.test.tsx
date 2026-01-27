@@ -1,33 +1,24 @@
-// Updated 2025-12-11 17:55 CST by ChatGPT - cover Plaid success refetch
+// Updated 2026-01-26 14:10 CST - align with Financial Overview dashboard
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import Dashboard from '../../pages/Dashboard'
 import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { useAccounts } from '../../hooks/useAccounts'
-import { useTransactions } from '../../hooks/useTransactions'
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../../hooks/useAnalytics'
 import { useBudget } from '../../hooks/useBudget'
 import { ToastProvider } from '../../components/ui/Toast'
 import { User } from 'firebase/auth'
-import { Account, Transaction } from '../../types'
-import userEvent from '@testing-library/user-event'
+import { Account } from '../../types'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('../../hooks/useAccounts', () => ({ useAccounts: vi.fn() }))
-vi.mock('../../hooks/useTransactions', () => ({ useTransactions: vi.fn() }))
 vi.mock('../../hooks/useAnalytics', () => ({
     useNetWorth: vi.fn(),
     useCashFlow: vi.fn(),
     useSpendingByCategory: vi.fn()
 }))
 vi.mock('../../hooks/useBudget', () => ({ useBudget: vi.fn() }))
-// Mock PlaidLinkButton since it might try to load external scripts
-vi.mock('../../components/PlaidLinkButton', () => ({
-    PlaidLinkButton: ({ onSuccess }: { onSuccess?: () => void }) => (
-        <button onClick={() => onSuccess?.()}>Connect a bank account</button>
-    )
-}))
 
 const mockUser = {
     uid: 'u1',
@@ -66,22 +57,6 @@ const mockAccounts: Account[] = [
     }
 ]
 
-const mockTransactions: Transaction[] = [
-    {
-        id: 'tx1',
-        uid: 'u1',
-        accountId: 'acc1',
-        amount: 50,
-        currency: 'USD',
-        ts: new Date().toISOString(),
-        description: 'Grocery Store',
-        category: 'Food',
-        isManual: false,
-        archived: false,
-        merchantName: 'Grocery Store'
-    }
-]
-
 describe('Dashboard Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -108,25 +83,13 @@ describe('Dashboard Integration', () => {
             sync: vi.fn(),
             fetchOne: vi.fn()
         });
-        vi.mocked(useTransactions).mockReturnValue({
-            transactions: mockTransactions,
-            loading: false,
-            total: 1,
-            page: 1,
-            pageSize: 50,
-            error: null,
-            refetch: vi.fn(),
-            updateOne: vi.fn(),
-            bulkUpdate: vi.fn(),
-            remove: vi.fn()
-        })
         vi.mocked(useNetWorth).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
         vi.mocked(useCashFlow).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
         vi.mocked(useSpendingByCategory).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
         vi.mocked(useBudget).mockReturnValue({ budgets: [], saveBudget: vi.fn(), loading: false, refetch: vi.fn() })
     })
 
-    it('renders user info, accounts and transactions', async () => {
+    it('renders user info and overview modules', async () => {
         render(
             <BrowserRouter>
                 <ToastProvider>
@@ -135,18 +98,14 @@ describe('Dashboard Integration', () => {
             </BrowserRouter>
         )
 
-        expect(screen.getByText(/Test User/)).toBeInTheDocument()
-        
-        // Expand accounts section to see details
-        await userEvent.click(screen.getByText(/Manage \/ Details/i))
-
-        expect(screen.getByText('Main Checking')).toBeInTheDocument()
-        const balanceElements = screen.getAllByText(/5,000/)
-        expect(balanceElements.length).toBeGreaterThan(0)
-        expect(screen.getByText('Grocery Store')).toBeInTheDocument()
+        expect(screen.getByText(/Dashboard/i)).toBeInTheDocument()
+        expect(screen.getByText(/Financial Overview/i)).toBeInTheDocument()
+        expect(screen.getByText(/Net Worth/i)).toBeInTheDocument()
+        expect(screen.getByText(/Cash Flow Pulse/i)).toBeInTheDocument()
+        expect(screen.getByText(/Spending Health Score/i)).toBeInTheDocument()
     })
 
-    it('handles empty state', () => {
+    it('shows placeholders when no history exists', () => {
         vi.mocked(useAccounts).mockReturnValue({
             accounts: [],
             loading: false,
@@ -158,18 +117,8 @@ describe('Dashboard Integration', () => {
             sync: vi.fn(),
             fetchOne: vi.fn()
         });
-        vi.mocked(useTransactions).mockReturnValue({
-            transactions: [],
-            loading: false,
-            total: 0,
-            page: 1,
-            pageSize: 50,
-            error: null,
-            refetch: vi.fn(),
-            updateOne: vi.fn(),
-            bulkUpdate: vi.fn(),
-            remove: vi.fn()
-        })
+        vi.mocked(useCashFlow).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
+        vi.mocked(useSpendingByCategory).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
 
         render(
             <BrowserRouter>
@@ -179,93 +128,12 @@ describe('Dashboard Integration', () => {
             </BrowserRouter>
         )
 
-        expect(screen.getByText(/Link your first financial account/i)).toBeInTheDocument()
-        expect(screen.getByText(/No transactions found/i)).toBeInTheDocument()
+        expect(screen.getByText(/No cash flow activity yet/i)).toBeInTheDocument()
+        expect(screen.getByText(/No spending history yet/i)).toBeInTheDocument()
     })
 
-    it('derives categories when none provided', async () => {
+    it('renders cashflow, budget, and top drivers when data is present', async () => {
         const now = Date.now()
-        vi.mocked(useTransactions).mockReturnValue({
-            transactions: [
-                {
-                    id: 'tx-deriv',
-                    uid: 'u1',
-                    accountId: 'acc1',
-                    amount: -12.34,
-                    currency: 'USD',
-                    ts: new Date(now).toISOString(),
-                    description: 'Starbucks Coffee',
-                    category: 'Dining',
-                    isManual: false,
-                    archived: false,
-                    merchantName: 'Starbucks'
-                }
-            ],
-            loading: false,
-            total: 1,
-            page: 1,
-            pageSize: 50,
-            error: null,
-            refetch: vi.fn(),
-            updateOne: vi.fn(),
-            bulkUpdate: vi.fn(),
-            remove: vi.fn()
-        })
-
-        render(
-            <BrowserRouter>
-                <ToastProvider>
-                    <Dashboard />
-                </ToastProvider>
-            </BrowserRouter>
-        )
-
-        expect(await screen.findByText(/Starbucks/i)).toBeInTheDocument()
-        expect((await screen.findAllByText(/Dining/)).length).toBeGreaterThan(0)
-    })
-
-    it('shows live budget and cashflow aggregates from transactions', async () => {
-        const now = Date.now()
-        vi.mocked(useTransactions).mockReturnValue({
-            transactions: [
-                {
-                    id: 'tx-income',
-                    uid: 'u1',
-                    accountId: 'acc1',
-                    amount: 2000,
-                    currency: 'USD',
-                    ts: new Date(now - 2 * 86400000).toISOString(),
-                    description: 'Payroll',
-                    category: 'Income',
-                    isManual: false,
-                    archived: false,
-                    merchantName: 'Payroll Co'
-                },
-                {
-                    id: 'tx-expense',
-                    uid: 'u1',
-                    accountId: 'acc1',
-                    amount: -1000,
-                    currency: 'USD',
-                    ts: new Date(now - 1 * 86400000).toISOString(),
-                    description: 'Rent Payment',
-                    category: null,
-                    isManual: false,
-                    archived: false,
-                    merchantName: 'Rent LLC'
-                }
-            ],
-            loading: false,
-            total: 2,
-            page: 1,
-            pageSize: 50,
-            error: null,
-            refetch: vi.fn(),
-            updateOne: vi.fn(),
-            bulkUpdate: vi.fn(),
-            remove: vi.fn()
-        })
-
         vi.mocked(useCashFlow).mockReturnValue({
             data: {
                 income: [{date: new Date(now - 2 * 86400000).toISOString(), value: 2000}],
@@ -276,13 +144,13 @@ describe('Dashboard Integration', () => {
             refetch: vi.fn()
         })
         vi.mocked(useSpendingByCategory).mockReturnValue({
-            data: { data: [{category: 'Rent', amount: 1000}] },
+            data: { data: [{category: 'Rent', amount: 1000}, {category: 'Dining', amount: 250}] },
             loading: false,
             error: null,
             refetch: vi.fn()
         })
         vi.mocked(useBudget).mockReturnValue({
-            budgets: [{id: 'b1', category: 'Rent', amount: 3750, period: 'monthly'}],
+            budgets: [{id: 'b1', category: 'Rent', amount: 3750, period: 'monthly', alert_enabled: true, alert_threshold_percent: 0.8}],
             saveBudget: vi.fn(),
             loading: false,
             refetch: vi.fn()
@@ -298,15 +166,16 @@ describe('Dashboard Integration', () => {
 
         // Updated expectations to match compact currency format and new layout
         // Income 2000 -> $2.0K, Expenses 1000 -> $1.0K
-        expect(await screen.findByText(/In:/)).toBeInTheDocument()
-        expect(await screen.findByText(/\$2\.0K/)).toBeInTheDocument() 
-        expect(await screen.findByText(/Out:/)).toBeInTheDocument()
-        const outElements = await screen.findAllByText(/\$1\.0K/)
+        const incomeElements = await screen.findAllByText(/\$2K/)
+        expect(incomeElements.length).toBeGreaterThan(0)
+        const outElements = await screen.findAllByText(/\$1K/)
         expect(outElements.length).toBeGreaterThan(0)
-        
-        expect(screen.getByText(/27%/)).toBeInTheDocument() 
-        // 1000 -> $1.0K, 3750 -> $3.8K
-        expect(screen.getByText(/\$1\.0K of \$3\.8K spent/)).toBeInTheDocument()
+        const percentElements = screen.getAllByText(/27%/)
+        expect(percentElements.length).toBeGreaterThan(0)
+        expect(screen.getByText(/\$1K of \$3\.8K spent/)).toBeInTheDocument()
+        expect(screen.getByText(/Top Money Drivers/i)).toBeInTheDocument()
+        const rentElements = screen.getAllByText(/Rent/)
+        expect(rentElements.length).toBeGreaterThan(0)
     })
 
     // it('flags recurring subscription patterns', async () => {
@@ -381,44 +250,5 @@ describe('Dashboard Integration', () => {
     //     expect((await screen.findAllByText(/Subscription/)).length).toBeGreaterThan(0)
     // })
 
-    it('refetches accounts and transactions after Plaid link success', async () => {
-        const refetchAccounts = vi.fn()
-        const refetchTransactions = vi.fn()
-
-        vi.mocked(useAccounts).mockReturnValue({
-            accounts: mockAccounts,
-            loading: false,
-            error: '',
-            refetch: refetchAccounts,
-            create: vi.fn(),
-            update: vi.fn(),
-            remove: vi.fn(),
-            sync: vi.fn(),
-            fetchOne: vi.fn()
-        })
-        vi.mocked(useTransactions).mockReturnValue({
-            transactions: mockTransactions,
-            loading: false,
-            total: 1,
-            page: 1,
-            pageSize: 50,
-            error: null,
-            refetch: refetchTransactions,
-            updateOne: vi.fn(),
-            bulkUpdate: vi.fn(),
-            remove: vi.fn()
-        })
-
-        render(
-            <BrowserRouter>
-                <ToastProvider>
-                    <Dashboard />
-                </ToastProvider>
-            </BrowserRouter>
-        )
-
-        await userEvent.click(screen.getByText(/Connect a bank account/i))
-        expect(refetchAccounts).toHaveBeenCalledTimes(1)
-        expect(refetchTransactions).toHaveBeenCalledTimes(1)
-    })
+    // Plaid CTA removed from dashboard; sync actions live on Connect Accounts.
 })

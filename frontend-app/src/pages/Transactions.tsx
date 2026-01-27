@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAuth } from '../hooks/useAuth'
+import { useAccounts } from '../hooks/useAccounts'
 import { useToast } from '../components/ui/Toast'
 import { AddManualTransactionModal } from '../components/AddManualTransactionModal'
 import { EditTransactionModal } from '../components/EditTransactionModal'
@@ -11,50 +12,9 @@ import Switch from '../components/ui/Switch'
 import { Transaction } from '../types'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
 import { loadTransactionPreferences, saveTransactionPreferences, type TransactionPreferences } from '../utils/transactionPreferences'
+import { getTransactionDateRange } from '../utils/dateRanges'
 
 const CATEGORIES = TRANSACTION_CATEGORIES
-
-// Helpers for Date Management
-const formatDateParam = (value: Date) => {
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, '0');
-  const day = `${value.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const getDateRange = (timeframe: string) => {
-  const end = new Date();
-  const start = new Date(end);
-
-  switch (timeframe) {
-    case '1w':
-      start.setDate(end.getDate() - 7);
-      break;
-    case '1m':
-      start.setDate(end.getDate() - 30);
-      break;
-    case '3m':
-      start.setDate(end.getDate() - 90);
-      break;
-    case '6m':
-      start.setDate(end.getDate() - 180);
-      break;
-    case '1y':
-      start.setDate(end.getDate() - 365);
-      break;
-    case 'ytd':
-      start.setFullYear(end.getFullYear(), 0, 1);
-      break;
-    case 'all':
-      return { start: undefined, end: undefined };
-    default:
-      start.setDate(end.getDate() - 30);
-  }
-  return {
-    start: formatDateParam(start),
-    end: formatDateParam(end),
-  };
-};
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
@@ -81,6 +41,7 @@ export const Transactions = () => {
   const { profile } = useAuth()
   const toast = useToast()
   const [scope, setScope] = useState<'personal' | 'household'>('personal')
+  const { accounts } = useAccounts({ filters: { scope } })
   
   // Check if user has Pro or Ultimate tier for manual transactions
   // Check both profile.plan and subscriptions array as fallback
@@ -90,9 +51,11 @@ export const Transactions = () => {
   const planFromSubscriptions = activeSubscription?.plan?.toLowerCase()?.trim()
   const plan = planFromProfile || planFromSubscriptions || 'free'
   const hasManualAccess = plan === 'pro' || plan === 'ultimate'
-  const { start, end } = useMemo(() => getDateRange(timeframe), [timeframe])
+  const { start, end } = useMemo(() => getTransactionDateRange(timeframe), [timeframe])
   const [notesHoverId, setNotesHoverId] = useState<string | null>(null)
   const notesHoverTimeout = useRef<number | null>(null)
+  const hasWeb3Accounts = useMemo(() => accounts.some((account) => account.accountType === 'web3'), [accounts])
+  const hasCexAccounts = useMemo(() => accounts.some((account) => account.accountType === 'cex'), [accounts])
 
   // Build exclude account types based on include flags
   const excludeAccountTypes = useMemo(() => {
@@ -284,6 +247,47 @@ export const Transactions = () => {
             <option value="merchant_desc">Merchant (Z-A)</option>
           </select>
         </div>
+
+        {(hasWeb3Accounts && !includeWeb3) || (hasCexAccounts && !includeCEX) ? (
+          <div className="alert alert-info flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="text-sm">
+              <strong>Filters hiding transactions:</strong>{' '}
+              {[
+                hasWeb3Accounts && !includeWeb3 ? 'Web3 wallets' : null,
+                hasCexAccounts && !includeCEX ? 'CEX accounts' : null,
+              ]
+                .filter(Boolean)
+                .join(' and ')}
+              . Turn them back on to see those transactions.
+            </div>
+            <div className="flex gap-2">
+              {hasWeb3Accounts && !includeWeb3 && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => {
+                    setIncludeWeb3(true)
+                    handleFilterChange()
+                  }}
+                >
+                  Show Web3
+                </button>
+              )}
+              {hasCexAccounts && !includeCEX && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => {
+                    setIncludeCEX(true)
+                    handleFilterChange()
+                  }}
+                >
+                  Show CEX
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         {/* Advanced Filters Toggle */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

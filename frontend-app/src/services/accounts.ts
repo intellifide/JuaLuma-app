@@ -46,6 +46,8 @@ const mapAccount = (data: any): Account => ({
   currency: data.currency ?? null,
   assignedMemberUid: data.assigned_member_uid ?? data.assignedMemberUid ?? null,
   customLabel: data.custom_label ?? data.customLabel ?? null,
+  plaidType: data.plaid_type ?? data.plaidType ?? null,
+  plaidSubtype: data.plaid_subtype ?? data.plaidSubtype ?? null,
   syncStatus: data.sync_status ?? data.syncStatus ?? null,
   createdAt: data.created_at ?? data.createdAt,
   updatedAt: data.updated_at ?? data.updatedAt,
@@ -133,6 +135,16 @@ export const syncAccount = async (id: string, initialSync = false): Promise<Acco
       endDate: data.end_date ?? data.endDate,
       plan: data.plan,
     }
+  } catch (error) {
+    handleError(error)
+    throw error
+  }
+}
+
+export const refreshAccountMetadata = async (id: string): Promise<Account> => {
+  try {
+    const { data } = await api.post(`/accounts/${id}/refresh-metadata`)
+    return mapAccount(data)
   } catch (error) {
     handleError(error)
     throw error

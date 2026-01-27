@@ -6,6 +6,7 @@ import {
   deleteAccount,
   getAccount,
   getAccounts,
+  refreshAccountMetadata,
   syncAccount,
   updateAccount,
 } from '../services/accounts'
@@ -49,6 +50,14 @@ export const useAccounts = (options?: UseAccountsOptions) => {
     await mutate()
   }
 
+  const refreshMetadata = async (id: string) => {
+    const updated = await refreshAccountMetadata(id)
+    mutate((prev) => (prev ? prev.map((acct) => (acct.id === id ? updated : acct)) : [updated]), {
+      revalidate: false,
+    })
+    return updated
+  }
+
   const fetchOne = (id: string) => getAccount(id)
 
   return {
@@ -60,6 +69,7 @@ export const useAccounts = (options?: UseAccountsOptions) => {
     update,
     remove,
     sync,
+    refreshMetadata,
     fetchOne,
   }
 }

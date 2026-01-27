@@ -1,12 +1,16 @@
 // Core Purpose: UI for connecting various account types (Plaid, Web3, CEX) with household assignment logic.
-// Last Updated 2026-01-24 00:20 CST
+// Last Updated 2026-01-26 14:10 CST
 import React, { useState, useEffect, useMemo } from 'react';
+import { MoreVertical } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
+import { Modal } from '../components/ui/Modal';
 import { api as apiClient } from '../services/api';
 import { householdService } from '../services/householdService';
 import { Household, HouseholdMember } from '../types/household';
+import { getAccountCategoryDisplay, getAccountPrimaryCategory, getCategoryLabel, type PrimaryAccountCategory } from '../utils/accountCategories';
 
 interface ApiError {
   response?: {
@@ -49,6 +53,33 @@ const CHAIN_PRESETS = [
   { id: 'tron:mainnet', name: 'Tron', supported: true },
   { id: 'custom', name: 'Custom (CAIP-2)', supported: false },
 ];
+
+type PlanTier = 'free' | 'essential' | 'pro' | 'ultimate';
+
+const PLAN_LABELS: Record<PlanTier, string> = {
+  free: 'Free',
+  essential: 'Essential',
+  pro: 'Pro',
+  ultimate: 'Ultimate',
+};
+
+const ACCOUNT_LIMITS: Record<'bank' | 'web3' | 'cex' | 'manual', Record<PlanTier, number | 'Unlimited'>> = {
+  bank: { free: 1, essential: 5, pro: 5, ultimate: 10 },
+  web3: { free: 1, essential: 5, pro: 5, ultimate: 10 },
+  cex: { free: 1, essential: 3, pro: 5, ultimate: 10 },
+  manual: { free: 0, essential: 0, pro: 5, ultimate: 10 },
+};
+
+const normalizePlan = (value?: string | null): PlanTier | null => {
+  if (!value) return null;
+  const normalized = value.toLowerCase().trim().split('_')[0] as PlanTier;
+  if (normalized === 'free' || normalized === 'essential' || normalized === 'pro' || normalized === 'ultimate') {
+    return normalized;
+  }
+  return null;
+};
+
+const formatLimit = (limit: number | 'Unlimited') => (limit === 'Unlimited' ? 'Unlimited' : String(limit));
 
 const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [address, setAddress] = useState('');
@@ -443,7 +474,8 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
 };
 
 export const ConnectAccounts = () => {
-  const { accounts, loading, remove, sync, update, refetch } = useAccounts();
+  const { accounts, loading, remove, sync, refreshMetadata, update, refetch } = useAccounts();
+  const { profile } = useAuth();
   const toast = useToast();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showCexModal, setShowCexModal] = useState(false);
@@ -452,8 +484,66 @@ export const ConnectAccounts = () => {
   const [editingAccount, setEditingAccount] = useState<{ id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState('all-accounts');
+  const [activeTab, setActiveTab] = useState<'all' | 'cash' | 'credit' | 'loans' | 'investment' | 'crypto' | 'manual'>('all');
   const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'refresh' | 'remove';
+    account: typeof accounts[number];
+  } | null>(null);
+
+  const planFromProfile = normalizePlan(profile?.plan);
+  const activeSubscription = profile?.subscriptions?.find((sub: any) => sub.status === 'active');
+  const planFromSubscriptions = normalizePlan(activeSubscription?.plan);
+  const plan: PlanTier = planFromProfile || planFromSubscriptions || 'free';
+  const planLabel = PLAN_LABELS[plan];
+  const hasManualAccess = plan === 'pro' || plan === 'ultimate';
+
+  const [household, setHousehold] = useState<Household | null>(null);
+  const [householdLoading, setHouseholdLoading] = useState(true);
+
+  useEffect(() => {
+    householdService
+      .getMyHousehold()
+      .then(setHousehold)
+      .catch(() => {
+        // Ignore if not in household
+      })
+      .finally(() => setHouseholdLoading(false));
+  }, []);
+
+  const assignedMemberLookup = useMemo(() => {
+    const map = new Map<string, HouseholdMember>();
+    household?.members.forEach((member) => {
+      map.set(member.uid, member);
+    });
+    return map;
+  }, [household]);
+
+  const resolveAssignedLabel = (uid?: string | null) => {
+    if (!uid) return 'Unassigned';
+    const member = assignedMemberLookup.get(uid);
+    if (!member) return 'Assigned';
+    const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ').trim();
+    return member.username || fullName || member.email || 'Member';
+  };
+
+  const connectedCounts = useMemo(() => {
+    const bank = accounts.filter(
+      (account) =>
+        account.provider === 'plaid' ||
+        account.accountType === 'traditional' ||
+        account.accountType === 'investment',
+    ).length;
+    const web3 = accounts.filter((account) => account.accountType === 'web3').length;
+    const cex = accounts.filter((account) => account.accountType === 'cex').length;
+    const manual = accounts.filter((account) => account.accountType === 'manual').length;
+    return { bank, web3, cex, manual };
+  }, [accounts]);
+
+  const bankLimitLabel = formatLimit(ACCOUNT_LIMITS.bank[plan]);
+  const web3LimitLabel = formatLimit(ACCOUNT_LIMITS.web3[plan]);
+  const cexLimitLabel = formatLimit(ACCOUNT_LIMITS.cex[plan]);
+  const manualLimitLabel = formatLimit(ACCOUNT_LIMITS.manual[plan]);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -486,51 +576,118 @@ export const ConnectAccounts = () => {
   };
 
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<PrimaryAccountCategory, number>();
+    accounts.forEach((account) => {
+      const category = getAccountPrimaryCategory(account).key;
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+    return counts;
+  }, [accounts]);
 
-  const filteredAccounts = useMemo(() => accounts.filter(acc => {
-    if (activeTab === 'all-accounts') return true;
-    if (activeTab === 'checking') return acc.accountType === 'traditional';
-    if (activeTab === 'investment') return acc.accountType === 'investment';
-    if (activeTab === 'web3') return acc.accountType === 'web3';
-    if (activeTab === 'cex') return acc.accountType === 'cex';
-    return false;
-  }), [accounts, activeTab]);
+  const categorySummary = useMemo(() => {
+    if (categoryCounts.size === 0) return 'No categories yet';
+    return Array.from(categoryCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([category, count]) => `${getCategoryLabel(category)} (${count})`)
+      .join(', ');
+  }, [categoryCounts]);
+
+  const filteredAccounts = useMemo(() => {
+    if (activeTab === 'all') return accounts;
+    if (activeTab === 'manual') return accounts.filter((acc) => acc.accountType === 'manual');
+
+    return accounts.filter((acc) => {
+      const primary = getAccountPrimaryCategory(acc).key;
+      if (activeTab === 'loans') return primary === 'loan' || primary === 'mortgage';
+      if (activeTab === 'investment') return primary === 'investment';
+      return primary === activeTab;
+    });
+  }, [accounts, activeTab]);
 
   const syncableAccounts = useMemo(
     () => filteredAccounts.filter((account) => account.accountType !== 'manual'),
     [filteredAccounts],
   );
 
-  const handleSync = async (accountId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // prevent card click
-    if (syncingAccounts.has(accountId)) return;
-
-    setSyncingAccounts(prev => new Set(prev).add(accountId));
-    toast.show('Syncing account in background...', 'success');
+  const performSync = async (account: typeof accounts[number]) => {
     try {
-      await sync(accountId);
+      await sync(account.id);
       await refetch();
       toast.show('Account synced successfully', 'success');
+      return true;
     } catch (err: any) {
-      console.error("Sync failed", err);
-      const msg = err.response?.data?.detail || err.message || 'Failed to sync account';
+      if (account.accountType === 'traditional') {
+        try {
+          await refreshMetadata(account.id);
+          await refetch();
+          toast.show('Transactions sync failed, but account details were refreshed.', 'warning');
+          return false;
+        } catch (refreshErr: any) {
+          const msg = refreshErr?.response?.data?.detail || refreshErr?.message || 'Failed to refresh account details';
+          toast.show(msg, 'error');
+          return false;
+        }
+      }
+      const msg = err?.response?.data?.detail || err?.message || 'Failed to sync account';
       toast.show(msg, 'error');
+      return false;
+    }
+  };
+
+  const handleSync = async (account: typeof accounts[number], e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent card click
+    if (syncingAccounts.has(account.id)) return;
+
+    setSyncingAccounts(prev => new Set(prev).add(account.id));
+    toast.show('Syncing account in background...', 'success');
+    try {
+      await performSync(account);
     } finally {
       setSyncingAccounts(prev => {
         const next = new Set(prev);
-        next.delete(accountId);
+        next.delete(account.id);
         return next;
       });
+    }
+  };
+
+  const confirmTitle = confirmAction?.type === 'remove' ? 'Remove account?' : 'Refresh account?';
+  const confirmDescription =
+    confirmAction?.type === 'remove'
+      ? 'This disconnects the account and removes its data from your dashboard.'
+      : 'This will pull the latest balances and transactions from this account.';
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    const { type, account } = confirmAction;
+    try {
+      if (type === 'refresh') {
+        await performSync(account);
+      } else {
+        await remove(account.id);
+        toast.show('Account removed', 'success');
+      }
+      await refetch();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Action failed';
+      toast.show(msg, 'error');
+    } finally {
+      setConfirmAction(null);
     }
   };
 
   return (
     <div>
       <section className="container py-12">
-        <h1 className="mb-6">Connect & Manage Accounts</h1>
-        <p className="text-text-secondary mb-12 max-w-[800px]">
-          Link bank accounts, Web3 wallets, and CEX accounts. All connections are read-only; we cannot move your money.
+        <h1 className="mb-4">Connect Accounts</h1>
+        <p className="text-text-secondary mb-8 max-w-[720px]">
+          Manage bank, wallet, exchange, and manual accounts. Connections are read-only.
         </p>
+        <div className="flex flex-wrap gap-3 mb-8">
+          <span className="badge badge-neutral text-xs">Plan: {planLabel}</span>
+          <span className="badge badge-neutral text-xs">Connected: {accounts.length}</span>
+        </div>
         {accounts.some((account) => account.syncStatus === 'needs_reauth') && (
           <div className="alert alert-warning mb-8">
             <strong>Action needed:</strong> One or more accounts need to be reconnected. For security, please reconnect to restore syncing.
@@ -540,15 +697,15 @@ export const ConnectAccounts = () => {
         <div className="grid grid-3 mb-12">
           <div className="card">
             <div className="card-header">
-              <h3 className="text-lg font-bold">Bank & Credit (Plaid Sandbox)</h3>
+              <h3 className="text-lg font-bold">Bank &amp; Credit</h3>
             </div>
-            <div className="card-body">
-              <p className="mb-4">Connect checking, savings, and credit cards via Plaid Sandbox credentials.</p>
-              <ul className="list-disc pl-6 mb-4 space-y-1">
-                <li>Sandbox credentials: <strong>user_good / pass_good</strong></li>
-                <li>Read-only access; no transfers or trades</li>
-                <li>Supports up to 5 traditional accounts (Pro/Essential)</li>
-              </ul>
+            <div className="card-body space-y-3">
+              <p className="text-sm text-text-secondary">Secure read-only sync via Plaid Sandbox.</p>
+              <div className="flex items-center justify-between text-xs text-text-muted">
+                <span>Connected {connectedCounts.bank}</span>
+                <span>Allowed {bankLimitLabel} ({planLabel})</span>
+              </div>
+              <p className="text-xs text-text-secondary">Sandbox: <strong>user_good / pass_good</strong></p>
             </div>
             <div className="card-footer">
               <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
@@ -558,11 +715,12 @@ export const ConnectAccounts = () => {
             <div className="card-header">
               <h3 className="text-lg font-bold">Web3 Wallets</h3>
             </div>
-            <div className="card-body">
-              <p className="mb-4">Connect a Web3 wallet (e.g., MetaMask) for balances and NFTs.</p>
-              <ul className="list-disc pl-6 mb-4 space-y-1">
-                <li>Supports up to 5 wallets (Pro/Essential)</li>
-              </ul>
+            <div className="card-body space-y-3">
+              <p className="text-sm text-text-secondary">Track balances and on-chain activity.</p>
+              <div className="flex items-center justify-between text-xs text-text-muted">
+                <span>Connected {connectedCounts.web3}</span>
+                <span>Allowed {web3LimitLabel} ({planLabel})</span>
+              </div>
             </div>
             <div className="card-footer">
               <button
@@ -578,11 +736,12 @@ export const ConnectAccounts = () => {
             <div className="card-header">
               <h3 className="text-lg font-bold">CEX Accounts</h3>
             </div>
-            <div className="card-body">
-              <p className="mb-4">Connect Coinbase, Kraken, and other exchanges via OAuth/API.</p>
-              <ul className="list-disc pl-6 mb-4 space-y-1">
-                <li>API keys stored in Secret Manager (never in DB)</li>
-              </ul>
+            <div className="card-body space-y-3">
+              <p className="text-sm text-text-secondary">Read-only exchange balances and positions.</p>
+              <div className="flex items-center justify-between text-xs text-text-muted">
+                <span>Connected {connectedCounts.cex}</span>
+                <span>Allowed {cexLimitLabel} ({planLabel})</span>
+              </div>
             </div>
             <div className="card-footer">
               <button
@@ -598,20 +757,22 @@ export const ConnectAccounts = () => {
             <div className="card-header">
               <h3 className="text-lg font-bold">Manual Accounts</h3>
             </div>
-            <div className="card-body">
-              <p className="mb-4">Create manual accounts to track cash transactions and custom entries.</p>
-              <ul className="list-disc pl-6 mb-4 space-y-1">
-                <li>Required for manual transaction entries</li>
-                <li>Pro and Ultimate tier feature</li>
-              </ul>
+            <div className="card-body space-y-3">
+              <p className="text-sm text-text-secondary">Track cash or offline balances manually.</p>
+              <div className="flex items-center justify-between text-xs text-text-muted">
+                <span>Connected {connectedCounts.manual}</span>
+                <span>Allowed {manualLimitLabel} ({planLabel})</span>
+              </div>
+              <span className="badge badge-neutral text-[10px] w-fit">Pro / Ultimate</span>
             </div>
             <div className="card-footer">
               <button
                 className="btn btn-primary w-full md:w-[180px]"
                 type="button"
-                onClick={() => setShowManualAccountModal(true)}
+                onClick={() => hasManualAccess && setShowManualAccountModal(true)}
+                disabled={!hasManualAccess}
               >
-                Create Manual Account
+                {hasManualAccess ? 'Create Manual Account' : 'Upgrade Required'}
               </button>
             </div>
           </div>
@@ -652,6 +813,28 @@ export const ConnectAccounts = () => {
             onSuccess={() => { setShowManualAccountModal(false); refetch(); }}
           />
         )}
+        <Modal
+          open={Boolean(confirmAction)}
+          onClose={() => setConfirmAction(null)}
+          title={confirmTitle}
+          footer={(
+            <div className="flex justify-end gap-2">
+              <button className="btn btn-ghost text-sm" onClick={() => setConfirmAction(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary text-sm" onClick={handleConfirmAction}>
+                Confirm
+              </button>
+            </div>
+          )}
+        >
+          <div className="py-2 space-y-2">
+            <p className="text-sm text-text-secondary">{confirmDescription}</p>
+            {confirmAction?.type === 'remove' && (
+              <p className="text-xs text-text-muted">You can reconnect this account anytime from the top panel.</p>
+            )}
+          </div>
+        </Modal>
 
         {/* Account Overview */}
         <div className="glass-panel mb-10 transition-all duration-300">
@@ -670,7 +853,7 @@ export const ConnectAccounts = () => {
               {accounts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center w-full text-center">
                   <p className="text-text-muted font-medium">Link your first financial account to see your net worth and cash flow.</p>
-                  <p className="text-xs text-text-secondary mt-1">Connect with Plaid above to securely sync your data.</p>
+                  <p className="text-xs text-text-secondary mt-1">Connect an account above to start syncing.</p>
                 </div>
               ) : (
                 <>
@@ -680,9 +863,9 @@ export const ConnectAccounts = () => {
                       <span className="text-lg font-bold text-text-primary">{accounts.length} Accounts</span>
                     </div>
                     <div>
-                      <span className="block text-xs text-text-muted uppercase tracking-wider">Types</span>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Categories</span>
                       <span className="text-lg font-bold text-text-primary">
-                        {[...new Set(accounts.map(a => a.accountType))].join(', ')}
+                        {categorySummary}
                       </span>
                     </div>
                   </div>
@@ -698,7 +881,7 @@ export const ConnectAccounts = () => {
                         for (const acc of syncableAccounts) {
                           if (!syncingAccounts.has(acc.id)) {
                             // We await each sync to ensure sequential execution
-                            await handleSync(acc.id, e);
+                            await handleSync(acc, e);
                           }
                         }
                       }}
@@ -713,12 +896,14 @@ export const ConnectAccounts = () => {
           ) : (
             <>
               <div className="tabs mb-6">
-                <ul className="tab-list flex gap-4 border-b border-white/10" role="tablist">
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all-accounts' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all-accounts')}>All Accounts</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'checking' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('checking')}>Checking</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'web3' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3 Wallets</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cex' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX Accounts</button></li>
+                <ul className="tab-list flex gap-4 border-b border-white/10 flex-wrap" role="tablist">
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all')}>All Accounts</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cash' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cash')}>Cash</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'credit' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('credit')}>Credit</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'loans' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('loans')}>Loans</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investments</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'crypto' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('crypto')}>Crypto</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'manual' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('manual')}>Manual</button></li>
                 </ul>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -727,44 +912,47 @@ export const ConnectAccounts = () => {
                     No accounts found. {accounts.length === 0 && "Use the button above to link an account."}
                   </div>
                 ) : (
-                  filteredAccounts.map((account) => (
-                    <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5 relative group">
-                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {account.accountType !== 'manual' && (
-                        <button
-                          onClick={(e) => handleSync(account.id, e)}
-                          disabled={syncingAccounts.has(account.id)}
-                          className="text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 disabled:opacity-50 flex items-center gap-1"
-                          title="Sync latest transactions"
-                        >
-                          {syncingAccounts.has(account.id) ? (
-                            <>
-                              <span className="animate-spin text-primary">↻</span> Syncing...
-                            </>
-                          ) : (
-                            <>
-                              <span>↻</span> Sync
-                            </>
-                          )}
-                        </button>
-                      )}
-                      </div>
-                      <h3 className="font-semibold text-lg">{account.accountName}</h3>
-                      <p className="text-2xl font-bold text-primary my-2">
-                         {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
-                      </p>
-                      <div className="flex justify-between items-center mt-auto pt-2">
-                        <span className="text-xs font-mono text-text-muted uppercase tracking-tighter">
-                          {account.accountNumberMasked ? `Ending in ${account.accountNumberMasked}` : account.accountType}
-                        </span>
-                        {account.provider && (
-                          <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-text-secondary">
-                            {account.provider}
-                          </span>
+                  filteredAccounts.map((account) => {
+                    const display = getAccountCategoryDisplay(account);
+                    return (
+                      <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5 relative group">
+                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {account.accountType !== 'manual' && (
+                          <button
+                            onClick={(e) => handleSync(account, e)}
+                            disabled={syncingAccounts.has(account.id)}
+                            className="text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 disabled:opacity-50 flex items-center gap-1"
+                            title="Sync latest transactions"
+                          >
+                            {syncingAccounts.has(account.id) ? (
+                              <>
+                                <span className="animate-spin text-primary">↻</span> Syncing...
+                              </>
+                            ) : (
+                              <>
+                                <span>↻</span> Sync
+                              </>
+                            )}
+                          </button>
                         )}
+                        </div>
+                        <h3 className="font-semibold text-lg">{account.accountName}</h3>
+                        <p className="text-2xl font-bold text-primary my-2">
+                           {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
+                        </p>
+                        <div className="flex justify-between items-center mt-auto pt-2">
+                          <span className="text-xs font-mono text-text-muted uppercase tracking-tighter">
+                            {account.accountNumberMasked ? `Ending in ${account.accountNumberMasked}` : display.detail || display.label}
+                          </span>
+                          {account.provider && (
+                            <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-text-secondary">
+                              {account.provider}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </>
@@ -778,7 +966,7 @@ export const ConnectAccounts = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="pb-3 font-semibold">Account / Label</th>
-                  <th className="pb-3 font-semibold">Type</th>
+                  <th className="pb-3 font-semibold">Category</th>
                   <th className="pb-3 font-semibold">Assigned To</th>
                   <th className="pb-3 font-semibold">Status</th>
                   <th className="pb-3 font-semibold">Last Sync</th>
@@ -795,97 +983,95 @@ export const ConnectAccounts = () => {
                     <td colSpan={6} className="py-4 text-center text-text-muted">No accounts connected yet.</td>
                   </tr>
                 ) : (
-                  accounts.map((account) => (
-                    <tr key={account.id} className="border-b border-border/50 hover:bg-surface-2 transition-colors">
-                      <td className="py-4">
-                          <div className="font-medium">{account.customLabel || account.accountName || 'Unnamed Account'}</div>
-                          {account.customLabel && <div className="text-xs text-text-secondary">{account.accountName}</div>}
-                      </td>
-                      <td className="py-4 capitalize">{account.accountType}</td>
-                      <td className="py-4">
-                          {account.assignedMemberUid ? (
-                              <span className="badge badge-neutral text-xs">Assigned</span>
+                  accounts.map((account) => {
+                    const display = getAccountCategoryDisplay(account);
+                    return (
+                      <tr key={account.id} className="border-b border-border/50 hover:bg-surface-2 transition-colors">
+                        <td className="py-4">
+                            <div className="font-medium">{account.customLabel || account.accountName || 'Unnamed Account'}</div>
+                            {account.customLabel && <div className="text-xs text-text-secondary">{account.accountName}</div>}
+                        </td>
+                        <td className="py-4">
+                          <div className="font-medium">{display.label}</div>
+                          {display.detail && (
+                            <div className="text-xs text-text-secondary">{display.detail}</div>
+                          )}
+                        </td>
+                        <td className="py-4 text-sm text-text-secondary">
+                          {householdLoading ? 'Loading...' : resolveAssignedLabel(account.assignedMemberUid)}
+                        </td>
+                        <td className="py-4">
+                          {account.syncStatus === 'needs_reauth' ? (
+                            <span className="badge badge-warning">Reconnect needed</span>
                           ) : (
-                              <span className="text-text-muted text-sm">-</span>
+                            <span className="badge badge-success">Connected</span>
                           )}
-                      </td>
-                      <td className="py-4">
-                        {account.syncStatus === 'needs_reauth' ? (
-                          <span className="badge badge-warning">Reconnect needed</span>
-                        ) : (
-                          <span className="badge badge-success">Connected</span>
-                        )}
-                      </td>
-                      <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'Just now'}</td>
-                      <td className="py-4">
-                        <div className="flex gap-2">
-                          {account.syncStatus === 'needs_reauth' && account.accountType === 'cex' && (
-                            <button
-                              className="btn btn-sm btn-primary"
-                              onClick={() => setReconnectPayload({
-                                exchange: account.provider || 'coinbase',
-                                name: account.accountName || 'My Exchange'
-                              })}
-                            >
-                              Reconnect
-                            </button>
-                          )}
-                          <div className="relative" data-actions-menu>
-                            <button
-                              className="btn btn-sm btn-ghost"
-                              onClick={() => setOpenMenuId((prev) => (prev === account.id ? null : account.id))}
-                              aria-haspopup="menu"
-                              aria-expanded={openMenuId === account.id}
-                              aria-label="Open actions menu"
-                            >
-                              ▼
-                            </button>
-                            {openMenuId === account.id && (
-                              <div className="absolute right-0 z-10 mt-2 w-44 rounded border border-border bg-surface-1 p-2 shadow-lg space-y-2">
-                                <button
-                                  className="btn btn-sm btn-ghost w-full justify-start"
-                                  onClick={() => {
-                                    setEditingAccount(account);
-                                    setOpenMenuId(null);
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                {account.accountType !== 'manual' && (
+                        </td>
+                        <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'Just now'}</td>
+                        <td className="py-4">
+                          <div className="flex gap-2 items-center">
+                            {account.syncStatus === 'needs_reauth' && account.accountType === 'cex' && (
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={() => setReconnectPayload({
+                                  exchange: account.provider || 'coinbase',
+                                  name: account.accountName || 'My Exchange'
+                                })}
+                              >
+                                Reconnect
+                              </button>
+                            )}
+                            <div className="relative" data-actions-menu>
+                              <button
+                                className="btn btn-sm btn-outline flex items-center gap-1"
+                                onClick={() => setOpenMenuId((prev) => (prev === account.id ? null : account.id))}
+                                aria-haspopup="menu"
+                                aria-expanded={openMenuId === account.id}
+                                aria-label="Open actions menu"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                                <span className="hidden md:inline">Actions</span>
+                              </button>
+                              {openMenuId === account.id && (
+                                <div className="absolute right-0 z-10 mt-2 w-48 rounded border border-border bg-surface-1 p-2 shadow-lg space-y-2">
                                   <button
                                     className="btn btn-sm btn-ghost w-full justify-start"
-                                    onClick={async () => {
-                                      try {
-                                        await sync(account.id);
-                                        toast.show('Account synced successfully', 'success');
-                                      } catch (err) {
-                                        const msg = err instanceof Error ? err.message : 'Sync failed';
-                                        toast.show(msg, 'error');
-                                      } finally {
-                                        setOpenMenuId(null);
-                                      }
+                                    onClick={() => {
+                                      setEditingAccount(account);
+                                      setOpenMenuId(null);
                                     }}
-                                    disabled={account.syncStatus === 'needs_reauth'}
                                   >
-                                    Refresh
+                                    Edit Details
                                   </button>
-                                )}
-                                <button
-                                  className="btn btn-sm btn-ghost w-full justify-start text-danger"
-                                  onClick={() => {
-                                    remove(account.id);
-                                    setOpenMenuId(null);
-                                  }}
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            )}
+                                  {account.accountType !== 'manual' && (
+                                    <button
+                                      className="btn btn-sm btn-ghost w-full justify-start"
+                                      onClick={() => {
+                                        setConfirmAction({ type: 'refresh', account });
+                                        setOpenMenuId(null);
+                                      }}
+                                      disabled={account.syncStatus === 'needs_reauth'}
+                                    >
+                                      Refresh Sync
+                                    </button>
+                                  )}
+                                  <button
+                                    className="btn btn-sm btn-ghost w-full justify-start text-danger"
+                                    onClick={() => {
+                                      setConfirmAction({ type: 'remove', account });
+                                      setOpenMenuId(null);
+                                    }}
+                                  >
+                                    Remove Account
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -893,7 +1079,7 @@ export const ConnectAccounts = () => {
         </div>
 
         <div className="alert alert-info mb-8">
-          <strong>Read-Only Access:</strong> All connections are read-only to maintain non-custodial, non-MSB status. We cannot initiate transactions, transfer funds, or modify account settings. API keys and OAuth tokens are stored in an encrypted secret store.
+          <strong>Read-Only Access:</strong> We never move funds or place trades. Keys and tokens are stored securely.
         </div>
 
       </section>

@@ -108,6 +108,8 @@ def exchange_token_endpoint(
         balance = Decimal(str(balance_raw)) if balance_raw is not None else None
         currency = account_data.get("currency") or current_user.currency_pref or "USD"
         account_name = account_data.get("official_name") or account_data.get("name")
+        plaid_type = account_data.get("type")
+        plaid_subtype = account_data.get("subtype")
 
         existing = (
             db.query(Account)
@@ -124,6 +126,8 @@ def exchange_token_endpoint(
             existing.balance = balance
             existing.currency = currency
             existing.secret_ref = secret_ref
+            existing.plaid_type = plaid_type or existing.plaid_type
+            existing.plaid_subtype = plaid_subtype or existing.plaid_subtype
             linked_accounts.append(existing)
             continue
 
@@ -133,6 +137,8 @@ def exchange_token_endpoint(
             provider=payload.institution_name,
             account_name=account_name,
             account_number_masked=mask,
+            plaid_type=plaid_type,
+            plaid_subtype=plaid_subtype,
             balance=balance,
             currency=currency,
             secret_ref=secret_ref,

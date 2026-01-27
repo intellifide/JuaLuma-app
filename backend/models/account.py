@@ -32,6 +32,8 @@ class Account(Base):
     provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
     account_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     account_number_masked: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    plaid_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    plaid_subtype: Mapped[str | None] = mapped_column(String(64), nullable=True)
     balance: Mapped[Decimal | None] = mapped_column(
         Numeric(18, 2), nullable=True, default=0
     )
@@ -95,6 +97,8 @@ class Account(Base):
             "provider": self.provider,
             "account_name": self.account_name,
             "account_number_masked": self.account_number_masked,
+            "plaid_type": self.plaid_type,
+            "plaid_subtype": self.plaid_subtype,
             "balance": float(self.balance) if self.balance is not None else None,
             "currency": self.currency,
             "assigned_member_uid": self.assigned_member_uid,

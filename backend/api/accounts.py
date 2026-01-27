@@ -255,6 +255,8 @@ class AccountResponse(BaseModel):
     provider: str | None = None
     account_name: str | None = None
     account_number_masked: str | None = None
+    plaid_type: str | None = None
+    plaid_subtype: str | None = None
     balance: Decimal | None = None
     currency: str | None = None
     assigned_member_uid: str | None = None
@@ -363,6 +365,8 @@ def _serialize_account(
         provider=account.provider,
         account_name=account.account_name,
         account_number_masked=account.account_number_masked,
+        plaid_type=account.plaid_type,
+        plaid_subtype=account.plaid_subtype,
         balance=response_balance,
         currency=account.currency,
         assigned_member_uid=account.assigned_member_uid,
@@ -881,6 +885,10 @@ def _refresh_traditional_balance(account: Account, user_pref: str | None) -> str
             account.currency = (
                 match.get("currency") or account.currency or user_pref or "USD"
             )
+            if match.get("type"):
+                account.plaid_type = match.get("type")
+            if match.get("subtype"):
+                account.plaid_subtype = match.get("subtype")
             return match.get("account_id")
     except Exception as e:
         logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
@@ -1217,6 +1225,81 @@ def sync_account_transactions(
         end_date=resolved_end,
         plan=plan,
     )
+
+
+@router.post(
+    "/{account_id}/refresh-metadata",
+    response_model=AccountResponse,
+    status_code=status.HTTP_200_OK,
+)
+def refresh_account_metadata(
+    account_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AccountResponse:
+    """
+    Refresh Plaid account metadata (type/subtype/balance) without pulling transactions.
+    """
+    account = (
+        db.query(Account)
+        .filter(Account.id == account_id, Account.uid == current_user.uid)
+        .first()
+    )
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
+        )
+    if account.account_type != "traditional":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Metadata refresh is only available for Plaid-connected accounts.",
+        )
+
+    try:
+        access_token = get_secret(account.secret_ref or "", uid=account.uid)
+        plaid_accounts = fetch_accounts(access_token)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account credentials."
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="We encountered an issue refreshing your account details. Please try again later.",
+        ) from exc
+
+    match = None
+    if account.account_number_masked:
+        match = next(
+            (acct for acct in plaid_accounts if acct.get("mask") == account.account_number_masked),
+            None,
+        )
+    if not match and account.account_name:
+        account_name = account.account_name.lower()
+        match = next(
+            (
+                acct
+                for acct in plaid_accounts
+                if (acct.get("official_name") or acct.get("name") or "").lower() == account_name
+            ),
+            None,
+        )
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unable to match this account in Plaid. Try reconnecting it.",
+        )
+
+    if match.get("balance_current") is not None:
+        account.balance = Decimal(str(match.get("balance_current")))
+    account.currency = match.get("currency") or account.currency or current_user.currency_pref or "USD"
+    account.plaid_type = match.get("type") or account.plaid_type
+    account.plaid_subtype = match.get("subtype") or account.plaid_subtype
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return _serialize_account(account)
 
 
 @router.post(

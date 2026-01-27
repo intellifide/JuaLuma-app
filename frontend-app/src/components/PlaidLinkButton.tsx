@@ -19,6 +19,17 @@ export const PlaidLinkButton = ({ onSuccess, onError }: PlaidLinkButtonProps) =>
   const fetchedTokenOnce = useRef(false)
 
   useEffect(() => {
+    const scripts = document.querySelectorAll('script[src*="plaid/link-initialize.js"]')
+    if (scripts.length > 1) {
+      scripts.forEach((script, index) => {
+        if (index > 0) {
+          script.parentElement?.removeChild(script)
+        }
+      })
+    }
+  }, [])
+
+  useEffect(() => {
     const createToken = async () => {
       try {
         const timeoutPromise = new Promise((_, reject) =>

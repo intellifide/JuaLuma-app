@@ -1,153 +1,50 @@
 // Core Purpose: Main dashboard for personal and household financial insights.
-// Last Modified: 2026-01-26 09:30 CST
+// Last Modified: 2026-01-26 14:10 CST
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
 import { useBudget } from '../hooks/useBudget';
-import { useTransactions } from '../hooks/useTransactions';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
-import { Transaction } from '../types';
 import { useToast } from '../components/ui/Toast';
-import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
-import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
-import { loadTransactionPreferences } from '../utils/transactionPreferences';
+import { formatDateParam, formatTimeframeLabel, getTransactionDateRange } from '../utils/dateRanges';
+import { loadDashboardPreferences, saveDashboardPreferences, type InsightsPeriod } from '../utils/dashboardPreferences';
+import { getAccountPrimaryCategory, getCategoryLabel, getInvestmentBucket, type PrimaryAccountCategory } from '../utils/accountCategories';
+import { loadGoals, saveGoals, type Goal, type GoalType } from '../utils/goalsStorage';
 
 // Removed static BUDGET_CAP
 
-// Helpers for Date Management
-// Format a local date to YYYY-MM-DD for API params.
-const formatDateParam = (value: Date) => {
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, '0');
-  const day = `${value.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const INSIGHTS_OPTIONS: { value: InsightsPeriod; label: string }[] = [
+  { value: '1w', label: '1W' },
+  { value: '1m', label: '1M' },
+  { value: '3m', label: '3M' },
+  { value: 'ytd', label: 'YTD' },
+  { value: '1y', label: '1Y' },
+  { value: 'all', label: 'ALL' },
+];
 
-// Transactions date range mirrors Transactions page behavior.
-const getTransactionsDateRange = (timeframe: string) => {
-  const end = new Date();
-  const start = new Date(end);
+const FIXED_TIMEFRAME: InsightsPeriod = '1m';
+const ALL_TIME_ANALYTICS_YEARS = 5;
 
+const getInsightsCashFlowInterval = (timeframe: InsightsPeriod): 'day' | 'week' | 'month' => {
   switch (timeframe) {
     case '1w':
-      start.setDate(end.getDate() - 7);
-      break;
+      return 'day';
     case '1m':
-      start.setDate(end.getDate() - 30);
-      break;
+      return 'week';
     case '3m':
-      start.setDate(end.getDate() - 90);
-      break;
-    case '6m':
-      start.setDate(end.getDate() - 180);
-      break;
-    case '1y':
-      start.setDate(end.getDate() - 365);
-      break;
+      return 'week';
     case 'ytd':
-      start.setFullYear(end.getFullYear(), 0, 1);
-      break;
+    case '1y':
     case 'all':
-      return { start: undefined, end: undefined };
+      return 'month';
     default:
-      start.setDate(end.getDate() - 30);
+      return 'week';
   }
-  return {
-    start: formatDateParam(start),
-    end: formatDateParam(end),
-  };
-};
-
-// Resolve a comparable timestamp for consistent transaction ordering.
-const getTransactionTimestamp = (txn: Transaction) => {
-  const primary = Date.parse(txn.ts);
-  if (!Number.isNaN(primary)) return primary;
-  const fallback = txn.createdAt ? Date.parse(txn.createdAt) : Number.NaN;
-  return Number.isNaN(fallback) ? 0 : fallback;
-};
-
-// Normalize a date to local midnight to avoid time drift in params.
-const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate());
-
-// Calculate the number of days in a month for safe date clamping.
-const getDaysInMonth = (year: number, monthIndex: number) => new Date(year, monthIndex + 1, 0).getDate();
-
-// Shift a date by months while clamping to the target month length.
-const shiftMonthsSafe = (value: Date, deltaMonths: number, alignToMonthStart = false) => {
-  const baseYear = value.getFullYear();
-  const baseMonth = value.getMonth();
-  const monthIndex = baseMonth + deltaMonths;
-  const targetYear = baseYear + Math.floor(monthIndex / 12);
-  const targetMonth = ((monthIndex % 12) + 12) % 12;
-  const targetDay = alignToMonthStart
-    ? 1
-    : Math.min(value.getDate(), getDaysInMonth(targetYear, targetMonth));
-  return new Date(targetYear, targetMonth, targetDay);
-};
-
-// Resolve date ranges for analytics views with consistent month boundaries.
-const getDateRange = (timeframe: string) => {
-  const end = startOfDay(new Date());
-  let start = new Date(end);
-  let nwInterval: 'daily' | 'weekly' | 'monthly' = 'daily';
-  let cfInterval: 'week' | 'month' = 'week';
-
-  switch (timeframe) {
-    case '1w':
-      start.setDate(end.getDate() - 6);
-      nwInterval = 'daily';
-      cfInterval = 'week';
-      break;
-    case '1m':
-      // Rolling month window with safe month shifting.
-      start = shiftMonthsSafe(end, -1);
-      nwInterval = 'daily';
-      cfInterval = 'week';
-      break;
-    case '3m':
-      // Align to full months to prevent missing month buckets.
-      start = shiftMonthsSafe(end, -2, true);
-      nwInterval = 'weekly';
-      cfInterval = 'month';
-      break;
-    case '6m':
-      // Align to full months to prevent missing month buckets.
-      start = shiftMonthsSafe(end, -5, true);
-      nwInterval = 'weekly';
-      cfInterval = 'month';
-      break;
-    case '1y':
-      // Align to full months for clean yearly trend buckets.
-      start = shiftMonthsSafe(end, -11, true);
-      nwInterval = 'monthly';
-      cfInterval = 'month';
-      break;
-    case 'ytd':
-      // Year to date - start from January 1st of current year.
-      start.setMonth(0, 1);
-      nwInterval = 'monthly';
-      cfInterval = 'month';
-      break;
-    case 'all':
-      // Go back 5 years aligned to the start of the month.
-      start = shiftMonthsSafe(end, -59, true);
-      nwInterval = 'monthly';
-      cfInterval = 'month';
-      break;
-    default: // 1m default
-      start = shiftMonthsSafe(end, -1);
-  }
-  return {
-    start: formatDateParam(start),
-    end: formatDateParam(end),
-    nwInterval,
-    cfInterval
-  };
 };
 
 const formatCurrency = (value: number) =>
@@ -156,124 +53,93 @@ const formatCurrency = (value: number) =>
 const formatCompactCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: "compact", maximumFractionDigits: 1 }).format(value);
 
-const CATEGORIES = TRANSACTION_CATEGORIES;
+const formatPercent = (value: number) =>
+  new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 0 }).format(value);
+
+const GOAL_TYPE_LABELS: Record<GoalType, string> = {
+  emergency_fund: 'Emergency Fund',
+  debt_paydown: 'Debt Paydown',
+  savings: 'Savings Goal',
+  investment: 'Investment Goal',
+  custom: 'Custom Goal',
+};
+
+const calculateBudgetProgress = (
+  spendData: { data: { category: string; amount: number }[] } | null | undefined,
+  budgets: { category: string; amount: number; alert_enabled: boolean }[],
+) => {
+  if (!spendData?.data || budgets.length === 0) {
+    return { budgetSpent: 0, totalBudget: 0 };
+  }
+
+  const budgetsByCategory = new Map<string, number>();
+  budgets.forEach((b) => {
+    if (b.alert_enabled) {
+      const existing = budgetsByCategory.get(b.category) || 0;
+      budgetsByCategory.set(b.category, existing + b.amount);
+    }
+  });
+
+  const total = Array.from(budgetsByCategory.values()).reduce((sum, amount) => sum + amount, 0);
+  const spent = spendData.data
+    .filter((item) => budgetsByCategory.has(item.category))
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  return { budgetSpent: spent, totalBudget: total };
+};
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
-  const { accounts, refetch: refetchAccounts } = useAccounts({
+  const { accounts } = useAccounts({
     filters: { scope: dashboardScope }
   });
   const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
   const isHouseholdAdmin = profile?.household_member?.role === 'admin';
   const canViewHousehold = Boolean(profile?.household_member?.can_view_household);
   const canSeeScopeToggle = (isUltimate && isHouseholdAdmin) || canViewHousehold;
-  // Show responsible person column for Ultimate tier or household members with view permission
-  const shouldShowResponsiblePerson = isUltimate || canViewHousehold;
-
-  const [timeframe, setTimeframe] = useState('1m');
-  const { start, end, nwInterval, cfInterval } = useMemo(() => getDateRange(timeframe), [timeframe]);
-  
-  // Load transaction preferences from localStorage and listen for changes
-  const [transactionPreferences, setTransactionPreferences] = useState(() => loadTransactionPreferences());
-  
-  // Listen for localStorage changes to update preferences in real-time
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'jualuma_transaction_preferences' && e.newValue) {
-        try {
-          setTransactionPreferences(JSON.parse(e.newValue));
-        } catch (err) {
-          console.warn('Failed to parse transaction preferences from storage event:', err);
-        }
-      }
-    };
-    
-    // Also check for changes periodically (in case storage event doesn't fire in same tab)
-    const intervalId = setInterval(() => {
-      const current = loadTransactionPreferences();
-      setTransactionPreferences(prev => {
-        // Only update if preferences actually changed
-        if (JSON.stringify(prev) !== JSON.stringify(current)) {
-          return current;
-        }
-        return prev;
-      });
-    }, 2000); // Check every 2 seconds
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(intervalId);
-    };
-  }, []);
-  
-  // For transactions list, use saved preferences for filters
-  // Build exclude account types based on saved preferences
-  const excludeAccountTypes = useMemo(() => {
-    const excludes: string[] = []
-    if (!transactionPreferences.includeWeb3) excludes.push('web3')
-    if (!transactionPreferences.includeCEX) excludes.push('cex')
-    return excludes.length > 0 ? excludes.join(',') : undefined
-  }, [transactionPreferences.includeWeb3, transactionPreferences.includeCEX])
-
-  // Build isManual filter from preferences
-  const isManualFilterValue = useMemo(() => {
-    if (transactionPreferences.isManualFilter === 'all') return undefined
-    return transactionPreferences.isManualFilter === 'manual'
-  }, [transactionPreferences.isManualFilter])
-
-  // Build analytics filters from transaction preferences
-  const analyticsFilters = useMemo(() => ({
-    excludeAccountTypes,
-    category: transactionPreferences.category || undefined,
-    isManual: isManualFilterValue,
-  }), [excludeAccountTypes, transactionPreferences.category, isManualFilterValue])
-
-  // Use saved transaction timeframe to keep dashboard in sync with transactions page
-  const { start: transactionsStart, end: transactionsEnd } = useMemo(
-    () => getTransactionsDateRange(transactionPreferences.timeframe),
-    [transactionPreferences.timeframe],
+  const savedDashboardPreferences = useMemo(() => loadDashboardPreferences(), []);
+  const [insightsPeriod, setInsightsPeriod] = useState<InsightsPeriod>(
+    savedDashboardPreferences.insightsPeriod,
   );
-  const [transactionsPage, setTransactionsPage] = useState(1);
-  const [transactionsPageSize, setTransactionsPageSize] = useState(transactionPreferences.pageSize);
-  const { transactions, total: transactionsTotal, updateOne, refetch: refetchTransactions } = useTransactions({
-    filters: {
-      scope: dashboardScope,
-      from: transactionsStart,
-      to: transactionsEnd,
-      page: transactionsPage,
-      pageSize: transactionsPageSize,
-      category: transactionPreferences.category || undefined,
-      excludeAccountTypes,
-      isManual: isManualFilterValue,
-      sortBy: transactionPreferences.sortBy,
-    }
-  });
-  const [notesHoverId, setNotesHoverId] = useState<string | null>(null);
-  const notesHoverTimeout = useRef<number | null>(null);
+
+  useEffect(() => {
+    saveDashboardPreferences({ insightsPeriod });
+  }, [insightsPeriod]);
+
+  const insightsLabel = formatTimeframeLabel(insightsPeriod);
+
+  const todayParam = useMemo(() => formatDateParam(new Date()), []);
+  const fixedRange = useMemo(
+    () =>
+      getTransactionDateRange(FIXED_TIMEFRAME, {
+        allowAllDates: true,
+        allTimeYears: ALL_TIME_ANALYTICS_YEARS,
+      }),
+    [],
+  );
+  const fixedStart = fixedRange.start ?? todayParam;
+  const fixedEnd = fixedRange.end ?? todayParam;
+
+  const insightsRange = useMemo(
+    () =>
+      getTransactionDateRange(insightsPeriod, {
+        allowAllDates: true,
+        allTimeYears: ALL_TIME_ANALYTICS_YEARS,
+      }),
+    [insightsPeriod],
+  );
+  const insightsStart = insightsRange.start ?? fixedStart;
+  const insightsEnd = insightsRange.end ?? fixedEnd;
+
+  const insightsCashFlowInterval = useMemo(
+    () => getInsightsCashFlowInterval(insightsPeriod),
+    [insightsPeriod],
+  );
+
   const { budgets } = useBudget(dashboardScope);
   const toast = useToast();
-
-  const handlePlaidSuccess = () => {
-    toast.show('Account connected successfully', 'success');
-    refetchAccounts();
-    refetchTransactions();
-  };
-
-  const handlePlaidError = (message: string) => {
-    toast.show(message, 'error');
-  };
-
-  const handleCategoryChange = async (id: string, newCategory: string) => {
-    try {
-      await updateOne(id, { category: newCategory });
-      toast.show('Category updated', 'success');
-    } catch (err) {
-      toast.show('Failed to update category', 'error');
-    }
-  };
 
   
 
@@ -284,6 +150,13 @@ export default function Dashboard() {
   const [inviteIsMinor, setInviteIsMinor] = useState(false);
   const [inviteCanViewHousehold, setInviteCanViewHousehold] = useState(true);
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [goalsModalOpen, setGoalsModalOpen] = useState(false);
+  const [goals, setGoals] = useState<Goal[]>(() => loadGoals());
+  const [goalTitle, setGoalTitle] = useState('');
+  const [goalType, setGoalType] = useState<GoalType>('savings');
+  const [goalTarget, setGoalTarget] = useState('');
+  const [goalCurrent, setGoalCurrent] = useState('');
+  const [goalTargetDate, setGoalTargetDate] = useState('');
 
   // Keep the dashboard scope aligned with the user's household access.
   useEffect(() => {
@@ -293,16 +166,8 @@ export default function Dashboard() {
   }, [canSeeScopeToggle, dashboardScope]);
 
   useEffect(() => {
-    setTransactionsPage(1);
-  }, [
-    dashboardScope,
-    transactionsPageSize,
-    transactionPreferences.timeframe,
-    transactionPreferences.category,
-    excludeAccountTypes,
-    isManualFilterValue,
-    transactionPreferences.sortBy,
-  ]);
+    saveGoals(goals);
+  }, [goals]);
 
   const handleInviteClick = async () => {
     const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
@@ -367,7 +232,7 @@ export default function Dashboard() {
                 url.searchParams.delete('session_id');
                 window.history.replaceState({}, '', url.toString());
                 // Force reload of user profile
-                // Note: refetchAccounts / refetchTransactions might be needed if features are gated
+                // Note: refetchAccounts might be needed if features are gated
                 window.location.reload(); // Simple brute force to ensure all state (profile, etc) updates
             })
             .catch(() => {
@@ -377,75 +242,215 @@ export default function Dashboard() {
     }
   }, [toast]);
 
-  const { data: nwData, loading: nwLoading } = useNetWorth(start, end, nwInterval, dashboardScope, analyticsFilters);
-  const { data: cfData, loading: cfLoading } = useCashFlow(start, end, cfInterval, dashboardScope, analyticsFilters);
-  const { data: spendData } = useSpendingByCategory(start, end, dashboardScope, analyticsFilters);
+  const { data: insightsNetWorthData, loading: insightsNetWorthLoading } = useNetWorth(
+    insightsStart,
+    insightsEnd,
+    'daily',
+    dashboardScope,
+  );
+  const { data: fixedCashFlowData } = useCashFlow(
+    fixedStart,
+    fixedEnd,
+    'week',
+    dashboardScope,
+  );
 
-  // Computed Values for Cards
-  const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0), [accounts]);
+  const { data: insightsCashFlowData, loading: insightsCashFlowLoading } = useCashFlow(
+    insightsStart,
+    insightsEnd,
+    insightsCashFlowInterval,
+    dashboardScope,
+  );
+  const { data: insightsSpendData, loading: insightsSpendLoading } = useSpendingByCategory(
+    insightsStart,
+    insightsEnd,
+    dashboardScope,
+  );
 
-  // Transactions Table (Paginated)
-  const recentTransactions = useMemo(() => {
-    // Keep most-recent-first ordering stable even with missing timestamps.
-    return [...transactions].sort((a, b) => {
-      const aTime = getTransactionTimestamp(a);
-      const bTime = getTransactionTimestamp(b);
-      if (bTime !== aTime) return bTime - aTime;
-      return b.id.localeCompare(a.id);
-    });
-  }, [transactions]);
+  const fixedCashFlowStats = useMemo(() => {
+    if (!fixedCashFlowData) return { income: 0, expense: 0, net: 0 };
+    const income = fixedCashFlowData.income.reduce((sum, d) => sum + d.value, 0);
+    const expense = fixedCashFlowData.expenses.reduce((sum, d) => sum + Math.abs(d.value), 0);
+    return { income, expense, net: income - expense };
+  }, [fixedCashFlowData]);
 
+  const insightsCashFlowStats = useMemo(() => {
+    if (!insightsCashFlowData) return { income: 0, expense: 0, net: 0 };
+    const income = insightsCashFlowData.income.reduce((sum, d) => sum + d.value, 0);
+    const expense = insightsCashFlowData.expenses.reduce((sum, d) => sum + Math.abs(d.value), 0);
+    return { income, expense, net: income - expense };
+  }, [insightsCashFlowData]);
 
+  const { assetsTotal, liabilitiesTotal, netWorthTotal, liquidBalance } = useMemo(() => {
+    let assets = 0;
+    let liabilities = 0;
+    let liquid = 0;
 
-
-  // Budget calculations - only include categories with budgets set
-  const { budgetSpent, totalBudget } = useMemo(() => {
-    if (!spendData?.data || budgets.length === 0) {
-      return { budgetSpent: 0, totalBudget: 0 };
-    }
-    
-    // Create a map of budget amounts by category, only for enabled budgets
-    const budgetsByCategory = new Map<string, number>();
-    budgets.forEach(b => {
-      if (b.alert_enabled) {
-        const existing = budgetsByCategory.get(b.category) || 0;
-        budgetsByCategory.set(b.category, existing + b.amount);
+    accounts.forEach((account) => {
+      const balance = account.balance || 0;
+      const category = getAccountPrimaryCategory(account);
+      if (category.isLiability) {
+        liabilities += Math.abs(balance);
+      } else {
+        assets += balance;
+        if (category.key === 'cash') {
+          liquid += balance;
+        }
       }
     });
-    
-    // Calculate total budget (enabled only)
-    const total = Array.from(budgetsByCategory.values()).reduce((sum, amount) => sum + amount, 0);
-    
-    // Calculate spending only for categories with enabled budgets
-    const spent = spendData.data
-      .filter(item => budgetsByCategory.has(item.category))
-      .reduce((sum, item) => sum + item.amount, 0);
-    
-    return { budgetSpent: spent, totalBudget: total };
-  }, [spendData, budgets]);
 
-  const budgetPercent = totalBudget > 0 ? Math.min(100, (budgetSpent / totalBudget) * 100) : 0;
+    return {
+      assetsTotal: assets,
+      liabilitiesTotal: liabilities,
+      netWorthTotal: assets - liabilities,
+      liquidBalance: liquid,
+    };
+  }, [accounts]);
 
-  // Cash Flow Card Sums
-  const cashFlowStats = useMemo(() => {
-    if (!cfData) return { income: 0, expense: 0, net: 0 };
-    const income = cfData.income.reduce((sum, d) => sum + d.value, 0);
-    const expense = cfData.expenses.reduce((sum, d) => sum + Math.abs(d.value), 0); // Display as positive
-    return { income, expense, net: income - expense };
-  }, [cfData]);
-
-  const totalTransactionPages = Math.max(
-    1,
-    Math.ceil((transactionsTotal || 0) / transactionsPageSize)
+  const { budgetSpent: insightsBudgetSpent, totalBudget: insightsTotalBudget } = useMemo(
+    () => calculateBudgetProgress(insightsSpendData, budgets),
+    [insightsSpendData, budgets],
   );
-  const hasPrevTransactionsPage = transactionsPage > 1;
-  const hasNextTransactionsPage = transactionsPage < totalTransactionPages;
-  const transactionRangeStart = transactionsTotal
-    ? (transactionsPage - 1) * transactionsPageSize + 1
+
+  const insightsBudgetPercent =
+    insightsTotalBudget > 0
+      ? Math.min(100, (insightsBudgetSpent / insightsTotalBudget) * 100)
+      : 0;
+
+  const insightsSavingsRate = useMemo(() => {
+    if (!insightsCashFlowStats.income) return null;
+    return insightsCashFlowStats.net / insightsCashFlowStats.income;
+  }, [insightsCashFlowStats]);
+
+  const spendingHealthScore = useMemo(() => {
+    if (!insightsCashFlowStats.income) return null;
+    const rawScore = (1 - insightsCashFlowStats.expense / insightsCashFlowStats.income) * 100;
+    return Math.max(0, Math.min(100, Math.round(rawScore)));
+  }, [insightsCashFlowStats]);
+
+  const spendingHealthLabel = useMemo(() => {
+    if (spendingHealthScore === null) return 'Needs data';
+    if (spendingHealthScore >= 75) return 'Strong';
+    if (spendingHealthScore >= 50) return 'Balanced';
+    return 'Caution';
+  }, [spendingHealthScore]);
+
+  const insightsTopCategories = useMemo(() => {
+    if (!insightsSpendData?.data?.length) return [];
+    return [...insightsSpendData.data].sort((a, b) => b.amount - a.amount).slice(0, 3);
+  }, [insightsSpendData]);
+
+  const insightsTotalSpend = useMemo(() => {
+    if (!insightsSpendData?.data?.length) return 0;
+    return insightsSpendData.data.reduce((sum, item) => sum + item.amount, 0);
+  }, [insightsSpendData]);
+
+  const topSpendShare = insightsTopCategories.length
+    ? insightsTotalSpend > 0
+      ? insightsTopCategories[0].amount / insightsTotalSpend
+      : 0
     : 0;
-  const transactionRangeEnd = transactionsTotal
-    ? Math.min(transactionsTotal, (transactionsPage - 1) * transactionsPageSize + transactions.length)
-    : 0;
+
+  const anomalyStatus = useMemo(() => {
+    if (!insightsCashFlowData && !insightsSpendData) {
+      return { title: 'Awaiting signals', detail: 'Connect accounts to detect changes.', tone: 'neutral' };
+    }
+    if (insightsCashFlowStats.net < 0) {
+      return {
+        title: 'Spending exceeded income',
+        detail: `${formatCompactCurrency(Math.abs(insightsCashFlowStats.net))} net outflow`,
+        tone: 'warning',
+      };
+    }
+    if (topSpendShare >= 0.5 && insightsTopCategories[0]) {
+      return {
+        title: `${insightsTopCategories[0].category} dominates`,
+        detail: `${Math.round(topSpendShare * 100)}% of spend`,
+        tone: 'warning',
+      };
+    }
+    return { title: 'No anomalies detected', detail: 'Patterns look steady.', tone: 'good' };
+  }, [insightsCashFlowData, insightsSpendData, insightsCashFlowStats, topSpendShare, insightsTopCategories]);
+
+  const liquidityMonths = useMemo(() => {
+    const monthlyExpense = fixedCashFlowStats.expense;
+    const baseBalance = liquidBalance > 0 ? liquidBalance : assetsTotal;
+    if (monthlyExpense <= 0 || baseBalance <= 0) return null;
+    return baseBalance / monthlyExpense;
+  }, [fixedCashFlowStats.expense, liquidBalance, assetsTotal]);
+
+  const handleAddGoal = () => {
+    const targetValue = Number(goalTarget);
+    if (!goalTitle.trim() || !goalTarget || Number.isNaN(targetValue) || targetValue <= 0) {
+      toast.show('Please enter a goal title and target amount.', 'error');
+      return;
+    }
+    const currentValue = goalCurrent ? Number(goalCurrent) : 0;
+    const newGoal: Goal = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      type: goalType,
+      title: goalTitle.trim(),
+      targetAmount: targetValue,
+      currentAmount: Number.isNaN(currentValue) ? 0 : currentValue,
+      targetDate: goalTargetDate || null,
+      createdAt: new Date().toISOString(),
+    };
+    setGoals((prev) => [newGoal, ...prev]);
+    setGoalTitle('');
+    setGoalTarget('');
+    setGoalCurrent('');
+    setGoalTargetDate('');
+    setGoalType('savings');
+    setGoalsModalOpen(false);
+    toast.show('Goal added', 'success');
+  };
+
+  const handleRemoveGoal = (id: string) => {
+    setGoals((prev) => prev.filter((goal) => goal.id !== id));
+    toast.show('Goal removed', 'success');
+  };
+
+  const investmentAllocation = useMemo(() => {
+    const buckets: Record<'traditional' | 'cex' | 'web3' | 'other', number> = {
+      traditional: 0,
+      cex: 0,
+      web3: 0,
+      other: 0,
+    };
+
+    accounts.forEach((account) => {
+      const bucket = getInvestmentBucket(account);
+      if (!bucket) return;
+      const balance = account.balance || 0;
+      if (balance <= 0) return;
+      buckets[bucket] += balance;
+    });
+
+    const total = Object.values(buckets).reduce((sum, value) => sum + value, 0);
+    const rows = (Object.keys(buckets) as Array<keyof typeof buckets>).map((bucket) => ({
+      bucket,
+      amount: buckets[bucket],
+      percent: total > 0 ? buckets[bucket] / total : 0,
+    }));
+
+    return { total, rows };
+  }, [accounts]);
+
+  const netWorthSeries = insightsNetWorthData?.data ?? [];
+  const netWorthCurrent = netWorthSeries.length
+    ? netWorthSeries[netWorthSeries.length - 1].value
+    : netWorthTotal;
+  const netWorthStart = netWorthSeries.length ? netWorthSeries[0].value : null;
+  const netWorthChange = netWorthStart !== null ? netWorthCurrent - netWorthStart : null;
+
+  const linkedAccountCategories = useMemo(() => {
+    const counts = new Map<PrimaryAccountCategory, number>();
+    accounts.forEach((account) => {
+      const category = getAccountPrimaryCategory(account).key;
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [accounts]);
 
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
@@ -454,23 +459,22 @@ export default function Dashboard() {
       <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
-          <p className="text-text-secondary mt-1">Welcome back, {profile?.username || user?.displayName || 'there'}</p>
         </div>
       </div>
 
-      {/* Timeframe Controls */}
+      {/* Insights Period Controls */}
       <div className="glass-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="timeframe-controls">
           <div className="section-timeframe-wrapper">
-            <span className="section-timeframe-label">View Period:</span>
+            <span className="section-timeframe-label">Insights Period:</span>
             <div className="timeframe-selector" role="group" aria-label="Select time period">
-              {['1w', '1m', '3m', '6m', '1y', 'ytd', 'all'].map((tf) => (
+              {INSIGHTS_OPTIONS.map((option) => (
                 <button
-                  key={tf}
-                  className={`timeframe-btn ${timeframe === tf ? 'active' : ''}`}
-                  onClick={() => setTimeframe(tf)}
+                  key={option.value}
+                  className={`timeframe-btn ${insightsPeriod === option.value ? 'active' : ''}`}
+                  onClick={() => setInsightsPeriod(option.value)}
                 >
-                  {tf.toUpperCase()}
+                  {option.label}
                 </button>
               ))}
             </div>
@@ -524,168 +528,382 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {/* Net Worth */}
-        <div className="card">
-          <h3 className="text-sm text-text-muted mb-2">Net Worth</h3>
-          <p id="net-worth-value" className="text-3xl font-bold text-primary">
-            {nwLoading ? '...' : formatCurrency(nwData?.data?.[nwData.data.length - 1]?.value || totalBalance)}
-          </p>
-          <div className="text-sm mt-1">
-            {/* Change calculation could be done here if needed */}
-            <span className="text-text-muted">Current</span>
-          </div>
-        </div>
-
-        {/* Cash Flow */}
-        <div className="card">
-          <h3 className="text-sm text-text-muted mb-2">Cash Flow</h3>
-          <p id="cashflow-value" className={`text-3xl font-bold ${cashFlowStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {cfLoading ? '...' : formatCurrency(cashFlowStats.net)}
-          </p>
-          <p className="text-sm text-text-muted mt-1">
-            In: <span className="text-emerald-400">{formatCompactCurrency(cashFlowStats.income)}</span> • Out: <span className="text-rose-400">{formatCompactCurrency(cashFlowStats.expense)}</span>
-          </p>
-        </div>
-
-        {/* Budget */}
-        <div className="card">
-          <h3 className="text-sm text-text-muted mb-2">Budget Status</h3>
-          <p className="text-3xl font-bold text-primary">{budgetPercent.toFixed(0)}%</p>
-          <p className="text-sm text-text-muted mt-1">
-            {formatCompactCurrency(budgetSpent)} of {formatCompactCurrency(totalBudget)} spent
-          </p>
-          <div className="w-full bg-white/10 rounded-full h-2 mt-2" aria-label="Budget usage">
-            <div className="h-2 rounded-full bg-primary" style={{ width: `${budgetPercent}%` }} />
-          </div>
-        </div>
-
-        {/* Accounts Count */}
-        <div className="card">
-          <h3 className="text-sm text-text-muted mb-2">Linked Accounts</h3>
-          <p className="text-3xl font-bold text-royal-purple">{accounts.length}</p>
-          <p className="text-sm text-text-muted mt-1">Active connections</p>
-        </div>
-      </div>
-
-      <div className="flex justify-end mb-10">
-        <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
-      </div>
-
-      {/* Transactions */}
+      {/* Financial Overview */}
       <div className="glass-panel mb-10">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 mb-6">
-          <h2 className="text-xl font-semibold">Transactions</h2>
-          <span className="text-xs text-text-muted">
-            {transactionRangeStart}-{transactionRangeEnd} of {transactionsTotal || 0}
-          </span>
+          <h2 className="text-xl font-semibold">Financial Overview</h2>
+          <span className="text-xs text-text-muted">Insights Period {insightsLabel} applied to summary + select modules</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="table w-full">
-            <thead>
-              <tr className="text-left text-text-muted border-b border-white/10">
-                <th className="pb-3">Date</th>
-                <th className="pb-3">Description</th>
-                <th className="pb-3">Category</th>
-                {shouldShowResponsiblePerson && <th className="pb-3">User</th>}
-                <th className="pb-3">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={shouldShowResponsiblePerson ? 5 : 4} className="text-center py-6 text-text-muted italic">No transactions found</td>
-                </tr>
-              ) : (
-                recentTransactions.map(txn => (
-                  <tr key={txn.id} className="hover:bg-white/5 transition-colors">
-                    <td className="py-3 text-sm">{new Date(txn.ts).toLocaleDateString()}</td>
-                    <td className="py-3 font-medium text-text-primary">
-                      <div
-                        className="relative inline-flex items-center"
-                        onMouseEnter={() => {
-                          if (!txn.description) return;
-                          if (notesHoverTimeout.current) {
-                            window.clearTimeout(notesHoverTimeout.current);
-                          }
-                          notesHoverTimeout.current = window.setTimeout(() => {
-                            setNotesHoverId(txn.id);
-                          }, 2000);
-                        }}
-                        onMouseLeave={() => {
-                          if (notesHoverTimeout.current) {
-                            window.clearTimeout(notesHoverTimeout.current);
-                            notesHoverTimeout.current = null;
-                          }
-                          setNotesHoverId(null);
-                        }}
-                      >
-                        <span>{txn.merchantName || txn.description || '—'}</span>
-                        {txn.description && notesHoverId === txn.id && (
-                          <div className="absolute left-0 top-full mt-2 min-w-64 max-w-md rounded-lg border border-white/10 bg-surface-1/90 p-3 text-xs text-text-secondary shadow-xl backdrop-blur z-50 break-words">
-                            <p className="text-xs font-semibold text-text-primary mb-1">Notes</p>
-                            <p className="text-xs text-text-secondary whitespace-pre-wrap break-all">{txn.description}</p>
-                          </div>
-                        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+          {/* Net Worth */}
+          <div className="card gap-3">
+            <div>
+              <h3 className="text-sm text-text-muted">Net Worth</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            <p id="net-worth-value" className="text-3xl font-bold text-primary">
+              {insightsNetWorthLoading ? '...' : formatCurrency(netWorthCurrent)}
+            </p>
+            <p className="text-xs text-text-muted">
+              Assets {formatCompactCurrency(assetsTotal)} • Liabilities {formatCompactCurrency(liabilitiesTotal)}
+            </p>
+            {netWorthChange !== null && (
+              <p className={`text-xs ${netWorthChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {netWorthChange >= 0 ? 'Up' : 'Down'} {formatCompactCurrency(Math.abs(netWorthChange))} in {insightsLabel}
+              </p>
+            )}
+          </div>
+
+          {/* Cash Flow */}
+          <div className="card gap-3">
+            <div>
+              <h3 className="text-sm text-text-muted">Cash Flow</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            <p id="cashflow-value" className={`text-3xl font-bold ${insightsCashFlowStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {insightsCashFlowLoading ? '...' : formatCurrency(insightsCashFlowStats.net)}
+            </p>
+            <p className="text-xs text-text-muted">
+              In {formatCompactCurrency(insightsCashFlowStats.income)} • Out {formatCompactCurrency(insightsCashFlowStats.expense)}
+            </p>
+          </div>
+
+          {/* Budget Status */}
+          <div className="card gap-3">
+            <div>
+              <h3 className="text-sm text-text-muted">Budget Status</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            {insightsTotalBudget > 0 ? (
+              <>
+                <p className="text-3xl font-bold text-primary">{insightsBudgetPercent.toFixed(0)}%</p>
+                <p className="text-xs text-text-muted">
+                  {formatCompactCurrency(insightsBudgetSpent)} of {formatCompactCurrency(insightsTotalBudget)} spent
+                </p>
+                <div className="w-full bg-white/10 rounded-full h-2 mt-1" aria-label="Budget usage">
+                  <div className="h-2 rounded-full bg-primary" style={{ width: `${insightsBudgetPercent}%` }} />
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-text-muted">No active budgets yet.</p>
+            )}
+          </div>
+
+          {/* Linked Accounts */}
+          <div className="card gap-3">
+            <div>
+              <h3 className="text-sm text-text-muted">Linked Accounts</h3>
+              <p className="text-xs text-text-muted">As of today</p>
+            </div>
+            <p className="text-3xl font-bold text-royal-purple">{accounts.length}</p>
+            {linkedAccountCategories.length === 0 ? (
+              <p className="text-xs text-text-muted">No accounts connected yet.</p>
+            ) : (
+              <p className="text-xs text-text-muted">
+                {linkedAccountCategories.slice(0, 3).map(([category, count]) => `${getCategoryLabel(category)} ${count}`).join(' • ')}
+                {linkedAccountCategories.length > 3 ? ' • +more' : ''}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {/* Cash Flow Pulse */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Cash Flow Pulse</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            {insightsCashFlowLoading ? (
+              <p className="text-sm text-text-muted">Loading cash flow...</p>
+            ) : insightsCashFlowStats.income === 0 && insightsCashFlowStats.expense === 0 ? (
+              <p className="text-sm text-text-muted">No cash flow activity yet.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className={`text-2xl font-bold ${insightsCashFlowStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {formatCurrency(insightsCashFlowStats.net)}
+                </p>
+                <p className="text-xs text-text-muted">
+                  In {formatCompactCurrency(insightsCashFlowStats.income)} • Out {formatCompactCurrency(insightsCashFlowStats.expense)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Spending Health Score */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Spending Health Score</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            {spendingHealthScore === null ? (
+              <p className="text-sm text-text-muted">Waiting on spending signals.</p>
+            ) : (
+              <>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-3xl font-bold text-primary">{spendingHealthScore}</p>
+                    <p className="text-xs text-text-muted">{spendingHealthLabel}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-text-muted">Budget use</p>
+                    <p className="text-sm font-semibold">{insightsBudgetPercent.toFixed(0)}%</p>
+                  </div>
+                </div>
+                <div className="w-full bg-white/10 rounded-full h-2">
+                  <div className="h-2 rounded-full bg-primary" style={{ width: `${spendingHealthScore}%` }} />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Top Money Drivers */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Top Money Drivers</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            {insightsSpendLoading ? (
+              <p className="text-sm text-text-muted">Loading category mix...</p>
+            ) : insightsTopCategories.length === 0 ? (
+              <p className="text-sm text-text-muted">No spending history yet.</p>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {insightsTopCategories.map((item) => (
+                  <div key={item.category} className="flex items-center justify-between">
+                    <span className="text-text-secondary">{item.category}</span>
+                    <span className="font-semibold">{formatCompactCurrency(item.amount)}</span>
+                  </div>
+                ))}
+                <p className="text-xs text-text-muted">Total spend {formatCompactCurrency(insightsTotalSpend)}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Upcoming Bills (Forecast) */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Upcoming Bills (Forecast)</h3>
+              <p className="text-xs text-text-muted">Next 30 days (fixed)</p>
+            </div>
+            <div className="space-y-2 text-sm text-text-muted">
+              <p>No upcoming bills detected yet.</p>
+              <p className="text-xs">Forecasting starts after 30+ days of history.</p>
+            </div>
+          </div>
+
+          {/* Savings Progress Snapshot */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Savings Progress Snapshot</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            {insightsSavingsRate === null ? (
+              <p className="text-sm text-text-muted">No savings rate yet.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-3xl font-bold text-primary">{formatPercent(insightsSavingsRate)}</p>
+                <p className="text-xs text-text-muted">Savings rate</p>
+                <p className="text-sm text-text-secondary">
+                  Net saved {formatCompactCurrency(insightsCashFlowStats.net)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Liquidity & Buffer */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Liquidity &amp; Buffer</h3>
+              <p className="text-xs text-text-muted">Based on last 30 days</p>
+            </div>
+            {liquidityMonths === null ? (
+              <p className="text-sm text-text-muted">Add expense history to estimate runway.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-3xl font-bold text-primary">{liquidityMonths.toFixed(1)} mo</p>
+                <p className="text-xs text-text-muted">Estimated cash runway</p>
+                <p className="text-sm text-text-secondary">
+                  Liquid balance {formatCompactCurrency(liquidBalance > 0 ? liquidBalance : assetsTotal)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Anomaly Watch */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Anomaly Watch</h3>
+              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            </div>
+            <div
+              className={`rounded-lg px-3 py-2 text-sm ${
+                anomalyStatus.tone === 'warning'
+                  ? 'bg-rose-500/10 text-rose-200'
+                  : anomalyStatus.tone === 'good'
+                  ? 'bg-emerald-500/10 text-emerald-200'
+                  : 'bg-white/5 text-text-secondary'
+              }`}
+            >
+              <p className="font-semibold">{anomalyStatus.title}</p>
+              <p className="text-xs text-text-muted">{anomalyStatus.detail}</p>
+            </div>
+          </div>
+
+          {/* Allocation Snapshot */}
+          <div className="card gap-4">
+            <div>
+              <h3 className="text-lg font-semibold">Investment Allocation Snapshot</h3>
+              <p className="text-xs text-text-muted">As of today</p>
+            </div>
+            {investmentAllocation.total <= 0 ? (
+              <p className="text-sm text-text-muted">Connect investment or crypto accounts to see allocation.</p>
+            ) : (
+              <div className="space-y-3 text-sm">
+                {investmentAllocation.rows.map((item) => (
+                  <div key={item.bucket} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-text-secondary capitalize">{item.bucket === 'cex' ? 'CEX' : item.bucket}</span>
+                      <span className="font-semibold">{formatPercent(item.percent)}</span>
+                    </div>
+                    <div className="w-full bg-white/10 rounded-full h-2">
+                      <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(item.percent * 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-text-muted">Invested balance {formatCompactCurrency(investmentAllocation.total)}</p>
+                <p className="text-xs text-text-secondary">Shows how your invested assets are split across account types.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Goals Tracker */}
+          <div className="card gap-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold">Goals Tracker</h3>
+                <p className="text-xs text-text-muted">As of today</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setGoalsModalOpen(true)}
+              >
+                Add Goal
+              </button>
+            </div>
+            {goals.length === 0 ? (
+              <div className="text-sm text-text-muted space-y-2">
+                <p>No goals yet. Create a goal to track your progress.</p>
+                <p className="text-xs text-text-secondary">Examples: emergency fund, debt payoff, or a savings target.</p>
+              </div>
+            ) : (
+              <div className="space-y-4 text-sm">
+                {goals.map((goal) => {
+                  const progress = goal.targetAmount > 0 ? Math.min(1, goal.currentAmount / goal.targetAmount) : 0;
+                  return (
+                    <div key={goal.id} className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold">{goal.title}</p>
+                          <p className="text-xs text-text-muted">{GOAL_TYPE_LABELS[goal.type]}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="text-xs text-text-muted hover:text-danger"
+                          onClick={() => handleRemoveGoal(goal.id)}
+                        >
+                          Remove
+                        </button>
                       </div>
-                    </td>
-                    <td className="py-3">
-                      <select
-                        className="bg-transparent border-none text-sm text-primary font-medium focus:ring-0 cursor-pointer"
-                        value={txn.category || "Uncategorized"}
-                        onChange={(e) => handleCategoryChange(txn.id, e.target.value)}
-                      >
-                        <option value="Uncategorized" disabled>Select...</option>
-                        {CATEGORIES.map(c => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </td>
-                    {shouldShowResponsiblePerson && (
-                      <td className="py-3 text-sm text-text-muted">
-                        {txn.userDisplayName || '—'}
-                      </td>
-                    )}
-                    <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {formatCurrency(txn.amount)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-6 flex justify-center">
-          <div className="flex items-center gap-3">
-            <label className="text-xs text-text-muted" htmlFor="transactions-page-size">Rows</label>
-            <select
-              id="transactions-page-size"
-              className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary"
-              value={transactionsPageSize}
-              onChange={(e) => setTransactionsPageSize(Number(e.target.value))}
-            >
-              {[10, 25, 50, 100].map((size) => (
-                <option key={size} value={size}>{size}</option>
-              ))}
-            </select>
-            <button
-              className="btn btn-sm btn-outline"
-              onClick={() => setTransactionsPage((p) => Math.max(1, p - 1))}
-              disabled={!hasPrevTransactionsPage}
-            >
-              Prev
-            </button>
-            <button
-              className="btn btn-sm btn-outline"
-              onClick={() => setTransactionsPage((p) => Math.min(totalTransactionPages, p + 1))}
-              disabled={!hasNextTransactionsPage}
-            >
-              Next
-            </button>
+                      <div className="flex items-center justify-between text-xs text-text-secondary">
+                        <span>{formatCompactCurrency(goal.currentAmount)} / {formatCompactCurrency(goal.targetAmount)}</span>
+                        <span>{formatPercent(progress)}</span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-2">
+                        <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(progress * 100)}%` }} />
+                      </div>
+                      {goal.targetDate && (
+                        <p className="text-xs text-text-muted">Target date: {new Date(goal.targetDate).toLocaleDateString()}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      <Modal
+        open={goalsModalOpen}
+        onClose={() => setGoalsModalOpen(false)}
+        title="Add a Goal"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button className="btn btn-ghost text-sm" onClick={() => setGoalsModalOpen(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary text-sm" onClick={handleAddGoal}>
+              Save Goal
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Goal Type</label>
+            <select className="form-select w-full" value={goalType} onChange={(e) => setGoalType(e.target.value as GoalType)}>
+              {Object.entries(GOAL_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Goal Title</label>
+            <input
+              type="text"
+              className="form-input w-full"
+              placeholder="e.g. Emergency Fund"
+              value={goalTitle}
+              onChange={(e) => setGoalTitle(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Target Amount</label>
+              <input
+                type="number"
+                min="0"
+                className="form-input w-full"
+                placeholder="0.00"
+                value={goalTarget}
+                onChange={(e) => setGoalTarget(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Current Amount (optional)</label>
+              <input
+                type="number"
+                min="0"
+                className="form-input w-full"
+                placeholder="0.00"
+                value={goalCurrent}
+                onChange={(e) => setGoalCurrent(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1">Target Date (optional)</label>
+            <input
+              type="date"
+              className="form-input w-full"
+              value={goalTargetDate}
+              onChange={(e) => setGoalTargetDate(e.target.value)}
+            />
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={inviteModalOpen}

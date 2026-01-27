@@ -43,6 +43,8 @@ export interface Account {
   currency?: string | null
   assignedMemberUid?: string | null
   customLabel?: string | null
+  plaidType?: string | null
+  plaidSubtype?: string | null
   syncStatus?: string | null
   createdAt?: string
   updatedAt?: string
