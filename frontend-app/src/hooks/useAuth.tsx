@@ -170,12 +170,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async (email: string, password: string) => {
       setError(null)
       setLoading(true)
-      try {
-        await loginWithFirebase(email, password)
-        await refetchProfile()
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Unable to log in right now.'
+    try {
+      await loginWithFirebase(email, password)
+      await refetchProfile()
+      const uid = auth.currentUser?.uid
+      const welcomeKey = uid ? `jualuma_welcome_back_${uid}` : 'jualuma_welcome_back'
+      sessionStorage.setItem(welcomeKey, 'true')
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Unable to log in right now.'
         setError(message)
         throw err
       } finally {

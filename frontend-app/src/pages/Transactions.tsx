@@ -56,6 +56,9 @@ export const Transactions = () => {
   const notesHoverTimeout = useRef<number | null>(null)
   const hasWeb3Accounts = useMemo(() => accounts.some((account) => account.accountType === 'web3'), [accounts])
   const hasCexAccounts = useMemo(() => accounts.some((account) => account.accountType === 'cex'), [accounts])
+  const accountLookup = useMemo(() => {
+    return new Map(accounts.map((account) => [account.id, account]))
+  }, [accounts])
 
   // Build exclude account types based on include flags
   const excludeAccountTypes = useMemo(() => {
@@ -398,6 +401,7 @@ export const Transactions = () => {
               <tr className="text-left text-text-muted border-b border-white/10">
                 <th className="pb-3">Date</th>
                 <th className="pb-3">Description</th>
+                <th className="pb-3">Account</th>
                 <th className="pb-3">Category</th>
                 <th className="pb-3">Amount</th>
                 <th className="pb-3">Actions</th>
@@ -406,11 +410,11 @@ export const Transactions = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-text-muted italic">Loading...</td>
+                  <td colSpan={6} className="text-center py-6 text-text-muted italic">Loading...</td>
                 </tr>
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-text-muted italic">No transactions found</td>
+                  <td colSpan={6} className="text-center py-6 text-text-muted italic">No transactions found</td>
                 </tr>
               ) : (
                 transactions.map(txn => (
@@ -444,6 +448,11 @@ export const Transactions = () => {
                           </div>
                         )}
                       </div>
+                    </td>
+                    <td className="py-3 text-sm text-text-secondary">
+                      {accountLookup.get(txn.accountId)?.customLabel ||
+                        accountLookup.get(txn.accountId)?.accountName ||
+                        '—'}
                     </td>
                     <td className="py-3">
                       <select

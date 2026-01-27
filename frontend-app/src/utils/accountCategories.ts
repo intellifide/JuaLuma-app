@@ -7,6 +7,7 @@ export type PrimaryAccountCategory =
   | 'mortgage'
   | 'investment'
   | 'crypto'
+  | 'real_estate'
   | 'other'
 
 export type InvestmentBucket = 'traditional' | 'cex' | 'web3' | 'other'
@@ -18,6 +19,7 @@ const PRIMARY_LABELS: Record<PrimaryAccountCategory, string> = {
   mortgage: 'Mortgage',
   investment: 'Investments',
   crypto: 'Crypto',
+  real_estate: 'Real Estate',
   other: 'Other',
 }
 
@@ -43,10 +45,10 @@ const inferCategoryFromSubtype = (subtype: string): PrimaryAccountCategory | nul
   if (value.includes('mortgage')) return 'mortgage'
   if (value.includes('credit') || value.includes('charge') || value.includes('card')) return 'credit'
   if (value.includes('student') || value.includes('auto') || value.includes('loan') || value.includes('personal')) return 'loan'
+  if (value.includes('cd') || value.includes('certificate') || value.includes('time_deposit')) return 'investment'
   if (
     value.includes('checking') ||
     value.includes('savings') ||
-    value.includes('cd') ||
     value.includes('money_market') ||
     value.includes('cash_management') ||
     value.includes('prepaid')
@@ -61,7 +63,9 @@ const inferCategoryFromSubtype = (subtype: string): PrimaryAccountCategory | nul
     value.includes('mutual') ||
     value.includes('custodial') ||
     value.includes('trust') ||
-    value.includes('education')
+    value.includes('education') ||
+    value.includes('hsa') ||
+    value.includes('health_savings')
   ) {
     return 'investment'
   }
@@ -72,6 +76,8 @@ const inferCategoryFromName = (name?: string | null): PrimaryAccountCategory | n
   if (!name) return null
   const value = name.toLowerCase()
   if (value.includes('mortgage')) return 'mortgage'
+  if (value.includes('hsa') || value.includes('health savings')) return 'investment'
+  if (value.includes('cd') || value.includes('certificate of deposit')) return 'investment'
   if (value.includes('credit card') || value.includes('card')) return 'credit'
   if (value.includes('student loan') || value.includes('auto loan') || value.includes('loan')) return 'loan'
   if (value.includes('checking') || value.includes('savings') || value.includes('cash')) return 'cash'
@@ -83,7 +89,13 @@ const getPlaidCategory = (account: Account): PrimaryAccountCategory => {
   const plaidType = normalize(account.plaidType)
   const plaidSubtype = normalize(account.plaidSubtype)
 
-  if (plaidType === 'depository') return 'cash'
+  if (plaidType === 'depository') {
+    const subtypeCategory = inferCategoryFromSubtype(plaidSubtype)
+    if (subtypeCategory === 'investment') return 'investment'
+    const nameCategory = inferCategoryFromName(account.accountName)
+    if (nameCategory === 'investment') return 'investment'
+    return 'cash'
+  }
   if (plaidType === 'investment') return 'investment'
   if (plaidType === 'credit') return 'credit'
   if (plaidType === 'other') return 'other'
@@ -108,7 +120,10 @@ const getCryptoDetail = (account: Account) => {
 export const getAccountPrimaryCategory = (account: Account) => {
   let category: PrimaryAccountCategory = 'other'
 
-  if (account.accountType === 'web3' || account.accountType === 'cex') {
+  const override = normalize(account.categoryOverride)
+  if (override && override in PRIMARY_LABELS) {
+    category = override as PrimaryAccountCategory
+  } else if (account.accountType === 'web3' || account.accountType === 'cex') {
     category = 'crypto'
   } else if (account.accountType === 'investment') {
     category = 'investment'
@@ -118,16 +133,23 @@ export const getAccountPrimaryCategory = (account: Account) => {
     category = getPlaidCategory(account)
   }
 
+  const manualBalanceType = account.accountType === 'manual' ? account.balanceType : null
+
   return {
     key: category,
     label: PRIMARY_LABELS[category],
-    isLiability: LIABILITY_CATEGORIES.has(category),
+    isLiability: manualBalanceType ? manualBalanceType === 'liability' : LIABILITY_CATEGORIES.has(category),
   }
 }
 
 export const getAccountCategoryDetail = (account: Account) => {
   if (account.accountType === 'web3' || account.accountType === 'cex') {
     return getCryptoDetail(account)
+  }
+
+  const override = normalize(account.categoryOverride)
+  if (override && override in PRIMARY_LABELS) {
+    return PRIMARY_LABELS[override as PrimaryAccountCategory]
   }
 
   if (account.accountType === 'manual') {
@@ -159,6 +181,11 @@ export const getInvestmentBucket = (account: Account): InvestmentBucket | null =
   if (account.accountType === 'cex') return 'cex'
   if (account.accountType === 'web3') return 'web3'
   if (account.accountType === 'investment') return 'traditional'
+
+  const override = normalize(account.categoryOverride)
+  if (override && override in PRIMARY_LABELS) {
+    return override === 'investment' ? 'other' : null
+  }
 
   if (account.accountType === 'traditional') {
     const plaidType = normalize(account.plaidType)

@@ -39,6 +39,8 @@ export interface Account {
   provider?: AccountProvider | null
   accountName?: string | null
   accountNumberMasked?: string | null
+  categoryOverride?: string | null
+  balanceType?: 'asset' | 'liability' | null
   balance?: number | null
   currency?: string | null
   assignedMemberUid?: string | null
@@ -67,6 +69,19 @@ export interface Transaction {
   createdAt?: string
   updatedAt?: string
   userDisplayName?: string | null  // Display name of transaction owner (Ultimate tier/household feature)
+}
+
+export interface ManualAsset {
+  id: string
+  uid: string
+  assetType: string
+  balanceType: 'asset' | 'liability'
+  name: string
+  value: number
+  purchaseDate?: string | null
+  notes?: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface AISettings {

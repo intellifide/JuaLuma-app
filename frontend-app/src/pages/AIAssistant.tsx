@@ -24,6 +24,13 @@ interface Thread {
   timestamp: string;
   preview: string;
   messages: Message[];
+  projectId?: string | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 
@@ -37,6 +44,7 @@ export default function AIAssistant() {
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
@@ -45,6 +53,7 @@ export default function AIAssistant() {
   const storageKey = user?.uid ? `jualuma_ai_thread_${user.uid}` : 'jualuma_ai_thread_anon';
   const threadStorageKey = user?.uid ? `jualuma_ai_current_thread_${user.uid}` : 'jualuma_ai_current_thread_anon';
   const threadsStorageKey = user?.uid ? `jualuma_ai_threads_${user.uid}` : 'jualuma_ai_threads_anon';
+  const projectsStorageKey = user?.uid ? `jualuma_ai_projects_${user.uid}` : 'jualuma_ai_projects_anon';
 
   // Real documents state
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -70,6 +79,7 @@ export default function AIAssistant() {
     if (!user?.uid) {
       // Clear state if no user
       setThreads([]);
+      setProjects([]);
       setMessages([]);
       setCurrentThreadId(null);
       setHasFetchedHistory(false);
@@ -87,6 +97,16 @@ export default function AIAssistant() {
       }
     }
 
+    const savedProjects = localStorage.getItem(projectsStorageKey);
+    if (savedProjects) {
+      try {
+        const parsedProjects = JSON.parse(savedProjects);
+        setProjects(parsedProjects);
+      } catch (e) {
+        console.error("Failed to parse saved projects:", e);
+      }
+    }
+
     // Restore current thread if exists
     const savedThreadId = localStorage.getItem(threadStorageKey);
     if (savedThreadId) {
@@ -101,7 +121,7 @@ export default function AIAssistant() {
         }
       }
     }
-  }, [user?.uid, threadsStorageKey, threadStorageKey, storageKey]);
+  }, [user?.uid, threadsStorageKey, threadStorageKey, storageKey, projectsStorageKey]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,6 +175,39 @@ export default function AIAssistant() {
     // Clear current messages and start fresh
     // Don't save the thread yet - only save when user sends first message
     setMessages([]);
+  };
+
+  const handleCreateProject = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const newProject: Project = {
+      id: Date.now().toString(),
+      name: trimmed,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newProject, ...projects];
+    setProjects(updated);
+    localStorage.setItem(projectsStorageKey, JSON.stringify(updated));
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    const updatedProjects = projects.filter((project) => project.id !== projectId);
+    setProjects(updatedProjects);
+    localStorage.setItem(projectsStorageKey, JSON.stringify(updatedProjects));
+
+    const updatedThreads = threads.map((thread) =>
+      thread.projectId === projectId ? { ...thread, projectId: null } : thread,
+    );
+    setThreads(updatedThreads);
+    localStorage.setItem(threadsStorageKey, JSON.stringify(updatedThreads));
+  };
+
+  const handleAssignThreadToProject = (threadId: string, projectId: string | null) => {
+    const updatedThreads = threads.map((thread) =>
+      thread.id === threadId ? { ...thread, projectId } : thread,
+    );
+    setThreads(updatedThreads);
+    localStorage.setItem(threadsStorageKey, JSON.stringify(updatedThreads));
   };
 
   const handleSelectThread = (threadId: string) => {
@@ -259,7 +312,8 @@ export default function AIAssistant() {
             title: text.slice(0, 50) + (text.length > 50 ? '...' : ''),
             timestamp: new Date().toISOString(),
             preview: response.response.slice(0, 60) + (response.response.length > 60 ? '...' : ''),
-            messages: updated
+            messages: updated,
+            projectId: null,
           };
           updatedThreads = [newThread, ...updatedThreads];
         }
@@ -334,7 +388,7 @@ export default function AIAssistant() {
   const quotaExceeded = quota ? quota.used >= quota.limit : false;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-bg-primary">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-bg-primary">
       <AIPrivacyModal
         isOpen={showPrivacyModal}
         onAccept={handleAcceptPrivacy}
@@ -354,10 +408,7 @@ export default function AIAssistant() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-xl font-semibold m-0 flex items-center gap-2">
-              <span className="text-2xl">✨</span>
-              <span>AI Assistant</span>
-            </h1>
+            <h1 className="text-xl font-semibold m-0">AI Assistant</h1>
           </div>
           <QuotaDisplay
             used={quota?.used ?? 0}
@@ -369,17 +420,21 @@ export default function AIAssistant() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar */}
         {sidebarOpen && (
           <aside className="w-80 flex-shrink-0">
             <AISidebar
               documents={documents}
+              projects={projects}
               threads={threads}
               currentThreadId={currentThreadId}
               onNewChat={handleNewChat}
               onSelectThread={handleSelectThread}
               onDeleteThread={handleDeleteThread}
+              onCreateProject={handleCreateProject}
+              onDeleteProject={handleDeleteProject}
+              onAssignThreadToProject={handleAssignThreadToProject}
               onUploadDoc={handleUploadDoc}
               onDownloadDoc={handleDownloadDoc}
             />
@@ -387,7 +442,7 @@ export default function AIAssistant() {
         )}
 
         {/* Chat Area */}
-        <main className="flex-1 flex flex-col overflow-hidden relative">
+        <main className="flex-1 flex flex-col overflow-hidden relative min-h-0">
           {!privacyAccepted && (
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10">
               <div className="bg-bg-secondary p-8 rounded-lg text-center max-w-[400px] border border-white/10">
@@ -405,10 +460,12 @@ export default function AIAssistant() {
             aria-live="polite"
             aria-label="Chat messages"
           >
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6 flex flex-col">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
-                  <div className="text-6xl mb-6">✨</div>
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-lg font-semibold mb-6">
+                    AI
+                  </div>
                   <h2 className="text-3xl font-semibold mb-4">Hello! I'm your AI Assistant</h2>
                   <p className="text-text-secondary mb-8 max-w-md">
                     I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.

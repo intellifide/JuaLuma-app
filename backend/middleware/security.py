@@ -92,7 +92,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def _check_limit(self, request: Request) -> JSONResponse | None:
         now = time.time()
-        client_ip = request.client.host if request.client else "unknown"
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else "unknown"
 
         with self._lock:
             window = self._attempts.setdefault(client_ip, deque())

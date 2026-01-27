@@ -6,6 +6,7 @@ import { RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useBudget, Budget } from '../hooks/useBudget';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
+import { useManualAssets } from '../hooks/useManualAssets';
 import { DataPoint } from '../services/analytics';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
@@ -13,6 +14,7 @@ import { ExpandableChartModal } from '../components/ExpandableChartModal';
 import Switch from '../components/ui/Switch';
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
 import { loadTransactionPreferences } from '../utils/transactionPreferences';
+import { getManualNetWorthAtDate } from '../utils/manualAssets';
 
 // Helpers for Date Management
 // Format a local date to YYYY-MM-DD for API params.
@@ -480,6 +482,15 @@ const BudgetTool = ({
 
 const CATEGORIES = TRANSACTION_CATEGORIES;
 
+const INSIGHTS_OPTIONS = [
+  { value: '1w', label: '1W' },
+  { value: '1m', label: '1M' },
+  { value: '3m', label: '3M' },
+  { value: 'ytd', label: 'YTD' },
+  { value: '1y', label: '1Y' },
+  { value: 'all', label: 'ALL' },
+];
+
 export default function FinancialAnalysis() {
   const { profile } = useAuth();
   const toast = useToast();
@@ -550,6 +561,7 @@ export default function FinancialAnalysis() {
   }), [excludeAccountTypes, transactionPreferences.category, isManualFilterValue])
 
   const { budgets, saveBudget, resetBudgets } = useBudget(dashboardScope);
+  const { assets: manualAssets } = useManualAssets();
 
   // Keep the dashboard scope aligned with the user's household access.
   useEffect(() => {
@@ -576,8 +588,12 @@ export default function FinancialAnalysis() {
   const cashFlowPointWidth = cfInterval === 'week' ? 30 : 42;
   const netWorthLabelMode = timeframe === '1w' || timeframe === '1m' ? 'day' : 'monthYear';
   const netWorthSeries = useMemo(
-    () => sortDataPointsDesc(nwData?.data || []),
-    [nwData?.data],
+    () =>
+      sortDataPointsDesc(nwData?.data || []).map((point) => ({
+        ...point,
+        value: point.value + getManualNetWorthAtDate(manualAssets, point.date),
+      })),
+    [nwData?.data, manualAssets],
   );
   const cashFlowIncomeSeries = useMemo(
     () => sortDataPointsDesc(cfData?.income || []),
@@ -588,8 +604,12 @@ export default function FinancialAnalysis() {
     [cfData?.expenses],
   );
   const netWorthFullSeries = useMemo(
-    () => sortDataPointsDesc(nwFullData?.data || []),
-    [nwFullData?.data],
+    () =>
+      sortDataPointsDesc(nwFullData?.data || []).map((point) => ({
+        ...point,
+        value: point.value + getManualNetWorthAtDate(manualAssets, point.date),
+      })),
+    [nwFullData?.data, manualAssets],
   );
   const cashFlowFullIncomeSeries = useMemo(
     () => sortDataPointsDesc(cfFullData?.income || []),
@@ -704,15 +724,15 @@ export default function FinancialAnalysis() {
       <div className="glass-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="timeframe-controls">
           <div className="section-timeframe-wrapper">
-            <span className="section-timeframe-label">View Period:</span>
-            <div className="timeframe-selector" role="group" aria-label="Select time period">
-              {['1w', '1m', '3m', '6m', '1y', 'ytd', 'all'].map((tf) => (
+            <span className="section-timeframe-label">Insights Period:</span>
+            <div className="timeframe-selector" role="group" aria-label="Select insights period">
+              {INSIGHTS_OPTIONS.map((option) => (
                 <button
-                  key={tf}
-                  className={`timeframe-btn ${timeframe === tf ? 'active' : ''}`}
-                  onClick={() => setTimeframe(tf)}
+                  key={option.value}
+                  className={`timeframe-btn ${timeframe === option.value ? 'active' : ''}`}
+                  onClick={() => setTimeframe(option.value)}
                 >
-                  {tf.toUpperCase()}
+                  {option.label}
                 </button>
               ))}
             </div>

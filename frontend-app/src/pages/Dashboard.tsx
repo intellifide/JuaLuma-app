@@ -4,16 +4,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
+import { useManualAssets } from '../hooks/useManualAssets';
 import { useBudget } from '../hooks/useBudget';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
+import { InfoPopover } from '../components/ui/InfoPopover';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 import { formatDateParam, formatTimeframeLabel, getTransactionDateRange } from '../utils/dateRanges';
 import { loadDashboardPreferences, saveDashboardPreferences, type InsightsPeriod } from '../utils/dashboardPreferences';
 import { getAccountPrimaryCategory, getCategoryLabel, getInvestmentBucket, type PrimaryAccountCategory } from '../utils/accountCategories';
+import { getManualAssetTotals, getManualNetWorthAtDate } from '../utils/manualAssets';
 import { loadGoals, saveGoals, type Goal, type GoalType } from '../utils/goalsStorage';
 
 // Removed static BUDGET_CAP
@@ -95,6 +98,7 @@ export default function Dashboard() {
   const { accounts } = useAccounts({
     filters: { scope: dashboardScope }
   });
+  const { assets: manualAssets } = useManualAssets();
   const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
   const isHouseholdAdmin = profile?.household_member?.role === 'admin';
   const canViewHousehold = Boolean(profile?.household_member?.can_view_household);
@@ -281,6 +285,8 @@ export default function Dashboard() {
     return { income, expense, net: income - expense };
   }, [insightsCashFlowData]);
 
+  const manualTotals = useMemo(() => getManualAssetTotals(manualAssets), [manualAssets]);
+
   const { assetsTotal, liabilitiesTotal, netWorthTotal, liquidBalance } = useMemo(() => {
     let assets = 0;
     let liabilities = 0;
@@ -300,12 +306,12 @@ export default function Dashboard() {
     });
 
     return {
-      assetsTotal: assets,
-      liabilitiesTotal: liabilities,
-      netWorthTotal: assets - liabilities,
+      assetsTotal: assets + manualTotals.assets,
+      liabilitiesTotal: liabilities + manualTotals.liabilities,
+      netWorthTotal: assets + manualTotals.assets - (liabilities + manualTotals.liabilities),
       liquidBalance: liquid,
     };
-  }, [accounts]);
+  }, [accounts, manualTotals]);
 
   const { budgetSpent: insightsBudgetSpent, totalBudget: insightsTotalBudget } = useMemo(
     () => calculateBudgetProgress(insightsSpendData, budgets),
@@ -436,7 +442,13 @@ export default function Dashboard() {
     return { total, rows };
   }, [accounts]);
 
-  const netWorthSeries = insightsNetWorthData?.data ?? [];
+  const netWorthSeries = useMemo(() => {
+    if (!insightsNetWorthData?.data) return [];
+    return insightsNetWorthData.data.map((point) => ({
+      ...point,
+      value: point.value + getManualNetWorthAtDate(manualAssets, point.date),
+    }));
+  }, [insightsNetWorthData?.data, manualAssets]);
   const netWorthCurrent = netWorthSeries.length
     ? netWorthSeries[netWorthSeries.length - 1].value
     : netWorthTotal;
@@ -454,13 +466,6 @@ export default function Dashboard() {
 
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
-
-      {/* Header */}
-      <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
-        </div>
-      </div>
 
       {/* Insights Period Controls */}
       <div className="glass-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -537,9 +542,14 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
           {/* Net Worth */}
           <div className="card gap-3">
-            <div>
-              <h3 className="text-sm text-text-muted">Net Worth</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm text-text-muted">Net Worth</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Net worth calculation">
+                Assets minus liabilities for connected accounts and manual holdings in the selected period.
+              </InfoPopover>
             </div>
             <p id="net-worth-value" className="text-3xl font-bold text-primary">
               {insightsNetWorthLoading ? '...' : formatCurrency(netWorthCurrent)}
@@ -556,9 +566,14 @@ export default function Dashboard() {
 
           {/* Cash Flow */}
           <div className="card gap-3">
-            <div>
-              <h3 className="text-sm text-text-muted">Cash Flow</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm text-text-muted">Cash Flow</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Cash flow calculation">
+                Inflow minus outflow during the selected period, based on categorized transactions.
+              </InfoPopover>
             </div>
             <p id="cashflow-value" className={`text-3xl font-bold ${insightsCashFlowStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {insightsCashFlowLoading ? '...' : formatCurrency(insightsCashFlowStats.net)}
@@ -570,9 +585,14 @@ export default function Dashboard() {
 
           {/* Budget Status */}
           <div className="card gap-3">
-            <div>
-              <h3 className="text-sm text-text-muted">Budget Status</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm text-text-muted">Budget Status</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Budget status calculation">
+                Percent of active budget targets spent in the selected period.
+              </InfoPopover>
             </div>
             {insightsTotalBudget > 0 ? (
               <>
@@ -591,9 +611,14 @@ export default function Dashboard() {
 
           {/* Linked Accounts */}
           <div className="card gap-3">
-            <div>
-              <h3 className="text-sm text-text-muted">Linked Accounts</h3>
-              <p className="text-xs text-text-muted">As of today</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm text-text-muted">Linked Accounts</h3>
+                <p className="text-xs text-text-muted">As of today</p>
+              </div>
+              <InfoPopover label="Linked accounts summary">
+                Total connected accounts and their primary categories.
+              </InfoPopover>
             </div>
             <p className="text-3xl font-bold text-royal-purple">{accounts.length}</p>
             {linkedAccountCategories.length === 0 ? (

@@ -30,6 +30,17 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
 
 _ALLOWED_ACCOUNT_TYPES = {"traditional", "investment", "web3", "cex", "manual"}
+_ALLOWED_CATEGORY_OVERRIDES = {
+    "cash",
+    "credit",
+    "loan",
+    "mortgage",
+    "investment",
+    "crypto",
+    "real_estate",
+    "other",
+}
+_ALLOWED_BALANCE_TYPES = {"asset", "liability"}
 _CAIP2_PATTERN = re.compile(r"^[a-z0-9-]{2,32}:[A-Za-z0-9.-]{1,64}$")
 _EVM_ADDRESS_PATTERN = re.compile(r"^0x[a-fA-F0-9]{40}$")
 _MAX_ADDRESS_LENGTH = 256
@@ -129,6 +140,8 @@ class AccountCreate(BaseModel):
         default=None, description="UID of household member"
     )
     custom_label: str | None = Field(default=None, max_length=128)
+    category_override: str | None = Field(default=None, max_length=32)
+    balance_type: str | None = Field(default=None, max_length=16)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -150,6 +163,28 @@ class AccountCreate(BaseModel):
             raise ValueError(
                 f"account_type must be one of {sorted(_ALLOWED_ACCOUNT_TYPES)}"
             )
+        return normalized
+
+    @field_validator("category_override")
+    @classmethod
+    def validate_category_override(cls, value: str | None) -> str | None:
+        if not value:
+            return value
+        normalized = value.lower()
+        if normalized not in _ALLOWED_CATEGORY_OVERRIDES:
+            raise ValueError(
+                f"category_override must be one of {sorted(_ALLOWED_CATEGORY_OVERRIDES)}"
+            )
+        return normalized
+
+    @field_validator("balance_type")
+    @classmethod
+    def validate_balance_type(cls, value: str | None) -> str | None:
+        if not value:
+            return value
+        normalized = value.lower()
+        if normalized not in _ALLOWED_BALANCE_TYPES:
+            raise ValueError("balance_type must be 'asset' or 'liability'")
         return normalized
 
 
@@ -199,6 +234,8 @@ class AccountUpdate(BaseModel):
     balance: Decimal | None = Field(default=None, ge=0)
     assigned_member_uid: str | None = Field(default=None, description="UID of household member")
     custom_label: str | None = Field(default=None, max_length=128)
+    category_override: str | None = Field(default=None, max_length=32)
+    balance_type: str | None = Field(default=None, max_length=16)
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "AccountUpdate":
@@ -207,9 +244,33 @@ class AccountUpdate(BaseModel):
             and self.balance is None
             and self.assigned_member_uid is None
             and self.custom_label is None
+            and self.category_override is None
+            and self.balance_type is None
         ):
             raise ValueError("Provide at least one field to update.")
         return self
+
+    @field_validator("category_override")
+    @classmethod
+    def validate_category_override(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        normalized = value.lower()
+        if normalized not in _ALLOWED_CATEGORY_OVERRIDES:
+            raise ValueError(
+                f"category_override must be one of {sorted(_ALLOWED_CATEGORY_OVERRIDES)}"
+            )
+        return normalized
+
+    @field_validator("balance_type")
+    @classmethod
+    def validate_balance_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        normalized = value.lower()
+        if normalized not in _ALLOWED_BALANCE_TYPES:
+            raise ValueError("balance_type must be 'asset' or 'liability'")
+        return normalized
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -257,6 +318,8 @@ class AccountResponse(BaseModel):
     account_number_masked: str | None = None
     plaid_type: str | None = None
     plaid_subtype: str | None = None
+    category_override: str | None = None
+    balance_type: str | None = None
     balance: Decimal | None = None
     currency: str | None = None
     assigned_member_uid: str | None = None
@@ -367,6 +430,8 @@ def _serialize_account(
         account_number_masked=account.account_number_masked,
         plaid_type=account.plaid_type,
         plaid_subtype=account.plaid_subtype,
+        category_override=account.category_override,
+        balance_type=account.balance_type,
         balance=response_balance,
         currency=account.currency,
         assigned_member_uid=account.assigned_member_uid,
@@ -1311,7 +1376,7 @@ def create_manual_account(
     db: Session = Depends(get_db),
 ) -> AccountResponse:
     """
-    Create a manual account for asset tracking (house, car, collectibles).
+    Create a manual account for offline balances or custom asset/liability tracking.
     """
     enforce_account_limit(current_user, db, "manual")
 
@@ -1330,6 +1395,8 @@ def create_manual_account(
         account_name=payload.account_name,
         assigned_member_uid=payload.assigned_member_uid,
         custom_label=payload.custom_label,
+        category_override=payload.category_override,
+        balance_type=payload.balance_type or "asset",
         currency=current_user.currency_pref or "USD",
     )
 
@@ -1375,6 +1442,12 @@ def update_account(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Balance updates are only allowed for manually tracked accounts.",
+        )
+
+    if "balance_type" in update_data and account.account_type != "manual":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Balance type updates are only allowed for manual accounts.",
         )
 
     if "assigned_member_uid" in update_data:

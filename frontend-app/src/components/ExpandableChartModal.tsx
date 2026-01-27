@@ -32,9 +32,6 @@ const formatMonthYearLabel = (value: Date) => {
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
 
-const formatCompactCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(value)
-
 export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
   isOpen,
   onClose,
@@ -54,9 +51,14 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     if (type !== 'line' || !data || data.length === 0) return null
     const sortedData = [...data].sort((a, b) => b.date.localeCompare(a.date))
 
-    const width = 1400
-    const height = 700
-    const padding = { top: 60, right: 80, bottom: 80, left: 100 }
+    const height = 520
+    const padding = { top: 40, right: 40, bottom: 60, left: 20 }
+    const minPointSpacing = 64
+    const minWidth = 900
+    const width = Math.max(
+      minWidth,
+      padding.left + padding.right + minPointSpacing * Math.max(sortedData.length - 1, 1),
+    )
     const drawWidth = width - padding.left - padding.right
     const drawHeight = height - padding.top - padding.bottom
 
@@ -65,8 +67,9 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const max = Math.max(...values) * 1.05
     const range = max - min || 1
 
+    const span = Math.max(sortedData.length - 1, 1)
     const points = sortedData.map((d, i) => {
-      const x = padding.left + (i / (sortedData.length - 1)) * drawWidth
+      const x = padding.left + (i / span) * drawWidth
       const y = padding.top + drawHeight - ((d.value - min) / range) * drawHeight
       return { x, y, value: d.value, date: d.date }
     })
@@ -85,10 +88,14 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     })
 
     // More X-axis labels based on data length
-    const numXLabels = Math.min(Math.max(12, Math.floor(sortedData.length / 10)), 24)
-    const xLabelIndices = Array.from({ length: numXLabels }, (_, i) =>
-      Math.floor((i * (sortedData.length - 1)) / (numXLabels - 1))
-    ).filter(i => i < sortedData.length && sortedData[i])
+    const desiredLabels = 12
+    const step = Math.max(1, Math.floor(sortedData.length / desiredLabels))
+    const xLabelIndices = Array.from(
+      new Set([
+        ...sortedData.map((_, i) => i).filter((index) => index % step === 0),
+        sortedData.length - 1,
+      ]),
+    ).filter((index) => index >= 0 && index < sortedData.length)
     
     const xLabels = xLabelIndices.map(i => {
       const dateValue = parseDateUTC(sortedData[i].date)
@@ -98,7 +105,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
         : dateValue.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
       return {
         label,
-        x: padding.left + (i / (sortedData.length - 1)) * drawWidth,
+        x: padding.left + (i / span) * drawWidth,
       }
     })
 
@@ -109,12 +116,6 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
   const barChartData = useMemo(() => {
     if (type !== 'bar' || !incomeData || !expensesData || incomeData.length === 0 || expensesData.length === 0) return null
 
-    const width = 1400
-    const height = 700
-    const padding = { top: 60, right: 80, bottom: 80, left: 100 }
-    const drawWidth = width - padding.left - padding.right
-    const drawHeight = height - padding.top - padding.bottom
-
     // Normalize cash flow values so bar heights are always positive.
     const normalizedIncome = [...incomeData]
       .sort((a, b) => b.date.localeCompare(a.date))
@@ -122,10 +123,23 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const normalizedExpenses = [...expensesData]
       .sort((a, b) => b.date.localeCompare(a.date))
       .map(d => ({ ...d, value: Math.abs(d.value) }))
+
+    const height = 520
+    const padding = { top: 40, right: 40, bottom: 60, left: 20 }
+    const minGroupSpacing = 72
+    const minWidth = 900
+    const seriesLength = Math.max(normalizedIncome.length, normalizedExpenses.length, 1)
+    const width = Math.max(
+      minWidth,
+      padding.left + padding.right + minGroupSpacing * seriesLength,
+    )
+    const drawWidth = width - padding.left - padding.right
+    const drawHeight = height - padding.top - padding.bottom
     const allValues = [...normalizedIncome.map(d => d.value), ...normalizedExpenses.map(d => d.value)]
     const max = Math.max(1, ...allValues) * 1.1
-    const barWidth = Math.max(12, Math.min(40, drawWidth / normalizedIncome.length / 2.5))
-    const groupWidth = drawWidth / normalizedIncome.length
+    const groupWidth = drawWidth / seriesLength
+    const barWidth = Math.max(12, Math.min(32, groupWidth * 0.35))
+    const barGap = Math.min(8, groupWidth * 0.12)
 
     const incomeBars = normalizedIncome.map((d, i) => {
       const x = padding.left + i * groupWidth
@@ -135,7 +149,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     })
 
     const expensesBars = normalizedExpenses.map((d, i) => {
-      const x = padding.left + i * groupWidth + barWidth + 5
+      const x = padding.left + i * groupWidth + barWidth + barGap
       const barHeight = (d.value / max) * drawHeight
       const y = padding.top + drawHeight - barHeight
       return { x, y, width: barWidth, height: barHeight, value: d.value, date: d.date }
@@ -153,11 +167,14 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
 
     // X-axis labels
     // Match label count to available periods to avoid repeated month labels.
-    const numXLabels = Math.min(12, Math.max(1, normalizedIncome.length))
-    const labelDivisor = Math.max(1, numXLabels - 1)
-    const xLabelIndices = Array.from({ length: numXLabels }, (_, i) =>
-      Math.floor((i * (normalizedIncome.length - 1)) / labelDivisor)
-    ).filter(i => i < normalizedIncome.length && normalizedIncome[i])
+    const desiredLabels = 12
+    const step = Math.max(1, Math.floor(normalizedIncome.length / desiredLabels))
+    const xLabelIndices = Array.from(
+      new Set([
+        ...normalizedIncome.map((_, i) => i).filter((index) => index % step === 0),
+        normalizedIncome.length - 1,
+      ]),
+    ).filter((index) => index >= 0 && index < normalizedIncome.length)
     
     const xLabels = xLabelIndices.map(i => {
       const dateValue = parseDateUTC(normalizedIncome[i].date)
@@ -238,15 +255,29 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
           )}
 
           {!loading && type === 'line' && lineChartData && (
-            <div className="w-full h-full min-h-[600px] bg-surface-1 rounded-xl p-8 border border-white/10">
-              <svg
-                ref={svgRef}
-                viewBox={`0 0 ${lineChartData.width} ${lineChartData.height}`}
-                className="w-full h-full"
-                preserveAspectRatio="xMidYMid meet"
-                onMouseMove={handleMouseMove}
-                onMouseLeave={() => setHoveredPoint(null)}
-              >
+            <div className="w-full h-full min-h-[520px] bg-surface-1 rounded-xl p-6 border border-white/10">
+              <div className="chart-scroll-grid">
+                <div className="chart-y-axis" style={{ height: lineChartData.height }}>
+                  {lineChartData.yLabels.map((label, i) => (
+                    <span
+                      key={i}
+                      className="chart-y-axis-label"
+                      style={{ top: `${(label.y / lineChartData.height) * 100}%` }}
+                    >
+                      {label.label}
+                    </span>
+                  ))}
+                </div>
+                <div className="chart-scroll-area">
+                  <div className="chart-track" style={{ width: lineChartData.width, height: lineChartData.height }}>
+                    <svg
+                      ref={svgRef}
+                      viewBox={`0 0 ${lineChartData.width} ${lineChartData.height}`}
+                      width={lineChartData.width}
+                      height={lineChartData.height}
+                      onMouseMove={handleMouseMove}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                    >
                 {/* Grid lines */}
                 {lineChartData.yLabels.map((label, i) => (
                   <line
@@ -352,20 +383,6 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   </g>
                 )}
 
-                {/* Y-axis labels */}
-                {lineChartData.yLabels.map((label, i) => (
-                  <text
-                    key={i}
-                    x={lineChartData.padding.left - 15}
-                    y={label.y}
-                    textAnchor="end"
-                    dominantBaseline="middle"
-                    className="text-sm fill-text-secondary font-medium"
-                  >
-                    {label.label}
-                  </text>
-                ))}
-
                 {/* X-axis labels */}
                 {lineChartData.xLabels.map((label, i) => (
                   <text
@@ -386,17 +403,34 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                     <stop offset="100%" stopColor="#7C3AED" stopOpacity="0" />
                   </linearGradient>
                 </defs>
-              </svg>
+                    </svg>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {!loading && type === 'bar' && barChartData && (
-            <div className="w-full h-full min-h-[600px] bg-surface-1 rounded-xl p-8 border border-white/10">
-              <svg
-                viewBox={`0 0 ${barChartData.width} ${barChartData.height}`}
-                className="w-full h-full"
-                preserveAspectRatio="xMidYMid meet"
-              >
+            <div className="w-full h-full min-h-[520px] bg-surface-1 rounded-xl p-6 border border-white/10">
+              <div className="chart-scroll-grid">
+                <div className="chart-y-axis" style={{ height: barChartData.height }}>
+                  {barChartData.yLabels.map((label, i) => (
+                    <span
+                      key={i}
+                      className="chart-y-axis-label"
+                      style={{ top: `${(label.y / barChartData.height) * 100}%` }}
+                    >
+                      {label.label}
+                    </span>
+                  ))}
+                </div>
+                <div className="chart-scroll-area">
+                  <div className="chart-track" style={{ width: barChartData.width, height: barChartData.height }}>
+                    <svg
+                      viewBox={`0 0 ${barChartData.width} ${barChartData.height}`}
+                      width={barChartData.width}
+                      height={barChartData.height}
+                    >
                 {/* Grid lines */}
                 {barChartData.yLabels.map((label, i) => (
                   <line
@@ -442,20 +476,6 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   </g>
                 ))}
 
-                {/* Y-axis labels */}
-                {barChartData.yLabels.map((label, i) => (
-                  <text
-                    key={i}
-                    x={barChartData.padding.left - 15}
-                    y={label.y}
-                    textAnchor="end"
-                    dominantBaseline="middle"
-                    className="text-sm fill-text-secondary font-medium"
-                  >
-                    {label.label}
-                  </text>
-                ))}
-
                 {/* X-axis labels */}
                 {barChartData.xLabels.map((label, i) => (
                   <text
@@ -476,7 +496,10 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   <rect x="0" y="35" width="20" height="20" fill="#EF4444" rx="4" />
                   <text x="28" y="50" className="text-base fill-text-primary font-medium">Outflow</text>
                 </g>
-              </svg>
+                    </svg>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -492,7 +515,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
         </div>
 
         <div className="px-6 pb-6 text-sm text-text-secondary text-center border-t border-white/10 pt-4">
-          <p>💡 Hover over data points to see detailed information • Full historical data displayed</p>
+          <p>💡 Scroll horizontally to explore • Hover points for details</p>
         </div>
       </div>
     </Modal>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { NavLink, Link, useNavigate, Outlet } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from 'react'
+import { NavLink, Link, useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from '../components/ThemeToggle'
@@ -32,11 +32,38 @@ const sidebarLinks = [
 ]
 
 export const AppLayout: React.FC = () => {
-    const { user, logout } = useAuth()
+    const { user, profile, logout } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [drawerOpen, setDrawerOpen] = useState(false)
+    const [showWelcome, setShowWelcome] = useState(false)
+
+    const welcomeKey = user?.uid ? `jualuma_welcome_back_${user.uid}` : 'jualuma_welcome_back'
+    const displayName = useMemo(() => {
+        if (!profile) return user?.email ?? 'there'
+        if (profile.display_name_pref === 'username' && profile.username) return profile.username
+        const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim()
+        return fullName || profile.username || profile.email || user?.email || 'there'
+    }, [profile, user?.email])
+    const pageTitle = useMemo(() => {
+        const match = sidebarLinks.find((link) => location.pathname.startsWith(link.path))
+        return match?.name ?? 'Dashboard'
+    }, [location.pathname])
+
+    useEffect(() => {
+        if (!profile) return
+        const pending = sessionStorage.getItem(welcomeKey)
+        if (pending === 'true') {
+            setShowWelcome(true)
+            sessionStorage.removeItem(welcomeKey)
+            const timer = window.setTimeout(() => setShowWelcome(false), 3500)
+            return () => window.clearTimeout(timer)
+        }
+    }, [profile, welcomeKey])
+
+    const isAiAssistant = location.pathname.startsWith('/ai-assistant')
 
     const handleLogout = async () => {
         await logout()
@@ -249,8 +276,7 @@ export const AppLayout: React.FC = () => {
                 {/* Top Bar (Contextual - Optional for now, mostly for breadcrumbs or page title) */}
                 <div className="hidden md:flex h-20 items-center justify-between px-8 border-b border-white/5 bg-bg-primary/50 backdrop-blur-sm sticky top-0 z-10">
                    <h1 className="text-xl font-semibold text-text-primary capitalize">
-                        {/* Simple hydration mismatch avoidance or use context for page title */}
-                        Welcome Back
+                        {showWelcome ? `Welcome back, ${displayName}.` : pageTitle}
                    </h1>
                    <div className="flex items-center gap-4">
                         <Link to="/" className="text-sm font-medium text-text-muted hover:text-primary transition-colors">
@@ -259,7 +285,9 @@ export const AppLayout: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 scroll-smooth">
+                <div
+                  className={`flex-1 ${isAiAssistant ? 'overflow-hidden p-0' : 'overflow-y-auto overflow-x-hidden p-4 md:p-8 scroll-smooth'}`}
+                >
                     <Outlet />
                 </div>
             </main>

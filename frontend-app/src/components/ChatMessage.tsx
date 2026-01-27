@@ -19,7 +19,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time }) =>
     };
 
     return (
-        <div className={`chat-message chat-message-${role} group relative ${role === 'assistant' ? 'backdrop-blur-glass bg-white/70 dark:bg-gray-900/75' : ''}`}>
+        <div className={`chat-message chat-message-${role} group relative`}>
             <div className="chat-message-content">
                 {role === 'assistant' ? (
                     <ReactMarkdown 

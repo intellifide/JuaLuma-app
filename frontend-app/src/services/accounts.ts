@@ -8,6 +8,8 @@ type ManualAccountPayload = {
   accountName: string
   assignedMemberUid?: string | null
   customLabel?: string | null
+  categoryOverride?: string | null
+  balanceType?: 'asset' | 'liability' | null
 }
 
 type AccountUpdatePayload = Partial<{
@@ -15,6 +17,8 @@ type AccountUpdatePayload = Partial<{
   balance: number
   assignedMemberUid: string | null
   customLabel: string | null
+  categoryOverride: string | null
+  balanceType: 'asset' | 'liability' | null
 }>
 
 type AccountSyncResponse = {
@@ -37,6 +41,8 @@ const mapAccount = (data: any): Account => ({
   provider: data.provider ?? null,
   accountName: data.account_name ?? data.accountName ?? null,
   accountNumberMasked: data.account_number_masked ?? data.accountNumberMasked ?? null,
+  categoryOverride: data.category_override ?? data.categoryOverride ?? null,
+  balanceType: data.balance_type ?? data.balanceType ?? null,
   balance:
     typeof data.balance === 'number'
       ? data.balance
@@ -82,13 +88,15 @@ export const createManualAccount = async (
   payload: ManualAccountPayload,
 ): Promise<Account> => {
   try {
-    const { data } = await api.post('/accounts/manual', {
-      account_type: payload.accountType,
-      provider: payload.provider,
-      account_name: payload.accountName,
-      assigned_member_uid: payload.assignedMemberUid,
-      custom_label: payload.customLabel,
-    })
+  const { data } = await api.post('/accounts/manual', {
+    account_type: payload.accountType,
+    provider: payload.provider,
+    account_name: payload.accountName,
+    assigned_member_uid: payload.assignedMemberUid,
+    custom_label: payload.customLabel,
+    category_override: payload.categoryOverride,
+    balance_type: payload.balanceType,
+  })
     return mapAccount(data)
   } catch (error) {
     handleError(error)
@@ -101,12 +109,14 @@ export const updateAccount = async (
   payload: AccountUpdatePayload,
 ): Promise<Account> => {
   try {
-    const { data } = await api.patch(`/accounts/${id}`, {
-      account_name: payload.accountName,
-      balance: payload.balance,
-      assigned_member_uid: payload.assignedMemberUid,
-      custom_label: payload.customLabel,
-    })
+  const { data } = await api.patch(`/accounts/${id}`, {
+    account_name: payload.accountName,
+    balance: payload.balance,
+    assigned_member_uid: payload.assignedMemberUid,
+    custom_label: payload.customLabel,
+    category_override: payload.categoryOverride,
+    balance_type: payload.balanceType,
+  })
     return mapAccount(data)
   } catch (error) {
     handleError(error)

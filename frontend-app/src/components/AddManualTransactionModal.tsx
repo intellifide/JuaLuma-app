@@ -8,6 +8,7 @@ import { useAccounts } from '../hooks/useAccounts'
 import { useToast } from './ui/Toast'
 import { createTransaction } from '../services/transactions'
 import { Account } from '../types'
+import { getAccountCategoryDisplay } from '../utils/accountCategories'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
 
 interface AddManualTransactionModalProps {
@@ -113,11 +114,26 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
             {accounts.length === 0 ? (
               <option value="">No manual accounts available</option>
             ) : (
-              accounts.map((account: Account) => (
-                <option key={account.id} value={account.id}>
-                  {account.customLabel || account.accountName || 'Unnamed Account'}
-                </option>
-              ))
+              accounts.map((account: Account) => {
+                const display = getAccountCategoryDisplay(account)
+                const balanceTag = account.balanceType
+                  ? account.balanceType === 'liability'
+                    ? 'Liability'
+                    : 'Asset'
+                  : null
+                const label = [
+                  account.customLabel || account.accountName || 'Unnamed Account',
+                  display.label,
+                  balanceTag,
+                ]
+                  .filter(Boolean)
+                  .join(' • ')
+                return (
+                  <option key={account.id} value={account.id}>
+                    {label}
+                  </option>
+                )
+              })
             )}
           </select>
           {accounts.length === 0 && (

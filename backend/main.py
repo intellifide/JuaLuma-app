@@ -20,6 +20,7 @@ from backend.api.budgets import router as budgets_router
 from backend.api.developers import router as developers_router
 from backend.api.household import router as household_router
 from backend.api.legal import router as legal_router
+from backend.api.manual_assets import router as manual_assets_router
 from backend.api.notifications import router as notifications_router
 from backend.api.plaid import router as plaid_router
 from backend.api.support import router as support_router
@@ -99,6 +100,7 @@ app.include_router(transactions_router)
 app.include_router(analytics_router)
 app.include_router(ai_router)
 app.include_router(legal_router)
+app.include_router(manual_assets_router)
 app.include_router(widgets_router)
 app.include_router(developers_router)
 app.include_router(household_router)

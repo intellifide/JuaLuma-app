@@ -4,12 +4,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useAccounts } from '../hooks/useAccounts';
+import { useManualAssets } from '../hooks/useManualAssets';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { api as apiClient } from '../services/api';
 import { householdService } from '../services/householdService';
 import { Household, HouseholdMember } from '../types/household';
+import { Account, ManualAsset } from '../types';
 import { getAccountCategoryDisplay, getAccountPrimaryCategory, getCategoryLabel, type PrimaryAccountCategory } from '../utils/accountCategories';
 
 interface ApiError {
@@ -27,6 +29,11 @@ const formatHouseholdMemberLabel = (member: HouseholdMember) => {
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+
+const getManualAssetLabel = (value: string) => {
+  const match = MANUAL_ASSET_TYPES.find((option) => option.value === value);
+  return match ? match.label : value;
+};
 
 const getAssignableMembers = (household: Household) => {
   const seen = new Set<string>();
@@ -69,6 +76,29 @@ const ACCOUNT_LIMITS: Record<'bank' | 'web3' | 'cex' | 'manual', Record<PlanTier
   cex: { free: 1, essential: 3, pro: 5, ultimate: 10 },
   manual: { free: 0, essential: 0, pro: 5, ultimate: 10 },
 };
+
+const MANUAL_ACCOUNT_CATEGORY_OPTIONS = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'investment', label: 'Investments' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'credit', label: 'Credit' },
+  { value: 'loan', label: 'Loan' },
+  { value: 'mortgage', label: 'Mortgage' },
+  { value: 'crypto', label: 'Crypto' },
+  { value: 'other', label: 'Other' },
+];
+
+const MANUAL_ASSET_TYPES = [
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'house', label: 'House' },
+  { value: 'car', label: 'Car' },
+  { value: 'collectible', label: 'Collectible' },
+];
+
+const BALANCE_TYPE_OPTIONS = [
+  { value: 'asset', label: 'Asset' },
+  { value: 'liability', label: 'Liability' },
+];
 
 const normalizePlan = (value?: string | null): PlanTier | null => {
   if (!value) return null;
@@ -295,12 +325,14 @@ const EditAccountModal = ({
   onClose,
   onSuccess
 }: {
-  account: { id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null };
+  account: Account;
   onClose: () => void;
-  onSuccess: (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null }) => void;
+  onSuccess: (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null; categoryOverride?: string | null; balanceType?: 'asset' | 'liability' | null }) => void;
 }) => {
   const [name, setName] = useState(account.accountName || '');
   const [assignedUid, setAssignedUid] = useState(account.assignedMemberUid || '');
+  const [categoryOverride, setCategoryOverride] = useState(account.categoryOverride || '');
+  const [balanceType, setBalanceType] = useState<'asset' | 'liability'>(account.balanceType || 'asset');
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -316,10 +348,20 @@ const EditAccountModal = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSuccess(account.id, {
+    const payload: {
+      accountName?: string;
+      assignedMemberUid?: string | null;
+      categoryOverride?: string | null;
+      balanceType?: 'asset' | 'liability';
+    } = {
       accountName: name,
-      assignedMemberUid: assignedUid || null
-    });
+      assignedMemberUid: assignedUid || null,
+      categoryOverride: categoryOverride || null,
+    };
+    if (account.accountType === 'manual') {
+      payload.balanceType = balanceType;
+    }
+    onSuccess(account.id, payload);
   };
 
   return (
@@ -364,6 +406,46 @@ const EditAccountModal = ({
             )}
              <p className="text-xs text-text-secondary mt-1">Transactions will be tagged to this member in Family View.</p>
           </div>
+          <div>
+            <label className="form-label">Account Classification</label>
+            <select
+              className="input"
+              value={categoryOverride}
+              onChange={(e) => setCategoryOverride(e.target.value)}
+            >
+              <option value="">Auto (recommended)</option>
+              {MANUAL_ACCOUNT_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-text-secondary mt-1">
+              Overrides how this account is grouped in assets and liabilities.
+            </p>
+          </div>
+          {account.accountType === 'manual' && (
+            <div>
+              <label className="form-label">Balance Type</label>
+              <div className="flex gap-2">
+                {BALANCE_TYPE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      balanceType === option.value
+                        ? 'border-primary text-primary bg-primary/10'
+                        : 'border-border text-text-secondary hover:text-text-primary'
+                    }`}
+                    onClick={() => setBalanceType(option.value as 'asset' | 'liability')}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-text-secondary mt-1">
+                Manual accounts can be counted as assets or liabilities.
+              </p>
+            </div>
+          )}
           <div className="flex gap-3 justify-end mt-8">
             <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary">Save Changes</button>
@@ -377,6 +459,8 @@ const EditAccountModal = ({
 const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [name, setName] = useState('');
   const [assignedUid, setAssignedUid] = useState('');
+  const [categoryOverride, setCategoryOverride] = useState('cash');
+  const [balanceType, setBalanceType] = useState<'asset' | 'liability'>('asset');
   const [household, setHousehold] = useState<Household | null>(null);
   const [householdLoading, setHouseholdLoading] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -404,6 +488,8 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
         accountType: 'manual',
         accountName: name.trim(),
         assignedMemberUid: assignedUid || null,
+        categoryOverride,
+        balanceType,
       });
       toast.show('Manual account created successfully', 'success');
       onSuccess();
@@ -434,8 +520,42 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
               autoFocus
             />
             <p className="text-xs text-text-secondary mt-1">
-              Use this account to track manual transactions and cash expenses.
+              Use this account to track manual transactions and balances.
             </p>
+          </div>
+          <div>
+            <label className="form-label text-sm">Category</label>
+            <select
+              className="input"
+              value={categoryOverride}
+              onChange={(e) => setCategoryOverride(e.target.value)}
+            >
+              {MANUAL_ACCOUNT_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-text-secondary mt-1">
+              Helps place this account in assets vs liabilities and dashboards.
+            </p>
+          </div>
+          <div>
+            <label className="form-label text-sm">Balance Type</label>
+            <div className="flex gap-2">
+              {BALANCE_TYPE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    balanceType === option.value
+                      ? 'border-primary text-primary bg-primary/10'
+                      : 'border-border text-text-secondary hover:text-text-primary'
+                  }`}
+                  onClick={() => setBalanceType(option.value as 'asset' | 'liability')}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className="form-label">Assign to Household Member</label>
@@ -461,6 +581,46 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
             )}
             <p className="text-xs text-text-secondary mt-1">Transactions will be tagged to this member in Family View.</p>
           </div>
+          <div>
+            <label className="form-label">Account Classification</label>
+            <select
+              className="input"
+              value={categoryOverride}
+              onChange={(e) => setCategoryOverride(e.target.value)}
+            >
+              <option value="">Auto (recommended)</option>
+              {MANUAL_ACCOUNT_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-text-secondary mt-1">
+              Overrides how this account is grouped in assets and liabilities.
+            </p>
+          </div>
+          {account.accountType === 'manual' && (
+            <div>
+              <label className="form-label">Balance Type</label>
+              <div className="flex gap-2">
+                {BALANCE_TYPE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      balanceType === option.value
+                        ? 'border-primary text-primary bg-primary/10'
+                        : 'border-border text-text-secondary hover:text-text-primary'
+                    }`}
+                    onClick={() => setBalanceType(option.value as 'asset' | 'liability')}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-text-secondary mt-1">
+                Manual accounts can be counted as assets or liabilities.
+              </p>
+            </div>
+          )}
           <div className="flex gap-3 justify-end mt-8">
             <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
@@ -473,18 +633,187 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
   );
 };
 
+type ManualAssetFormValues = {
+  assetType: string;
+  balanceType: 'asset' | 'liability';
+  name: string;
+  value: string;
+  purchaseDate: string;
+  notes: string;
+};
+
+const ManualAssetModal = ({
+  asset,
+  onClose,
+  onSave,
+}: {
+  asset?: ManualAsset | null;
+  onClose: () => void;
+  onSave: (payload: { assetType: string; balanceType: 'asset' | 'liability'; name: string; value: number; purchaseDate?: string | null; notes?: string | null }) => Promise<void>;
+}) => {
+  const [form, setForm] = useState<ManualAssetFormValues>({
+    assetType: asset?.assetType || 'real_estate',
+    balanceType: asset?.balanceType || 'asset',
+    name: asset?.name || '',
+    value: asset?.value?.toString() || '',
+    purchaseDate: asset?.purchaseDate ? asset.purchaseDate.split('T')[0] : '',
+    notes: asset?.notes || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const toast = useToast();
+
+  useEffect(() => {
+    setForm({
+      assetType: asset?.assetType || 'real_estate',
+      balanceType: asset?.balanceType || 'asset',
+      name: asset?.name || '',
+      value: asset?.value?.toString() || '',
+      purchaseDate: asset?.purchaseDate ? asset.purchaseDate.split('T')[0] : '',
+      notes: asset?.notes || '',
+    });
+  }, [asset]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast.show('Please enter a name', 'error');
+      return;
+    }
+    const value = Number(form.value);
+    if (!value || value <= 0) {
+      toast.show('Please enter a value greater than 0', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave({
+        assetType: form.assetType,
+        balanceType: form.balanceType,
+        name: form.name.trim(),
+        value,
+        purchaseDate: form.purchaseDate || null,
+        notes: form.notes.trim() || null,
+      });
+      onClose();
+    } catch (err: unknown) {
+      toast.show((err as Error).message || 'Unable to save manual asset.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4">
+      <div className="modal-content max-w-lg">
+        <div className="modal-header">
+          <h3>{asset ? 'Edit Manual Asset' : 'Add Manual Asset'}</h3>
+          <button onClick={onClose} className="modal-close">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="form-label text-sm">Name</label>
+            <input
+              type="text"
+              name="name"
+              className="input"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="e.g. Rental Property, Classic Car"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="form-label text-sm">Category</label>
+              <select name="assetType" className="input" value={form.assetType} onChange={handleChange}>
+                {MANUAL_ASSET_TYPES.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="form-label text-sm">Asset or Liability</label>
+              <select name="balanceType" className="input" value={form.balanceType} onChange={handleChange}>
+                {BALANCE_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="form-label text-sm">Value</label>
+              <input
+                type="number"
+                name="value"
+                className="input"
+                placeholder="0.00"
+                value={form.value}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label className="form-label text-sm">Purchase Date (optional)</label>
+              <input
+                type="date"
+                name="purchaseDate"
+                className="input"
+                value={form.purchaseDate}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="form-label text-sm">Notes (optional)</label>
+            <textarea
+              name="notes"
+              className="input min-h-[90px]"
+              value={form.notes}
+              onChange={handleChange}
+              placeholder="Add any context about this asset or liability."
+            />
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={saving}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const ConnectAccounts = () => {
   const { accounts, loading, remove, sync, refreshMetadata, update, refetch } = useAccounts();
+  const {
+    assets: manualAssets,
+    loading: manualAssetsLoading,
+    create: createManualAsset,
+    update: updateManualAsset,
+    remove: removeManualAsset,
+  } = useManualAssets();
   const { profile } = useAuth();
   const toast = useToast();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showCexModal, setShowCexModal] = useState(false);
   const [showManualAccountModal, setShowManualAccountModal] = useState(false);
+  const [showManualAssetModal, setShowManualAssetModal] = useState(false);
+  const [editingManualAsset, setEditingManualAsset] = useState<ManualAsset | null>(null);
   const [reconnectPayload, setReconnectPayload] = useState<{ exchange: string; name: string } | null>(null);
-  const [editingAccount, setEditingAccount] = useState<{ id: string; accountName?: string | null; customLabel?: string | null; assignedMemberUid?: string | null } | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'cash' | 'credit' | 'loans' | 'investment' | 'crypto' | 'manual'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'cash' | 'credit' | 'loans' | 'investment' | 'real_estate' | 'crypto' | 'manual'>('all');
   const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<{
     type: 'refresh' | 'remove';
@@ -565,7 +894,16 @@ export const ConnectAccounts = () => {
     toast.show(msg, 'error');
   };
 
-  const handleUpdate = async (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null }) => {
+  const handleUpdate = async (
+    id: string,
+    payload: {
+      accountName?: string;
+      customLabel?: string | null;
+      assignedMemberUid?: string | null;
+      categoryOverride?: string | null;
+      balanceType?: 'asset' | 'liability' | null;
+    },
+  ) => {
       try {
           await update(id, payload);
           toast.show('Account updated', 'success');
@@ -677,6 +1015,18 @@ export const ConnectAccounts = () => {
     }
   };
 
+  const handleSaveManualAsset = async (payload: { assetType: string; balanceType: 'asset' | 'liability'; name: string; value: number; purchaseDate?: string | null; notes?: string | null }) => {
+    if (editingManualAsset) {
+      await updateManualAsset(editingManualAsset.id, payload);
+      toast.show('Manual asset updated', 'success');
+      setEditingManualAsset(null);
+    } else {
+      await createManualAsset(payload);
+      toast.show('Manual asset added', 'success');
+    }
+    setShowManualAssetModal(false);
+  };
+
   return (
     <div>
       <section className="container py-12">
@@ -758,7 +1108,7 @@ export const ConnectAccounts = () => {
               <h3 className="text-lg font-bold">Manual Accounts</h3>
             </div>
             <div className="card-body space-y-3">
-              <p className="text-sm text-text-secondary">Track cash or offline balances manually.</p>
+              <p className="text-sm text-text-secondary">Track manual accounts for transactions and balances.</p>
               <div className="flex items-center justify-between text-xs text-text-muted">
                 <span>Connected {connectedCounts.manual}</span>
                 <span>Allowed {manualLimitLabel} ({planLabel})</span>
@@ -811,6 +1161,16 @@ export const ConnectAccounts = () => {
           <AddManualAccountModal
             onClose={() => setShowManualAccountModal(false)}
             onSuccess={() => { setShowManualAccountModal(false); refetch(); }}
+          />
+        )}
+        {(showManualAssetModal || editingManualAsset) && (
+          <ManualAssetModal
+            asset={editingManualAsset}
+            onClose={() => {
+              setShowManualAssetModal(false);
+              setEditingManualAsset(null);
+            }}
+            onSave={handleSaveManualAsset}
           />
         )}
         <Modal
@@ -902,6 +1262,7 @@ export const ConnectAccounts = () => {
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'credit' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('credit')}>Credit</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'loans' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('loans')}>Loans</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investments</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'real_estate' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('real_estate')}>Real Estate</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'crypto' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('crypto')}>Crypto</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'manual' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('manual')}>Manual</button></li>
                 </ul>
@@ -914,48 +1275,151 @@ export const ConnectAccounts = () => {
                 ) : (
                   filteredAccounts.map((account) => {
                     const display = getAccountCategoryDisplay(account);
+                    const label = account.customLabel || account.accountName || 'Unnamed Account';
+                    const detailLine = account.accountNumberMasked
+                      ? `Ending in ${account.accountNumberMasked}`
+                      : display.detail || display.label;
                     return (
-                      <div key={account.id} className="card hover:shadow-lg transition-all border-white/5 bg-white/5 relative group">
-                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {account.accountType !== 'manual' && (
-                          <button
-                            onClick={(e) => handleSync(account, e)}
-                            disabled={syncingAccounts.has(account.id)}
-                            className="text-xs bg-primary/20 text-primary px-2 py-1 rounded hover:bg-primary/30 disabled:opacity-50 flex items-center gap-1"
-                            title="Sync latest transactions"
-                          >
-                            {syncingAccounts.has(account.id) ? (
-                              <>
-                                <span className="animate-spin text-primary">↻</span> Syncing...
-                              </>
-                            ) : (
-                              <>
-                                <span>↻</span> Sync
-                              </>
-                            )}
-                          </button>
-                        )}
+                      <div key={account.id} className="relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-surface-1/40 p-5 shadow-glass">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-[11px] uppercase tracking-widest text-text-muted">
+                              {display.label}
+                            </p>
+                            <h3 className="text-lg font-semibold text-text-primary">{label}</h3>
+                            <p className="text-xs text-text-secondary">{detailLine}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[11px] uppercase tracking-widest text-text-muted">Balance</p>
+                            <p className="text-2xl font-bold text-primary">
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
+                            </p>
+                          </div>
                         </div>
-                        <h3 className="font-semibold text-lg">{account.accountName}</h3>
-                        <p className="text-2xl font-bold text-primary my-2">
-                           {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
-                        </p>
-                        <div className="flex justify-between items-center mt-auto pt-2">
-                          <span className="text-xs font-mono text-text-muted uppercase tracking-tighter">
-                            {account.accountNumberMasked ? `Ending in ${account.accountNumberMasked}` : display.detail || display.label}
-                          </span>
+                        <div className="flex flex-wrap gap-2">
+                          {display.detail && (
+                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
+                              {display.detail}
+                            </span>
+                          )}
+                          {account.balanceType && (
+                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
+                              {account.balanceType === 'liability' ? 'Liability' : 'Asset'}
+                            </span>
+                          )}
                           {account.provider && (
-                            <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-text-secondary">
+                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
                               {account.provider}
                             </span>
                           )}
                         </div>
+                        <div className="flex items-center justify-between text-xs text-text-secondary">
+                          <span>{account.accountType === 'manual' ? 'Manual tracking' : 'Auto-synced'}</span>
+                          <span>{account.updatedAt ? `Updated ${new Date(account.updatedAt).toLocaleDateString()}` : 'Updated recently'}</span>
+                        </div>
+                        {account.accountType !== 'manual' && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => handleSync(account, e)}
+                              disabled={syncingAccounts.has(account.id)}
+                              className="text-xs bg-primary/20 text-primary px-3 py-2 rounded-lg hover:bg-primary/30 disabled:opacity-50 flex items-center gap-2"
+                              title="Sync latest transactions"
+                            >
+                              <span className={syncingAccounts.has(account.id) ? 'animate-spin' : ''}>↻</span>
+                              {syncingAccounts.has(account.id) ? 'Syncing...' : 'Sync'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })
                 )}
               </div>
             </>
+          )}
+        </div>
+
+        <div className="glass-panel mb-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-semibold">Manual Assets &amp; Liabilities</h2>
+              <p className="text-xs text-text-secondary">
+                Track property, vehicles, collectibles, and other items that don’t sync as accounts.
+              </p>
+            </div>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => {
+                setEditingManualAsset(null);
+                setShowManualAssetModal(true);
+              }}
+            >
+              Add Manual Asset
+            </button>
+          </div>
+          {manualAssetsLoading ? (
+            <div className="py-8 text-center text-text-secondary">Loading manual assets...</div>
+          ) : manualAssets.length === 0 ? (
+            <div className="py-8 text-center text-text-secondary">
+              No manual assets or liabilities yet. Add one to include it in your net worth.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {manualAssets.map((asset) => (
+                <div key={asset.id} className="rounded-2xl border border-white/10 bg-surface-1/40 p-5 shadow-glass flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-widest text-text-muted">
+                        {getManualAssetLabel(asset.assetType)}
+                      </p>
+                      <h3 className="text-lg font-semibold text-text-primary">{asset.name}</h3>
+                      {asset.purchaseDate && (
+                        <p className="text-xs text-text-secondary">
+                          Added {new Date(asset.purchaseDate).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] uppercase tracking-widest text-text-muted">
+                        {asset.balanceType === 'liability' ? 'Liability' : 'Asset'}
+                      </p>
+                      <p className={`text-xl font-bold ${asset.balanceType === 'liability' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        {formatCurrency(asset.value)}
+                      </p>
+                    </div>
+                  </div>
+                  {asset.notes && (
+                    <p className="text-xs text-text-secondary line-clamp-2">
+                      {asset.notes}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-auto">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => {
+                        setEditingManualAsset(asset);
+                        setShowManualAssetModal(true);
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost text-danger"
+                      onClick={() => {
+                        if (window.confirm('Delete this manual asset?')) {
+                          removeManualAsset(asset.id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -995,6 +1459,11 @@ export const ConnectAccounts = () => {
                           <div className="font-medium">{display.label}</div>
                           {display.detail && (
                             <div className="text-xs text-text-secondary">{display.detail}</div>
+                          )}
+                          {account.balanceType && (
+                            <div className="text-[10px] uppercase tracking-widest text-text-muted mt-1">
+                              {account.balanceType === 'liability' ? 'Liability' : 'Asset'}
+                            </div>
                           )}
                         </td>
                         <td className="py-4 text-sm text-text-secondary">

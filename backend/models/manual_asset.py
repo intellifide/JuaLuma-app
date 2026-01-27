@@ -30,8 +30,12 @@ class ManualAsset(Base):
     __tablename__ = "manual_assets"
     __table_args__ = (
         CheckConstraint(
-            "asset_type IN ('house', 'car', 'collectible')",
+            "asset_type IN ('house', 'car', 'collectible', 'real_estate')",
             name="ck_manual_asset_type",
+        ),
+        CheckConstraint(
+            "balance_type IN ('asset', 'liability')",
+            name="ck_manual_asset_balance_type",
         ),
     )
 
@@ -42,6 +46,7 @@ class ManualAsset(Base):
         String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
     )
     asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    balance_type: Mapped[str] = mapped_column(String(16), nullable=False, default="asset")
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     value: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -71,6 +76,7 @@ class ManualAsset(Base):
             "id": str(self.id),
             "uid": self.uid,
             "asset_type": self.asset_type,
+            "balance_type": self.balance_type,
             "name": self.name,
             "value": float(self.value),
             "purchase_date": self.purchase_date.isoformat() if self.purchase_date else None,
