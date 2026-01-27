@@ -1,7 +1,7 @@
 // Core Purpose: UI for managing support tickets and accessing help center.
 // Last Updated 2026-01-25 21:35 CST
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supportService, Ticket } from '../services/support';
 import { getAccounts } from '../services/accounts';
 import { useToast } from '../components/ui/Toast';
@@ -85,8 +85,10 @@ const CreateTicketModal = ({ onClose, onSuccess }: { onClose: () => void; onSucc
     );
 };
 
+type SystemHealth = Record<string, unknown>;
+
 const SystemStatus = ({ onClose }: { onClose: () => void }) => {
-    const [status, setStatus] = useState<any>(null);
+    const [status, setStatus] = useState<SystemHealth | null>(null);
     const [loading, setLoading] = useState(true);
     const [hasWeb3, setHasWeb3] = useState(false);
     const [hasCex, setHasCex] = useState(false);
@@ -189,7 +191,7 @@ export const Support = () => {
     const toast = useToast();
     const navigate = useNavigate();
 
-    const fetchTickets = async () => {
+    const fetchTickets = useCallback(async () => {
         try {
             const data = await supportService.getTickets();
             setTickets(data);
@@ -198,11 +200,11 @@ export const Support = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
 
     useEffect(() => {
         fetchTickets();
-    }, []);
+    }, [fetchTickets]);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -215,11 +217,7 @@ export const Support = () => {
 
     return (
         <div className="container py-8 max-w-6xl">
-            <div className="flex justify-between items-center mb-10">
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">Help & Support</h1>
-                    <p className="text-text-secondary">Track your tickets or get help from our team.</p>
-                </div>
+        <div className="flex justify-end items-center mb-10">
                 <Button variant="primary" onClick={() => setShowModal(true)} className="flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     New Ticket
@@ -257,7 +255,7 @@ export const Support = () => {
                 ) : tickets.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-xl">
                         <MessageSquare className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-20" />
-                        <p className="text-text-secondary">You haven't created any support tickets yet.</p>
+                        <p className="text-text-secondary">You haven&apos;t created any support tickets yet.</p>
                         <button onClick={() => setShowModal(true)} className="text-primary text-sm mt-2 hover:underline">
                             Open your first ticket
                         </button>

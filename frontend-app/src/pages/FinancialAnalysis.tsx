@@ -261,15 +261,13 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
   return { bars, yLabels, padding };
 };
 
-const BudgetTool = ({ 
-  categories, 
-  scope, 
-  budgets, 
-  saveBudget, 
-  resetBudgets 
-}: { 
-  categories: string[], 
-  scope: 'personal' | 'household',
+const BudgetTool = ({
+  categories,
+  budgets,
+  saveBudget,
+  resetBudgets
+}: {
+  categories: string[],
   budgets: Budget[],
   saveBudget: (cat: string, amount: number | null, threshold?: number, enabled?: boolean) => Promise<void>,
   resetBudgets: () => Promise<void>
@@ -712,14 +710,6 @@ export default function FinancialAnalysis() {
 
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
-      {/* Header */}
-      <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-text-primary">Financial Analysis</h1>
-          <p className="text-text-secondary mt-1">Deep dive into budgets, trends, and category spend.</p>
-        </div>
-      </div>
-
       {/* Timeframe Controls */}
       <div className="glass-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="timeframe-controls">
@@ -778,12 +768,11 @@ export default function FinancialAnalysis() {
       </div>
 
       {/* Budgeting Tool */}
-      <BudgetTool 
-        categories={CATEGORIES} 
-        scope={dashboardScope} 
-        budgets={budgets} 
-        saveBudget={saveBudget} 
-        resetBudgets={resetBudgets} 
+      <BudgetTool
+        categories={CATEGORIES}
+        budgets={budgets}
+        saveBudget={saveBudget}
+        resetBudgets={resetBudgets}
       />
 
       {/* Infographics & Charts */}

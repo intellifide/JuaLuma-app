@@ -12,6 +12,83 @@ import Switch from '../components/ui/Switch';
 import { settingsService, NotificationPreference } from '../services/settingsService';
 import { useToast } from '../components/ui/Toast';
 
+type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref'>> & {
+  phone_number?: string | null;
+};
+
+type ErrorResponse = {
+  detail?: string;
+  message?: string;
+  error?: string;
+};
+
+type BillingInvoice = {
+  id: string;
+  created: number;
+  amount_paid: number;
+  currency: string;
+  status: string;
+  invoice_pdf?: string | null;
+};
+
+const getDefaultSettings = () => ({
+  email: {
+    lowBalance: true,
+    largeTransaction: true,
+    budgetThreshold: true,
+    recurringBill: true,
+    syncFailure: true,
+    weeklyDigest: true,
+    supportUpdates: true,
+    subscriptionUpdates: true,
+  },
+  sms: {
+    lowBalance: true,
+    largeTransaction: true,
+    budgetThreshold: true,
+    recurringBill: true,
+    syncFailure: true,
+    weeklyDigest: true,
+    supportUpdates: true,
+    subscriptionUpdates: true,
+  },
+  push: {
+    lowBalance: true,
+    largeTransaction: true,
+    budgetThreshold: true,
+    recurringBill: true,
+    syncFailure: true,
+    weeklyDigest: true,
+    supportUpdates: true,
+    subscriptionUpdates: true,
+  },
+  inApp: {
+    lowBalance: true,
+    largeTransaction: true,
+    budgetThreshold: true,
+    recurringBill: true,
+    syncFailure: true,
+    weeklyDigest: true,
+    supportUpdates: true,
+    subscriptionUpdates: true,
+  },
+  quietHours: {
+    start: '22:00',
+    end: '08:00',
+    timezone: 'UTC',
+  },
+  triggers: {
+    lowBalanceThreshold: '100',
+    largeTransactionThreshold: '500',
+  },
+  privacy: {
+    dataSharing: false,
+    marketingEmails: true,
+  }
+});
+
+type SettingsState = ReturnType<typeof getDefaultSettings>;
+
 // Profile Form Component
 const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
   const { refetchProfile } = useAuth();
@@ -54,7 +131,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
       
       // Prepare payload - ensure we send null for empty strings, not empty strings
       // Only include fields that have values to avoid validation issues
-      const payload: any = {};
+      const payload: ProfileUpdatePayload = {};
       
       if (firstName.trim()) {
         payload.first_name = firstName.trim();
@@ -91,9 +168,9 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
 
       if (!response.ok) {
         let errorMessage = 'Failed to update profile';
-        let errorData: any = {};
+        let errorData: ErrorResponse = {};
         try {
-          errorData = await response.json();
+          errorData = (await response.json()) as ErrorResponse;
           // Check multiple possible error message fields
           errorMessage = errorData.detail || errorData.message || errorData.error || JSON.stringify(errorData) || errorMessage;
           console.error('Profile update error response:', errorData);
@@ -188,7 +265,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
           <p className="text-sm text-red-600 mt-1">{usernameError}</p>
         )}
         <p className="text-xs text-text-muted mt-1">
-          Username must be at least 3 characters and unique. Leave blank if you don't want one.
+          Username must be at least 3 characters and unique. Leave blank if you don&apos;t want one.
         </p>
       </div>
 
@@ -267,61 +344,7 @@ export const Settings = () => {
   const [inviteActionId, setInviteActionId] = useState<string | null>(null);
 
   // Settings State
-  const [settings, setSettings] = useState({
-    email: {
-      lowBalance: true,
-      largeTransaction: true,
-      budgetThreshold: true,
-      recurringBill: true,
-      syncFailure: true,
-      weeklyDigest: true,
-      supportUpdates: true,
-      subscriptionUpdates: true,
-    },
-    sms: {
-      lowBalance: true,
-      largeTransaction: true,
-      budgetThreshold: true,
-      recurringBill: true,
-      syncFailure: true,
-      weeklyDigest: true,
-      supportUpdates: true,
-      subscriptionUpdates: true,
-    },
-    push: {
-      lowBalance: true,
-      largeTransaction: true,
-      budgetThreshold: true,
-      recurringBill: true,
-      syncFailure: true,
-      weeklyDigest: true,
-      supportUpdates: true,
-      subscriptionUpdates: true,
-    },
-    inApp: {
-      lowBalance: true,
-      largeTransaction: true,
-      budgetThreshold: true,
-      recurringBill: true,
-      syncFailure: true,
-      weeklyDigest: true,
-      supportUpdates: true,
-      subscriptionUpdates: true,
-    },
-    quietHours: {
-      start: '22:00',
-      end: '08:00',
-      timezone: 'UTC',
-    },
-    triggers: {
-      lowBalanceThreshold: '100',
-      largeTransactionThreshold: '500',
-    },
-    privacy: {
-      dataSharing: false,
-      marketingEmails: true,
-    }
-  });
+  const [settings, setSettings] = useState<SettingsState>(getDefaultSettings());
 
   const [notificationSaving, setNotificationSaving] = useState(false);
 
@@ -337,7 +360,7 @@ export const Settings = () => {
           settingsService.getNotificationSettings(),
         ]);
 
-        const newSettings = { ...settings };
+        const newSettings = getDefaultSettings();
 
         // Map Notification Preferences
         prefs.forEach((p: NotificationPreference) => {
@@ -514,7 +537,7 @@ export const Settings = () => {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   // Billing state
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [billingPage, setBillingPage] = useState(1);
   const billingPageSize = 5;
@@ -612,8 +635,8 @@ export const Settings = () => {
           // Use apiFetch helper which handles auth headers automatically
           const response = await apiFetch('/billing/invoices');
           if (response.ok) {
-            const data = await response.json();
-            setInvoices(data);
+            const data = (await response.json()) as BillingInvoice[];
+            setInvoices(Array.isArray(data) ? data : []);
           }
         } catch (error) {
           console.error("Failed to load invoices", error);
@@ -697,7 +720,6 @@ export const Settings = () => {
   return (
     <div>
       <section className="container py-12">
-        <h1 className="mb-8 text-3xl font-bold">Account Settings</h1>
 
         <div className="tabs mb-8">
           <ul className="flex space-x-1 border-b border-border" role="tablist">
@@ -829,7 +851,7 @@ export const Settings = () => {
 
                           {!invoicesLoading && invoices
                             .slice((billingPage - 1) * billingPageSize, billingPage * billingPageSize)
-                            .map((invoice: any) => (
+                            .map((invoice) => (
                             <tr key={invoice.id} className="border-b border-border/50 last:border-0 hover:bg-surface-2 transition-colors">
                               <td className="py-3 text-text-primary">
                                 {new Date(invoice.created * 1000).toLocaleDateString()}

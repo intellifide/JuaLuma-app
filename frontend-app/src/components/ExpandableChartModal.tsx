@@ -1,7 +1,7 @@
 // Core Purpose: TradingView-style expandable chart modal with zoom and pan
 // Last Updated: 2026-01-25 17:55 CST
 
-import React, { useMemo, useState, useRef, useEffect } from 'react'
+import React, { useMemo, useState, useRef } from 'react'
 import { Modal } from './ui/Modal'
 import { DataPoint } from '../services/analytics'
 
@@ -188,7 +188,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     })
 
     return { incomeBars, expensesBars, yLabels, xLabels, padding, width, height, max }
-  }, [incomeData, expensesData, type])
+  }, [incomeData, expensesData, interval, type])
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!lineChartData || type !== 'line') return

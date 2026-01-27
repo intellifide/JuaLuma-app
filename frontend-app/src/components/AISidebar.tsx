@@ -45,7 +45,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     onUploadDoc,
     onDownloadDoc,
 }) => {
-    const [expandedSection, setExpandedSection] = useState<'documents' | 'history' | 'projects' | null>('projects');
+    const [expandedSection, setExpandedSection] = useState<'documents' | 'history' | 'projects' | null>('documents');
     const [projectName, setProjectName] = useState('');
     const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -145,6 +145,76 @@ export const AISidebar: React.FC<AISidebarProps> = ({
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto">
+                {/* Documents Section */}
+                <div className="border-b border-white/10">
+                    <button
+                        onClick={() => toggleSection('documents')}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="text-sm font-medium">Files</span>
+                            <span className="text-xs text-text-secondary bg-white/10 px-1.5 py-0.5 rounded-full">
+                                {documents.length}
+                            </span>
+                        </div>
+                        <svg 
+                            className={`w-4 h-4 text-text-secondary transition-transform ${expandedSection === 'documents' ? 'rotate-180' : ''}`} 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    
+                    {expandedSection === 'documents' && (
+                        <div className="px-2 pb-3">
+                            {documents.length === 0 ? (
+                                <div className="px-4 py-6 text-center">
+                                    <p className="text-xs text-text-secondary mb-2">No files yet</p>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="text-xs text-primary hover:underline"
+                                    >
+                                        Upload file
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                                        {documents.slice(0, 10).map((doc) => (
+                                            <button
+                                                key={doc.id}
+                                                onClick={() => onDownloadDoc(doc)}
+                                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
+                                            >
+                                                <span className="text-lg">{getFileIcon(doc.fileType)}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-text-primary truncate group-hover:text-primary transition-colors">
+                                                        {doc.name}
+                                                    </p>
+                                                    <p className="text-xs text-text-secondary">
+                                                        {doc.size}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full mt-2 px-3 py-2 text-xs text-text-secondary hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
+                                    >
+                                        + Upload file
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {/* Projects Section */}
                 <div className="border-b border-white/10">
                     <button
@@ -249,76 +319,6 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                     )}
                 </div>
 
-                {/* Documents Section */}
-                <div className="border-b border-white/10">
-                    <button
-                        onClick={() => toggleSection('documents')}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
-                    >
-                        <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="text-sm font-medium">Documents</span>
-                            <span className="text-xs text-text-secondary bg-white/10 px-1.5 py-0.5 rounded-full">
-                                {documents.length}
-                            </span>
-                        </div>
-                        <svg 
-                            className={`w-4 h-4 text-text-secondary transition-transform ${expandedSection === 'documents' ? 'rotate-180' : ''}`} 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                    
-                    {expandedSection === 'documents' && (
-                        <div className="px-2 pb-3">
-                            {documents.length === 0 ? (
-                                <div className="px-4 py-6 text-center">
-                                    <p className="text-xs text-text-secondary mb-2">No documents yet</p>
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="text-xs text-primary hover:underline"
-                                    >
-                                        Upload document
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="space-y-1 max-h-64 overflow-y-auto">
-                                        {documents.slice(0, 10).map((doc) => (
-                                            <button
-                                                key={doc.id}
-                                                onClick={() => onDownloadDoc(doc)}
-                                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
-                                            >
-                                                <span className="text-lg">{getFileIcon(doc.fileType)}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm text-text-primary truncate group-hover:text-primary transition-colors">
-                                                        {doc.name}
-                                                    </p>
-                                                    <p className="text-xs text-text-secondary">
-                                                        {doc.size}
-                                                    </p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-full mt-2 px-3 py-2 text-xs text-text-secondary hover:text-primary hover:bg-white/5 rounded-lg transition-colors"
-                                    >
-                                        + Upload document
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
-
                 {/* Chat History Section */}
                 <div>
                     <button
@@ -329,7 +329,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                             <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span className="text-sm font-medium">Recent</span>
+                            <span className="text-sm font-medium">Chats</span>
                         </div>
                         <svg 
                             className={`w-4 h-4 text-text-secondary transition-transform ${expandedSection === 'history' ? 'rotate-180' : ''}`} 
@@ -345,7 +345,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                         <div className="px-2 pb-3">
                             {threads.filter((thread) => !thread.projectId).length === 0 ? (
                                 <div className="px-4 py-6 text-center">
-                                    <p className="text-xs text-text-secondary">No conversations yet</p>
+                                    <p className="text-xs text-text-secondary">No chats yet</p>
                                 </div>
                             ) : (
                                 <div className="space-y-1">

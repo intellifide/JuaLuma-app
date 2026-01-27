@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
-import { useAuth } from '../hooks/useAuth'
 import { useAccounts } from '../hooks/useAccounts'
 import { useToast } from '../components/ui/Toast'
 import { AddManualTransactionModal } from '../components/AddManualTransactionModal'
@@ -11,7 +10,7 @@ import { EditTransactionModal } from '../components/EditTransactionModal'
 import Switch from '../components/ui/Switch'
 import { Transaction } from '../types'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
-import { loadTransactionPreferences, saveTransactionPreferences, type TransactionPreferences } from '../utils/transactionPreferences'
+import { loadTransactionPreferences, saveTransactionPreferences } from '../utils/transactionPreferences'
 import { getTransactionDateRange } from '../utils/dateRanges'
 
 const CATEGORIES = TRANSACTION_CATEGORIES
@@ -38,19 +37,13 @@ export const Transactions = () => {
   const [sortBy, setSortBy] = useState<'ts_desc' | 'ts_asc' | 'amount_desc' | 'amount_asc' | 'merchant_asc' | 'merchant_desc'>(savedPreferences.sortBy)
   const [isManualFilter, setIsManualFilter] = useState<'all' | 'manual' | 'auto'>(savedPreferences.isManualFilter)
 
-  const { profile } = useAuth()
+  useAuth()
   const toast = useToast()
   const [scope, setScope] = useState<'personal' | 'household'>('personal')
   const { accounts } = useAccounts({ filters: { scope } })
   
   // Check if user has Pro or Ultimate tier for manual transactions
   // Check both profile.plan and subscriptions array as fallback
-  const planFromProfile = profile?.plan?.toLowerCase()?.trim()
-  // Check active subscriptions first
-  const activeSubscription = profile?.subscriptions?.find((sub: any) => sub.status === 'active')
-  const planFromSubscriptions = activeSubscription?.plan?.toLowerCase()?.trim()
-  const plan = planFromProfile || planFromSubscriptions || 'free'
-  const hasManualAccess = plan === 'pro' || plan === 'ultimate'
   const { start, end } = useMemo(() => getTransactionDateRange(timeframe), [timeframe])
   const [notesHoverId, setNotesHoverId] = useState<string | null>(null)
   const notesHoverTimeout = useRef<number | null>(null)
@@ -169,12 +162,7 @@ export const Transactions = () => {
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
       {/* Header */}
-      <div className="glass-panel p-6 flex flex-col md:flex-row justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-text-primary">Transactions</h1>
-          <p className="text-text-secondary mt-1">Filter, search, and bulk edit your transactions.</p>
-        </div>
-        <div className="mt-4 md:mt-0 flex items-center gap-4">
+      <div className="glass-panel p-6 flex flex-col md:flex-row justify-end items-center gap-4">
           <button
             type="button"
             className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors text-sm font-medium"
@@ -189,7 +177,6 @@ export const Transactions = () => {
           >
             Export CSV
           </button>
-        </div>
       </div>
 
       {/* Filters */}

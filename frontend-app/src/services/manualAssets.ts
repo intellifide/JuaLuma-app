@@ -10,17 +10,17 @@ type ManualAssetPayload = {
   notes?: string | null
 }
 
-const mapManualAsset = (data: any): ManualAsset => ({
-  id: data.id,
-  uid: data.uid,
-  assetType: data.asset_type ?? data.assetType,
-  balanceType: data.balance_type ?? data.balanceType ?? 'asset',
-  name: data.name,
-  value: typeof data.value === 'number' ? data.value : Number(data.value || 0),
-  purchaseDate: data.purchase_date ?? data.purchaseDate ?? null,
-  notes: data.notes ?? null,
-  createdAt: data.created_at ?? data.createdAt,
-  updatedAt: data.updated_at ?? data.updatedAt,
+const mapManualAsset = (data: Record<string, unknown>): ManualAsset => ({
+  id: String(data.id ?? ''),
+  uid: String(data.uid ?? ''),
+  assetType: String(data.asset_type ?? data.assetType ?? ''),
+  balanceType: (data.balance_type ?? data.balanceType ?? 'asset') as 'asset' | 'liability',
+  name: String(data.name ?? ''),
+  value: typeof data.value === 'number' ? data.value : Number(data.value ?? 0),
+  purchaseDate: (data.purchase_date ?? data.purchaseDate ?? null) as string | null,
+  notes: (data.notes ?? null) as string | null,
+  createdAt: String(data.created_at ?? data.createdAt ?? ''),
+  updatedAt: String(data.updated_at ?? data.updatedAt ?? ''),
 })
 
 export const getManualAssets = async (): Promise<ManualAsset[]> => {

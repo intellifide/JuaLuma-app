@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { ChatMessage } from '../components/ChatMessage';
 import { ChatInput } from '../components/ChatInput';
 import { QuotaDisplay } from '../components/QuotaDisplay';
-import { aiService, QuotaStatus, HistoryItem } from '../services/aiService';
+import { aiService, QuotaStatus } from '../services/aiService';
 import { AIPrivacyModal } from '../components/AIPrivacyModal';
 import { AISidebar } from '../components/AISidebar';
 import { documentService, Document } from '../services/documentService';
@@ -42,7 +42,6 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -128,13 +127,7 @@ export default function AIAssistant() {
       if (!user || !privacyAccepted || hasFetchedHistory) return;
 
       try {
-        const [history, quotaData] = await Promise.all([
-          aiService.getHistory(),
-          aiService.getQuota()
-        ]);
-
-        // Set history items for the ChatHistoryList component (separate from current conversation)
-        setHistoryItems(history);
+        const quotaData = await aiService.getQuota();
         setQuota(quotaData);
         setHasFetchedHistory(true);
       } catch (err) {
@@ -256,10 +249,6 @@ export default function AIAssistant() {
       }
   };
 
-  const handlePreviewDoc = (doc: Document) => {
-      return documentService.getPreviewUrl(doc.id);
-  };
-
   const handleSendMessage = async (text: string) => {
     if (!user) return;
 
@@ -324,14 +313,6 @@ export default function AIAssistant() {
         
         return updated;
       });
-
-      // Update history list with new interaction
-      const newHistoryItem: HistoryItem = {
-        prompt: text,
-        response: response.response,
-        timestamp: new Date().toISOString()
-      };
-      setHistoryItems(prev => [newHistoryItem, ...prev]);
 
       if (
         response.quota_limit !== undefined &&
@@ -408,7 +389,6 @@ export default function AIAssistant() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-xl font-semibold m-0">AI Assistant</h1>
           </div>
           <QuotaDisplay
             used={quota?.used ?? 0}
@@ -466,7 +446,7 @@ export default function AIAssistant() {
                   <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-lg font-semibold mb-6">
                     AI
                   </div>
-                  <h2 className="text-3xl font-semibold mb-4">Hello! I'm your AI Assistant</h2>
+                  <h2 className="text-3xl font-semibold mb-4">Hello! I&apos;m your AI Assistant</h2>
                   <p className="text-text-secondary mb-8 max-w-md">
                     I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.
                   </p>
@@ -483,7 +463,7 @@ export default function AIAssistant() {
                       className="p-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-left"
                     >
                       <div className="text-sm font-medium mb-1">📊 Net Worth</div>
-                      <div className="text-xs text-text-secondary">What's my net worth?</div>
+                      <div className="text-xs text-text-secondary">What&apos;s my net worth?</div>
                     </button>
                     <button
                       onClick={() => handleSendMessage("Show my subscriptions")}
@@ -523,7 +503,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Input Area */}
-          <div className="flex-shrink-0 border-t border-white/10 bg-bg-secondary/30">
+          <div className="flex-shrink-0 border-t border-white/10 bg-transparent">
             <div className="max-w-4xl mx-auto px-6 py-4">
               <ChatInput
                 onSendMessage={handleSendMessage}

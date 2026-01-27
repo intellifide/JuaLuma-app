@@ -635,9 +635,14 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Cash Flow Pulse */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Cash Flow Pulse</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Cash Flow Pulse</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Cash flow pulse details">
+                Quick view of net cash movement for the selected period.
+              </InfoPopover>
             </div>
             {insightsCashFlowLoading ? (
               <p className="text-sm text-text-muted">Loading cash flow...</p>
@@ -657,9 +662,14 @@ export default function Dashboard() {
 
           {/* Spending Health Score */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Spending Health Score</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Spending Health Score</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Spending health score details">
+                Composite score based on budget use, spending stability, and cash flow.
+              </InfoPopover>
             </div>
             {spendingHealthScore === null ? (
               <p className="text-sm text-text-muted">Waiting on spending signals.</p>
@@ -684,9 +694,14 @@ export default function Dashboard() {
 
           {/* Top Money Drivers */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Top Money Drivers</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Top Money Drivers</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Top money drivers details">
+                Shows the highest spending categories during the selected period.
+              </InfoPopover>
             </div>
             {insightsSpendLoading ? (
               <p className="text-sm text-text-muted">Loading category mix...</p>
@@ -707,9 +722,14 @@ export default function Dashboard() {
 
           {/* Upcoming Bills (Forecast) */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Upcoming Bills (Forecast)</h3>
-              <p className="text-xs text-text-muted">Next 30 days (fixed)</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Upcoming Bills (Forecast)</h3>
+                <p className="text-xs text-text-muted">Next 30 days (fixed)</p>
+              </div>
+              <InfoPopover label="Upcoming bills forecast details">
+                Forecasted from recurring transactions after 30+ days of history.
+              </InfoPopover>
             </div>
             <div className="space-y-2 text-sm text-text-muted">
               <p>No upcoming bills detected yet.</p>
@@ -719,9 +739,14 @@ export default function Dashboard() {
 
           {/* Savings Progress Snapshot */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Savings Progress Snapshot</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Savings Progress Snapshot</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Savings snapshot details">
+                Savings rate calculated from net cash flow in the selected period.
+              </InfoPopover>
             </div>
             {insightsSavingsRate === null ? (
               <p className="text-sm text-text-muted">No savings rate yet.</p>
@@ -738,9 +763,14 @@ export default function Dashboard() {
 
           {/* Liquidity & Buffer */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Liquidity &amp; Buffer</h3>
-              <p className="text-xs text-text-muted">Based on last 30 days</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Liquidity &amp; Buffer</h3>
+                <p className="text-xs text-text-muted">Based on last 30 days</p>
+              </div>
+              <InfoPopover label="Liquidity and buffer details">
+                Estimates runway based on recent expense averages and liquid balances.
+              </InfoPopover>
             </div>
             {liquidityMonths === null ? (
               <p className="text-sm text-text-muted">Add expense history to estimate runway.</p>
@@ -757,9 +787,14 @@ export default function Dashboard() {
 
           {/* Anomaly Watch */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Anomaly Watch</h3>
-              <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Anomaly Watch</h3>
+                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+              </div>
+              <InfoPopover label="Anomaly watch details">
+                Flags unusual changes in spending and category shifts for the period.
+              </InfoPopover>
             </div>
             <div
               className={`rounded-lg px-3 py-2 text-sm ${
@@ -777,9 +812,14 @@ export default function Dashboard() {
 
           {/* Allocation Snapshot */}
           <div className="card gap-4">
-            <div>
-              <h3 className="text-lg font-semibold">Investment Allocation Snapshot</h3>
-              <p className="text-xs text-text-muted">As of today</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Investment Allocation Snapshot</h3>
+                <p className="text-xs text-text-muted">As of today</p>
+              </div>
+              <InfoPopover label="Investment allocation details">
+                Breakdown of invested balances across account types and platforms.
+              </InfoPopover>
             </div>
             {investmentAllocation.total <= 0 ? (
               <p className="text-sm text-text-muted">Connect investment or crypto accounts to see allocation.</p>

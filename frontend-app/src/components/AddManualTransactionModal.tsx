@@ -37,7 +37,7 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
     if (accounts.length > 0 && !formData.accountId) {
       setFormData((prev) => ({ ...prev, accountId: accounts[0].id }))
     }
-  }, [accounts])
+  }, [accounts, formData.accountId])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target

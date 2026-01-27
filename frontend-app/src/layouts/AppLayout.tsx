@@ -21,14 +21,14 @@ import {
 } from 'lucide-react'
 
 const sidebarLinks = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Financial Analysis', path: '/financial-analysis', icon: LineChart },
-  { name: 'Transactions', path: '/transactions', icon: CreditCard },
-  { name: 'Connect Accounts', path: '/connect-accounts', icon: Wallet },
-  { name: 'Marketplace', path: '/marketplace', icon: Store, comingSoon: true },
-  { name: 'AI Assistant', path: '/ai-assistant', icon: Bot },
-  { name: 'Settings', path: '/settings', icon: Settings },
-  { name: 'Support', path: '/support', icon: LifeBuoy },
+  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, description: 'Personal and household financial insights at a glance.' },
+  { name: 'Financial Analysis', path: '/financial-analysis', icon: LineChart, description: 'Deep dive into budgets, trends, and category spend.' },
+  { name: 'Transactions', path: '/transactions', icon: CreditCard, description: 'Filter, search, and bulk edit your transactions.' },
+  { name: 'Connect Accounts', path: '/connect-accounts', icon: Wallet, description: 'Manage bank, wallet, exchange, and manual accounts. Connections are read-only.' },
+  { name: 'Marketplace', path: '/marketplace', icon: Store, comingSoon: true, description: 'Explore integrations and upcoming partner tools.' },
+  { name: 'AI Assistant', path: '/ai-assistant', icon: Bot, description: 'Ask questions about your finances and manage chats.' },
+  { name: 'Settings', path: '/settings', icon: Settings, description: 'Manage profile, subscription, security, and preferences.' },
+  { name: 'Support', path: '/support', icon: LifeBuoy, description: 'Track your tickets or get help from our team.' },
 ]
 
 export const AppLayout: React.FC = () => {
@@ -47,9 +47,43 @@ export const AppLayout: React.FC = () => {
         const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim()
         return fullName || profile.username || profile.email || user?.email || 'there'
     }, [profile, user?.email])
-    const pageTitle = useMemo(() => {
+    const pageMeta = useMemo(() => {
+        const overrides = [
+            {
+                path: '/support/tickets',
+                title: 'Ticket Details',
+                description: 'Review the full ticket history and updates.',
+            },
+            {
+                path: '/developers/dashboard',
+                title: 'Developer Dashboard',
+                description: 'Manage widgets, payouts, and submissions.',
+            },
+            {
+                path: '/checkout/success',
+                title: 'Checkout Status',
+                description: 'We are verifying your payment status.',
+            },
+            {
+                path: '/settings',
+                title: 'Account Settings',
+                description: 'Manage profile, subscription, security, and preferences.',
+            },
+            {
+                path: '/support',
+                title: 'Help & Support',
+                description: 'Track your tickets or get help from our team.',
+            },
+            {
+                path: '/household',
+                title: 'Household Management',
+                description: 'Manage members, roles, and shared access.',
+            },
+        ]
+        const override = overrides.find((item) => location.pathname.startsWith(item.path))
+        if (override) return override
         const match = sidebarLinks.find((link) => location.pathname.startsWith(link.path))
-        return match?.name ?? 'Dashboard'
+        return { title: match?.name ?? 'Dashboard', description: match?.description ?? '' }
     }, [location.pathname])
 
     useEffect(() => {
@@ -275,9 +309,17 @@ export const AppLayout: React.FC = () => {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative pt-20 md:pt-0">
                 {/* Top Bar (Contextual - Optional for now, mostly for breadcrumbs or page title) */}
                 <div className="hidden md:flex h-20 items-center justify-between px-8 border-b border-white/5 bg-bg-primary/50 backdrop-blur-sm sticky top-0 z-10">
-                   <h1 className="text-xl font-semibold text-text-primary capitalize">
-                        {showWelcome ? `Welcome back, ${displayName}.` : pageTitle}
-                   </h1>
+                   <div className="flex flex-col">
+                        <h1 className="text-xl font-semibold text-text-primary">
+                            {pageMeta.title}
+                        </h1>
+                        {pageMeta.description && (
+                            <p className="text-xs text-text-secondary">
+                                {showWelcome ? `Welcome back, ${displayName}. ` : ''}
+                                {pageMeta.description}
+                            </p>
+                        )}
+                   </div>
                    <div className="flex items-center gap-4">
                         <Link to="/" className="text-sm font-medium text-text-muted hover:text-primary transition-colors">
                             ← Return to Website

@@ -66,7 +66,7 @@ export const supportService = {
         await api.post(`/support/tickets/${ticketId}/rate`, data);
     },
 
-    getHealth: async (): Promise<any> => {
+    getHealth: async (): Promise<Record<string, unknown>> => {
         const response = await api.get('/health');
         return response.data;
     },

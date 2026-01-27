@@ -52,7 +52,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const isInputDisabled = disabled || isLoading || quotaExceeded;
 
     return (
-        <div className="flex flex-col gap-2 p-4 border-t border-border bg-surface-2">
+        <div className="flex flex-col gap-2 p-4 border-t border-border bg-transparent">
             <div className="relative w-full">
                 <textarea
                     ref={textareaRef}
@@ -60,7 +60,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     placeholder={quotaExceeded ? "Daily query limit reached." : placeholder}
-                    className="w-full min-h-[44px] max-h-[200px] resize-none py-3 pr-12 pl-4 rounded-lg bg-surface-1 text-text-primary border border-border focus:outline-none focus:border-royal-purple transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base"
+                    className="w-full min-h-[44px] max-h-[200px] resize-none py-3 pr-12 pl-4 rounded-lg bg-transparent text-text-primary border border-border focus:outline-none focus:border-royal-purple transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base"
                     disabled={isInputDisabled}
                     rows={1}
                     aria-label="Chat input"

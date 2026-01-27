@@ -46,12 +46,12 @@ export const settingsService = {
     return response.json()
   },
 
-  async updatePrivacySettings(data: { data_sharing_consent: boolean }): Promise<any> {
+  async updatePrivacySettings(data: { data_sharing_consent: boolean }): Promise<PrivacySettings> {
     // Update privacy settings on the backend.
     const response = await apiFetch('/users/me/privacy', {
       method: 'PATCH',
       body: JSON.stringify(data),
     })
-    return response.json()
+    return response.json() as Promise<PrivacySettings>
   }
 }

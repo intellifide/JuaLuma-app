@@ -94,15 +94,9 @@ export const DeveloperDashboard = () => {
 
     return (
         <div className="container py-12">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                   <h1 className="text-3xl font-bold">Developer Dashboard</h1>
-                   <p className="text-text-secondary">Manage your widgets and view earnings.</p>
-                </div>
-                <div className="flex gap-4">
-                     <a href="/api/developers/sdk" className="btn btn-outline text-sm" download>Download SDK</a>
-                     <Link to="/developers" className="btn btn-ghost text-sm">Portal Home</Link>
-                </div>
+            <div className="flex justify-end items-center mb-8 gap-4">
+                 <a href="/api/developers/sdk" className="btn btn-outline text-sm" download>Download SDK</a>
+                 <Link to="/developers" className="btn btn-ghost text-sm">Portal Home</Link>
             </div>
 
             {/* Tabs */}

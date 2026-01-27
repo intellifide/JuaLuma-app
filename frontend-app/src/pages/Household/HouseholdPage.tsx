@@ -140,9 +140,6 @@ export const HouseholdPage: React.FC = () => {
   if (!household) {
     return (
       <div className="container mx-auto py-10 px-4 space-y-8 max-w-2xl">
-        <h1 className="text-3xl font-bold text-deep-indigo">Household Management</h1>
-        <p className="text-text-secondary">Join a household to share benefits and manage finances together.</p>
-
         <Card className="p-6 space-y-4">
           <h2 className="text-xl font-semibold">Create a Household</h2>
           <p className="text-sm text-text-muted">Start a new household and become the admin.</p>
@@ -195,7 +192,6 @@ export const HouseholdPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-deep-indigo">{household.name}</h1>
-          <p className="text-text-secondary">Manage your household members and settings.</p>
         </div>
         <div className="flex gap-2">
             {isAdmin && (

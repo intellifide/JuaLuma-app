@@ -25,7 +25,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time }) =>
                     <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
                         components={{
-                            code: ({node, inline, className, children, ...props}) => {
+                            code: ({ inline, className, children, ...props}) => {
                                 return inline ? (
                                     <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
                                         {children}

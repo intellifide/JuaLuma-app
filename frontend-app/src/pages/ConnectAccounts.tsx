@@ -111,6 +111,12 @@ const normalizePlan = (value?: string | null): PlanTier | null => {
 
 const formatLimit = (limit: number | 'Unlimited') => (limit === 'Unlimited' ? 'Unlimited' : String(limit));
 
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (!error || typeof error !== 'object') return fallback;
+  const err = error as { response?: { data?: { detail?: string } }; message?: string };
+  return err.response?.data?.detail || err.message || fallback;
+};
+
 const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [address, setAddress] = useState('');
   const [name, setName] = useState('');
@@ -813,15 +819,20 @@ export const ConnectAccounts = () => {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
+  const [connectMenuOpen, setConnectMenuOpen] = useState(true);
+  const [expandedConnectSection, setExpandedConnectSection] = useState<'bank' | 'web3' | 'cex' | 'manual' | null>('bank');
   const [activeTab, setActiveTab] = useState<'all' | 'cash' | 'credit' | 'loans' | 'investment' | 'real_estate' | 'crypto' | 'manual'>('all');
   const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
+  const [linkedAccountsPage, setLinkedAccountsPage] = useState(1);
+  const [linkedAccountsPageSize, setLinkedAccountsPageSize] = useState(10);
   const [confirmAction, setConfirmAction] = useState<{
     type: 'refresh' | 'remove';
     account: typeof accounts[number];
   } | null>(null);
 
   const planFromProfile = normalizePlan(profile?.plan);
-  const activeSubscription = profile?.subscriptions?.find((sub: any) => sub.status === 'active');
+  const activeSubscription = (profile?.subscriptions as Array<{ status?: string; plan?: string | null }> | undefined)
+    ?.find((sub) => sub.status === 'active');
   const planFromSubscriptions = normalizePlan(activeSubscription?.plan);
   const plan: PlanTier = planFromProfile || planFromSubscriptions || 'free';
   const planLabel = PLAN_LABELS[plan];
@@ -873,6 +884,19 @@ export const ConnectAccounts = () => {
   const web3LimitLabel = formatLimit(ACCOUNT_LIMITS.web3[plan]);
   const cexLimitLabel = formatLimit(ACCOUNT_LIMITS.cex[plan]);
   const manualLimitLabel = formatLimit(ACCOUNT_LIMITS.manual[plan]);
+
+  const totalLinkedAccountsPages = Math.max(1, Math.ceil(accounts.length / linkedAccountsPageSize));
+  const linkedAccountsStart = (linkedAccountsPage - 1) * linkedAccountsPageSize;
+  const linkedAccountsEnd = linkedAccountsStart + linkedAccountsPageSize;
+  const paginatedLinkedAccounts = accounts.slice(linkedAccountsStart, linkedAccountsEnd);
+  const hasLinkedPrevPage = linkedAccountsPage > 1;
+  const hasLinkedNextPage = linkedAccountsPage < totalLinkedAccountsPages;
+
+  useEffect(() => {
+    if (linkedAccountsPage > totalLinkedAccountsPages) {
+      setLinkedAccountsPage(totalLinkedAccountsPages);
+    }
+  }, [linkedAccountsPage, totalLinkedAccountsPages]);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -931,6 +955,51 @@ export const ConnectAccounts = () => {
       .join(', ');
   }, [categoryCounts]);
 
+  type ConnectSection = {
+    id: 'bank' | 'web3' | 'cex' | 'manual';
+    title: string;
+    description: string;
+    connected: number;
+    allowed: string;
+    helper?: string;
+    badge?: string;
+    disabled?: boolean;
+  };
+
+  const connectSections: ConnectSection[] = [
+    {
+      id: 'bank' as const,
+      title: 'Bank & Credit',
+      description: 'Secure read-only sync via Plaid.',
+      connected: connectedCounts.bank,
+      allowed: bankLimitLabel,
+      helper: 'Sandbox: user_good / pass_good',
+    },
+    {
+      id: 'web3' as const,
+      title: 'Web3 Wallets',
+      description: 'Track balances and on-chain activity.',
+      connected: connectedCounts.web3,
+      allowed: web3LimitLabel,
+    },
+    {
+      id: 'cex' as const,
+      title: 'CEX Accounts',
+      description: 'Read-only exchange balances and positions.',
+      connected: connectedCounts.cex,
+      allowed: cexLimitLabel,
+    },
+    {
+      id: 'manual' as const,
+      title: 'Manual Accounts',
+      description: 'Track manual accounts for transactions and balances.',
+      connected: connectedCounts.manual,
+      allowed: manualLimitLabel,
+      badge: 'Pro / Ultimate',
+      disabled: !hasManualAccess,
+    },
+  ];
+
   const filteredAccounts = useMemo(() => {
     if (activeTab === 'all') return accounts;
     if (activeTab === 'manual') return accounts.filter((acc) => acc.accountType === 'manual');
@@ -954,21 +1023,19 @@ export const ConnectAccounts = () => {
       await refetch();
       toast.show('Account synced successfully', 'success');
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (account.accountType === 'traditional') {
         try {
           await refreshMetadata(account.id);
           await refetch();
           toast.show('Transactions sync failed, but account details were refreshed.', 'warning');
           return false;
-        } catch (refreshErr: any) {
-          const msg = refreshErr?.response?.data?.detail || refreshErr?.message || 'Failed to refresh account details';
-          toast.show(msg, 'error');
+        } catch (refreshErr: unknown) {
+          toast.show(getApiErrorMessage(refreshErr, 'Failed to refresh account details'), 'error');
           return false;
         }
       }
-      const msg = err?.response?.data?.detail || err?.message || 'Failed to sync account';
-      toast.show(msg, 'error');
+      toast.show(getApiErrorMessage(err, 'Failed to sync account'), 'error');
       return false;
     }
   };
@@ -1030,11 +1097,7 @@ export const ConnectAccounts = () => {
   return (
     <div>
       <section className="container py-12">
-        <h1 className="mb-4">Connect Accounts</h1>
-        <p className="text-text-secondary mb-8 max-w-[720px]">
-          Manage bank, wallet, exchange, and manual accounts. Connections are read-only.
-        </p>
-        <div className="flex flex-wrap gap-3 mb-8">
+        <div className="flex flex-wrap gap-3 mb-6">
           <span className="badge badge-neutral text-xs">Plan: {planLabel}</span>
           <span className="badge badge-neutral text-xs">Connected: {accounts.length}</span>
         </div>
@@ -1044,88 +1107,246 @@ export const ConnectAccounts = () => {
           </div>
         )}
 
-        <div className="grid grid-3 mb-12">
-          <div className="card">
-            <div className="card-header">
-              <h3 className="text-lg font-bold">Bank &amp; Credit</h3>
-            </div>
-            <div className="card-body space-y-3">
-              <p className="text-sm text-text-secondary">Secure read-only sync via Plaid Sandbox.</p>
-              <div className="flex items-center justify-between text-xs text-text-muted">
-                <span>Connected {connectedCounts.bank}</span>
-                <span>Allowed {bankLimitLabel} ({planLabel})</span>
-              </div>
-              <p className="text-xs text-text-secondary">Sandbox: <strong>user_good / pass_good</strong></p>
-            </div>
-            <div className="card-footer">
-              <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
-            </div>
+        {/* Account Overview */}
+        <div className="glass-panel mb-10 transition-all duration-300">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Account Overview</h2>
+            <button
+              onClick={() => setAccountsExpanded(!accountsExpanded)}
+              className="text-sm font-medium text-royal-purple hover:underline"
+            >
+              {accountsExpanded ? 'Collapse' : 'Manage / Details'}
+            </button>
           </div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="text-lg font-bold">Web3 Wallets</h3>
+
+          {!accountsExpanded ? (
+            <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-transparent border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setAccountsExpanded(true)}>
+              {accounts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center w-full text-center">
+                  <p className="text-text-muted font-medium">Link your first financial account to see your net worth and cash flow.</p>
+                  <p className="text-xs text-text-secondary mt-1">Connect an account below to start syncing.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-8">
+                    <div>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Connected</span>
+                      <span className="text-lg font-bold text-text-primary">{accounts.length} Accounts</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Categories</span>
+                      <span className="text-lg font-bold text-text-primary">
+                        {categorySummary}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right mt-4 md:mt-0 flex flex-col items-end gap-2">
+                    <div>
+                      <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
+                      <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
+                    </div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        // Trigger sync for all accounts sequentially to prevent rate limits
+                        for (const acc of syncableAccounts) {
+                          if (!syncingAccounts.has(acc.id)) {
+                            // We await each sync to ensure sequential execution
+                            await handleSync(acc, e);
+                          }
+                        }
+                      }}
+                      className="text-xs bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 flex items-center gap-1 transition-colors"
+                    >
+                      <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="card-body space-y-3">
-              <p className="text-sm text-text-secondary">Track balances and on-chain activity.</p>
-              <div className="flex items-center justify-between text-xs text-text-muted">
-                <span>Connected {connectedCounts.web3}</span>
-                <span>Allowed {web3LimitLabel} ({planLabel})</span>
+          ) : (
+            <>
+              <div className="tabs mb-6">
+                <ul className="tab-list flex gap-4 border-b border-white/10 flex-wrap" role="tablist">
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all')}>All Accounts</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cash' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cash')}>Cash</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'credit' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('credit')}>Credit</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'loans' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('loans')}>Loans</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investments</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'real_estate' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('real_estate')}>Real Estate</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'crypto' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('crypto')}>Crypto</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'manual' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('manual')}>Manual</button></li>
+                </ul>
               </div>
-            </div>
-            <div className="card-footer">
-              <button
-                className="btn btn-primary w-full md:w-[180px]"
-                type="button"
-                onClick={() => setShowWalletModal(true)}
-              >
-                Connect Wallet
-              </button>
-            </div>
-          </div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="text-lg font-bold">CEX Accounts</h3>
-            </div>
-            <div className="card-body space-y-3">
-              <p className="text-sm text-text-secondary">Read-only exchange balances and positions.</p>
-              <div className="flex items-center justify-between text-xs text-text-muted">
-                <span>Connected {connectedCounts.cex}</span>
-                <span>Allowed {cexLimitLabel} ({planLabel})</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredAccounts.length === 0 ? (
+                  <div className="col-span-full text-center py-10 text-text-muted italic">
+                    No accounts found. {accounts.length === 0 && "Use the button below to link an account."}
+                  </div>
+                ) : (
+                  filteredAccounts.map((account) => {
+                    const display = getAccountCategoryDisplay(account);
+                    const label = account.customLabel || account.accountName || 'Unnamed Account';
+                    const detailLine = account.accountNumberMasked
+                      ? `Ending in ${account.accountNumberMasked}`
+                      : display.detail || display.label;
+                    return (
+                      <div key={account.id} className="relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-surface-1/40 p-5 shadow-glass">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-[11px] uppercase tracking-widest text-text-muted">
+                              {display.label}
+                            </p>
+                            <h3 className="text-lg font-semibold text-text-primary">{label}</h3>
+                            <p className="text-xs text-text-secondary">{detailLine}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[11px] uppercase tracking-widest text-text-muted">Balance</p>
+                            <p className="text-2xl font-bold text-primary">
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {display.detail && (
+                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
+                              {display.detail}
+                            </span>
+                          )}
+                          {account.balanceType && (
+                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
+                              {account.balanceType === 'liability' ? 'Liability' : 'Asset'}
+                            </span>
+                          )}
+                          {account.provider && (
+                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
+                              {account.provider}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-text-secondary">
+                          <span>{account.accountType === 'manual' ? 'Manual tracking' : 'Auto-synced'}</span>
+                          <span>{account.updatedAt ? `Updated ${new Date(account.updatedAt).toLocaleDateString()}` : 'Updated recently'}</span>
+                        </div>
+                        {account.accountType !== 'manual' && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => handleSync(account, e)}
+                              disabled={syncingAccounts.has(account.id)}
+                              className="text-xs bg-primary/20 text-primary px-3 py-2 rounded-lg hover:bg-primary/30 disabled:opacity-50 flex items-center gap-2"
+                              title="Sync latest transactions"
+                            >
+                              <span className={syncingAccounts.has(account.id) ? 'animate-spin' : ''}>↻</span>
+                              {syncingAccounts.has(account.id) ? 'Syncing...' : 'Sync'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
+            </>
+          )}
+        </div>
+
+        {/* Connect Accounts */}
+        <div className="glass-panel mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-semibold">Connection Options</h2>
+              <p className="text-xs text-text-secondary">Choose an account type to link.</p>
             </div>
-            <div className="card-footer">
-              <button
-                className="btn btn-primary w-full md:w-[180px]"
-                type="button"
-                onClick={() => setShowCexModal(true)}
-              >
-                Connect Exchange
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setConnectMenuOpen((prev) => !prev)}
+            >
+              {connectMenuOpen ? 'Collapse' : 'Expand'}
+            </button>
           </div>
-          <div className="card">
-            <div className="card-header">
-              <h3 className="text-lg font-bold">Manual Accounts</h3>
+          {connectMenuOpen && (
+            <div className="space-y-3">
+              {connectSections.map((section) => {
+                const isOpen = expandedConnectSection === section.id;
+                return (
+                  <div key={section.id} className="rounded-2xl border border-white/10 bg-surface-1/40 p-4">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedConnectSection(isOpen ? null : section.id)}
+                      className="w-full flex items-start justify-between gap-4 text-left"
+                    >
+                      <div>
+                        <h3 className="text-base font-semibold text-text-primary">{section.title}</h3>
+                        <p className="text-xs text-text-secondary mt-1">{section.description}</p>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-text-muted">
+                        <span>Connected {section.connected}</span>
+                        <span>Allowed {section.allowed} ({planLabel})</span>
+                        <svg
+                          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="mt-4 border-t border-white/10 pt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="space-y-2 text-xs text-text-secondary">
+                          {section.helper && (
+                            <p>
+                              {section.helper}
+                            </p>
+                          )}
+                          {section.badge && (
+                            <span className="badge badge-neutral text-[10px] w-fit">
+                              {section.badge}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          {section.id === 'bank' && (
+                            <PlaidLinkButton onSuccess={handlePlaidSuccess} onError={handlePlaidError} />
+                          )}
+                          {section.id === 'web3' && (
+                            <button
+                              className="btn btn-primary w-full md:w-[180px]"
+                              type="button"
+                              onClick={() => setShowWalletModal(true)}
+                            >
+                              Connect Wallet
+                            </button>
+                          )}
+                          {section.id === 'cex' && (
+                            <button
+                              className="btn btn-primary w-full md:w-[180px]"
+                              type="button"
+                              onClick={() => setShowCexModal(true)}
+                            >
+                              Connect Exchange
+                            </button>
+                          )}
+                          {section.id === 'manual' && (
+                            <button
+                              className="btn btn-primary w-full md:w-[200px]"
+                              type="button"
+                              onClick={() => hasManualAccess && setShowManualAccountModal(true)}
+                              disabled={section.disabled}
+                            >
+                              {hasManualAccess ? 'Create Manual Account' : 'Upgrade Required'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="card-body space-y-3">
-              <p className="text-sm text-text-secondary">Track manual accounts for transactions and balances.</p>
-              <div className="flex items-center justify-between text-xs text-text-muted">
-                <span>Connected {connectedCounts.manual}</span>
-                <span>Allowed {manualLimitLabel} ({planLabel})</span>
-              </div>
-              <span className="badge badge-neutral text-[10px] w-fit">Pro / Ultimate</span>
-            </div>
-            <div className="card-footer">
-              <button
-                className="btn btn-primary w-full md:w-[180px]"
-                type="button"
-                onClick={() => hasManualAccess && setShowManualAccountModal(true)}
-                disabled={!hasManualAccess}
-              >
-                {hasManualAccess ? 'Create Manual Account' : 'Upgrade Required'}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Modals */}
@@ -1195,149 +1416,6 @@ export const ConnectAccounts = () => {
             )}
           </div>
         </Modal>
-
-        {/* Account Overview */}
-        <div className="glass-panel mb-10 transition-all duration-300">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Account Overview</h2>
-            <button
-              onClick={() => setAccountsExpanded(!accountsExpanded)}
-              className="text-sm font-medium text-royal-purple hover:underline"
-            >
-              {accountsExpanded ? 'Collapse' : 'Manage / Details'}
-            </button>
-          </div>
-
-          {!accountsExpanded ? (
-            <div className="flex flex-col md:flex-row justify-between items-center p-6 bg-transparent border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onClick={() => setAccountsExpanded(true)}>
-              {accounts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center w-full text-center">
-                  <p className="text-text-muted font-medium">Link your first financial account to see your net worth and cash flow.</p>
-                  <p className="text-xs text-text-secondary mt-1">Connect an account above to start syncing.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex gap-8">
-                    <div>
-                      <span className="block text-xs text-text-muted uppercase tracking-wider">Connected</span>
-                      <span className="text-lg font-bold text-text-primary">{accounts.length} Accounts</span>
-                    </div>
-                    <div>
-                      <span className="block text-xs text-text-muted uppercase tracking-wider">Categories</span>
-                      <span className="text-lg font-bold text-text-primary">
-                        {categorySummary}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right mt-4 md:mt-0 flex flex-col items-end gap-2">
-                    <div>
-                      <span className="block text-xs text-text-muted uppercase tracking-wider">Total Combined Balance</span>
-                      <span className="text-2xl font-bold text-royal-purple">{formatCurrency(totalBalance)}</span>
-                    </div>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        // Trigger sync for all accounts sequentially to prevent rate limits
-                        for (const acc of syncableAccounts) {
-                          if (!syncingAccounts.has(acc.id)) {
-                            // We await each sync to ensure sequential execution
-                            await handleSync(acc, e);
-                          }
-                        }
-                      }}
-                      className="text-xs bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 flex items-center gap-1 transition-colors"
-                    >
-                      <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="tabs mb-6">
-                <ul className="tab-list flex gap-4 border-b border-white/10 flex-wrap" role="tablist">
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'all' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('all')}>All Accounts</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'cash' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cash')}>Cash</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'credit' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('credit')}>Credit</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'loans' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('loans')}>Loans</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investments</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'real_estate' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('real_estate')}>Real Estate</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'crypto' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('crypto')}>Crypto</button></li>
-                  <li><button className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'manual' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('manual')}>Manual</button></li>
-                </ul>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredAccounts.length === 0 ? (
-                  <div className="col-span-full text-center py-10 text-text-muted italic">
-                    No accounts found. {accounts.length === 0 && "Use the button above to link an account."}
-                  </div>
-                ) : (
-                  filteredAccounts.map((account) => {
-                    const display = getAccountCategoryDisplay(account);
-                    const label = account.customLabel || account.accountName || 'Unnamed Account';
-                    const detailLine = account.accountNumberMasked
-                      ? `Ending in ${account.accountNumberMasked}`
-                      : display.detail || display.label;
-                    return (
-                      <div key={account.id} className="relative flex flex-col gap-4 rounded-2xl border border-white/10 bg-surface-1/40 p-5 shadow-glass">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-[11px] uppercase tracking-widest text-text-muted">
-                              {display.label}
-                            </p>
-                            <h3 className="text-lg font-semibold text-text-primary">{label}</h3>
-                            <p className="text-xs text-text-secondary">{detailLine}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[11px] uppercase tracking-widest text-text-muted">Balance</p>
-                            <p className="text-2xl font-bold text-primary">
-                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.currency || 'USD' }).format(account.balance || 0)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {display.detail && (
-                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
-                              {display.detail}
-                            </span>
-                          )}
-                          {account.balanceType && (
-                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
-                              {account.balanceType === 'liability' ? 'Liability' : 'Asset'}
-                            </span>
-                          )}
-                          {account.provider && (
-                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-text-secondary">
-                              {account.provider}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-text-secondary">
-                          <span>{account.accountType === 'manual' ? 'Manual tracking' : 'Auto-synced'}</span>
-                          <span>{account.updatedAt ? `Updated ${new Date(account.updatedAt).toLocaleDateString()}` : 'Updated recently'}</span>
-                        </div>
-                        {account.accountType !== 'manual' && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={(e) => handleSync(account, e)}
-                              disabled={syncingAccounts.has(account.id)}
-                              className="text-xs bg-primary/20 text-primary px-3 py-2 rounded-lg hover:bg-primary/30 disabled:opacity-50 flex items-center gap-2"
-                              title="Sync latest transactions"
-                            >
-                              <span className={syncingAccounts.has(account.id) ? 'animate-spin' : ''}>↻</span>
-                              {syncingAccounts.has(account.id) ? 'Syncing...' : 'Sync'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </>
-          )}
-        </div>
 
         <div className="glass-panel mb-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -1447,7 +1525,7 @@ export const ConnectAccounts = () => {
                     <td colSpan={6} className="py-4 text-center text-text-muted">No accounts connected yet.</td>
                   </tr>
                 ) : (
-                  accounts.map((account) => {
+                  paginatedLinkedAccounts.map((account) => {
                     const display = getAccountCategoryDisplay(account);
                     return (
                       <tr key={account.id} className="border-b border-border/50 hover:bg-surface-2 transition-colors">
@@ -1544,6 +1622,38 @@ export const ConnectAccounts = () => {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-text-muted" htmlFor="linked-accounts-page-size">Rows</label>
+              <select
+                id="linked-accounts-page-size"
+                className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary"
+                value={linkedAccountsPageSize}
+                onChange={(e) => {
+                  setLinkedAccountsPageSize(Number(e.target.value));
+                  setLinkedAccountsPage(1);
+                }}
+              >
+                {[10, 25, 50, 100].map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => setLinkedAccountsPage((prev) => Math.max(1, prev - 1))}
+                disabled={!hasLinkedPrevPage}
+              >
+                Prev
+              </button>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => setLinkedAccountsPage((prev) => Math.min(totalLinkedAccountsPages, prev + 1))}
+                disabled={!hasLinkedNextPage}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
