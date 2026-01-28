@@ -11,9 +11,11 @@ services:
       APP_ENV: local
       API_PORT: 8001
       DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
+      FIREBASE_EMULATOR_ENABLED: "true"
       FIRESTORE_EMULATOR_HOST: jualuma-firebase-emulator:8080
       FIREBASE_AUTH_EMULATOR_HOST: jualuma-firebase-emulator:9099
       FIREBASE_PROJECT_ID: jualuma-local
+      PUBSUB_EMULATOR_ENABLED: "true"
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       ENCRYPTION_PROVIDER: ${ENCRYPTION_PROVIDER:-local}
       LOCAL_ENCRYPTION_KEY: ${LOCAL_ENCRYPTION_KEY:-local-dev-key-change-me}

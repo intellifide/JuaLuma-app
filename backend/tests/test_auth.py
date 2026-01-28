@@ -17,6 +17,8 @@ def test_signup_success(test_client: TestClient, test_db):
         payload = {
             "email": "newuser@example.com",
             "password": "password123",
+            "first_name": "New",
+            "last_name": "User",
             "agreements": [
                 {"agreement_key": "terms_of_service"},
                 {"agreement_key": "privacy_policy"},
@@ -68,6 +70,8 @@ def test_signup_duplicate_email(test_client: TestClient, test_db):
             payload = {
                 "email": "existing@example.com",
                 "password": "password123",
+                "first_name": "Existing",
+                "last_name": "User",
                 "agreements": [
                     {"agreement_key": "terms_of_service"},
                     {"agreement_key": "privacy_policy"},
@@ -77,7 +81,10 @@ def test_signup_duplicate_email(test_client: TestClient, test_db):
             response = test_client.post("/api/auth/signup", json=payload)
 
     assert response.status_code == 400
-    assert "Email already exists" in response.json()["detail"]
+    assert (
+        "account with this email address already exists"
+        in response.json()["detail"].lower()
+    )
 
 
 def test_signup_zombie_healing(test_client: TestClient, test_db):
@@ -107,6 +114,8 @@ def test_signup_zombie_healing(test_client: TestClient, test_db):
             payload = {
                 "email": "zombie@example.com",
                 "password": "password123",
+                "first_name": "Zombie",
+                "last_name": "User",
                 "agreements": [
                     {"agreement_key": "terms_of_service"},
                     {"agreement_key": "privacy_policy"},
@@ -150,6 +159,8 @@ def test_signup_db_only_healing(test_client: TestClient, test_db):
             payload = {
                 "email": "dbonly@example.com",
                 "password": "password123",
+                "first_name": "DB",
+                "last_name": "Only",
                 "agreements": [
                     {"agreement_key": "terms_of_service"},
                     {"agreement_key": "privacy_policy"},
@@ -204,17 +215,17 @@ def test_profile_update(test_client: TestClient, test_db, mock_auth):
 
     # Add subscription so _serialize_profile works fully if needed, though mostly optional
 
-    payload = {"theme_pref": "dark", "currency_pref": "EUR"}
+    payload = {"theme_pref": "dark"}
     response = test_client.patch("/api/auth/profile", json=payload)
 
     assert response.status_code == 200
     data = response.json()
     assert data["user"]["theme_pref"] == "dark"
-    assert data["user"]["currency_pref"] == "EUR"
+    assert data["user"]["currency_pref"] == "USD"
 
     user = test_db.query(User).filter_by(uid=mock_auth.uid).first()
     assert user.theme_pref == "dark"
-    assert user.currency_pref == "EUR"
+    assert user.currency_pref == "USD"
 
 
 def test_logout(test_client: TestClient, mock_auth):

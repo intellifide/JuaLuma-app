@@ -13,6 +13,15 @@ Usage:
 import os
 import sys
 
+import pytest
+
+# Skip in pytest runs unless explicitly enabled.
+if os.getenv("RUN_SCRIPTS_TESTS") != "1":
+    pytest.skip(
+        "Skipping script-style tests; set RUN_SCRIPTS_TESTS=1 to enable.",
+        allow_module_level=True,
+    )
+
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 

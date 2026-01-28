@@ -12,8 +12,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 
-const useAuthEmulator =
-  import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR !== 'false'
+const emulatorFlag =
+  import.meta.env.VITE_FIREBASE_EMULATOR_ENABLED ??
+  import.meta.env.VITE_USE_FIREBASE_EMULATOR
+const useAuthEmulator = import.meta.env.DEV && emulatorFlag !== 'false'
 const authEmulatorHost =
   import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || 'localhost:9099'
 const authEmulatorUrl = useAuthEmulator

@@ -42,7 +42,7 @@ def test_change_password_fail_verify(test_client: TestClient, test_db, mock_auth
         response = test_client.post("/api/auth/change-password", json=payload)
 
     assert response.status_code == 401
-    assert "Incorrect current password" in response.json()["detail"]
+    assert "current password provided is incorrect" in response.json()["detail"]
     mock_verify.assert_called_once()
 
 

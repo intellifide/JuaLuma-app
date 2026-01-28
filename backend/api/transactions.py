@@ -25,6 +25,7 @@ from backend.models import (
 from backend.core.constants import SubscriptionPlans
 from backend.services.analytics import invalidate_analytics_cache
 from backend.utils import get_db
+from backend.utils.normalization import normalize_category, normalize_merchant_name
 
 logger = logging.getLogger(__name__)
 
@@ -603,14 +604,16 @@ def create_manual_transaction(
         )
 
     # Create the transaction
+    normalized_category = normalize_category(payload.category)
+    normalized_merchant = normalize_merchant_name(payload.merchant_name)
     txn = Transaction(
         uid=current_user.uid,
         account_id=payload.account_id,
         ts=payload.ts,
         amount=payload.amount,
         currency=payload.currency,
-        category=payload.category,
-        merchant_name=payload.merchant_name,
+        category=normalized_category,
+        merchant_name=normalized_merchant,
         description=payload.description,
         external_id=None,  # Manual transactions don't have external IDs
         is_manual=True,
@@ -711,7 +714,7 @@ def bulk_update_transactions(
 
     for txn in txns:
         if payload.updates.category is not None:
-            txn.category = payload.updates.category
+            txn.category = normalize_category(payload.updates.category)
         if payload.updates.description is not None:
             txn.description = payload.updates.description
         db.add(txn)
@@ -768,7 +771,7 @@ def update_transaction(
 
     # Update fields that are always editable
     if payload.category is not None:
-        txn.category = payload.category
+        txn.category = normalize_category(payload.category)
     if payload.description is not None:
         txn.description = payload.description
 
@@ -777,7 +780,7 @@ def update_transaction(
         if payload.amount is not None:
             txn.amount = payload.amount
         if payload.merchant_name is not None:
-            txn.merchant_name = payload.merchant_name
+            txn.merchant_name = normalize_merchant_name(payload.merchant_name)
         if payload.ts is not None:
             txn.ts = payload.ts
     else:

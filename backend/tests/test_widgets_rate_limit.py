@@ -41,7 +41,11 @@ async def test_widget_submission_rate_limit(test_db):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             # 1.5 Register as Developer
-            reg_payload = {"payout_method": {}, "payout_frequency": "monthly"}
+            reg_payload = {
+                "payout_method": {},
+                "payout_frequency": "monthly",
+                "agreements": [{"agreement_key": "developer_agreement"}],
+            }
             # The API call will try to insert into 'developers' table
             response = await client.post("/api/developers/", json=reg_payload)
             if response.status_code != 200:
@@ -77,6 +81,6 @@ async def test_widget_submission_rate_limit(test_db):
             }
             response = await client.post("/api/widgets/", json=payload)
             assert response.status_code == 429
-            assert "limit reached" in response.json()["detail"]
+            assert "rate limit exceeded" in response.json()["detail"].lower()
     finally:
         app.dependency_overrides.clear()

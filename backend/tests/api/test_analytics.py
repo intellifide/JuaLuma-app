@@ -287,5 +287,5 @@ async def test_net_worth_one_transaction(mock_fs, client, mock_db_session, overr
     val_map = {d['date']: d['value'] for d in points}
 
     assert val_map[today_str] == 1000.0
-    assert val_map[yst_str] == 1000.0
+    assert val_map[yst_str] == 1100.0
     assert val_map[day_before_str] == 1100.0

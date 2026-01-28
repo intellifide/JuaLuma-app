@@ -19,6 +19,7 @@ from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, Subscription, Transaction, User
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
+from backend.utils.normalization import normalize_category, normalize_merchant_name
 from backend.services.connectors import build_connector
 from backend.services.crypto_history import BitqueryUnavailableError, fetch_crypto_history
 from backend.services.web3_history import ProviderError, ProviderOverloaded, fetch_web3_history
@@ -1148,8 +1149,9 @@ def _process_single_transaction(
     # For traditional accounts (Plaid), amount already has correct sign
 
     # Auto categorization with improved logic for crypto
-    merchant_key = txn.get("merchant_name") or txn.get("name")
-    predicted_category = predict_category(db, uid, merchant_key)
+    merchant_name_raw = txn.get("merchant_name") or txn.get("name")
+    merchant_name = normalize_merchant_name(merchant_name_raw)
+    predicted_category = predict_category(db, uid, merchant_name or "")
     final_category = predicted_category
     
     # If no predicted category, use smarter defaults
@@ -1165,17 +1167,20 @@ def _process_single_transaction(
         elif transaction_type == "transfer" and direction == "outflow":
             final_category = "Transfer"  # Outgoing transfers
 
+    final_category = normalize_category(final_category)
+
     if existing:
         existing.ts = txn_ts
         existing.amount = amount
         existing.currency = txn.get("currency") or existing.currency
         existing.category = final_category
-        existing.merchant_name = txn.get("merchant_name")
-        existing.description = txn.get("name") or txn.get("merchant_name")
+        existing.merchant_name = merchant_name
+        existing.description = txn.get("name") or merchant_name
         existing.raw_json = _clean_raw(txn)
         db.add(existing)
         return False
 
+    resolved_account = db.query(Account).filter(Account.id == account_id).first()
     new_txn = Transaction(
         uid=uid,
         account_id=account_id,
@@ -1183,8 +1188,10 @@ def _process_single_transaction(
         amount=amount,
         currency=txn.get("currency") or currency_fallback,
         category=final_category,
-        merchant_name=_build_web3_merchant_name(txn, db.query(Account).filter(Account.id == account_id).first()),
-        description=_build_web3_description(txn),
+        merchant_name=normalize_merchant_name(
+            _build_web3_merchant_name(txn, resolved_account)
+        ),
+        description=_build_web3_description(txn) or merchant_name,
         external_id=txn.get("transaction_id"),
         is_manual=False,
         archived=False,

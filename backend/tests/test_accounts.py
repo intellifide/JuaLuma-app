@@ -208,7 +208,7 @@ def test_update_account_assignments(test_client: TestClient, test_db, mock_auth)
     payload = {"assigned_member_uid": "random_stranger"}
     response = test_client.patch(f"/api/accounts/{acct.id}", json=payload)
     assert response.status_code == 400
-    assert "not part of your household" in response.json()["detail"]
+    assert "could not be found in your household" in response.json()["detail"]
 
     # Case 3: Update with OWNER uid (should be valid)
     payload = {"assigned_member_uid": mock_auth.uid}

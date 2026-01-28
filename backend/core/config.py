@@ -5,7 +5,7 @@ This module validates required environment variables at import time and exposes
 the shared `settings` instance for the rest of the backend to consume.
 """
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,7 +38,13 @@ class AppSettings(BaseSettings):
     firebase_project_id: str = Field(
         default="jualuma-local", alias="FIREBASE_PROJECT_ID"
     )
+    google_cloud_project: str | None = Field(
+        default=None, alias="GOOGLE_CLOUD_PROJECT"
+    )
     firebase_api_key: str | None = Field(default=None, alias="VITE_FIREBASE_API_KEY")
+    firebase_emulator_enabled: bool | None = Field(
+        default=None, alias="FIREBASE_EMULATOR_ENABLED"
+    )
     firebase_auth_emulator_host: str | None = Field(
         default=None, alias="FIREBASE_AUTH_EMULATOR_HOST"
     )
@@ -49,6 +55,9 @@ class AppSettings(BaseSettings):
         default=False, alias="FIRESTORE_HEALTHCHECK_ENABLED"
     )
     pubsub_emulator_host: str | None = Field(default=None, alias="PUBSUB_EMULATOR_HOST")
+    pubsub_emulator_enabled: bool | None = Field(
+        default=None, alias="PUBSUB_EMULATOR_ENABLED"
+    )
 
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_webhook_secret: str | None = Field(
@@ -165,9 +174,25 @@ class AppSettings(BaseSettings):
             )
         return normalized
 
+    @model_validator(mode="after")
+    def _normalize_project_ids(self) -> "AppSettings":
+        resolved = self.gcp_project_id or self.google_cloud_project or self.firebase_project_id
+        if resolved:
+            if not self.gcp_project_id:
+                self.gcp_project_id = resolved
+            if not self.google_cloud_project:
+                self.google_cloud_project = resolved
+            if not self.firebase_project_id:
+                self.firebase_project_id = resolved
+        return self
+
     @property
     def is_local(self) -> bool:
         return self.app_env.lower() == "local"
+
+    @property
+    def resolved_gcp_project_id(self) -> str | None:
+        return self.gcp_project_id or self.google_cloud_project or self.firebase_project_id
 
     @property
     def cors_origins(self) -> list[str]:
@@ -190,6 +215,8 @@ class AppSettings(BaseSettings):
 
     @property
     def resolved_auth_emulator_host(self) -> str | None:
+        if not self.firebase_emulator_enabled_effective:
+            return None
         if self.firebase_auth_emulator_host:
             return self.firebase_auth_emulator_host
         if self.is_local:
@@ -198,10 +225,34 @@ class AppSettings(BaseSettings):
 
     @property
     def resolved_firestore_host(self) -> str | None:
+        if not self.firebase_emulator_enabled_effective:
+            return None
         if self.firestore_emulator_host:
             return self.firestore_emulator_host
         if self.is_local:
             return "localhost:8080"
+        return None
+
+    @property
+    def firebase_emulator_enabled_effective(self) -> bool:
+        if self.firebase_emulator_enabled is not None:
+            return self.firebase_emulator_enabled
+        return self.is_local
+
+    @property
+    def pubsub_emulator_enabled_effective(self) -> bool:
+        if self.pubsub_emulator_enabled is not None:
+            return self.pubsub_emulator_enabled
+        return self.is_local
+
+    @property
+    def resolved_pubsub_emulator_host(self) -> str | None:
+        if not self.pubsub_emulator_enabled_effective:
+            return None
+        if self.pubsub_emulator_host:
+            return self.pubsub_emulator_host
+        if self.is_local:
+            return "localhost:8085"
         return None
 
 

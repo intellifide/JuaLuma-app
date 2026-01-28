@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session
 
 from backend.models.category_rule import CategoryRule
 from backend.models.transaction import Transaction
+from backend.utils.normalization import (
+    normalize_category,
+    normalize_merchant_key,
+    normalize_merchant_name,
+)
 
 
 def learn_rule(db: Session, uid: str, merchant_name: str, category: str):
@@ -17,11 +22,15 @@ def learn_rule(db: Session, uid: str, merchant_name: str, category: str):
     If a rule for this merchant already exists, update it.
     Otherwise, create a new one.
     """
-    if not merchant_name or not category:
+    normalized_name = normalize_merchant_name(merchant_name)
+    normalized_category = normalize_category(category)
+    if not normalized_name or not normalized_category:
         return
 
     # Normalize merchant name
-    merchant_key = merchant_name.strip().lower()
+    merchant_key = normalize_merchant_key(normalized_name)
+    if not merchant_key:
+        return
 
     rule = (
         db.query(CategoryRule)
@@ -33,12 +42,12 @@ def learn_rule(db: Session, uid: str, merchant_name: str, category: str):
     )
 
     if rule:
-        rule.category = category
+        rule.category = normalized_category
     else:
         rule = CategoryRule(
             uid=uid,
-            merchant_name=merchant_name.strip(),  # Keep original casing for display if needed
-            category=category,
+            merchant_name=normalized_name,
+            category=normalized_category,
             match_type="exact",
         )
         db.add(rule)
@@ -50,10 +59,13 @@ def predict_category(db: Session, uid: str, merchant_name: str) -> str | None:
     """
     Predict category for a given merchant name based on learned rules.
     """
-    if not merchant_name:
+    normalized_name = normalize_merchant_name(merchant_name)
+    if not normalized_name:
         return None
 
-    merchant_key = merchant_name.strip().lower()
+    merchant_key = normalize_merchant_key(normalized_name)
+    if not merchant_key:
+        return None
 
     # Simple exact match (case-insensitive)
     rule = (
@@ -66,7 +78,7 @@ def predict_category(db: Session, uid: str, merchant_name: str) -> str | None:
     )
 
     if rule:
-        return rule.category
+        return normalize_category(rule.category)
 
     return None
 
@@ -78,7 +90,14 @@ def apply_rule_to_history(db: Session, uid: str, merchant_name: str, category: s
 
     For now, let's only update uncategorized ones to be safe.
     """
-    merchant_key = merchant_name.strip().lower()
+    normalized_name = normalize_merchant_name(merchant_name)
+    normalized_category = normalize_category(category)
+    if not normalized_name or not normalized_category:
+        return
+
+    merchant_key = normalize_merchant_key(normalized_name)
+    if not merchant_key:
+        return
 
     txns = (
         db.query(Transaction)
@@ -91,7 +110,7 @@ def apply_rule_to_history(db: Session, uid: str, merchant_name: str, category: s
     )
 
     for txn in txns:
-        txn.category = category
+        txn.category = normalized_category
         db.add(txn)
 
     db.commit()

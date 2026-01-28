@@ -56,7 +56,7 @@ def _require_gcp() -> None:
         raise ImportError(
             "google-cloud-secret-manager is required for GCP secret storage."
         )
-    if not settings.gcp_project_id:
+    if not settings.resolved_gcp_project_id:
         raise ValueError("GCP_PROJECT_ID must be set for GCP secret storage.")
 
 
@@ -104,7 +104,7 @@ def store_secret(value: str, *, uid: str, purpose: str) -> str:
 
     _require_gcp()
     client = secretmanager.SecretManagerServiceClient()
-    parent = f"projects/{settings.gcp_project_id}"
+    parent = f"projects/{settings.resolved_gcp_project_id}"
     secret_id = _build_secret_id(uid, purpose)
     secret = client.create_secret(
         request={

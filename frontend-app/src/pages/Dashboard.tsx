@@ -11,6 +11,7 @@ import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
 import { InfoPopover } from '../components/ui/InfoPopover';
+import { PreviewFixtures } from '../components/preview/PreviewFixtures';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 import { formatDateParam, formatTimeframeLabel, getTransactionDateRange } from '../utils/dateRanges';
@@ -66,6 +67,17 @@ const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   investment: 'Investment Goal',
   custom: 'Custom Goal',
 };
+
+type PlanTier = 'free' | 'essential' | 'pro' | 'ultimate'
+
+const normalizePlan = (value?: string | null): PlanTier | null => {
+  if (!value) return null
+  const normalized = value.toLowerCase().trim().split('_')[0] as PlanTier
+  if (['free', 'essential', 'pro', 'ultimate'].includes(normalized)) {
+    return normalized
+  }
+  return null
+}
 
 const calculateBudgetProgress = (
   spendData: { data: { category: string; amount: number }[] } | null | undefined,
@@ -172,6 +184,14 @@ export default function Dashboard() {
   useEffect(() => {
     saveGoals(goals);
   }, [goals]);
+
+  const activeSubscription = profile?.subscriptions?.find(
+    (sub) => sub.status === 'active'
+  )
+  const planFromProfile = normalizePlan(profile?.plan ?? null)
+  const planFromSubscriptions = normalizePlan(activeSubscription?.plan ?? null)
+  const effectivePlan: PlanTier = planFromSubscriptions ?? planFromProfile ?? 'free'
+  const showPreviewFixtures = effectivePlan === 'free' || effectivePlan === 'essential'
 
   const handleInviteClick = async () => {
     const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
@@ -899,6 +919,18 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showPreviewFixtures && (
+        <div className="glass-panel space-y-4">
+          <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
+            <h3 className="text-lg font-semibold">Premium Preview</h3>
+            <span className="text-xs text-text-muted">
+              Synthetic data to preview premium workflows
+            </span>
+          </div>
+          <PreviewFixtures />
+        </div>
+      )}
 
       <Modal
         open={goalsModalOpen}

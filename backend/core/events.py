@@ -17,14 +17,12 @@ logger = logging.getLogger(__name__)
 
 publisher: pubsub_v1.PublisherClient | None = None
 # Log warning if no project ID is configured
-if not settings.gcp_project_id and not settings.firebase_project_id:
+if not settings.resolved_gcp_project_id:
     logger.warning(
         "No GCP_PROJECT_ID or FIREBASE_PROJECT_ID configured. Pub/Sub may fail."
     )
 
-project_id: str = (
-    settings.gcp_project_id or settings.firebase_project_id or "local-project"
-)
+project_id: str = settings.resolved_gcp_project_id or "local-project"
 
 
 def get_publisher() -> pubsub_v1.PublisherClient:
@@ -32,9 +30,10 @@ def get_publisher() -> pubsub_v1.PublisherClient:
     if publisher is None:
         # If running locally with emulator, the lib automatically detects PUBSUB_EMULATOR_HOST
         # provided it is set in env vars. We ensure it's logged.
-        if settings.pubsub_emulator_host:
+        pubsub_host = settings.resolved_pubsub_emulator_host
+        if pubsub_host:
             logger.info(
-                f"Initializing Pub/Sub Publisher with Emulator at {settings.pubsub_emulator_host}"
+                f"Initializing Pub/Sub Publisher with Emulator at {pubsub_host}"
             )
         else:
             logger.info("Initializing Pub/Sub Publisher for Production Cloud")
@@ -49,15 +48,16 @@ def initialize_events():
     If using the emulator, we MUST ensure topics/subs exist because it starts empty.
     """
     # Only run setup if emulator is explicitly configured
-    if not settings.pubsub_emulator_host:
+    pubsub_host = settings.resolved_pubsub_emulator_host
+    if not pubsub_host:
         return
 
     logger.info("Pub/Sub Emulator detected. Auto-creating topics...")
 
     # Ensure env var is set for the client lib to pick it up, although AppSettings usually reads from env
     # If settings read it, it likely came from env, but let's be safe if it was defaulted.
-    if "PUBSUB_EMULATOR_HOST" not in os.environ and settings.pubsub_emulator_host:
-        os.environ["PUBSUB_EMULATOR_HOST"] = settings.pubsub_emulator_host
+    if "PUBSUB_EMULATOR_HOST" not in os.environ and pubsub_host:
+        os.environ["PUBSUB_EMULATOR_HOST"] = pubsub_host
 
     client = get_publisher()
     subscriber = pubsub_v1.SubscriberClient()

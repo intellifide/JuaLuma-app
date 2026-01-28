@@ -4,8 +4,17 @@ import sys
 import uuid
 from datetime import date
 
+import pytest
+
 import httpx
 from fastapi.testclient import TestClient
+
+# Skip in pytest runs unless explicitly enabled.
+if os.getenv("RUN_SCRIPTS_TESTS") != "1":
+    pytest.skip(
+        "Skipping script-style tests; set RUN_SCRIPTS_TESTS=1 to enable.",
+        allow_module_level=True,
+    )
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))

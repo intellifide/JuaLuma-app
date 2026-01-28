@@ -142,7 +142,7 @@ def get_ai_client() -> AIClient:
 
     else:
         # Production / Cloud
-        project_id = settings.gcp_project_id
+        project_id = settings.resolved_gcp_project_id
         location = settings.gcp_location
 
         if not project_id:
