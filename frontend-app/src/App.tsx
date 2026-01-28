@@ -15,6 +15,7 @@ import NotFound from './pages/NotFound'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { VerifyEmail } from './pages/VerifyEmail'
+import { PricingRedirect } from './pages/PricingRedirect'
 import { ResetPassword } from './pages/ResetPassword'
 import { DeveloperAuth } from './pages/developers/DeveloperAuth'
 
@@ -54,6 +55,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/pricing" element={<PricingRedirect />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/developers/login" element={<DeveloperAuth mode="login" />} />
             <Route path="/developers/signup" element={<DeveloperAuth mode="signup" />} />

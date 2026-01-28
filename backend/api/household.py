@@ -9,6 +9,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from backend.api.users import get_current_user
+from backend.core.dependencies import require_feature
 from backend.models import Household, HouseholdMember, User
 from backend.services import household_service
 from backend.services.legal import record_single_agreement
@@ -48,7 +49,7 @@ class HouseholdOut(BaseModel):
 @router.post("/", response_model=HouseholdOut)
 def create_household(
     payload: HouseholdCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_feature("family.tracking")),
     db: Session = Depends(get_db),
 ):
     """
@@ -103,7 +104,7 @@ def get_my_household(
 @router.post("/invites")
 def create_invite(
     payload: InviteRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_feature("family.tracking")),
     db: Session = Depends(get_db),
 ):
     """
@@ -197,7 +198,7 @@ def leave_household_endpoint(
 @router.delete("/members/{member_uid}")
 def remove_member_endpoint(
     member_uid: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_feature("family.tracking")),
     db: Session = Depends(get_db),
 ):
     """
@@ -219,7 +220,7 @@ def remove_member_endpoint(
 @router.delete("/invites/{invite_id}")
 def cancel_invite_endpoint(
     invite_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_feature("family.tracking")),
     db: Session = Depends(get_db),
 ):
     """

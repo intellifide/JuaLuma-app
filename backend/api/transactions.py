@@ -651,6 +651,15 @@ def create_manual_transaction(
 
     invalidate_analytics_cache(current_user.uid)
 
+    try:
+        from backend.services.budget_alerts import evaluate_budget_thresholds
+        from backend.services.recurring import send_recurring_notifications
+
+        evaluate_budget_thresholds(db, current_user.uid)
+        send_recurring_notifications(db, current_user.uid)
+    except Exception as exc:
+        logger.warning("Post-transaction alert evaluation failed: %s", exc)
+
     return txn
 
 

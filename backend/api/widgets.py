@@ -10,13 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
-from backend.core.constants import SubscriptionPlans
 from backend.core.dependencies import (
     get_current_active_subscription,
     require_developer,
 )
 from backend.middleware.auth import get_current_user
 from backend.models import AuditLog, User, Widget, WidgetRating
+from backend.services.access_control.registry import can_use_feature
 from backend.utils import get_db
 
 # Updated 2025-12-10 15:10 CST by ChatGPT
@@ -340,11 +340,11 @@ def download_widget(
         # Only owner can download non-approved widgets
         raise HTTPException(status_code=404, detail="This widget is not currently available.")
 
-    # Enforce Pro/Ultimate Subscription for downloading
+    # Enforce registry-backed tier requirement for downloading
     sub = get_current_active_subscription(current_user)
-    has_pro = sub and sub.plan in SubscriptionPlans.DEVELOPER_ELIGIBLE
+    has_access = can_use_feature("marketplace.preview", sub.plan if sub else None)
 
-    if not has_pro and widget.developer_uid != current_user.uid:
+    if not has_access and widget.developer_uid != current_user.uid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Pro or Ultimate subscription required to download widgets.",

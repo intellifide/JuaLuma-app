@@ -24,7 +24,12 @@ from backend.services.connectors import build_connector
 from backend.services.crypto_history import BitqueryUnavailableError, fetch_crypto_history
 from backend.services.web3_history import ProviderError, ProviderOverloaded, fetch_web3_history
 from backend.services.household_service import get_household_member_uids
-from backend.services.plaid import fetch_accounts, fetch_transactions, remove_item
+from backend.services.plaid import (
+    PlaidItemLoginRequired,
+    fetch_accounts,
+    fetch_transactions,
+    remove_item,
+)
 from backend.utils import get_db
 from backend.utils.secret_manager import get_secret, store_secret
 
@@ -841,9 +846,15 @@ def _sync_traditional(account: Account, start: date, end: date) -> list[dict]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account credentials."
         ) from exc
+    except PlaidItemLoginRequired as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This account needs to be reauthorized via Plaid Link before syncing can continue.",
+        ) from exc
     except RuntimeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail="We encountered an issue syncing with your bank. Please try again later."
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="We encountered an issue syncing with your bank. Please try again later.",
         ) from exc
 
 
@@ -1123,6 +1134,10 @@ def _process_single_transaction(
         d = date.fromisoformat(d)
     txn_ts = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
 
+    resolved_account = db.query(Account).filter(Account.id == account_id).first()
+    account_type = resolved_account.account_type if resolved_account else None
+    is_web3 = account_type == "web3"
+
     existing = (
         db.query(Transaction)
         .filter(
@@ -1149,8 +1164,15 @@ def _process_single_transaction(
     # For traditional accounts (Plaid), amount already has correct sign
 
     # Auto categorization with improved logic for crypto
-    merchant_name_raw = txn.get("merchant_name") or txn.get("name")
-    merchant_name = normalize_merchant_name(merchant_name_raw)
+    if is_web3:
+        merchant_name_raw = _build_web3_merchant_name(txn, resolved_account)
+        merchant_name = normalize_merchant_name(merchant_name_raw)
+        description = _build_web3_description(txn) or merchant_name
+    else:
+        merchant_name_raw = txn.get("merchant_name") or txn.get("name")
+        merchant_name = normalize_merchant_name(merchant_name_raw)
+        description = txn.get("name") or txn.get("merchant_name") or merchant_name
+
     predicted_category = predict_category(db, uid, merchant_name or "")
     final_category = predicted_category
     
@@ -1175,12 +1197,11 @@ def _process_single_transaction(
         existing.currency = txn.get("currency") or existing.currency
         existing.category = final_category
         existing.merchant_name = merchant_name
-        existing.description = txn.get("name") or merchant_name
+        existing.description = description
         existing.raw_json = _clean_raw(txn)
         db.add(existing)
         return False
 
-    resolved_account = db.query(Account).filter(Account.id == account_id).first()
     new_txn = Transaction(
         uid=uid,
         account_id=account_id,
@@ -1188,10 +1209,8 @@ def _process_single_transaction(
         amount=amount,
         currency=txn.get("currency") or currency_fallback,
         category=final_category,
-        merchant_name=normalize_merchant_name(
-            _build_web3_merchant_name(txn, resolved_account)
-        ),
-        description=_build_web3_description(txn) or merchant_name,
+        merchant_name=merchant_name,
+        description=description,
         external_id=txn.get("transaction_id"),
         is_manual=False,
         archived=False,
@@ -1367,6 +1386,15 @@ def sync_account_transactions(
     db.commit()
     invalidate_analytics_cache(current_user.uid)
 
+    try:
+        from backend.services.budget_alerts import evaluate_budget_thresholds
+        from backend.services.recurring import send_recurring_notifications
+
+        evaluate_budget_thresholds(db, current_user.uid)
+        send_recurring_notifications(db, current_user.uid)
+    except Exception as exc:
+        logger.warning("Post-sync alert evaluation failed: %s", exc)
+
     return AccountSyncResponse(
         synced_count=synced,
         new_transactions=new_count,
@@ -1410,6 +1438,11 @@ def refresh_account_metadata(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account credentials."
+        ) from exc
+    except PlaidItemLoginRequired as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This account needs to be reauthorized via Plaid Link before refresh can continue.",
         ) from exc
     except RuntimeError as exc:
         raise HTTPException(

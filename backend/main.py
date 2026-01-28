@@ -23,6 +23,7 @@ from backend.api.legal import router as legal_router
 from backend.api.manual_assets import router as manual_assets_router
 from backend.api.notifications import router as notifications_router
 from backend.api.plaid import router as plaid_router
+from backend.api.recurring import router as recurring_router
 from backend.api.support import router as support_router
 from backend.api.support_portal import router as support_portal_router
 from backend.api.transactions import router as transactions_router
@@ -112,6 +113,7 @@ app.include_router(webhooks_router)
 app.include_router(notifications_router)
 app.include_router(support_portal_router)  # New router inclusion
 app.include_router(documents_router)
+app.include_router(recurring_router)
 
 # Initialize and Mount Main MCP Server (Phase 3)
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI

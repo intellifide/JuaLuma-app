@@ -2,40 +2,21 @@
 Centralized constants for the jualuma application.
 """
 
+from backend.services.access_control.registry import account_limits_by_tier
+
 
 class TierLimits:
-    FREE_TRADITIONAL_ACCOUNTS = 2
-    FREE_INVESTMENT_ACCOUNTS = 1
-    FREE_WEB3_WALLETS = 1
-    FREE_CEX_ACCOUNTS = 1
+    LIMITS_BY_TIER = account_limits_by_tier
 
-    # Defined per Master App Dev Guide v2.4
-    FREE_LIMITS = {"traditional": 2, "investment": 1, "web3": 1, "cex": 1, "manual": 5}
+    FREE_LIMITS = LIMITS_BY_TIER.get("free", {})
+    ESSENTIAL_LIMITS = LIMITS_BY_TIER.get("essential", {})
+    PRO_LIMITS = LIMITS_BY_TIER.get("pro", {})
+    ULTIMATE_LIMITS = LIMITS_BY_TIER.get("ultimate", {})
 
-    ESSENTIAL_LIMITS = {
-        "traditional": 3,
-        "investment": 2,
-        "web3": 1,
-        "cex": 3,
-        "manual": 10,
-    }
-
-    PRO_LIMITS = {"traditional": 5, "investment": 5, "web3": 5, "cex": 10, "manual": 20}
-
-    ULTIMATE_LIMITS = {
-        "traditional": 20,
-        "investment": 20,
-        "web3": 20,
-        "cex": 20,
-        "manual": 50,
-    }
-
-    LIMITS_BY_TIER = {
-        "free": FREE_LIMITS,
-        "essential": ESSENTIAL_LIMITS,
-        "pro": PRO_LIMITS,
-        "ultimate": ULTIMATE_LIMITS,
-    }
+    FREE_TRADITIONAL_ACCOUNTS = FREE_LIMITS.get("traditional", 2)
+    FREE_INVESTMENT_ACCOUNTS = FREE_LIMITS.get("investment", 1)
+    FREE_WEB3_WALLETS = FREE_LIMITS.get("web3", 1)
+    FREE_CEX_ACCOUNTS = FREE_LIMITS.get("cex", 1)
 
     # Backwards compatibility alias if needed, but we should switch usages
     FREE_LIMITS_BY_TYPE = FREE_LIMITS

@@ -56,6 +56,13 @@ features:
     ultimate_limit: 20
     description: CEX account connection limits
 
+  accounts.manual:
+    free_limit: 5
+    essential_limit: 10
+    pro_limit: 20
+    ultimate_limit: 50
+    description: Manual account tracking limits
+
   # Marketplace Features
   marketplace.preview:
     tier: pro

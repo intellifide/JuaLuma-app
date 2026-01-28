@@ -13,6 +13,7 @@ import { householdService } from '../services/householdService';
 import { Household, HouseholdMember } from '../types/household';
 import { Account, ManualAsset } from '../types';
 import { getAccountCategoryDisplay, getAccountPrimaryCategory, getCategoryLabel, type PrimaryAccountCategory } from '../utils/accountCategories';
+import { accountLimitsByTier, canUseFeature, FeatureKey, normalizeTierSlug, TierSlug } from '../shared/accessControl';
 
 interface AccountLimits {
   tier: string;
@@ -71,20 +72,11 @@ const CHAIN_PRESETS = [
   { id: 'custom', name: 'Custom (CAIP-2)', supported: false },
 ];
 
-type PlanTier = 'free' | 'essential' | 'pro' | 'ultimate';
-
-const PLAN_LABELS: Record<PlanTier, string> = {
+const PLAN_LABELS: Record<TierSlug, string> = {
   free: 'Free',
   essential: 'Essential',
   pro: 'Pro',
   ultimate: 'Ultimate',
-};
-
-const ACCOUNT_LIMITS: Record<'bank' | 'web3' | 'cex' | 'manual', Record<PlanTier, number | 'Unlimited'>> = {
-  bank: { free: 1, essential: 5, pro: 5, ultimate: 10 },
-  web3: { free: 1, essential: 5, pro: 5, ultimate: 10 },
-  cex: { free: 1, essential: 3, pro: 5, ultimate: 10 },
-  manual: { free: 0, essential: 0, pro: 5, ultimate: 10 },
 };
 
 const MANUAL_ACCOUNT_CATEGORY_OPTIONS = [
@@ -112,14 +104,7 @@ const BALANCE_TYPE_OPTIONS = [
   { value: 'liability', label: 'Liability' },
 ];
 
-const normalizePlan = (value?: string | null): PlanTier | null => {
-  if (!value) return null;
-  const normalized = value.toLowerCase().trim().split('_')[0] as PlanTier;
-  if (normalized === 'free' || normalized === 'essential' || normalized === 'pro' || normalized === 'ultimate') {
-    return normalized;
-  }
-  return null;
-};
+const normalizePlan = (value?: string | null): TierSlug | null => normalizeTierSlug(value);
 
 const formatLimit = (limit: number | 'Unlimited') => (limit === 'Unlimited' ? 'Unlimited' : String(limit));
 
@@ -835,9 +820,9 @@ export const ConnectAccounts = () => {
   const activeSubscription = (profile?.subscriptions as Array<{ status?: string; plan?: string | null }> | undefined)
     ?.find((sub) => sub.status === 'active');
   const planFromSubscriptions = normalizePlan(activeSubscription?.plan);
-  const plan: PlanTier = planFromProfile || planFromSubscriptions || 'free';
+  const plan: TierSlug = planFromProfile || planFromSubscriptions || 'free';
   const planLabel = PLAN_LABELS[plan];
-  const hasManualAccess = plan === 'pro' || plan === 'ultimate';
+  const hasManualAccess = canUseFeature('assets.manual' as FeatureKey, plan);
 
   const [household, setHousehold] = useState<Household | null>(null);
   const [householdLoading, setHouseholdLoading] = useState(true);
@@ -896,10 +881,18 @@ export const ConnectAccounts = () => {
     return { bank, web3, cex, manual };
   }, [accounts]);
 
-  const bankLimitLabel = formatLimit(ACCOUNT_LIMITS.bank[plan]);
-  const web3LimitLabel = formatLimit(ACCOUNT_LIMITS.web3[plan]);
-  const cexLimitLabel = formatLimit(ACCOUNT_LIMITS.cex[plan]);
-  const manualLimitLabel = formatLimit(ACCOUNT_LIMITS.manual[plan]);
+  const resolveLimit = (accountType: 'traditional' | 'investment' | 'web3' | 'cex' | 'manual') => {
+    if (accountLimits?.limits?.[accountType] !== undefined) {
+      return accountLimits.limits[accountType];
+    }
+    return accountLimitsByTier[plan]?.[accountType] ?? 0;
+  };
+
+  const bankLimit = resolveLimit('traditional') + resolveLimit('investment');
+  const bankLimitLabel = formatLimit(bankLimit);
+  const web3LimitLabel = formatLimit(resolveLimit('web3'));
+  const cexLimitLabel = formatLimit(resolveLimit('cex'));
+  const manualLimitLabel = formatLimit(resolveLimit('manual'));
 
   const totalLinkedAccountsPages = Math.max(1, Math.ceil(accounts.length / linkedAccountsPageSize));
   const linkedAccountsStart = (linkedAccountsPage - 1) * linkedAccountsPageSize;

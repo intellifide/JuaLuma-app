@@ -306,6 +306,57 @@ class NotificationService:
 
         return notification
 
+    def create_notification_for_event(
+        self,
+        user: User,
+        event_key: str,
+        title: str,
+        message: str,
+        dedupe_key: str | None = None,
+    ) -> LocalNotification | None:
+        """Create a notification using an event preference key with optional dedupe."""
+        preferences = self.ensure_default_preferences(user.uid)
+        pref = preferences.get(event_key)
+        if not pref:
+            logger.warning("Notification event not configured: %s", event_key)
+            return None
+
+        local_key = dedupe_key or event_key
+        if dedupe_key:
+            existing = (
+                self.db.query(LocalNotification)
+                .filter(LocalNotification.uid == user.uid, LocalNotification.event_key == dedupe_key)
+                .first()
+            )
+            if existing:
+                return None
+
+        notification = None
+        if pref.channel_in_app:
+            notification = LocalNotification(
+                uid=user.uid,
+                title=title,
+                message=message,
+                event_key=local_key,
+                is_read=False,
+            )
+            self.db.add(notification)
+            self.db.commit()
+            self.db.refresh(notification)
+
+        settings = self.get_settings(user.uid)
+        if self._is_quiet_hours(settings):
+            return notification
+
+        if pref.channel_email:
+            self._send_email(user.email, title)
+        if pref.channel_sms:
+            self._send_sms(user, title)
+        if pref.channel_push:
+            self._send_push(user.uid, title)
+
+        return notification
+
     def mark_as_read(self, notification_id: str, uid: str) -> None:
         """Mark a local notification as read for the user."""
         notification = (

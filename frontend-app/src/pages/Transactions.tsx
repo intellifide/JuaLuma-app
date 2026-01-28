@@ -162,24 +162,6 @@ export const Transactions = () => {
 
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
-      {/* Header */}
-      <div className="glass-panel p-6 flex flex-col md:flex-row justify-end items-center gap-4">
-          <button
-            type="button"
-            className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors text-sm font-medium"
-            onClick={() => setShowAddModal(true)}
-          >
-            Add Transaction
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline text-sm"
-            onClick={() => window.alert('Export to CSV coming soon.')}
-          >
-            Export CSV
-          </button>
-      </div>
-
       {/* Filters */}
       <div className="glass-panel mb-8 space-y-4">
         <div className="flex flex-col md:flex-row gap-3">
@@ -377,11 +359,26 @@ export const Transactions = () => {
 
       {/* Transactions Table */}
       <div className="glass-panel mb-10">
-        <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 mb-6">
-          <h2 className="text-xl font-semibold">Transactions</h2>
-          <span className="text-xs text-text-muted">
-            {transactionRangeStart}-{transactionRangeEnd} of {total || 0}
-          </span>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+          <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3">
+            <h2 className="text-xl font-semibold">Transactions</h2>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors text-sm font-medium"
+              onClick={() => setShowAddModal(true)}
+            >
+              Add Transaction
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline text-sm"
+              onClick={() => window.alert('Export to CSV coming soon.')}
+            >
+              Export CSV
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="table w-full">
@@ -523,6 +520,9 @@ export const Transactions = () => {
               Next
             </button>
           </div>
+        </div>
+        <div className="mt-4 text-xs text-text-muted text-right">
+          {transactionRangeStart}-{transactionRangeEnd} of {total || 0}
         </div>
       </div>
 

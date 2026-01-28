@@ -11,6 +11,7 @@ from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, User
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.plaid import (
+    PlaidItemLoginRequired,
     create_link_token,
     exchange_public_token,
     fetch_accounts,
@@ -91,6 +92,11 @@ def exchange_token_endpoint(
 
     try:
         plaid_accounts = fetch_accounts(access_token)
+    except PlaidItemLoginRequired as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Your linked institution requires you to reauthenticate via Plaid Link.",
+        ) from exc
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

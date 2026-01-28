@@ -4,7 +4,13 @@ from sqlalchemy.orm import Session
 
 from backend.core.constants import SubscriptionPlans, TierLimits
 from backend.middleware.auth import get_current_user
-from backend.models import Account, Subscription, User
+from backend.models import Account, Household, HouseholdMember, Subscription, User
+from backend.services.access_control.registry import (
+    can_use_feature,
+    get_required_tier,
+    tier_from_string,
+)
+from backend.utils import get_db
 
 
 def get_current_active_subscription(user: User) -> Subscription | None:
@@ -43,6 +49,68 @@ def require_pro_or_ultimate(current_user: User = Depends(get_current_user)) -> U
             detail="A Pro or Ultimate subscription is required for this feature.",
         )
     return current_user
+
+
+def require_feature(feature_key: str):
+    """
+    Dependency that ensures the user (or their household owner, when applicable)
+    has access to a registry-backed feature.
+    """
+
+    def _require_feature(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        sub = get_current_active_subscription(current_user)
+        plan_code = sub.plan if sub else SubscriptionPlans.FREE
+        base_tier = SubscriptionPlans.get_base_tier(plan_code)
+
+        if can_use_feature(feature_key, base_tier):
+            return current_user
+
+        # Allow household members to inherit access for family tracking
+        if feature_key.startswith("family."):
+            member = (
+                db.query(HouseholdMember)
+                .filter(HouseholdMember.uid == current_user.uid)
+                .first()
+            )
+            if member:
+                household = (
+                    db.query(Household)
+                    .filter(Household.id == member.household_id)
+                    .first()
+                )
+                if household:
+                    owner_sub = (
+                        db.query(Subscription)
+                        .filter(
+                            Subscription.uid == household.owner_uid,
+                            Subscription.status == "active",
+                        )
+                        .order_by(Subscription.created_at.desc())
+                        .first()
+                    )
+                    owner_tier = (
+                        SubscriptionPlans.get_base_tier(owner_sub.plan)
+                        if owner_sub
+                        else SubscriptionPlans.FREE
+                    )
+                    if can_use_feature(feature_key, owner_tier):
+                        return current_user
+
+        required = get_required_tier(feature_key)
+        required_label = required.name.title() if required else "Paid"
+        user_label = tier_from_string(base_tier).name.title()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Feature '{feature_key}' requires {required_label} access. "
+                f"Current tier: {user_label}."
+            ),
+        )
+
+    return _require_feature
 
 
 def enforce_account_limit(user: User, db: Session, account_type: str):

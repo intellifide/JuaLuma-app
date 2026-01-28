@@ -1,5 +1,5 @@
 // Core Purpose: UI for managing support tickets and accessing help center.
-// Last Updated 2026-01-25 21:35 CST
+// Last Updated 2026-01-27 12:00 CST
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supportService, Ticket } from '../services/support';
@@ -7,83 +7,8 @@ import { getAccounts } from '../services/accounts';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MessageSquare, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MessageSquare, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
-
-const CreateTicketModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
-    const [subject, setSubject] = useState('');
-    const [description, setDescription] = useState('');
-    const [category, setCategory] = useState('general');
-    const [loading, setLoading] = useState(false);
-    const toast = useToast();
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            await supportService.createTicket({ subject, description, category });
-            toast.show('Ticket created successfully', 'success');
-            onSuccess();
-        } catch (err) {
-            toast.show('Failed to create ticket', 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="modal-content max-w-lg w-full">
-                <div className="modal-header">
-                    <h3>Create Support Ticket</h3>
-                    <button onClick={onClose} className="modal-close">✕</button>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div>
-                        <label className="form-label text-sm font-medium">Subject</label>
-                        <input
-                            type="text"
-                            className="input"
-                            placeholder="Brief summary of the issue"
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="form-label text-sm font-medium">Category</label>
-                        <select
-                            className="input"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                        >
-                            <option value="general">General Inquiry</option>
-                            <option value="technical">Technical Support</option>
-                            <option value="billing">Billing & Subscription</option>
-                            <option value="feature">Feature Request</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="form-label text-sm font-medium">Description</label>
-                        <textarea
-                            className="input min-h-[150px] py-3"
-                            placeholder="Please provide as much detail as possible..."
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="flex gap-3 justify-end mt-8">
-                        <Button variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
-                        <Button variant="primary" type="submit" disabled={loading}>
-                            {loading ? 'Creating...' : 'Submit Ticket'}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
 
 type SystemHealth = Record<string, unknown>;
 
@@ -186,7 +111,6 @@ const SystemStatus = ({ onClose }: { onClose: () => void }) => {
 export const Support = () => {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
     const [showStatus, setShowStatus] = useState(false);
     const toast = useToast();
     const navigate = useNavigate();
@@ -217,22 +141,7 @@ export const Support = () => {
 
     return (
         <div className="container py-8 max-w-6xl">
-        <div className="flex justify-end items-center mb-10">
-                <Button variant="primary" onClick={() => setShowModal(true)} className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    New Ticket
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                <div className="glass-panel text-center py-8">
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                        <MessageSquare className="w-6 h-6 text-primary" />
-                    </div>
-                    <h3 className="font-bold mb-2">Documentation</h3>
-                    <p className="text-sm text-text-secondary mb-4 px-4">Browse our detailed guides and help articles.</p>
-                    <button className="text-primary text-sm font-medium hover:underline">Read APIs docs</button>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-12">
                 <div className="glass-panel text-center py-8">
                     <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
                         <AlertCircle className="w-6 h-6 text-accent" />
@@ -244,7 +153,7 @@ export const Support = () => {
             </div>
 
             <div className="glass-panel">
-                <h2 className="text-xl font-bold mb-6">Recent Tickets</h2>
+                <h2 className="text-xl font-bold mb-6">Support Tickets</h2>
                 
                 {loading ? (
                     <div className="space-y-4">
@@ -255,10 +164,14 @@ export const Support = () => {
                 ) : tickets.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-xl">
                         <MessageSquare className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-20" />
-                        <p className="text-text-secondary">You haven&apos;t created any support tickets yet.</p>
-                        <button onClick={() => setShowModal(true)} className="text-primary text-sm mt-2 hover:underline">
-                            Open your first ticket
-                        </button>
+                        <p className="text-text-secondary">Your tickets will appear after one has been created.</p>
+                        <Button 
+                            variant="primary" 
+                            className="mt-4"
+                            onClick={() => window.location.href = 'mailto:intellifidellc@gmail.com?subject=Support Request'}
+                        >
+                            Contact Support
+                        </Button>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -290,13 +203,6 @@ export const Support = () => {
                     </div>
                 )}
             </div>
-
-            {showModal && (
-                <CreateTicketModal 
-                    onClose={() => setShowModal(false)} 
-                    onSuccess={() => { setShowModal(false); fetchTickets(); }}
-                />
-            )}
 
             {showStatus && (
                 <SystemStatus onClose={() => setShowStatus(false)} />

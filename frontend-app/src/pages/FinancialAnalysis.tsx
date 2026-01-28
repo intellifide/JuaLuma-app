@@ -10,6 +10,7 @@ import { useManualAssets } from '../hooks/useManualAssets';
 import { DataPoint } from '../services/analytics';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { FeaturePreview } from '../components/ui/FeaturePreview';
 import { ExpandableChartModal } from '../components/ExpandableChartModal';
 import Switch from '../components/ui/Switch';
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
@@ -497,6 +498,8 @@ export default function FinancialAnalysis() {
   const isHouseholdAdmin = profile?.household_member?.role === 'admin';
   const canViewHousehold = Boolean(profile?.household_member?.can_view_household);
   const canSeeScopeToggle = (isUltimate && isHouseholdAdmin) || canViewHousehold;
+  const hasHouseholdAccess = canSeeScopeToggle;
+  const familyPreviewTier = hasHouseholdAccess ? 'ultimate' : undefined;
 
   const [timeframe, setTimeframe] = useState('1m');
   const [expandedChart, setExpandedChart] = useState<'networth' | 'cashflow' | null>(null);
@@ -743,37 +746,32 @@ export default function FinancialAnalysis() {
               >
                 Personal
               </button>
-              <button
-                onClick={() => {
-                  const isUltimatePlan = profile?.plan?.toLowerCase().includes('ultimate');
-                  const hasHouseholdPermission = profile?.household_member?.can_view_household;
-
-                  if (!isUltimatePlan && !hasHouseholdPermission) {
-                    toast.show("Upgrade to Ultimate or join a household to view Family metrics.", "error");
-                    return;
-                  }
-                  setDashboardScope('household');
-                }}
-                className={`px-3 py-1 text-sm rounded-md transition-all ${
-                  dashboardScope === 'household'
-                    ? 'bg-primary text-white shadow font-medium'
-                    : 'text-text-muted hover:text-text-secondary'
-                } ${!profile?.plan?.toLowerCase().includes('ultimate') && !profile?.household_member?.can_view_household ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Family
-              </button>
+              <FeaturePreview featureKey="family.tracking" userTier={familyPreviewTier}>
+                <button
+                  onClick={() => setDashboardScope('household')}
+                  className={`px-3 py-1 text-sm rounded-md transition-all ${
+                    dashboardScope === 'household'
+                      ? 'bg-primary text-white shadow font-medium'
+                      : 'text-text-muted hover:text-text-secondary'
+                  }`}
+                >
+                  Family
+                </button>
+              </FeaturePreview>
             </div>
           </div>
         )}
       </div>
 
       {/* Budgeting Tool */}
-      <BudgetTool
-        categories={CATEGORIES}
-        budgets={budgets}
-        saveBudget={saveBudget}
-        resetBudgets={resetBudgets}
-      />
+      <FeaturePreview featureKey="budgets.advanced">
+        <BudgetTool
+          categories={CATEGORIES}
+          budgets={budgets}
+          saveBudget={saveBudget}
+          resetBudgets={resetBudgets}
+        />
+      </FeaturePreview>
 
       {/* Infographics & Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">

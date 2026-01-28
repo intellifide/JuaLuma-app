@@ -7,11 +7,13 @@ import { useAccounts } from '../hooks/useAccounts';
 import { useManualAssets } from '../hooks/useManualAssets';
 import { useBudget } from '../hooks/useBudget';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
+import { useRecurringForecast } from '../hooks/useRecurringForecast';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
 import { InfoPopover } from '../components/ui/InfoPopover';
 import { PreviewFixtures } from '../components/preview/PreviewFixtures';
+import { FeaturePreview } from '../components/ui/FeaturePreview';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 import { formatDateParam, formatTimeframeLabel, getTransactionDateRange } from '../utils/dateRanges';
@@ -111,10 +113,16 @@ export default function Dashboard() {
     filters: { scope: dashboardScope }
   });
   const { assets: manualAssets } = useManualAssets();
+  const {
+    data: recurringForecast,
+    loading: recurringLoading,
+  } = useRecurringForecast(30, 180);
   const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
   const isHouseholdAdmin = profile?.household_member?.role === 'admin';
   const canViewHousehold = Boolean(profile?.household_member?.can_view_household);
   const canSeeScopeToggle = (isUltimate && isHouseholdAdmin) || canViewHousehold;
+  const hasHouseholdAccess = canSeeScopeToggle;
+  const familyPreviewTier = hasHouseholdAccess ? 'ultimate' : undefined;
   const savedDashboardPreferences = useMemo(() => loadDashboardPreferences(), []);
   const [insightsPeriod, setInsightsPeriod] = useState<InsightsPeriod>(
     savedDashboardPreferences.insightsPeriod,
@@ -148,6 +156,11 @@ export default function Dashboard() {
   );
   const insightsStart = insightsRange.start ?? fixedStart;
   const insightsEnd = insightsRange.end ?? fixedEnd;
+
+  const recurringTotal = useMemo(
+    () => recurringForecast.reduce((sum, item) => sum + (item.average_amount || 0), 0),
+    [recurringForecast],
+  );
 
   const insightsCashFlowInterval = useMemo(
     () => getInsightsCashFlowInterval(insightsPeriod),
@@ -520,25 +533,18 @@ export default function Dashboard() {
               >
                 Personal
               </button>
-              <button
-                onClick={() => {
-                  const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
-                  const hasHouseholdPermission = profile?.household_member?.can_view_household;
-
-                  if (!isUltimate && !hasHouseholdPermission) {
-                    toast.show("Upgrade to Ultimate or join a household to view Family metrics.", "error");
-                    return;
-                  }
-                  setDashboardScope('household');
-                }}
-                className={`px-3 py-1 text-sm rounded-md transition-all ${
-                  dashboardScope === 'household'
-                    ? 'bg-primary text-white shadow font-medium'
-                    : 'text-text-muted hover:text-text-secondary'
-                } ${!profile?.plan?.toLowerCase().includes('ultimate') && !profile?.household_member?.can_view_household ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Family
-              </button>
+              <FeaturePreview featureKey="family.tracking" userTier={familyPreviewTier}>
+                <button
+                  onClick={() => setDashboardScope('household')}
+                  className={`px-3 py-1 text-sm rounded-md transition-all ${
+                    dashboardScope === 'household'
+                      ? 'bg-primary text-white shadow font-medium'
+                      : 'text-text-muted hover:text-text-secondary'
+                  }`}
+                >
+                  Family
+                </button>
+              </FeaturePreview>
             </div>
           )}
           
@@ -751,10 +757,43 @@ export default function Dashboard() {
                 Forecasted from recurring transactions after 30+ days of history.
               </InfoPopover>
             </div>
-            <div className="space-y-2 text-sm text-text-muted">
-              <p>No upcoming bills detected yet.</p>
-              <p className="text-xs">Forecasting starts after 30+ days of history.</p>
-            </div>
+            {recurringLoading ? (
+              <p className="text-sm text-text-muted">Loading upcoming bills...</p>
+            ) : recurringForecast.length === 0 ? (
+              <div className="space-y-2 text-sm text-text-muted">
+                <p>No upcoming bills detected yet.</p>
+                <p className="text-xs">Forecasting starts after 30+ days of history.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 text-sm">
+                {recurringForecast.slice(0, 4).map((item) => (
+                  <div key={`${item.merchant}-${item.next_date}`} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-text-secondary">{item.merchant}</p>
+                      <p className="text-xs text-text-muted">
+                        {new Date(item.next_date).toLocaleDateString()} · {item.cadence}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-rose-200">
+                        -{formatCompactCurrency(item.average_amount)}
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        {item.occurrence_count} occurrences
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {recurringForecast.length > 4 && (
+                  <p className="text-xs text-text-muted">
+                    +{recurringForecast.length - 4} more bills detected
+                  </p>
+                )}
+                <p className="text-xs text-text-muted">
+                  Total upcoming {formatCompactCurrency(recurringTotal)}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Savings Progress Snapshot */}
@@ -831,36 +870,38 @@ export default function Dashboard() {
           </div>
 
           {/* Allocation Snapshot */}
-          <div className="card gap-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold">Investment Allocation Snapshot</h3>
-                <p className="text-xs text-text-muted">As of today</p>
+          <FeaturePreview featureKey="investment.aggregation">
+            <div className="card gap-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold">Investment Allocation Snapshot</h3>
+                  <p className="text-xs text-text-muted">As of today</p>
+                </div>
+                <InfoPopover label="Investment allocation details">
+                  Breakdown of invested balances across account types and platforms.
+                </InfoPopover>
               </div>
-              <InfoPopover label="Investment allocation details">
-                Breakdown of invested balances across account types and platforms.
-              </InfoPopover>
+              {investmentAllocation.total <= 0 ? (
+                <p className="text-sm text-text-muted">Connect investment or crypto accounts to see allocation.</p>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  {investmentAllocation.rows.map((item) => (
+                    <div key={item.bucket} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-text-secondary capitalize">{item.bucket === 'cex' ? 'CEX' : item.bucket}</span>
+                        <span className="font-semibold">{formatPercent(item.percent)}</span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-2">
+                        <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(item.percent * 100)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-xs text-text-muted">Invested balance {formatCompactCurrency(investmentAllocation.total)}</p>
+                  <p className="text-xs text-text-secondary">Shows how your invested assets are split across account types.</p>
+                </div>
+              )}
             </div>
-            {investmentAllocation.total <= 0 ? (
-              <p className="text-sm text-text-muted">Connect investment or crypto accounts to see allocation.</p>
-            ) : (
-              <div className="space-y-3 text-sm">
-                {investmentAllocation.rows.map((item) => (
-                  <div key={item.bucket} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary capitalize">{item.bucket === 'cex' ? 'CEX' : item.bucket}</span>
-                      <span className="font-semibold">{formatPercent(item.percent)}</span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(item.percent * 100)}%` }} />
-                    </div>
-                  </div>
-                ))}
-                <p className="text-xs text-text-muted">Invested balance {formatCompactCurrency(investmentAllocation.total)}</p>
-                <p className="text-xs text-text-secondary">Shows how your invested assets are split across account types.</p>
-              </div>
-            )}
-          </div>
+          </FeaturePreview>
 
           {/* Goals Tracker */}
           <div className="card gap-4">

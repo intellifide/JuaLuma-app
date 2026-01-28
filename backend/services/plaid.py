@@ -6,6 +6,7 @@ These helpers intentionally keep side effects narrow and raise informative error
 when credentials are missing so local developers can diagnose setup issues.
 """
 
+import json
 import logging
 import time
 from collections.abc import Iterable
@@ -74,14 +75,53 @@ def get_plaid_client() -> plaid_api.PlaidApi:
 
 
 def _wrap_plaid_error(action: str, exc: ApiException) -> RuntimeError:
-    """Convert Plaid ApiException into a friendlier RuntimeError."""
-    # Note: In a production API response, we'd map Plaid error_codes to user-friendly messages.
-    return RuntimeError(f"We encountered an issue with your bank connection during {action}. Please try again.")
+    """Convert Plaid ApiException into a friendlier RuntimeError (or subclass)."""
+    error_data = _parse_plaid_error(exc)
+    error_code = error_data.get("error_code")
+    error_message = (
+        error_data.get("error_message")
+        or error_data.get("display_message")
+        or str(exc)
+    )
+    if error_code == "ITEM_LOGIN_REQUIRED":
+        return PlaidItemLoginRequired(
+            f"{error_message} (action: {action})."
+        )
+    return RuntimeError(
+        f"We encountered an issue with your bank connection during {action}. Please try again."
+    )
+
+
+def _parse_plaid_error(exc: ApiException) -> dict[str, object]:
+    body = getattr(exc, "body", None)
+    if isinstance(body, bytes):
+        body = body.decode("utf-8", errors="ignore")
+    if isinstance(body, str):
+        try:
+            return json.loads(body)
+        except json.JSONDecodeError:
+            return {}
+    if isinstance(body, dict):
+        return body
+    return {}
+
+
+class PlaidItemLoginRequired(RuntimeError):
+    """Raised when Plaid reports that the linked item requires a login update."""
+
 
 
 def _pick_currency(iso_code: str | None, unofficial_code: str | None) -> str | None:
     """Return the official currency code if present, otherwise unofficial."""
     return iso_code or unofficial_code
+
+
+def _plaid_enum_value(value: object | None) -> str | None:
+    """Normalize Plaid enum-ish values to strings for storage."""
+    if value is None:
+        return None
+    resolved = getattr(value, "value", value)
+    return str(resolved)
 
 
 def create_link_token(user_id: str, products: Iterable[str]) -> tuple[str, str]:
@@ -172,8 +212,8 @@ def fetch_accounts(access_token: str) -> list[dict[str, object]]:
                 "name": account.name,
                 "official_name": account.official_name,
                 "mask": account.mask,
-                "type": account.type,
-                "subtype": account.subtype,
+                "type": _plaid_enum_value(account.type),
+                "subtype": _plaid_enum_value(account.subtype),
                 "balance_available": balances.available,
                 "balance_current": balances.current,
                 "currency": currency,

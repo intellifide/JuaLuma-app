@@ -958,6 +958,10 @@ a:hover {
   position: relative;
 }
 
+.feature-preview-wrapper.is-blocked {
+  cursor: not-allowed;
+}
+
 .feature-preview-overlay {
   position: absolute;
   top: 0;
@@ -992,9 +996,8 @@ a:hover {
 }
 
 .feature-preview-blocked {
-  pointer-events: none;
   opacity: 0.6;
-  cursor: not-allowed;
+  filter: saturate(0.9);
 }
 
 .paywall-tier-comparison {
