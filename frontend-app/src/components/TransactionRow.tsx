@@ -55,10 +55,16 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
     }
   }
 
+  const hashTooltip = transaction.description?.startsWith('Transaction Hash:')
+    ? transaction.description
+    : undefined
+
   return (
     <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
       <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(transaction.ts)}</td>
-      <td className="px-4 py-3 text-sm text-text-primary">{transaction.merchantName || transaction.description || '—'}</td>
+      <td className="px-4 py-3 text-sm text-text-primary" title={hashTooltip}>
+        {transaction.merchantName || transaction.description || '—'}
+      </td>
       <td className="px-4 py-3 text-sm">
         <div className="flex items-center gap-2">
           <select

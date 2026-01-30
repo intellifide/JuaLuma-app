@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from backend.core.config import settings
@@ -1076,27 +1076,20 @@ def _build_web3_merchant_name(txn: dict, account: Account | None = None) -> str 
     Instead of showing truncated hashes, show descriptive names like "Ethereum Received" or "Bitcoin Sent".
     """
     merchant = txn.get("merchant_name")
-    
+    direction = txn.get("direction")
+
+    chain_name = "Crypto"
+    if account:
+        chain_name = (account.provider or "Crypto").replace("_", " ").title()
+
+    # Standardize transfers as Chain Received/Sent when direction is known
+    if direction in {"inflow", "outflow"}:
+        return f"{chain_name} {'Received' if direction == 'inflow' else 'Sent'}"
+
     # If merchant name looks like a truncated hash (short alphanumeric), replace it
-    if merchant and len(merchant) <= 10 and merchant.replace('0x', '').isalnum():
-        direction = txn.get("direction")
-        transaction_type = txn.get("transaction_type")
-        
-        # Get chain name from account if available
-        chain_name = "Crypto"
-        if account:
-            chain_name = account.provider.capitalize()
-        
-        # Build descriptive name
-        if direction == "inflow":
-            return f"{chain_name} Received"
-        elif direction == "outflow":
-            return f"{chain_name} Sent"
-        elif transaction_type == "trade":
-            return f"{chain_name} Trade"
-        else:
-            return f"{chain_name} Transfer"
-    
+    if merchant and len(merchant) <= 10 and merchant.replace("0x", "").isalnum():
+        return f"{chain_name} Transfer"
+
     return merchant
 
 
@@ -1106,14 +1099,14 @@ def _build_web3_description(txn: dict) -> str | None:
     Includes the full transaction hash as a note.
     """
     tx_id = txn.get("transaction_id")
-    
+
     if tx_id:
         # Extract the actual hash (remove any suffix like :native, :token:0, etc.)
-        tx_hash = tx_id.split(':')[0]
-        
+        tx_hash = tx_id.split(":")[0]
+
         # Only return the transaction hash, don't include truncated hash from name/merchant_name
         return f"Transaction Hash: {tx_hash}"
-    
+
     # If no transaction_id, fall back to name or merchant_name
     return txn.get("name") or txn.get("merchant_name") or None
 
@@ -1138,15 +1131,40 @@ def _process_single_transaction(
     account_type = resolved_account.account_type if resolved_account else None
     is_web3 = account_type == "web3"
 
-    existing = (
-        db.query(Transaction)
-        .filter(
-            Transaction.uid == uid,
-            Transaction.account_id == account_id,
-            Transaction.external_id == txn.get("transaction_id"),
+    tx_id = txn.get("transaction_id")
+
+    existing = None
+    if is_web3 and tx_id:
+        base_tx_id = tx_id.split(":")[0]
+        tx_id = base_tx_id
+        candidates = (
+            db.query(Transaction)
+            .filter(
+                Transaction.uid == uid,
+                Transaction.account_id == account_id,
+                or_(
+                    Transaction.external_id == base_tx_id,
+                    Transaction.external_id.like(f"{base_tx_id}:%"),
+                ),
+            )
+            .order_by(Transaction.ts.desc())
+            .all()
         )
-        .first()
-    )
+        if candidates:
+            existing = candidates[0]
+            for dup in candidates[1:]:
+                db.delete(dup)
+
+    if not existing:
+        existing = (
+            db.query(Transaction)
+            .filter(
+                Transaction.uid == uid,
+                Transaction.account_id == account_id,
+                Transaction.external_id == tx_id,
+            )
+            .first()
+        )
 
     # Apply sign based on direction for CEX and Web3 transactions
     amount = txn["amount"]
@@ -1199,6 +1217,7 @@ def _process_single_transaction(
         existing.merchant_name = merchant_name
         existing.description = description
         existing.raw_json = _clean_raw(txn)
+        existing.external_id = tx_id
         db.add(existing)
         return False
 
@@ -1211,7 +1230,7 @@ def _process_single_transaction(
         category=final_category,
         merchant_name=merchant_name,
         description=description,
-        external_id=txn.get("transaction_id"),
+        external_id=tx_id,
         is_manual=False,
         archived=False,
         raw_json=_clean_raw(txn),
@@ -1273,6 +1292,8 @@ def _save_sync_batch(
     txns: list[dict],
     currency_fallback: str,
 ) -> tuple[int, int]:
+    account = db.query(Account).filter(Account.id == account_id).first()
+    is_web3 = account and account.account_type == "web3"
     synced = 0
     new_count = 0
     for txn in txns:
@@ -1282,7 +1303,73 @@ def _save_sync_batch(
         synced += 1
         if is_new:
             new_count += 1
+    if is_web3:
+        _dedupe_web3_transactions(db, uid, account_id)
     return synced, new_count
+
+
+def _dedupe_web3_transactions(
+    db: Session,
+    uid: str,
+    account_id: uuid.UUID,
+) -> None:
+    rows = (
+        db.query(Transaction)
+        .filter(
+            Transaction.uid == uid,
+            Transaction.account_id == account_id,
+        )
+        .order_by(desc(Transaction.ts))
+        .all()
+    )
+    seen: set[str] = set()
+    for row in rows:
+        base_id = (row.external_id or "").split(":")[0]
+        if not base_id:
+            base_id = _extract_tx_id_from_raw(row.raw_json or {}) or ""
+            if base_id:
+                base_id = base_id.split(":")[0]
+        if not base_id:
+            direction = (row.raw_json or {}).get("direction") or ""
+            base_id = f"fallback:{row.ts.isoformat()}:{row.amount}:{row.currency}:{direction}"
+        if base_id in seen:
+            db.delete(row)
+            continue
+        if row.external_id and row.external_id != base_id and not base_id.startswith("fallback:"):
+            row.external_id = base_id
+            db.add(row)
+        seen.add(base_id)
+
+
+def _extract_tx_id_from_raw(raw: dict) -> str | None:
+    def _get_value(obj: dict | None) -> str | None:
+        if not isinstance(obj, dict):
+            return None
+        for key in ("tx_id", "transaction_id", "hash", "Hash", "txid", "signature", "Signature"):
+            value = obj.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return None
+
+    direct = _get_value(raw)
+    if direct:
+        return direct
+    for key in ("Transaction", "transaction", "tx"):
+        nested = raw.get(key) if isinstance(raw, dict) else None
+        value = _get_value(nested)
+        if value:
+            return value
+    for key in ("Transfer", "transfer", "Payment", "payment"):
+        nested = raw.get(key) if isinstance(raw, dict) else None
+        value = _get_value(nested)
+        if value:
+            return value
+        if isinstance(nested, dict):
+            nested_tx = nested.get("Transaction") or nested.get("transaction")
+            value = _get_value(nested_tx)
+            if value:
+                return value
+    return None
 
 
 @router.post(

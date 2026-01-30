@@ -53,6 +53,14 @@ export const Transactions = () => {
   const accountLookup = useMemo(() => {
     return new Map(accounts.map((account) => [account.id, account]))
   }, [accounts])
+  const getWeb3Hash = (txn: Transaction) => {
+    if (!txn.externalId) return null
+    return txn.externalId.split(':')[0]
+  }
+  const formatChainLabel = (value?: string | null) => {
+    const base = (value || 'Crypto').replace(/[_-]+/g, ' ')
+    return base.replace(/\b\w/g, (char) => char.toUpperCase())
+  }
 
   // Build exclude account types based on include flags
   const excludeAccountTypes = useMemo(() => {
@@ -402,14 +410,28 @@ export const Transactions = () => {
                   <td colSpan={6} className="text-center py-6 text-text-muted italic">No transactions found</td>
                 </tr>
               ) : (
-                transactions.map(txn => (
-                  <tr key={txn.id} className="hover:bg-white/5 transition-colors">
+                transactions.map(txn => {
+                  const account = accountLookup.get(txn.accountId)
+                  const isWeb3 = account?.accountType === 'web3'
+                  const web3Hash = isWeb3 ? getWeb3Hash(txn) : null
+                  const tooltipContent = isWeb3 && web3Hash
+                    ? `Transaction Hash: ${web3Hash}`
+                    : txn.description
+                  const rawDirection = (txn.rawJson as Record<string, unknown> | null | undefined)?.direction
+                  const directionLabel = rawDirection === 'outflow' || txn.amount < 0 ? 'Sent' : 'Received'
+                  const chainLabel = formatChainLabel(account?.provider ?? null)
+                  const displayLabel = isWeb3
+                    ? `${chainLabel} ${directionLabel}`
+                    : (txn.merchantName || txn.description || '—')
+
+                  return (
+                    <tr key={txn.id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3 text-sm">{new Date(txn.ts).toLocaleDateString()}</td>
                     <td className="py-3 font-medium text-text-primary">
                       <div
                         className="relative inline-flex items-center"
                         onMouseEnter={() => {
-                          if (!txn.description) return
+                          if (!tooltipContent) return
                           if (notesHoverTimeout.current) {
                             window.clearTimeout(notesHoverTimeout.current)
                           }
@@ -425,16 +447,20 @@ export const Transactions = () => {
                           setNotesHoverId(null)
                         }}
                       >
-                        <span>{txn.merchantName || txn.description || '—'}</span>
-                        {txn.description && notesHoverId === txn.id && (
+                        <span>{displayLabel}</span>
+                        {tooltipContent && notesHoverId === txn.id && (
                           <div className="absolute left-0 top-full mt-2 min-w-64 max-w-md rounded-lg border border-white/10 bg-surface-1/90 p-3 text-xs text-text-secondary shadow-xl backdrop-blur z-50 break-words">
                             <p className="text-xs font-semibold text-text-primary mb-1">Notes</p>
-                            <p className="text-xs text-text-secondary whitespace-pre-wrap break-all">{txn.description}</p>
+                            <p className="text-xs text-text-secondary whitespace-pre-wrap break-all">{tooltipContent}</p>
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="py-3 text-sm text-text-secondary">
+                    <td className="py-3 text-sm text-text-secondary max-w-[180px] whitespace-nowrap truncate" title={
+                      accountLookup.get(txn.accountId)?.customLabel ||
+                      accountLookup.get(txn.accountId)?.accountName ||
+                      '—'
+                    }>
                       {accountLookup.get(txn.accountId)?.customLabel ||
                         accountLookup.get(txn.accountId)?.accountName ||
                         '—'}
@@ -483,8 +509,8 @@ export const Transactions = () => {
                         )}
                       </div>
                     </td>
-                  </tr>
-                ))
+                    </tr>
+                )})
               )}
             </tbody>
           </table>

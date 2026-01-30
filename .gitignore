@@ -80,6 +80,7 @@ override.tf.json
 *.swo
 *~
 .cursor/
+.cursorrules
 
 # Docker
 docker-compose.override.yml
@@ -142,3 +143,4 @@ scripts/debug_*.py
 
 firebase_data/
 .tmp.driveupload/
+

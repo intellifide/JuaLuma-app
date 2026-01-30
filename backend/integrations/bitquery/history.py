@@ -97,19 +97,23 @@ def _extract_transfer_payload(row: dict) -> dict:
 
 def _resolve_direction(
     sender: str | None, receiver: str | None, address: str
-) -> tuple[str, str | None]:
+) -> tuple[str | None, str | None]:
     if sender and sender.lower() == address.lower():
         return "outflow", receiver
-    return "inflow", sender
+    if receiver and receiver.lower() == address.lower():
+        return "inflow", sender
+    return None, None
 
 
 def _normalize_transfer_row(
     row: dict, address: str, chain_code: str
-) -> NormalizedTransaction:
+) -> NormalizedTransaction | None:
     transfer = _extract_transfer_payload(row)
     sender = _extract_address(transfer.get("sender") or transfer.get("Sender"))
     receiver = _extract_address(transfer.get("receiver") or transfer.get("Receiver"))
     direction, counterparty = _resolve_direction(sender, receiver, address)
+    if direction is None:
+        return None
 
     currency = transfer.get("currency") or transfer.get("Currency") or {}
     symbol = currency.get("symbol") or currency.get("Symbol") or CHAIN_SYMBOL_FALLBACK.get(chain_code, "")
@@ -148,6 +152,8 @@ def _normalize_transfer_row(
         )
     if not tx_id:
         tx_id = str(transfer.get("signature") or row.get("signature") or "")
+    if not tx_id:
+        return None
 
     timestamp_value = _extract_block_time(row)
     timestamp = _parse_timestamp(timestamp_value)
@@ -213,14 +219,42 @@ def fetch_transfers_generic(
             break
 
         for row in rows:
-            transactions.append(_normalize_transfer_row(row, address, chain_code))
+            normalized = _normalize_transfer_row(row, address, chain_code)
+            if normalized:
+                transactions.append(normalized)
 
         page_len = _page_size_for_root(root, chain_code)
         if page_len < page_size:
             break
         offset += page_size
 
+    if chain_code == "bitcoin":
+        return _aggregate_utxo_transactions(transactions)
     return transactions
+
+
+def _aggregate_utxo_transactions(
+    transactions: list[NormalizedTransaction],
+) -> list[NormalizedTransaction]:
+    buckets: dict[tuple[str, str, str], NormalizedTransaction] = {}
+    for txn in transactions:
+        base_id = txn.tx_id.split(":")[0] if txn.tx_id else ""
+        if not base_id:
+            continue
+        key = (base_id, txn.direction, txn.currency_code)
+        if key not in buckets:
+            buckets[key] = NormalizedTransaction(
+                **{**txn.__dict__, "tx_id": base_id}
+            )
+            continue
+        existing = buckets[key]
+        buckets[key] = NormalizedTransaction(
+            **{
+                **existing.__dict__,
+                "amount": existing.amount + txn.amount,
+            }
+        )
+    return list(buckets.values())
 
 
 __all__ = ["fetch_transfers_generic"]

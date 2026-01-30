@@ -251,12 +251,8 @@ class CcxtConnectorClient:
         payloads = []
         for trade in trades:
             # Parse currency code from symbol (e.g., "BTC/USD" -> "USD")
-            symbol = trade.get("symbol", "")
-            currency_code = "USD"  # Default fallback
-            if symbol and "/" in symbol:
-                symbol_parts = symbol.split("/")
-                if len(symbol_parts) > 1:
-                    currency_code = symbol_parts[1]
+            symbol = _extract_trade_symbol(trade)
+            currency_code = _extract_quote_currency(symbol) or "USD"  # Default fallback
             
             # Safely handle timestamp - might be in different formats
             timestamp = trade.get("timestamp")
@@ -277,20 +273,26 @@ class CcxtConnectorClient:
             if since and trade_timestamp < since:
                 continue
             
-            # Build descriptive merchant_name from trade details
-            side = trade.get("side", "").upper()
-            amount = trade.get("amount", 0)
-            price = trade.get("price", 0)
-            # Create a descriptive name like "BTC/USD Buy 0.5 @ $45,000"
-            merchant_name = f"{symbol} {side}"
-            if amount and price:
-                merchant_name = f"{symbol} {side} {amount:.8f} @ ${price:,.2f}"
-            
+            # Build standardized merchant_name from trade details
+            side = str(trade.get("side") or "").upper()
+            amount, price = _extract_trade_amount_price(trade)
+            merchant_name = _format_trade_display(
+                symbol=symbol,
+                side=side,
+                amount=amount,
+                price=price,
+            )
+
+            trade_cost = trade.get("cost")
+            if trade_cost in (None, 0, "0", "0.0"):
+                if amount is not None and price is not None:
+                    trade_cost = _coerce_decimal(amount) * _coerce_decimal(price)
+
             payloads.append(
                 {
                     "tx_id": trade.get("id") or f"trade_{len(payloads)}",
                     "account_id": account_id,
-                    "amount": trade.get("cost") or trade.get("amount") or 0,
+                    "amount": trade_cost or trade.get("amount") or 0,
                     "currency_code": currency_code,
                     "timestamp": trade_timestamp,
                     "counterparty": trade.get("side"),
@@ -537,8 +539,8 @@ class SolanaConnector:
                 if not result:
                     continue
 
-                # Calculate real amount change
-                amount_sol = self._parse_solana_amount(result, account_id)
+                # Calculate real amount change and direction
+                amount_sol, direction = self._parse_solana_amount(result, account_id)
 
                 payloads.append({
                     "tx_id": sig,
@@ -547,7 +549,7 @@ class SolanaConnector:
                     "currency_code": "SOL",
                     "timestamp": datetime.fromtimestamp(result["blockTime"], tz=UTC) if result.get("blockTime") else datetime.now(UTC),
                     "type": "transfer", # Simplified
-                    "direction": "outflow", # Default assumption
+                    "direction": direction,
                     "raw": result
                 })
             except Exception:
@@ -555,12 +557,12 @@ class SolanaConnector:
             
         return [normalize_transaction(p, converter=self.converter) for p in payloads]
 
-    def _parse_solana_amount(self, result: dict, account_id: str) -> Decimal:
-        """Calculate amount from pre/post token balance differences."""
+    def _parse_solana_amount(self, result: dict, account_id: str) -> tuple[Decimal, Direction]:
+        """Calculate amount and direction from pre/post balance differences."""
         try:
             meta = result.get("meta")
             if not meta:
-                return Decimal("0")
+                return Decimal("0"), "outflow"
                 
             # Account keys are in transaction.message.accountKeys
             # In newer versions, it might be nested differently or statically keyed
@@ -575,16 +577,104 @@ class SolanaConnector:
             try:
                 idx = keys.index(account_id)
             except ValueError:
-                return Decimal("0")
+                return Decimal("0"), "outflow"
                 
             pre = meta["preBalances"][idx]
             post = meta["postBalances"][idx]
             
             # Amount changed in lamports (1e9)
             diff = post - pre
-            return Decimal(abs(diff)) / Decimal("1000000000")
+            amount = Decimal(abs(diff)) / Decimal("1000000000")
+            direction: Direction = "inflow" if diff > 0 else "outflow"
+            return amount, direction
         except Exception:
-            return Decimal("0")
+            return Decimal("0"), "outflow"
+
+
+def _extract_trade_symbol(trade: dict) -> str:
+    symbol = str(trade.get("symbol") or "")
+    if symbol and "/" in symbol:
+        return symbol
+    if symbol and "-" in symbol:
+        return symbol.replace("-", "/")
+    info = trade.get("info") or {}
+    product_id = info.get("product_id") or info.get("productId") or info.get("product") or info.get("symbol")
+    if isinstance(product_id, dict):
+        product_id = product_id.get("id") or product_id.get("product_id") or product_id.get("productId")
+    if product_id and "-" in str(product_id):
+        return str(product_id).replace("-", "/")
+    if product_id and "/" in str(product_id):
+        return str(product_id)
+    base = trade.get("base") or info.get("base_currency") or info.get("baseCurrency")
+    quote = trade.get("quote") or info.get("quote_currency") or info.get("quoteCurrency")
+    if base and quote:
+        return f"{base}/{quote}"
+    return symbol or "UNKNOWN/UNKNOWN"
+
+
+def _extract_quote_currency(symbol: str) -> str | None:
+    if "/" in symbol:
+        parts = symbol.split("/")
+        if len(parts) > 1:
+            return parts[1].upper()
+    return None
+
+
+def _format_decimal(value: Decimal | float | int, places: int) -> str:
+    amount = value if isinstance(value, Decimal) else Decimal(str(value))
+    quant = Decimal("1").scaleb(-places)
+    return f"{amount.quantize(quant):.{places}f}"
+
+
+def _coerce_decimal(value: Decimal | float | int | str) -> Decimal:
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
+def _extract_trade_amount_price(trade: dict) -> tuple[Decimal | float | int | None, Decimal | float | int | None]:
+    info = trade.get("info") or {}
+    amount = trade.get("amount")
+    price = trade.get("price")
+
+    if amount in (None, 0, "0", "0.0"):
+        amount = (
+            info.get("size")
+            or info.get("base_size")
+            or info.get("filled_size")
+            or info.get("size_in_quote")
+            or info.get("amount")
+        )
+
+    if price in (None, 0, "0", "0.0"):
+        price = (
+            info.get("price")
+            or info.get("fill_price")
+            or info.get("avg_price")
+            or info.get("average")
+        )
+
+    return amount, price
+
+
+def _format_trade_display(
+    *,
+    symbol: str,
+    side: str,
+    amount: Decimal | float | int | None,
+    price: Decimal | float | int | None,
+) -> str:
+    pair = symbol.upper().replace("-", "/") if symbol else "UNKNOWN/UNKNOWN"
+    side_label = side or "TRADE"
+    if amount is None or price is None:
+        return f"{pair} {side_label}".strip()
+    amount_text = _format_decimal(amount, 8)
+    quote = _extract_quote_currency(pair) or "USD"
+    if quote in {"USD", "USDC", "USDT", "BUSD", "USDP"}:
+        price_text = f"${_format_decimal(price, 2)}"
+    else:
+        price_text = f"{_format_decimal(price, 2)} {quote}"
+    return f"{pair} {side_label} {amount_text} @ {price_text}".strip()
 
 
 
