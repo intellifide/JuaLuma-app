@@ -6,12 +6,15 @@ from typing import Any
 
 import stripe
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.core import settings
 from backend.core.constants import UserStatus
-from backend.models import Payment, Subscription, User
+from backend.models import AISettings, Payment, PendingSignup, Subscription, User
+from backend.schemas.legal import AgreementAcceptancePayload
 from backend.services.email import get_email_client
+from backend.services.legal import record_agreement_acceptances
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +52,143 @@ TRIAL_PERIOD_DAYS = {
     "ultimate_monthly": 14,
     "ultimate_annual": 14,
 }
+
+
+def _resolve_uid_for_customer(db: Session, customer_id: str | None) -> str | None:
+    if not customer_id:
+        return None
+    payment = db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
+    if payment:
+        return payment.uid
+    pending = (
+        db.query(PendingSignup)
+        .filter(PendingSignup.stripe_customer_id == customer_id)
+        .first()
+    )
+    return pending.uid if pending else None
+
+
+def _ensure_user_from_pending(db: Session, uid: str) -> User | None:
+    user = db.query(User).filter(User.uid == uid).first()
+    if user:
+        return user
+
+    pending = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
+    if not pending:
+        return None
+
+    user = User(
+        uid=pending.uid,
+        email=pending.email,
+        role="user",
+        status=UserStatus.PENDING_PLAN_SELECTION,
+        theme_pref="glass",
+        currency_pref="USD",
+        first_name=pending.first_name,
+        last_name=pending.last_name,
+        username=pending.username,
+        display_name_pref="name",
+    )
+    subscription = Subscription(uid=pending.uid, plan="free", status="active", ai_quota_used=0)
+    ai_settings = AISettings(uid=pending.uid)
+
+    try:
+        db.add_all([user, subscription, ai_settings])
+        db.commit()
+        db.refresh(user)
+    except IntegrityError as exc:
+        db.rollback()
+        logger.error(
+            "Failed to create user from pending signup.",
+            extra={"uid": pending.uid, "email": pending.email},
+            exc_info=exc,
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email address already exists.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "Failed to create user from pending signup.",
+            extra={"uid": pending.uid, "email": pending.email},
+            exc_info=exc,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="We encountered an issue creating your account. Please try again.",
+        ) from exc
+
+    if pending.stripe_customer_id:
+        existing_payment = db.query(Payment).filter(Payment.uid == pending.uid).first()
+        if not existing_payment:
+            payment = Payment(uid=pending.uid, stripe_customer_id=pending.stripe_customer_id)
+            db.add(payment)
+            db.commit()
+
+    if pending.agreements_json:
+        try:
+            acceptances = [
+                AgreementAcceptancePayload(**agreement)
+                for agreement in pending.agreements_json
+            ]
+            record_agreement_acceptances(
+                db,
+                uid=pending.uid,
+                acceptances=acceptances,
+                request=None,
+                source="signup",
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to record agreement acceptances from pending signup.",
+                extra={"uid": pending.uid},
+                exc_info=exc,
+            )
+
+    db.delete(pending)
+    db.commit()
+    return user
+
+
+def create_checkout_session_for_pending(
+    uid: str,
+    email: str,
+    plan_type: str,
+    return_url: str,
+    *,
+    customer_id: str | None = None,
+) -> tuple[str, str]:
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
+
+    price_id = STRIPE_PLANS.get(plan_type)
+    if not price_id:
+        raise HTTPException(status_code=400, detail="The selected subscription plan is not recognized.")
+
+    if not customer_id:
+        customer = stripe.Customer.create(email=email, metadata={"uid": uid})
+        customer_id = customer.id
+
+    subscription_data = {"metadata": {"uid": uid, "plan": plan_type}}
+    trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
+    if trial_days:
+        subscription_data["trial_period_days"] = trial_days
+        logger.info(f"Creating checkout session with {trial_days}-day trial for plan {plan_type}")
+
+    session = stripe.checkout.Session.create(
+        customer=customer_id,
+        payment_method_types=["card"],
+        line_items=[{"price": price_id, "quantity": 1}],
+        mode="subscription",
+        success_url=return_url + "?session_id={CHECKOUT_SESSION_ID}",
+        cancel_url=return_url,
+        allow_promotion_codes=True,
+        metadata={"uid": uid, "plan": plan_type},
+        subscription_data=subscription_data,
+    )
+
+    return session.url, customer_id
 
 
 def create_stripe_customer(db: Session, uid: str, email: str) -> str:
@@ -158,8 +298,7 @@ def _recover_uid_from_customer(db: Session, session: Any) -> str | None:
 
     # Ensure customer is a string, not object (API v2020+)
     cust_id = customer.id if hasattr(customer, "id") else customer
-    payment = db.query(Payment).filter(Payment.stripe_customer_id == cust_id).first()
-    return payment.uid if payment else None
+    return _resolve_uid_for_customer(db, cust_id)
 
 
 def _infer_plan_from_session(session: Any) -> str | None:
@@ -228,6 +367,8 @@ def verify_stripe_session(db: Session, session_id: str) -> bool:
             )
             return False
 
+        _ensure_user_from_pending(db, uid)
+
         tier = _normalize_tier(plan_type)
 
         # Normalize for DB (ensure it exists)
@@ -290,11 +431,21 @@ def update_user_tier(
                 logger.info(
                     f"User {uid} already on {tier} ({status}). Skipping update."
                 )
+                user = db.query(User).filter(User.uid == uid).first()
+                if user and user.status == UserStatus.PENDING_PLAN_SELECTION:
+                    user.status = UserStatus.ACTIVE
+                    db.add(user)
+                    db.commit()
                 return
             if not end_date:
                 logger.info(
                     f"User {uid} already on {tier} ({status}). Skipping update."
                 )
+                user = db.query(User).filter(User.uid == uid).first()
+                if user and user.status == UserStatus.PENDING_PLAN_SELECTION:
+                    user.status = UserStatus.ACTIVE
+                    db.add(user)
+                    db.commit()
                 return
 
         # Handle downgrade logic if moving from higher to lower
@@ -416,16 +567,16 @@ async def _handle_invoice_paid(invoice: dict[str, Any], db: Session):
     # Find user by customer_id (Need to query Payment table)
     # Since Payment table is new, we need to ensure we have it hooked up.
     # For now, let's look up via Payment table
-    payment = (
-        db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
-    )
-    if not payment:
+    uid = _resolve_uid_for_customer(db, customer_id)
+    if not uid:
         logger.warning(f"Webhook: No user found for customer {customer_id}")
         return
 
+    _ensure_user_from_pending(db, uid)
+
     # Logic to extend subscription or reset quotas can go here
     # For now, just logging
-    logger.info(f"Invoice paid for user {payment.uid}")
+    logger.info(f"Invoice paid for user {uid}")
 
 
 async def _handle_subscription_updated(subscription: dict[str, Any], db: Session):
@@ -441,12 +592,12 @@ async def _handle_subscription_updated(subscription: dict[str, Any], db: Session
     # but let's be explicit and strictly use the tier map.
     paid_plan = STRIPE_PRICE_TO_TIER.get(price_id)
 
-    payment = (
-        db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
-    )
-    if not payment:
+    uid = _resolve_uid_for_customer(db, customer_id)
+    if not uid:
         logger.warning(f"Webhook: No user found for customer {customer_id}")
         return
+
+    _ensure_user_from_pending(db, uid)
 
     renew_at = (
         datetime.fromtimestamp(current_period_end) if current_period_end else None
@@ -462,32 +613,32 @@ async def _handle_subscription_updated(subscription: dict[str, Any], db: Session
         # User has a valid paid session
         if paid_plan:
             # They should be on this plan
-            update_user_tier(db, payment.uid, paid_plan, status, renew_at)
+            update_user_tier(db, uid, paid_plan, status, renew_at)
         else:
             # Active but unknown price? Fallback to free or log error.
             # This might happen if we didn't map the price ID correctly.
             logger.error(f"Webhook: Active subscription for unknown price {price_id}")
-            update_user_tier(db, payment.uid, "free", status, renew_at)
+            update_user_tier(db, uid, "free", status, renew_at)
     else:
         # Not active (canceled, unpaid, incomplete_expired, etc.)
         # Immediate downgrade
         logger.info(f"Webhook: Subscription status {status} - downgrading to free")
-        update_user_tier(db, payment.uid, "free", status, None)
-        handle_downgrade_logic(db, payment.uid)
+        update_user_tier(db, uid, "free", status, None)
+        handle_downgrade_logic(db, uid)
 
 
 async def _handle_subscription_deleted(subscription: dict[str, Any], db: Session):
     customer_id = subscription.get("customer")
-    payment = (
-        db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
-    )
-    if not payment:
+    uid = _resolve_uid_for_customer(db, customer_id)
+    if not uid:
         return
+
+    _ensure_user_from_pending(db, uid)
 
     # Subscription deleted means access is revoked immediately
     logger.info("Webhook: Subscription deleted - downgrading to free")
-    update_user_tier(db, payment.uid, "free", "canceled", None)
-    handle_downgrade_logic(db, payment.uid)
+    update_user_tier(db, uid, "free", "canceled", None)
+    handle_downgrade_logic(db, uid)
 
 
 async def _handle_checkout_session_completed(session: dict[str, Any], db: Session):
@@ -501,13 +652,8 @@ async def _handle_checkout_session_completed(session: dict[str, Any], db: Sessio
     plan_type = metadata.get("plan")
 
     if not uid:
-        # Try to find by customer_id
-        payment = (
-            db.query(Payment).filter(Payment.stripe_customer_id == customer_id).first()
-        )
-        if payment:
-            uid = payment.uid
-        else:
+        uid = _resolve_uid_for_customer(db, customer_id)
+        if not uid:
             logger.warning(
                 f"Webhook: Checkout completed but no UID found in metadata or payment record. Customer: {customer_id}"
             )
@@ -522,6 +668,7 @@ async def _handle_checkout_session_completed(session: dict[str, Any], db: Sessio
     # Check if we have subscription info in the session object
 
     if plan_type:
+        _ensure_user_from_pending(db, uid)
         # Map the plan string (e.g. 'pro_monthly') to the tier (e.g. 'pro')
         # We need a reverse lookup or just checking the string structure.
         # STRIPE_PLANS maps 'pro_monthly' -> price_ID

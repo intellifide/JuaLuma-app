@@ -45,8 +45,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     if (location.pathname.startsWith('/household/accept-invite')) {
       return <>{children}</>
     }
+    // Allow checkout success to verify payment
+    if (location.pathname.startsWith('/checkout/success')) {
+      return <>{children}</>
+    }
     const params = new URLSearchParams({ returnUrl: location.pathname + location.search })
-    return <Navigate to={`/pricing?${params.toString()}`} replace />
+    return <Navigate to={`/plan-selection?${params.toString()}`} replace />
   }
 
   if (profile.status === 'suspended') {

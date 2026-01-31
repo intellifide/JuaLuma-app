@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -22,9 +23,12 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100">
-            <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-                <h2 className="text-2xl font-bold text-center text-slate-800 mb-6">Support Portal</h2>
+        <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+            <div className="absolute top-4 right-4">
+                <ThemeToggle />
+            </div>
+            <div className="max-w-md w-full rounded-lg shadow-lg p-8" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+                <h2 className="text-2xl font-bold text-center mb-6" style={{ color: 'var(--text-primary)' }}>Support Portal</h2>
 
                 {error && (
                     <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">

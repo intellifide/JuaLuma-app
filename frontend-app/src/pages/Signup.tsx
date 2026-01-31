@@ -6,6 +6,8 @@ import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 import { LEGAL_AGREEMENTS } from '../constants/legal'
 import { AgreementAcceptanceInput } from '../types/legal'
 import Switch from '../components/ui/Switch'
+import { Alert } from '../components/ui/Alert'
+import { Check, Circle, AlertCircle } from 'lucide-react'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -21,6 +23,7 @@ export const Signup = () => {
 
   const [params] = useSearchParams()
   const returnUrl = params.get('returnUrl')
+  const plan = params.get('plan')
   // Use params.get('email') as initial value
   const [email, setEmail] = useState(params.get('email') || '')
   const [firstName, setFirstName] = useState('')
@@ -38,6 +41,13 @@ export const Signup = () => {
     () => passwordChecks.every((check) => check.test(password)),
     [password],
   )
+
+  // Marketing site base URL for legal docs (GCP portability: env-driven, no hardcoded origins)
+  const marketingLegalBase = useMemo(() => {
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    const fallback = isLocalhost ? 'http://localhost:5177' : window.location.origin
+    return (import.meta as any).env?.VITE_MARKETING_SITE_URL || fallback
+  }, [])
 
   // Track when user lands on signup page
   useEffect(() => {
@@ -108,7 +118,15 @@ export const Signup = () => {
       eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_COMPLETED, { email })
       // After signup, user status is 'pending_verification'
       // Navigate to verify-email page where they'll enter the OTP
-      navigate(`/verify-email${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`, { replace: true })
+      const nextParams = new URLSearchParams()
+      if (returnUrl) {
+        nextParams.set('returnUrl', returnUrl)
+      }
+      if (plan) {
+        nextParams.set('plan', plan)
+      }
+      const queryString = nextParams.toString()
+      navigate(`/verify-email${queryString ? `?${queryString}` : ''}`, { replace: true })
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to sign up at the moment.'
@@ -119,20 +137,22 @@ export const Signup = () => {
   }
 
   return (
-    <div className="min-h-[calc(100vh-120px)] bg-bg-primary">
-      <div className="container py-16">
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+      <div className="container py-16 w-full">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-8">
           <div>
             <h1 className="text-3xl font-bold mb-4">Create your account</h1>
             <p className="mb-4">
               Build your jualuma workspace, access AI assistance, and manage your financial operations from a single, secure dashboard.
             </p>
-            <ul className="space-y-2 text-sm text-slate-700">
+            <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
               {passwordChecks.map((check) => (
                 <li key={check.label} className="flex items-center gap-2">
-                  <span
-                    className={`h-3 w-3 rounded-full ${check.test(password) ? 'bg-green-500' : 'bg-slate-300'}`}
-                  />
+                  {check.test(password) ? (
+                    <Check className="h-4 w-4 shrink-0 text-green-500" aria-hidden />
+                  ) : (
+                    <Circle className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                  )}
                   {check.label}
                 </li>
               ))}
@@ -235,7 +255,12 @@ export const Signup = () => {
                   label={
                     <span>
                       I agree to the{' '}
-                      <a href="/legal/terms" className="text-royal-purple font-medium hover:text-deep-indigo">
+                      <a
+                        href={`${marketingLegalBase}/legal/terms`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-royal-purple font-medium hover:text-deep-indigo"
+                      >
                         Terms of Service
                       </a>
                     </span>
@@ -247,7 +272,12 @@ export const Signup = () => {
                   label={
                     <span>
                       I agree to the{' '}
-                      <a href="/legal/privacy" className="text-royal-purple font-medium hover:text-deep-indigo">
+                      <a
+                        href={`${marketingLegalBase}/legal/privacy`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-royal-purple font-medium hover:text-deep-indigo"
+                      >
                         Privacy Policy
                       </a>
                     </span>
@@ -260,7 +290,12 @@ export const Signup = () => {
                 />
               </div>
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {error && (
+                <Alert variant="danger" className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400">
+                  <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+                  {error}
+                </Alert>
+              )}
 
               <button
                 type="submit"

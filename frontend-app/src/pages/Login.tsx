@@ -3,14 +3,12 @@ import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import Switch from '../components/ui/Switch'
-import { authEmulatorUrl } from '../services/firebase'
 
 export const Login = () => {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const returnUrl = params.get('returnUrl') || '/dashboard'
-  const showAuthEmulatorNotice = Boolean(authEmulatorUrl)
 
   const [email, setEmail] = useState(params.get('email') || '')
   const [password, setPassword] = useState('')
@@ -43,25 +41,13 @@ export const Login = () => {
   }
 
   return (
-    <div className="min-h-[calc(100vh-120px)] bg-bg-primary">
-      <div className="container py-16">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-6">Welcome back</h1>
-            <p className="mb-6">
-              Sign in to access your dashboard, AI assistant, and personalized settings. Use your email and password created during signup.
-            </p>
-            {showAuthEmulatorNotice && (
-              <div className="card">
-                <p className="text-sm">
-                  Local development uses the Firebase Auth emulator. Make sure it&apos;s running on{' '}
-                  <code className="bg-slate-100 px-2 py-1 rounded">{authEmulatorUrl}</code>.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="glass-panel">
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+      <div className="container py-16 w-full">
+        <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
+          <p className="text-xl font-semibold text-text-primary text-center">
+            Welcome Back. Please sign in to continue
+          </p>
+          <div className="glass-panel w-full">
             <form className="space-y-4" onSubmit={onSubmit} noValidate>
               <div>
                 <label htmlFor="email" className="form-label">Email</label>

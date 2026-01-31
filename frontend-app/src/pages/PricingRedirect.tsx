@@ -8,19 +8,30 @@ export const PricingRedirect = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const returnUrl = params.get('returnUrl') || ''
+    let normalizedReturnUrl = returnUrl
+
+    if (returnUrl.startsWith('/checkout/start')) {
+      try {
+        const nested = new URL(returnUrl, window.location.origin)
+        const nestedReturn = nested.searchParams.get('returnUrl')
+        normalizedReturnUrl = nestedReturn && nestedReturn.startsWith('/') ? nestedReturn : ''
+      } catch {
+        normalizedReturnUrl = ''
+      }
+    }
     const isLocalhost = window.location.hostname === 'localhost'
     const fallbackMarketing = isLocalhost ? 'http://localhost:5177' : window.location.origin
     const marketingOrigin =
       (import.meta as any).env?.VITE_MARKETING_SITE_URL || fallbackMarketing
 
     if (marketingOrigin === window.location.origin) {
-      navigate(returnUrl || '/settings', { replace: true })
+      navigate(normalizedReturnUrl || '/settings', { replace: true })
       return
     }
 
     const target = new URL('/pricing', marketingOrigin)
-    if (returnUrl) {
-      target.searchParams.set('returnUrl', returnUrl)
+    if (normalizedReturnUrl) {
+      target.searchParams.set('returnUrl', normalizedReturnUrl)
     }
     window.location.replace(target.toString())
   }, [location.search, navigate])

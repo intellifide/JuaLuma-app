@@ -138,6 +138,44 @@ async def get_current_user(
     return user
 
 
+async def get_current_identity(
+    request: Request,
+    authorization: Annotated[str | None, Header(convert_underscores=False)] = None,
+) -> dict:
+    """Validate bearer token and return identity claims without DB lookup."""
+    import logging
+
+    logger = logging.getLogger("backend.middleware.auth")
+
+    if not authorization or not authorization.lower().startswith("bearer "):
+        logger.warning("Auth Middleware: Missing or invalid authorization header.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+        )
+
+    token = authorization.split(" ", 1)[1].strip()
+
+    try:
+        decoded = verify_token(token)
+    except Exception as exc:
+        logger.error(f"Auth Middleware: Token verification failed: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session has expired. Please log in again.",
+        ) from exc
+
+    uid = decoded.get("uid") or decoded.get("sub")
+    if not uid:
+        logger.error("Auth Middleware: Token missing uid.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid session data.",
+        )
+
+    return {"uid": uid, "email": decoded.get("email")}
+
+
 def require_role(allowed_roles: list[str]):
     """Factory that enforces allowed roles."""
 

@@ -7,6 +7,7 @@ import {
     type TicketDetail,
     type TicketRef,
 } from '../services/tickets';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const queueStatusStyles: Record<string, string> = {
     queued: 'bg-amber-100 text-amber-800',
@@ -189,11 +190,14 @@ export default function Dashboard() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            <aside className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col">
-                <div className="p-6">
-                    <h1 className="text-xl font-bold tracking-tight">jualuma Support</h1>
-                    <div className="mt-2 text-xs text-slate-400 uppercase font-semibold tracking-wider">Agent Portal</div>
+        <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
+            <aside className="w-64 flex-shrink-0 flex flex-col" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+                <div className="p-6 flex items-start justify-between gap-2">
+                    <div>
+                        <h1 className="text-xl font-bold tracking-tight">jualuma Support</h1>
+                        <div className="mt-2 text-xs opacity-80 uppercase font-semibold tracking-wider">Agent Portal</div>
+                    </div>
+                    <ThemeToggle />
                 </div>
                 <nav className="px-4 space-y-2 flex-1">
                     <button

@@ -11,6 +11,11 @@ export const CheckoutSuccess = () => {
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
     const [errorMessage, setErrorMessage] = useState<string>('')
 
+    const safeReturnUrl = (value: string | null): string => {
+        if (!value) return '/dashboard'
+        return value.startsWith('/') ? value : '/dashboard'
+    }
+
     useEffect(() => {
         // Wait for Firebase auth to initialize
         if (loading) {
@@ -25,6 +30,7 @@ export const CheckoutSuccess = () => {
         }
 
         const sessionId = searchParams.get('session_id')
+        const returnUrl = safeReturnUrl(searchParams.get('returnUrl'))
 
         if (!sessionId) {
             setStatus('error')
@@ -50,7 +56,7 @@ export const CheckoutSuccess = () => {
 
                 // Redirect to dashboard after a brief delay
                 setTimeout(() => {
-                    navigate('/dashboard', { replace: true })
+                    navigate(returnUrl, { replace: true })
                 }, 1000)
             } catch (error) {
                 console.error('Checkout verification failed:', error)

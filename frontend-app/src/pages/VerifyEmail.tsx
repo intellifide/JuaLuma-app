@@ -24,13 +24,21 @@ export const VerifyEmail = () => {
 
     const [params] = useSearchParams()
     const returnUrl = params.get('returnUrl')
+    const plan = params.get('plan')
 
     useEffect(() => {
         // If user has completed verification, redirect to pricing or dashboard
         // ProtectedRoute will handle the final destination based on status
         // BUT we want to preserve returnUrl if present
         
-        const nextParams = returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''
+        const nextParams = new URLSearchParams()
+        if (returnUrl) {
+            nextParams.set('returnUrl', returnUrl)
+        }
+        if (plan) {
+            nextParams.set('plan', plan)
+        }
+        const queryString = nextParams.toString()
         
         // Prioritize household invites - bypass pricing check
         if (returnUrl && returnUrl.includes('/household/accept-invite')) {
@@ -39,7 +47,7 @@ export const VerifyEmail = () => {
         }
 
         if (profile?.status === 'pending_plan_selection') {
-            navigate(`/pricing${nextParams}`, { replace: true })
+            navigate(`/plan-selection${queryString ? `?${queryString}` : ''}`, { replace: true })
         } else if (profile?.status === 'active') {
             // If active, go to returnUrl if exists, else dashboard
             navigate(returnUrl || '/dashboard', { replace: true })

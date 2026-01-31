@@ -1,5 +1,6 @@
 # Updated 2025-12-11 01:35 CST by ChatGPT
 import asyncio
+import contextlib
 import logging
 import typing as _t
 from contextlib import asynccontextmanager
@@ -34,6 +35,8 @@ from backend.api.widgets import router as widgets_router
 from backend.api.documents import router as documents_router
 from backend.core import configure_logging, settings
 from backend.core.events import initialize_events
+from backend.models import SessionLocal
+from backend.services.pending_signup_cleanup import cleanup_stale_pending_signups
 
 # MCP Imports
 from backend.mcp_server import mcp
@@ -61,7 +64,33 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize event bus: {e}")
 
+    cleanup_task = asyncio.create_task(_pending_signup_cleanup_loop())
+
     yield
+
+    cleanup_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await cleanup_task
+
+
+async def _pending_signup_cleanup_loop() -> None:
+    interval_hours = 6
+    while True:
+        db = None
+        try:
+            db = SessionLocal()
+            removed = cleanup_stale_pending_signups(db, hours=24)
+            if removed:
+                logger.info(f"Cleanup: removed {removed} stale pending signup(s).")
+        except Exception as exc:
+            logger.error(f"Cleanup: failed to remove stale pending signups: {exc}")
+        finally:
+            if db is not None:
+                try:
+                    db.close()
+                except Exception:
+                    pass
+        await asyncio.sleep(interval_hours * 3600)
 
 
 app = FastAPI(

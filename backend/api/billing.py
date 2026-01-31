@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
-from backend.middleware.auth import get_current_user
-from backend.models import SubscriptionTier, User
+from backend.middleware.auth import get_current_identity, get_current_user
+from backend.models import PendingSignup, SubscriptionTier, User
 from backend.services.billing import (
     create_checkout_session,
+    create_checkout_session_for_pending,
+    _ensure_user_from_pending,
     create_portal_session,
     update_user_tier,
 )
@@ -57,13 +59,43 @@ async def create_portal(
 @router.post("/checkout/session")
 async def create_checkout(
     request: CheckoutRequest,
-    user: User = Depends(get_current_user),
+    identity: dict = Depends(get_current_identity),
     db: Session = Depends(get_db),
 ):
     """
     Creates a Stripe Checkout Session for a subscription.
     """
-    url = create_checkout_session(db, user.uid, request.plan_type, request.return_url)
+    uid = identity.get("uid")
+    email = identity.get("email")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session data."
+        )
+
+    user = db.query(User).filter(User.uid == uid).first()
+    if user:
+        url = create_checkout_session(db, user.uid, request.plan_type, request.return_url)
+        return {"url": url}
+
+    pending = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
+    if not pending and email:
+        pending = db.query(PendingSignup).filter(PendingSignup.email == email).first()
+
+    if not pending:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Signup session not found. Please restart signup.",
+        )
+
+    url, customer_id = create_checkout_session_for_pending(
+        pending.uid,
+        pending.email,
+        request.plan_type,
+        request.return_url,
+        customer_id=pending.stripe_customer_id,
+    )
+    pending.stripe_customer_id = customer_id
+    db.commit()
     return {"url": url}
 
 
@@ -74,13 +106,19 @@ class SessionVerifyRequest(BaseModel):
 @router.post("/checkout/verify")
 async def verify_checkout_session(
     request: SessionVerifyRequest,
-    user: User = Depends(get_current_user),
+    identity: dict = Depends(get_current_identity),
     db: Session = Depends(get_db),
 ):
     """
     Manually verify a checkout session if webhooks are delayed (e.g. local dev).
     """
     from backend.services.billing import verify_stripe_session
+
+    uid = identity.get("uid")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session data."
+        )
 
     success = verify_stripe_session(db, request.session_id)
     if not success:
@@ -90,7 +128,7 @@ async def verify_checkout_session(
     # Query subscription separately to avoid lazy loading issues
     from backend.models import Subscription
 
-    subscription = db.query(Subscription).filter(Subscription.uid == user.uid).first()
+    subscription = db.query(Subscription).filter(Subscription.uid == uid).first()
     plan = subscription.plan if subscription else "free"
 
     return {"verified": True, "plan": plan}
@@ -109,11 +147,27 @@ async def get_plans(db: Session = Depends(get_db)):
 
 @router.post("/plans/free")
 async def select_free_plan(
-    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    identity: dict = Depends(get_current_identity), db: Session = Depends(get_db)
 ):
     """
     Selects the Free plan and activates the user if they are in the pending plan selection state.
     """
+    uid = identity.get("uid")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session data."
+        )
+
+    user = db.query(User).filter(User.uid == uid).first()
+    if not user:
+        user = _ensure_user_from_pending(db, uid)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Signup session not found. Please restart signup.",
+        )
+
     update_user_tier(db, user.uid, "free", status="active")
     return {"message": "Plan updated to Free", "plan": "free"}
 

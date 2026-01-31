@@ -39,6 +39,13 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
         [password],
     );
 
+    // Marketing site base URL for legal docs (GCP portability: env-driven, no hardcoded origins)
+    const marketingLegalBase = useMemo(() => {
+        const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+        const fallback = isLocalhost ? 'http://localhost:5177' : window.location.origin;
+        return (import.meta as any).env?.VITE_MARKETING_SITE_URL || fallback;
+    }, []);
+
     const onSubmit = async (event: FormEvent) => {
         event.preventDefault();
         setError(null);
@@ -243,7 +250,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                                             onChange={e => setAcceptDeveloperAgreement(e.target.checked)}
                                         />
                                         <span className="text-xs text-text-secondary">
-                                            I agree to the <Link to="/legal/terms" className="text-primary hover:underline">Developer Agreement</Link>.
+                                            I agree to the <a href={`${marketingLegalBase}/legal/terms`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Developer Agreement</a>.
                                         </span>
                                     </label>
                                 </div>
@@ -256,7 +263,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                                             onChange={e => setAcceptTerms(e.target.checked)}
                                         />
                                         <span className="text-xs text-text-secondary">
-                                            I agree to the <Link to="/legal/terms" className="text-primary hover:underline">Terms of Service</Link>.
+                                            I agree to the <a href={`${marketingLegalBase}/legal/terms`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</a>.
                                         </span>
                                     </label>
                                     <label className="flex items-start gap-2 cursor-pointer">
@@ -267,7 +274,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                                             onChange={e => setAcceptPrivacy(e.target.checked)}
                                         />
                                         <span className="text-xs text-text-secondary">
-                                            I agree to the <Link to="/legal/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+                                            I agree to the <a href={`${marketingLegalBase}/legal/privacy`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</a>.
                                         </span>
                                     </label>
                                     <label className="flex items-start gap-2 cursor-pointer">

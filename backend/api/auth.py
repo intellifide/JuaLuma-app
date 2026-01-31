@@ -20,8 +20,18 @@ from sqlalchemy.orm import Session, selectinload
 from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.core.legal import REQUIRED_SIGNUP_AGREEMENTS
-from backend.middleware.auth import get_current_user
-from backend.models import AuditLog, HouseholdInvite, HouseholdMember, Subscription, User, UserSession
+from backend.middleware.auth import get_current_identity, get_current_user
+from backend.models import (
+    AISettings,
+    AuditLog,
+    HouseholdInvite,
+    HouseholdMember,
+    LegalAgreementAcceptance,
+    PendingSignup,
+    Subscription,
+    User,
+    UserSession,
+)
 from backend.schemas.legal import AgreementAcceptancePayload
 from backend.services.legal import record_agreement_acceptances
 from backend.services.auth import (
@@ -265,6 +275,21 @@ def _serialize_profile(user: User) -> dict:
         profile["household_member"] = None
 
     return profile
+
+
+def _serialize_pending_profile(pending: PendingSignup) -> dict:
+    """Build a minimal profile payload for pending signups."""
+    return {
+        "uid": pending.uid,
+        "email": pending.email,
+        "status": pending.status,
+        "plan": "free",
+        "subscription_status": "inactive",
+        "subscriptions": [],
+        "ai_settings": None,
+        "is_developer": False,
+        "household_member": None,
+    }
 
 
 # Simple in-memory rate limiter keyed by client IP
@@ -607,18 +632,36 @@ def _create_db_user_safe(
         ) from exc
 
 
-def _generate_and_send_otp(user: User, db: Session) -> None:
+def _cleanup_partial_signup(db: Session, uid: str) -> None:
+    """Best-effort cleanup for partially created signup data."""
+    try:
+        db.query(PendingSignup).filter(PendingSignup.uid == uid).delete()
+        db.query(Subscription).filter(Subscription.uid == uid).delete()
+        db.query(AISettings).filter(AISettings.uid == uid).delete()
+        db.query(LegalAgreementAcceptance).filter(LegalAgreementAcceptance.uid == uid).delete()
+        db.query(User).filter(User.uid == uid).delete()
+        db.commit()
+    except Exception as exc:
+        logger.error(
+            "Failed to cleanup partial signup data.",
+            extra={"uid": uid},
+            exc_info=exc,
+        )
+        db.rollback()
+
+
+def _generate_and_send_otp(target: User | PendingSignup, db: Session) -> None:
     """Helper to generate OTP and send via email."""
     code = "".join(random.choices(string.digits, k=6))
-    user.email_otp = code
-    user.email_otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    target.email_otp = code
+    target.email_otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
     db.commit()
 
     try:
         client = get_email_client()
-        client.send_otp(user.email, code)
+        client.send_otp(target.email, code)
     except Exception as e:
-        logger.error(f"Failed to send initial OTP to {user.email}: {e}")
+        logger.error(f"Failed to send initial OTP to {target.email}: {e}")
         # Don't block signup success, user can resend later
 
 
@@ -655,29 +698,18 @@ def signup(
             detail="Firebase unavailable. Try again shortly.",
         ) from exc
 
-    _, synced_user = _handle_existing_db_user(
-        payload.email,
-        payload.password,
-        db,
-    )
-    if synced_user:
-        return {
-            "uid": synced_user.uid,
-            "email": synced_user.email,
-            "message": "Account synced successfully.",
-        }
+    existing_user = db.query(User).filter(User.email == payload.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email address already exists.",
+        )
 
     try:
         record = auth.create_user(email=payload.email, password=payload.password)
         is_fresh_firebase_user = True
     except firebase_exceptions.AlreadyExistsError:
-        record, synced_user = _handle_existing_firebase_user(payload.email, db)
-        if synced_user:
-            return {
-                "uid": synced_user.uid,
-                "email": synced_user.email,
-                "message": "Account synced successfully.",
-            }
+        record, _ = _handle_existing_firebase_user(payload.email, db)
     except firebase_exceptions.InvalidArgumentError as exc:
         logger.error(
             "Firebase rejected signup parameters.",
@@ -702,7 +734,18 @@ def signup(
     # Validate username uniqueness if provided (already validated length in model)
     if payload.username:
         existing_username = db.query(User).filter(User.username == payload.username).first()
-        if existing_username:
+        pending_username = (
+            db.query(PendingSignup)
+            .filter(PendingSignup.username == payload.username, PendingSignup.email != payload.email)
+            .first()
+        )
+        if existing_username or pending_username:
+            if is_fresh_firebase_user and record:
+                _rollback_firebase_user(
+                    record.uid,
+                    email=record.email,
+                    reason="username_conflict",
+                )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="This username is already taken. Please choose another.",
@@ -730,38 +773,33 @@ def signup(
                 ),
             )
 
-    # Create DB record with profile fields
-    user = _create_db_user_safe(
-        db, 
-        record, 
-        is_fresh_firebase_user,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        username=payload.username,
-    )
+    agreements_payload = [agreement.model_dump() for agreement in payload.agreements]
 
-    try:
-        record_agreement_acceptances(
-            db,
-            uid=user.uid,
-            acceptances=payload.agreements,
-            request=request,
-            source="frontend",
+    pending_signup = db.query(PendingSignup).filter(PendingSignup.email == payload.email).first()
+    if pending_signup and pending_signup.uid != record.uid:
+        db.delete(pending_signup)
+        db.commit()
+        pending_signup = None
+
+    if not pending_signup:
+        pending_signup = PendingSignup(
+            uid=record.uid,
+            email=record.email,
         )
-    except ValueError as exc:
-        logger.error(
-            "Agreement acceptance recording failed during signup.",
-            extra={"uid": user.uid, "email": user.email},
-            exc_info=exc,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid legal agreement data."
-        ) from exc
+        db.add(pending_signup)
+
+    pending_signup.first_name = payload.first_name
+    pending_signup.last_name = payload.last_name
+    pending_signup.username = payload.username
+    pending_signup.status = UserStatus.PENDING_VERIFICATION
+    pending_signup.agreements_json = agreements_payload
+    db.commit()
+    db.refresh(pending_signup)
 
     # Automatically send verification OTP
-    _generate_and_send_otp(user, db)
+    _generate_and_send_otp(pending_signup, db)
 
-    return {"uid": user.uid, "email": user.email, "message": "Signup successful."}
+    return {"uid": record.uid, "email": record.email, "message": "Signup started."}
 
 
 @router.post("/login")
@@ -921,10 +959,16 @@ def change_password(
 
 @router.get("/profile")
 def get_profile(
-    current_user: User = Depends(get_current_user),
+    identity: dict = Depends(get_current_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Return the authenticated user's profile with preferences and subscriptions."""
+    uid = identity.get("uid")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session data."
+        )
+
     user = (
         db.query(User)
         .options(
@@ -933,14 +977,20 @@ def get_profile(
             selectinload(User.notification_preferences),
             selectinload(User.developer),
         )
-        .filter(User.uid == current_user.uid)
+        .filter(User.uid == uid)
         .first()
     )
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Your account session is invalid."
+        pending_signup = (
+            db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
         )
+        if not pending_signup:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Your account session is invalid.",
+            )
+        return {"user": _serialize_pending_profile(pending_signup)}
 
     return {"user": _serialize_profile(user)}
 
@@ -1038,82 +1088,115 @@ def request_email_code(
 ) -> dict:
     """Request an Email OTP for login or setup."""
     user = db.query(User).filter(User.email == payload.email).first()
-    if not user:
-        # Prevent enumeration
-        return {"message": "If account exists, code sent."}
+    if user:
+        _generate_and_send_otp(user, db)
+        return {"message": "Code sent."}
 
-    _generate_and_send_otp(user, db)
+    pending_signup = (
+        db.query(PendingSignup).filter(PendingSignup.email == payload.email).first()
+    )
+    if pending_signup:
+        _generate_and_send_otp(pending_signup, db)
+        return {"message": "Code sent."}
 
-    return {"message": "Code sent."}
+    # Prevent enumeration
+    return {"message": "If account exists, code sent."}
 
 
 @router.post("/mfa/email/enable")
 def enable_email_mfa(
     payload: MFAVerifyRequest,
-    current_user: User = Depends(get_current_user),
+    identity: dict = Depends(get_current_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Enable Email MFA by verifying a sent code."""
-    if not current_user.email_otp or not current_user.email_otp_expires_at:
-        raise HTTPException(status_code=400, detail="Please request a verification code before enabling MFA.")
+    uid = identity.get("uid")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Invalid session data.")
 
-    # Timezone naive vs aware fix using utcnow/native
-    if datetime.utcnow() > current_user.email_otp_expires_at.replace(tzinfo=None):
-        raise HTTPException(status_code=400, detail="The verification code has expired. Please request a new one.")
+    current_user = db.query(User).filter(User.uid == uid).first()
 
-    if payload.code != current_user.email_otp:
-        raise HTTPException(status_code=401, detail="The verification code provided is incorrect.")
+    if current_user:
+        if not current_user.email_otp or not current_user.email_otp_expires_at:
+            raise HTTPException(status_code=400, detail="Please request a verification code before enabling MFA.")
 
-    current_user.email_otp = None
-    current_user.email_otp_expires_at = None
+        # Timezone naive vs aware fix using utcnow/native
+        if datetime.utcnow() > current_user.email_otp_expires_at.replace(tzinfo=None):
+            raise HTTPException(status_code=400, detail="The verification code has expired. Please request a new one.")
 
-    if current_user.status == UserStatus.PENDING_VERIFICATION:
-        # Email verification during onboarding should not auto-enable MFA.
-        current_user.mfa_enabled = False
-        if current_user.mfa_method == "email":
-            current_user.mfa_method = None
-        # 1. Check if ALREADY in a household (e.g. invite accepted during signup)
-        existing_membership = db.query(HouseholdMember).filter(HouseholdMember.uid == current_user.uid).first()
-        if existing_membership:
-            current_user.status = UserStatus.ACTIVE
-            # Send the household welcome email after OTP verification if the invite was accepted earlier.
-            if existing_membership.role != "admin":
-                household_service.send_household_welcome_email(
-                    db,
-                    to_email=current_user.email,
-                    household_id=existing_membership.household_id,
+        if payload.code != current_user.email_otp:
+            raise HTTPException(status_code=401, detail="The verification code provided is incorrect.")
+
+        current_user.email_otp = None
+        current_user.email_otp_expires_at = None
+
+        if current_user.status == UserStatus.PENDING_VERIFICATION:
+            # Email verification during onboarding should not auto-enable MFA.
+            current_user.mfa_enabled = False
+            if current_user.mfa_method == "email":
+                current_user.mfa_method = None
+            # 1. Check if ALREADY in a household (e.g. invite accepted during signup)
+            existing_membership = db.query(HouseholdMember).filter(HouseholdMember.uid == current_user.uid).first()
+            if existing_membership:
+                current_user.status = UserStatus.ACTIVE
+                # Send the household welcome email after OTP verification if the invite was accepted earlier.
+                if existing_membership.role != "admin":
+                    household_service.send_household_welcome_email(
+                        db,
+                        to_email=current_user.email,
+                        household_id=existing_membership.household_id,
+                    )
+                logger.info(f"User {current_user.uid} verified email. Already a household member. Status -> ACTIVE")
+                db.commit()
+                return {"message": "Email verified."}
+
+            # 2. Check for pending household invites (Case-insensitive check)
+            # Note: invite.expires_at is timezone-aware.
+            pending_invite = (
+                db.query(HouseholdInvite)
+                .filter(
+                    func.lower(HouseholdInvite.email) == func.lower(current_user.email),
+                    HouseholdInvite.status == "pending",
+                    HouseholdInvite.expires_at > datetime.now(UTC),
                 )
-            logger.info(f"User {current_user.uid} verified email. Already a household member. Status -> ACTIVE")
+                .first()
+            )
+            if pending_invite:
+                # If invited, skip plan selection (they will be prompted to accept invite)
+                current_user.status = UserStatus.ACTIVE
+                logger.info(f"User {current_user.uid} ({current_user.email}) verified email. Pending invite found from {pending_invite.household_id}, setting status ACTIVE.")
+            else:
+                logger.info(f"User {current_user.uid} ({current_user.email}) verified email. No pending invite found. Status -> PENDING_PLAN_SELECTION")
+                current_user.status = UserStatus.PENDING_PLAN_SELECTION
+
             db.commit()
             return {"message": "Email verified."}
 
-        # 2. Check for pending household invites (Case-insensitive check)
-        # Note: invite.expires_at is timezone-aware.
-        pending_invite = (
-            db.query(HouseholdInvite)
-            .filter(
-                func.lower(HouseholdInvite.email) == func.lower(current_user.email),
-                HouseholdInvite.status == "pending",
-                HouseholdInvite.expires_at > datetime.now(UTC),
-            )
-            .first()
-        )
-        if pending_invite:
-            # If invited, skip plan selection (they will be prompted to accept invite)
-            current_user.status = UserStatus.ACTIVE
-            logger.info(f"User {current_user.uid} ({current_user.email}) verified email. Pending invite found from {pending_invite.household_id}, setting status ACTIVE.")
-        else:
-            logger.info(f"User {current_user.uid} ({current_user.email}) verified email. No pending invite found. Status -> PENDING_PLAN_SELECTION")
-            current_user.status = UserStatus.PENDING_PLAN_SELECTION
-
+        current_user.mfa_enabled = True
+        current_user.mfa_method = "email"
         db.commit()
-        return {"message": "Email verified."}
 
-    current_user.mfa_enabled = True
-    current_user.mfa_method = "email"
+        return {"message": "Email MFA enabled."}
+
+    pending_signup = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
+    if not pending_signup:
+        raise HTTPException(status_code=404, detail="Signup session not found.")
+
+    if not pending_signup.email_otp or not pending_signup.email_otp_expires_at:
+        raise HTTPException(status_code=400, detail="Please request a verification code before enabling MFA.")
+
+    if datetime.utcnow() > pending_signup.email_otp_expires_at.replace(tzinfo=None):
+        raise HTTPException(status_code=400, detail="The verification code has expired. Please request a new one.")
+
+    if payload.code != pending_signup.email_otp:
+        raise HTTPException(status_code=401, detail="The verification code provided is incorrect.")
+
+    pending_signup.email_otp = None
+    pending_signup.email_otp_expires_at = None
+    pending_signup.status = UserStatus.PENDING_PLAN_SELECTION
     db.commit()
 
-    return {"message": "Email MFA enabled."}
+    return {"message": "Email verified."}
 
 
 # Placeholder for SMS (Commented Out logic)

@@ -1,6 +1,14 @@
+// Marketing site footer with product/support/developer links. Last modified: 2025-01-30
 'use client'
 
 import Link from 'next/link'
+
+const comingSoonItem = (label: string) => (
+  <li className="flex items-center gap-2">
+    <span className="text-text-muted cursor-not-allowed">{label}</span>
+    <span className="inline-flex items-center justify-center text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full whitespace-nowrap">Coming soon</span>
+  </li>
+)
 
 export const Footer = () => (
   <footer className="footer">
@@ -11,7 +19,7 @@ export const Footer = () => (
           <ul>
             <li><Link href="/features">Features</Link></li>
             <li><Link href="/pricing">Pricing</Link></li>
-            <li><Link href="/marketplace">Marketplace</Link></li>
+            {comingSoonItem('Marketplace')}
           </ul>
         </div>
         <div className="footer-section">
@@ -26,8 +34,8 @@ export const Footer = () => (
         <div className="footer-section">
           <h3>Developers</h3>
           <ul>
-            <li><Link href="/developers">Developer Home</Link></li>
-            <li><Link href="/developer-sdk">Developer SDK</Link></li>
+            {comingSoonItem('Developer Home')}
+            {comingSoonItem('Developer SDK')}
           </ul>
         </div>
         <div className="footer-section">

@@ -1,3 +1,4 @@
+// App shell layout: sidebar, top bar, outlet. Last modified: 2025-01-30
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink, Link, useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -41,6 +42,11 @@ export const AppLayout: React.FC = () => {
     const [showWelcome, setShowWelcome] = useState(false)
 
     const welcomeKey = user?.uid ? `jualuma_welcome_back_${user.uid}` : 'jualuma_welcome_back'
+    const marketingSiteUrl = useMemo(() => {
+        const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+        const fallback = isLocalhost ? 'http://localhost:5177' : window.location.origin
+        return (import.meta as any).env?.VITE_MARKETING_SITE_URL || fallback
+    }, [])
     const displayName = useMemo(() => {
         if (!profile) return user?.email ?? 'there'
         if (profile.display_name_pref === 'username' && profile.username) return profile.username
@@ -156,7 +162,7 @@ export const AppLayout: React.FC = () => {
                                     {sidebarOpen && <span>{link.name}</span>}
                                     {sidebarOpen && (
                                         <span className="ml-auto text-[10px] uppercase tracking-wider border border-border/60 text-text-muted px-2 py-0.5 rounded-full">
-                                          Soon
+                                          Coming soon
                                         </span>
                                     )}
                                 </div>
@@ -267,7 +273,7 @@ export const AppLayout: React.FC = () => {
                                                 <link.icon className="w-6 h-6" />
                                                 {link.name}
                                                 <span className="ml-auto text-[10px] uppercase tracking-wider border border-border/60 text-text-muted px-2 py-0.5 rounded-full">
-                                                  Soon
+                                                  Coming soon
                                                 </span>
                                             </div>
                                         )
@@ -321,9 +327,9 @@ export const AppLayout: React.FC = () => {
                         )}
                    </div>
                    <div className="flex items-center gap-4">
-                        <Link to="/" className="text-sm font-medium text-text-muted hover:text-primary transition-colors">
+                        <a href={marketingSiteUrl} className="text-sm font-medium text-text-muted hover:text-primary transition-colors" rel="noopener noreferrer">
                             ← Return to Website
-                        </Link>
+                        </a>
                    </div>
                 </div>
 

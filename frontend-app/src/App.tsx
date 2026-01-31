@@ -18,6 +18,7 @@ import { VerifyEmail } from './pages/VerifyEmail'
 import { PricingRedirect } from './pages/PricingRedirect'
 import { ResetPassword } from './pages/ResetPassword'
 import { DeveloperAuth } from './pages/developers/DeveloperAuth'
+import { PlanSelection } from './pages/PlanSelection'
 
 // Protected App Pages
 import Dashboard from './pages/Dashboard'
@@ -32,6 +33,7 @@ import { HouseholdPage } from './pages/Household/HouseholdPage'
 import JoinHousehold from './pages/JoinHousehold'
 import { DeveloperDashboard } from './pages/developers/DeveloperDashboard'
 import { CheckoutSuccess } from './pages/CheckoutSuccess'
+import { CheckoutStart } from './pages/CheckoutStart'
 import Maintenance from './pages/Maintenance'
 
 function App() {
@@ -55,6 +57,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/plan-selection" element={<PlanSelection />} />
             <Route path="/pricing" element={<PricingRedirect />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/developers/login" element={<DeveloperAuth mode="login" />} />
@@ -75,6 +78,7 @@ function App() {
               {/* Nested or Specific App Pages */}
               <Route path="/support/tickets/:ticketId" element={<TicketDetail />} />
               <Route path="/checkout/success" element={<CheckoutSuccess />} />
+              <Route path="/checkout/start" element={<CheckoutStart />} />
               <Route path="/developers/dashboard" element={<DeveloperDashboard />} />
               
                {/* Legacy Redirects */}

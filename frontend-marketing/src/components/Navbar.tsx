@@ -1,3 +1,4 @@
+// Marketing site top nav. Last modified: 2025-01-30
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -8,9 +9,9 @@ import { ThemeToggle } from './ThemeToggle'
 const navLinks = [
   { name: 'Features', path: '/features' },
   { name: 'Pricing', path: '/pricing' },
-  { name: 'Marketplace', path: '/marketplace' },
+  { name: 'Marketplace', path: '/marketplace', comingSoon: true },
   { name: 'About', path: '/about' },
-  { name: 'Developers', path: '/developers' },
+  { name: 'Developers', path: '/developers', comingSoon: true },
   { name: 'Support', path: '/support' },
 ]
 
@@ -48,17 +49,29 @@ export const Navbar: React.FC = () => {
 
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              href={link.path}
-              className={`text-sm font-medium transition-colors hover:text-accent ${
-                pathname === link.path ? 'text-accent' : 'text-text-secondary'
-              }`}
-            >
-              {link.name}
-            </Link>
-          ))}
+          {navLinks.map((link) =>
+            link.comingSoon ? (
+              <span
+                key={link.path}
+                className="text-sm font-medium text-text-muted cursor-not-allowed flex items-center gap-2"
+              >
+                {link.name}
+                <span className="text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full">
+                  Coming soon
+                </span>
+              </span>
+            ) : (
+              <Link
+                key={link.path}
+                href={link.path}
+                className={`text-sm font-medium transition-colors hover:text-accent ${
+                  pathname === link.path ? 'text-accent' : 'text-text-secondary'
+                }`}
+              >
+                {link.name}
+              </Link>
+            )
+          )}
         </div>
 
         {/* Actions */}
@@ -107,18 +120,30 @@ export const Navbar: React.FC = () => {
       {mobileMenuOpen && (
         <div className="md:hidden bg-surface-1 border-b border-white/5 overflow-hidden animate-fade-in">
           <div className="px-6 py-8 flex flex-col gap-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`text-lg font-medium ${
-                  pathname === link.path ? 'text-accent' : 'text-text-secondary'
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
+            {navLinks.map((link) =>
+              link.comingSoon ? (
+                <span
+                  key={link.path}
+                  className="text-lg font-medium text-text-muted cursor-not-allowed flex items-center gap-2"
+                >
+                  {link.name}
+                  <span className="text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full">
+                    Coming soon
+                  </span>
+                </span>
+              ) : (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`text-lg font-medium ${
+                    pathname === link.path ? 'text-accent' : 'text-text-secondary'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              )
+            )}
             <div className="h-px bg-white/5 my-2" />
             <a
               href="http://localhost:5175/login"

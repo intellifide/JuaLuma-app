@@ -16,6 +16,7 @@ from .manual_asset import ManualAsset
 from .notification import LocalNotification, NotificationPreference
 from .notification_device import NotificationDevice
 from .notification_settings import NotificationSettings
+from .pending_signup import PendingSignup
 from .payment import Payment
 from .payout import DeveloperPayout
 from .subscription import Subscription
@@ -50,6 +51,7 @@ __all__ = [
     "LocalNotification",
     "NotificationDevice",
     "NotificationSettings",
+    "PendingSignup",
     "AuditLog",
     "FeaturePreview",
     "LLMLog",

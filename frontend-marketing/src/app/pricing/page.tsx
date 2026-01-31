@@ -353,7 +353,6 @@ export default function Pricing() {
                                             { label: 'CEX Accounts', free: '1', essential: '3', pro: '10', ultimate: '20', icon: Shield },
                                             { label: 'AI Queries/Day', free: '20', essential: '30', pro: '40', ultimate: '80', icon: Zap },
                                             { label: 'Data Retention', free: '45 days', essential: 'Current + Prev', pro: 'Full History', ultimate: 'Full History', icon: Database },
-                                            { label: 'Sync Cadence', free: 'Manual', essential: 'Daily', pro: 'Expidited', ultimate: 'Expedited', icon: Activity },
                                             { label: 'Family Features', free: false, essential: false, pro: false, ultimate: true, icon: Users },
                                             { label: 'Free Trial', free: false, essential: false, pro: '14 days', ultimate: '14 days', icon: Star },
                                             { label: 'Developer Marketplace', free: false, essential: false, pro: true, ultimate: true, icon: Globe },

@@ -16,6 +16,7 @@ This directory contains utility scripts for development, testing, and maintenanc
 
 - **`test_household_transactions.py`**: Testing script specifically for household transaction logic.
 - **`test_stripe_session.py`**: Script to test Stripe Checkout Session creation and verifying the integration.
+- **`cleanup_pending_signups.py`**: Deletes pending signup records older than 24 hours.
 
 ## Usage
 
@@ -35,4 +36,10 @@ python scripts/e2e_seed.py
 
 ```bash
 PYTHONPATH=. python scripts/cleanup_e2e_accounts.py
+```
+
+**Cleanup Pending Signups:**
+
+```bash
+PYTHONPATH=. python scripts/cleanup_pending_signups.py
 ```
