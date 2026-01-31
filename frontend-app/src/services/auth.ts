@@ -5,6 +5,8 @@
 import { FirebaseError } from 'firebase/app'
 import {
   User,
+  createUserWithEmailAndPassword,
+  deleteUser,
   confirmPasswordReset as firebaseConfirmPasswordReset,
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   signInWithEmailAndPassword,
@@ -70,25 +72,34 @@ export const signup = async (
   username?: string,
 ): Promise<User> => {
   try {
-    // 1. Create user in Backend (seeds Postgres)
-    await apiFetch('/auth/signup', {
+    // 1. Create user in Firebase Client SDK (establishes session)
+    const credential = await createUserWithEmailAndPassword(auth, email, password)
+    clearCachedToken()
+
+    // 2. Store pending signup details in backend (no full DB user yet)
+    await apiFetch('/auth/signup/pending', {
       method: 'POST',
-      body: JSON.stringify({ 
-        email, 
-        password, 
+      body: JSON.stringify({
         agreements,
         first_name,
         last_name,
         username,
       }),
-      skipAuth: true,
     })
 
-    // 2. Sign in with Client SDK to establish session
-    const credential = await signInWithEmailAndPassword(auth, email, password)
-    clearCachedToken()
     return credential.user
   } catch (error) {
+    // Best effort cleanup if backend fails after Firebase user creation
+    if (auth.currentUser) {
+      try {
+        await deleteUser(auth.currentUser)
+      } catch (cleanupError) {
+        console.error('Failed to cleanup Firebase user after signup failure:', cleanupError)
+      } finally {
+        clearCachedToken()
+      }
+    }
+
     if (error instanceof Error && !(error instanceof FirebaseError)) {
       throw error // Re-throw backend errors as-is
     }

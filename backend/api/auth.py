@@ -87,6 +87,32 @@ class SignupRequest(BaseModel):
     )
 
 
+class PendingSignupRequest(BaseModel):
+    first_name: str = Field(min_length=1, max_length=128, example="John")
+    last_name: str = Field(min_length=1, max_length=128, example="Doe")
+    username: str | None = Field(default=None, max_length=64, example="johndoe")
+    agreements: list[AgreementAcceptancePayload] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_username(cls, data: any) -> any:
+        """Convert empty username strings to None."""
+        if isinstance(data, dict) and "username" in data:
+            if isinstance(data["username"], str) and (data["username"] == "" or data["username"].strip() == ""):
+                data["username"] = None
+            elif isinstance(data["username"], str):
+                data["username"] = data["username"].strip()
+        return data
+
+    @model_validator(mode="after")
+    def validate_username(self) -> "PendingSignupRequest":
+        """Validate username length if provided."""
+        if self.username is not None:
+            if len(self.username) < 3:
+                raise ValueError("Username must be at least 3 characters long.")
+        return self
+
+
 class TokenRequest(BaseModel):
     token: str = Field(min_length=10, example="eyJhbGciOiJSUzI1NiIsImtpZCI6...")
     mfa_code: str | None = Field(
@@ -665,6 +691,108 @@ def _generate_and_send_otp(target: User | PendingSignup, db: Session) -> None:
         # Don't block signup success, user can resend later
 
 
+def _store_pending_signup(
+    db: Session,
+    *,
+    uid: str,
+    email: str,
+    payload: PendingSignupRequest | SignupRequest,
+    status: str,
+) -> PendingSignup:
+    agreements_payload = [agreement.model_dump() for agreement in payload.agreements]
+
+    pending_signup = db.query(PendingSignup).filter(PendingSignup.email == email).first()
+    if pending_signup and pending_signup.uid != uid:
+        db.delete(pending_signup)
+        db.commit()
+        pending_signup = None
+
+    if not pending_signup:
+        pending_signup = PendingSignup(uid=uid, email=email)
+        db.add(pending_signup)
+
+    pending_signup.first_name = payload.first_name
+    pending_signup.last_name = payload.last_name
+    pending_signup.username = payload.username
+    pending_signup.status = status
+    pending_signup.agreements_json = agreements_payload
+    db.commit()
+    db.refresh(pending_signup)
+
+    return pending_signup
+
+
+@router.post("/signup/pending", status_code=status.HTTP_201_CREATED)
+def signup_pending(
+    payload: PendingSignupRequest,
+    identity: dict = Depends(get_current_identity),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Store temporary signup data after Firebase user creation.
+
+    Requires a valid Firebase ID token.
+    """
+    uid = identity.get("uid")
+    email = identity.get("email")
+    if not uid or not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid session data.",
+        )
+
+    existing_user = db.query(User).filter(User.uid == uid).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email address already exists.",
+        )
+
+    existing_user_email = db.query(User).filter(User.email == email).first()
+    if existing_user_email:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email address already exists.",
+        )
+
+    required_keys = set(REQUIRED_SIGNUP_AGREEMENTS)
+    accepted_keys = {agreement.agreement_key for agreement in payload.agreements}
+    missing = required_keys - accepted_keys
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Missing required legal agreements: "
+                f"{', '.join(sorted(missing))}."
+            ),
+        )
+
+    if payload.username:
+        existing_username = db.query(User).filter(User.username == payload.username).first()
+        pending_username = (
+            db.query(PendingSignup)
+            .filter(PendingSignup.username == payload.username, PendingSignup.email != email)
+            .first()
+        )
+        if existing_username or pending_username:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This username is already taken. Please choose another.",
+            )
+
+    pending_signup = _store_pending_signup(
+        db,
+        uid=uid,
+        email=email,
+        payload=payload,
+        status=UserStatus.PENDING_VERIFICATION,
+    )
+
+    _generate_and_send_otp(pending_signup, db)
+
+    return {"uid": uid, "email": email, "message": "Signup started."}
+
+
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(
     payload: SignupRequest,
@@ -773,28 +901,13 @@ def signup(
                 ),
             )
 
-    agreements_payload = [agreement.model_dump() for agreement in payload.agreements]
-
-    pending_signup = db.query(PendingSignup).filter(PendingSignup.email == payload.email).first()
-    if pending_signup and pending_signup.uid != record.uid:
-        db.delete(pending_signup)
-        db.commit()
-        pending_signup = None
-
-    if not pending_signup:
-        pending_signup = PendingSignup(
-            uid=record.uid,
-            email=record.email,
-        )
-        db.add(pending_signup)
-
-    pending_signup.first_name = payload.first_name
-    pending_signup.last_name = payload.last_name
-    pending_signup.username = payload.username
-    pending_signup.status = UserStatus.PENDING_VERIFICATION
-    pending_signup.agreements_json = agreements_payload
-    db.commit()
-    db.refresh(pending_signup)
+    pending_signup = _store_pending_signup(
+        db,
+        uid=record.uid,
+        email=record.email,
+        payload=payload,
+        status=UserStatus.PENDING_VERIFICATION,
+    )
 
     # Automatically send verification OTP
     _generate_and_send_otp(pending_signup, db)
