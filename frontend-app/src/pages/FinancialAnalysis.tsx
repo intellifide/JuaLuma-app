@@ -14,7 +14,7 @@ import { FeaturePreview } from '../components/ui/FeaturePreview';
 import { ExpandableChartModal } from '../components/ExpandableChartModal';
 import Switch from '../components/ui/Switch';
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
-import { loadTransactionPreferences } from '../utils/transactionPreferences';
+import { loadTransactionPreferences, ACCOUNT_TYPES } from '../utils/transactionPreferences';
 import { getManualNetWorthAtDate } from '../utils/manualAssets';
 
 // Helpers for Date Management
@@ -540,13 +540,12 @@ export default function FinancialAnalysis() {
     };
   }, []);
 
-  // Build exclude account types based on saved preferences
+  // Exclude account types not selected in transaction preferences (default = all)
   const excludeAccountTypes = useMemo(() => {
-    const excludes: string[] = []
-    if (!transactionPreferences.includeWeb3) excludes.push('web3')
-    if (!transactionPreferences.includeCEX) excludes.push('cex')
-    return excludes.length > 0 ? excludes.join(',') : undefined
-  }, [transactionPreferences.includeWeb3, transactionPreferences.includeCEX])
+    const included = transactionPreferences.accountTypesIncluded ?? [...ACCOUNT_TYPES]
+    const excluded = ACCOUNT_TYPES.filter((t) => !included.includes(t))
+    return excluded.length > 0 ? excluded.join(',') : undefined
+  }, [transactionPreferences.accountTypesIncluded])
 
   // Build isManual filter from preferences
   const isManualFilterValue = useMemo(() => {

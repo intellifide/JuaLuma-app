@@ -1,5 +1,5 @@
 // Core Purpose: Main dashboard for personal and household financial insights.
-// Last Modified: 2026-01-26 14:10 CST
+// Last Modified: 2025-01-30
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -12,7 +12,6 @@ import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
 import { InfoPopover } from '../components/ui/InfoPopover';
-import { PreviewFixtures } from '../components/preview/PreviewFixtures';
 import { FeaturePreview } from '../components/ui/FeaturePreview';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
@@ -204,7 +203,6 @@ export default function Dashboard() {
   const planFromProfile = normalizePlan(profile?.plan ?? null)
   const planFromSubscriptions = normalizePlan(activeSubscription?.plan ?? null)
   const effectivePlan: PlanTier = planFromSubscriptions ?? planFromProfile ?? 'free'
-  const showPreviewFixtures = effectivePlan === 'free' || effectivePlan === 'essential'
 
   const handleInviteClick = async () => {
     const isUltimate = profile?.plan?.toLowerCase().includes('ultimate');
@@ -960,18 +958,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {showPreviewFixtures && (
-        <div className="glass-panel space-y-4">
-          <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
-            <h3 className="text-lg font-semibold">Premium Preview</h3>
-            <span className="text-xs text-text-muted">
-              Synthetic data to preview premium workflows
-            </span>
-          </div>
-          <PreviewFixtures />
-        </div>
-      )}
 
       <Modal
         open={goalsModalOpen}

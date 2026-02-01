@@ -65,24 +65,24 @@ function App() {
             <Route path="/household/accept-invite" element={<JoinHousehold />} />
 
              {/* --- Application Routes (Protected Dashboard) --- */}
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/financial-analysis" element={<FinancialAnalysis />} />
-            <Route path="/transactions" element={<Transactions />} />
-              <Route path="/connect-accounts" element={<ConnectAccounts />} />
-              <Route path="/ai-assistant" element={<AIAssistant />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/household" element={<HouseholdPage />} />
-              <Route path="/support" element={<Support />} />
+            <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="financial-analysis" element={<FinancialAnalysis />} />
+              <Route path="transactions" element={<Transactions />} />
+              <Route path="connect-accounts" element={<ConnectAccounts />} />
+              <Route path="ai-assistant" element={<AIAssistant />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="household" element={<HouseholdPage />} />
+              <Route path="support" element={<Support />} />
               
               {/* Nested or Specific App Pages */}
-              <Route path="/support/tickets/:ticketId" element={<TicketDetail />} />
-              <Route path="/checkout/success" element={<CheckoutSuccess />} />
-              <Route path="/checkout/start" element={<CheckoutStart />} />
-              <Route path="/developers/dashboard" element={<DeveloperDashboard />} />
+              <Route path="support/tickets/:ticketId" element={<TicketDetail />} />
+              <Route path="checkout/success" element={<CheckoutSuccess />} />
+              <Route path="checkout/start" element={<CheckoutStart />} />
+              <Route path="developers/dashboard" element={<DeveloperDashboard />} />
               
                {/* Legacy Redirects */}
-              <Route path="/developer-marketplace" element={<Navigate to="/developers/dashboard" replace />} />
+              <Route path="developer-marketplace" element={<Navigate to="/developers/dashboard" replace />} />
             </Route>
 
             {/* 404 */}

@@ -11,14 +11,11 @@ export const featureKeys = [
   'ai.cloud',
   'assets.manual',
   'budgets.advanced',
-  'budgets.basic',
   'family.tracking',
   'investment.aggregation',
   'marketplace.preview',
   'marketplace.publish',
   'recurring.detection',
-  'reporting.advanced',
-  'reporting.basic',
 ] as const
 export type FeatureKey = (typeof featureKeys)[number]
 
@@ -54,15 +51,12 @@ export const featureRequirements: Record<FeatureKey, { tier: Tier; previewEnable
   'accounts.web3': { tier: Tier.FREE, previewEnabled: false, description: "Web3 wallet connection limits" },
   'ai.cloud': { tier: Tier.FREE, previewEnabled: true, description: "Cloud AI chat interface with RAG context (Tiered limits: Free 10/day, Essential 30/day, Pro 40/day)" },
   'assets.manual': { tier: Tier.FREE, previewEnabled: false, description: "Manual asset tracking for non-API assets" },
-  'budgets.advanced': { tier: Tier.PRO, previewEnabled: true, description: "Advanced budgets with rollover, threshold alerts, budget-vs-actual" },
-  'budgets.basic': { tier: Tier.FREE, previewEnabled: false, description: "Basic budget tracking and visualization" },
+  'budgets.advanced': { tier: Tier.FREE, previewEnabled: false, description: "Advanced budgets with rollover, threshold alerts, budget-vs-actual" },
   'family.tracking': { tier: Tier.ULTIMATE, previewEnabled: true, description: "Family/couple net worth tracking and account assignment" },
-  'investment.aggregation': { tier: Tier.PRO, previewEnabled: false, description: "Investment account aggregation via Plaid Investments API" },
-  'marketplace.preview': { tier: Tier.PRO, previewEnabled: true, description: "Access to install and use marketplace widgets" },
-  'marketplace.publish': { tier: Tier.FREE, previewEnabled: false, description: "Ability to publish widgets to marketplace (Requires Developer Agreement)" },
+  'investment.aggregation': { tier: Tier.FREE, previewEnabled: false, description: "Investment account aggregation via Plaid Investments API" },
+  'marketplace.preview': { tier: Tier.PRO, previewEnabled: false, description: "Access to install and use marketplace widgets" },
+  'marketplace.publish': { tier: Tier.PRO, previewEnabled: false, description: "Ability to publish widgets to marketplace (Requires Developer Agreement)" },
   'recurring.detection': { tier: Tier.FREE, previewEnabled: false, description: "Automated detection of recurring transactions" },
-  'reporting.advanced': { tier: Tier.PRO, previewEnabled: true, description: "Advanced reporting and analytics" },
-  'reporting.basic': { tier: Tier.FREE, previewEnabled: false, description: "Basic reporting and infographics" },
 }
 
 export const accountLimits: Record<AccountType, Record<TierSlug, number>> = {

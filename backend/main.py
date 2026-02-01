@@ -58,6 +58,10 @@ async def lifespan(app: FastAPI):
     Lifecycle manager for the FastAPI app.
     Handles startup (Pub/Sub init) and shutdown tasks.
     """
+    if settings.app_env.lower() == "test":
+        yield
+        return
+
     try:
         # Initialize Pub/Sub topics if running with emulator
         await asyncio.to_thread(initialize_events)

@@ -1,7 +1,7 @@
 # CORE PURPOSE: Service for handling Stripe billing, customer creation, checkout sessions, and webhooks.
 # LAST MODIFIED: 2026-01-25 CST
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import stripe
@@ -52,6 +52,50 @@ TRIAL_PERIOD_DAYS = {
     "ultimate_monthly": 14,
     "ultimate_annual": 14,
 }
+
+GRACE_PERIOD_DAYS = 3
+
+
+def _normalize_plan_type(plan_type: str) -> str:
+    normalized = plan_type.strip().lower()
+    if normalized == "pro":
+        return "pro_monthly"
+    if normalized == "ultimate":
+        return "ultimate_monthly"
+    if normalized == "essential":
+        return "essential_monthly"
+    return normalized
+
+
+def _format_date_for_email(value: datetime) -> str:
+    return value.strftime("%B %d, %Y")
+
+
+def _get_user_email(db: Session, uid: str) -> str | None:
+    user = db.query(User).filter(User.uid == uid).first()
+    return user.email if user else None
+
+
+def _send_payment_failed_email(
+    db: Session, uid: str, plan_name: str, grace_end_date: datetime
+) -> None:
+    to_email = _get_user_email(db, uid)
+    if not to_email:
+        return
+    client = get_email_client()
+    client.send_subscription_payment_failed(
+        to_email,
+        plan_name,
+        _format_date_for_email(grace_end_date),
+    )
+
+
+def _send_downgrade_email(db: Session, uid: str, reason: str) -> None:
+    to_email = _get_user_email(db, uid)
+    if not to_email:
+        return
+    client = get_email_client()
+    client.send_subscription_downgraded(to_email, reason)
 
 
 def _resolve_uid_for_customer(db: Session, customer_id: str | None) -> str | None:
@@ -162,6 +206,7 @@ def create_checkout_session_for_pending(
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
 
+    plan_type = _normalize_plan_type(plan_type)
     price_id = STRIPE_PLANS.get(plan_type)
     if not price_id:
         raise HTTPException(status_code=400, detail="The selected subscription plan is not recognized.")
@@ -174,6 +219,9 @@ def create_checkout_session_for_pending(
     trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
     if trial_days:
         subscription_data["trial_period_days"] = trial_days
+        subscription_data["trial_settings"] = {
+            "end_behavior": {"missing_payment_method": "cancel"}
+        }
         logger.info(f"Creating checkout session with {trial_days}-day trial for plan {plan_type}")
 
     session = stripe.checkout.Session.create(
@@ -246,6 +294,7 @@ def create_checkout_session(
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
 
+    plan_type = _normalize_plan_type(plan_type)
     price_id = STRIPE_PLANS.get(plan_type)
     if not price_id:
         raise HTTPException(status_code=400, detail="The selected subscription plan is not recognized.")
@@ -262,6 +311,9 @@ def create_checkout_session(
         trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
         if trial_days:
             subscription_data["trial_period_days"] = trial_days
+            subscription_data["trial_settings"] = {
+                "end_behavior": {"missing_payment_method": "cancel"}
+            }
             logger.info(f"Creating checkout session with {trial_days}-day trial for plan {plan_type}")
 
         session = stripe.checkout.Session.create(
@@ -321,6 +373,17 @@ def _infer_plan_from_session(session: Any) -> str | None:
     return None
 
 
+def _infer_plan_from_subscription(subscription: Any) -> str | None:
+    try:
+        items = subscription.get("items", {}).get("data", [])
+        price_id = items[0]["price"]["id"] if items else None
+        if price_id:
+            return STRIPE_PRICE_TO_TIER.get(price_id)
+    except Exception:
+        return None
+    return None
+
+
 def _normalize_tier(plan_type: str) -> str:
     """Normalize plan_type to an internal tier code."""
     tier = plan_type
@@ -350,7 +413,12 @@ def verify_stripe_session(db: Session, session_id: str) -> bool:
         )
 
         if session.payment_status != "paid":
-            return False
+            if session.mode == "subscription" and session.subscription:
+                subscription = stripe.Subscription.retrieve(session.subscription)
+                if subscription.status not in ["trialing", "active"]:
+                    return False
+            else:
+                return False
 
         uid, plan_type = _extract_session_metadata(session)
 
@@ -552,6 +620,8 @@ async def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session):
 
     if event_type == "invoice.payment_succeeded":
         await _handle_invoice_paid(data_object, db)
+    elif event_type == "invoice.payment_failed":
+        await _handle_invoice_payment_failed(data_object, db)
     elif event_type == "customer.subscription.updated":
         await _handle_subscription_updated(data_object, db)
     elif event_type == "customer.subscription.deleted":
@@ -577,6 +647,75 @@ async def _handle_invoice_paid(invoice: dict[str, Any], db: Session):
     # Logic to extend subscription or reset quotas can go here
     # For now, just logging
     logger.info(f"Invoice paid for user {uid}")
+
+
+async def _handle_invoice_payment_failed(invoice: dict[str, Any], db: Session):
+    customer_id = invoice.get("customer")
+    uid = _resolve_uid_for_customer(db, customer_id)
+    if not uid:
+        logger.warning(f"Webhook: No user found for customer {customer_id}")
+        return
+
+    _ensure_user_from_pending(db, uid)
+
+    sub_id = invoice.get("subscription")
+    subscription = stripe.Subscription.retrieve(sub_id) if sub_id else None
+    plan_name = _infer_plan_from_subscription(subscription) if subscription else None
+
+    now = datetime.utcnow()
+    is_trial_ended = False
+    trial_end_value = getattr(subscription, "trial_end", None) if subscription else None
+    subscription_status = getattr(subscription, "status", None) if subscription else None
+    if trial_end_value is not None:
+        trial_end = datetime.utcfromtimestamp(trial_end_value)
+        is_trial_ended = trial_end <= now and subscription_status in [
+            "past_due",
+            "incomplete",
+            "incomplete_expired",
+            "unpaid",
+            "canceled",
+        ]
+
+    if is_trial_ended:
+        update_user_tier(db, uid, "free", status="canceled", end_date=None)
+        _send_downgrade_email(
+            db,
+            uid,
+            "Trial period ended and payment could not be processed.",
+        )
+        logger.info(f"Webhook: Trial ended with failed payment. Downgraded {uid} to free.")
+        return
+
+    sub_record = db.query(Subscription).filter(Subscription.uid == uid).first()
+    if sub_record and sub_record.status == "past_due" and sub_record.renew_at:
+        grace_end = sub_record.renew_at
+    else:
+        grace_end = now + timedelta(days=GRACE_PERIOD_DAYS)
+        update_user_tier(
+            db,
+            uid,
+            plan_name or (sub_record.plan if sub_record else "free"),
+            status="past_due",
+            end_date=grace_end,
+        )
+        _send_payment_failed_email(
+            db,
+            uid,
+            plan_name or (sub_record.plan if sub_record else "paid plan"),
+            grace_end,
+        )
+        logger.info(
+            f"Webhook: Payment failed. Grace period until {grace_end.isoformat()} for {uid}."
+        )
+
+    if grace_end <= now:
+        update_user_tier(db, uid, "free", status="canceled", end_date=None)
+        _send_downgrade_email(
+            db,
+            uid,
+            "Payment failed and the 3-day grace period has ended.",
+        )
+        logger.info(f"Webhook: Grace expired. Downgraded {uid} to free.")
 
 
 async def _handle_subscription_updated(subscription: dict[str, Any], db: Session):
@@ -619,12 +758,51 @@ async def _handle_subscription_updated(subscription: dict[str, Any], db: Session
             # This might happen if we didn't map the price ID correctly.
             logger.error(f"Webhook: Active subscription for unknown price {price_id}")
             update_user_tier(db, uid, "free", status, renew_at)
+    elif status in ["past_due", "unpaid"]:
+        sub_record = db.query(Subscription).filter(Subscription.uid == uid).first()
+        now = datetime.utcnow()
+        if sub_record and sub_record.status == "past_due" and sub_record.renew_at:
+            grace_end = sub_record.renew_at
+        else:
+            grace_end = now + timedelta(days=GRACE_PERIOD_DAYS)
+            update_user_tier(
+                db,
+                uid,
+                paid_plan or (sub_record.plan if sub_record else "free"),
+                status="past_due",
+                end_date=grace_end,
+            )
+            _send_payment_failed_email(
+                db,
+                uid,
+                paid_plan or (sub_record.plan if sub_record else "paid plan"),
+                grace_end,
+            )
+            logger.info(
+                f"Webhook: Subscription {status}. Grace period until {grace_end.isoformat()} for {uid}."
+            )
+
+        if grace_end <= now:
+            logger.info(
+                f"Webhook: Subscription {status} with expired grace. Downgrading {uid}."
+            )
+            update_user_tier(db, uid, "free", status="canceled", end_date=None)
+            handle_downgrade_logic(db, uid)
+            _send_downgrade_email(
+                db,
+                uid,
+                "Payment failed and the 3-day grace period has ended.",
+            )
     else:
-        # Not active (canceled, unpaid, incomplete_expired, etc.)
-        # Immediate downgrade
+        # Not active (canceled, incomplete_expired, etc.)
         logger.info(f"Webhook: Subscription status {status} - downgrading to free")
         update_user_tier(db, uid, "free", status, None)
         handle_downgrade_logic(db, uid)
+        _send_downgrade_email(
+            db,
+            uid,
+            "Your subscription was canceled or expired.",
+        )
 
 
 async def _handle_subscription_deleted(subscription: dict[str, Any], db: Session):

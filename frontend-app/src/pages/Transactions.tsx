@@ -1,5 +1,5 @@
 // Core Purpose: Transactions list with filters, search, and bulk actions.
-// Last Updated: 2026-01-26 12:50 CST
+// Last Modified: 2025-01-30
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
@@ -11,10 +11,24 @@ import { EditTransactionModal } from '../components/EditTransactionModal'
 import Switch from '../components/ui/Switch'
 import { Transaction } from '../types'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
-import { loadTransactionPreferences, saveTransactionPreferences } from '../utils/transactionPreferences'
+import {
+  loadTransactionPreferences,
+  saveTransactionPreferences,
+  ACCOUNT_TYPES,
+  type AccountTypeFilter,
+} from '../utils/transactionPreferences'
 import { getTransactionDateRange } from '../utils/dateRanges'
 
 const CATEGORIES = TRANSACTION_CATEGORIES
+
+/** Display labels for account type filters (default = show all). */
+const ACCOUNT_TYPE_LABELS: Record<AccountTypeFilter, string> = {
+  traditional: 'Traditional (Banks)',
+  investment: 'Investment',
+  web3: 'Web3',
+  cex: 'CEX',
+  manual: 'Manual',
+}
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
@@ -31,10 +45,9 @@ export const Transactions = () => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [timeframe, setTimeframe] = useState(savedPreferences.timeframe)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(savedPreferences.showAdvancedFilters)
-  
-  // New filter states with saved preferences
-  const [includeWeb3, setIncludeWeb3] = useState(savedPreferences.includeWeb3)
-  const [includeCEX, setIncludeCEX] = useState(savedPreferences.includeCEX)
+
+  // Account types to include (default = all); saved in preferences
+  const [accountTypesIncluded, setAccountTypesIncluded] = useState<AccountTypeFilter[]>(savedPreferences.accountTypesIncluded)
   const [sortBy, setSortBy] = useState<'ts_desc' | 'ts_asc' | 'amount_desc' | 'amount_asc' | 'merchant_asc' | 'merchant_desc'>(savedPreferences.sortBy)
   const [isManualFilter, setIsManualFilter] = useState<'all' | 'manual' | 'auto'>(savedPreferences.isManualFilter)
 
@@ -48,8 +61,6 @@ export const Transactions = () => {
   const { start, end } = useMemo(() => getTransactionDateRange(timeframe), [timeframe])
   const [notesHoverId, setNotesHoverId] = useState<string | null>(null)
   const notesHoverTimeout = useRef<number | null>(null)
-  const hasWeb3Accounts = useMemo(() => accounts.some((account) => account.accountType === 'web3'), [accounts])
-  const hasCexAccounts = useMemo(() => accounts.some((account) => account.accountType === 'cex'), [accounts])
   const accountLookup = useMemo(() => {
     return new Map(accounts.map((account) => [account.id, account]))
   }, [accounts])
@@ -62,13 +73,11 @@ export const Transactions = () => {
     return base.replace(/\b\w/g, (char) => char.toUpperCase())
   }
 
-  // Build exclude account types based on include flags
+  // Exclude account types not selected; default (all selected) = no exclusion
   const excludeAccountTypes = useMemo(() => {
-    const excludes: string[] = []
-    if (!includeWeb3) excludes.push('web3')
-    if (!includeCEX) excludes.push('cex')
-    return excludes.length > 0 ? excludes.join(',') : undefined
-  }, [includeWeb3, includeCEX])
+    const excluded = ACCOUNT_TYPES.filter((t) => !accountTypesIncluded.includes(t))
+    return excluded.length > 0 ? excluded.join(',') : undefined
+  }, [accountTypesIncluded])
 
   // Build isManual filter
   const isManualFilterValue = useMemo(() => {
@@ -100,8 +109,7 @@ export const Transactions = () => {
   // Save preferences whenever filter/sort settings change
   useEffect(() => {
     saveTransactionPreferences({
-      includeWeb3,
-      includeCEX,
+      accountTypesIncluded,
       category,
       timeframe,
       isManualFilter,
@@ -109,7 +117,7 @@ export const Transactions = () => {
       pageSize,
       showAdvancedFilters,
     })
-  }, [includeWeb3, includeCEX, category, timeframe, isManualFilter, sortBy, pageSize, showAdvancedFilters])
+  }, [accountTypesIncluded, category, timeframe, isManualFilter, sortBy, pageSize, showAdvancedFilters])
 
   // Track if this is the initial mount to avoid unnecessary refetch
   const isInitialMountRef = useRef(true)
@@ -229,44 +237,25 @@ export const Transactions = () => {
           </select>
         </div>
 
-        {(hasWeb3Accounts && !includeWeb3) || (hasCexAccounts && !includeCEX) ? (
+        {excludeAccountTypes ? (
           <div className="alert alert-info flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="text-sm">
-              <strong>Filters hiding transactions:</strong>{' '}
-              {[
-                hasWeb3Accounts && !includeWeb3 ? 'Web3 wallets' : null,
-                hasCexAccounts && !includeCEX ? 'CEX accounts' : null,
-              ]
-                .filter(Boolean)
-                .join(' and ')}
-              . Turn them back on to see those transactions.
+              <strong>Account types hidden:</strong>{' '}
+              {ACCOUNT_TYPES.filter((t) => !accountTypesIncluded.includes(t))
+                .map((t) => ACCOUNT_TYPE_LABELS[t])
+                .join(', ')}
+              . Toggle types below to show or hide them.
             </div>
-            <div className="flex gap-2">
-              {hasWeb3Accounts && !includeWeb3 && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={() => {
-                    setIncludeWeb3(true)
-                    handleFilterChange()
-                  }}
-                >
-                  Show Web3
-                </button>
-              )}
-              {hasCexAccounts && !includeCEX && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={() => {
-                    setIncludeCEX(true)
-                    handleFilterChange()
-                  }}
-                >
-                  Show CEX
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={() => {
+                setAccountTypesIncluded([...ACCOUNT_TYPES])
+                handleFilterChange()
+              }}
+            >
+              Show all types
+            </button>
           </div>
         ) : null}
 
@@ -321,27 +310,32 @@ export const Transactions = () => {
         {showAdvancedFilters && (
           <div className="border-t border-white/10 pt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Account Type Filters */}
+              {/* Account types to include (default = all) */}
               <div className="space-y-3">
-                <label className="text-sm font-medium text-text-primary">Account Types</label>
+                <label className="text-sm font-medium text-text-primary">Show transactions from</label>
                 <div className="space-y-3">
-                  <Switch
-                    checked={includeWeb3}
-                    onChange={(checked) => {
-                      setIncludeWeb3(checked)
-                      handleFilterChange()
-                    }}
-                    label="Include Web3"
-                  />
-                  <Switch
-                    checked={includeCEX}
-                    onChange={(checked) => {
-                      setIncludeCEX(checked)
-                      handleFilterChange()
-                    }}
-                    label="Include CEX"
-                  />
+                  {ACCOUNT_TYPES.map((type) => (
+                    <Switch
+                      key={type}
+                      checked={accountTypesIncluded.includes(type)}
+                      onChange={(checked) => {
+                        setAccountTypesIncluded((prev) => {
+                          const next = checked
+                            ? [...prev, type].sort(
+                                (a, b) => ACCOUNT_TYPES.indexOf(a) - ACCOUNT_TYPES.indexOf(b),
+                              )
+                            : prev.filter((t) => t !== type)
+                          // Keep at least one type selected so the list is not empty
+                          if (next.length === 0) return prev
+                          return next
+                        })
+                        handleFilterChange()
+                      }}
+                      label={ACCOUNT_TYPE_LABELS[type]}
+                    />
+                  ))}
                 </div>
+                <p className="text-xs text-text-muted">Turn off to hide that account type. Default: all shown.</p>
               </div>
 
               {/* Transaction Type Filter */}

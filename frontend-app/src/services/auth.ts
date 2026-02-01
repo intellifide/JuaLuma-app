@@ -77,6 +77,7 @@ export const signup = async (
     clearCachedToken()
 
     // 2. Store pending signup details in backend (no full DB user yet)
+    await getIdToken(true)
     await apiFetch('/auth/signup/pending', {
       method: 'POST',
       body: JSON.stringify({

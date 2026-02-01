@@ -50,14 +50,9 @@ feature_requirements: dict[str, dict[str, Any]] = {
         'description': 'Manual asset tracking for non-API assets',
     },
     'budgets.advanced': {
-        'tier': Tier.PRO,
-        'preview_enabled': True,
-        'description': 'Advanced budgets with rollover, threshold alerts, budget-vs-actual',
-    },
-    'budgets.basic': {
         'tier': Tier.FREE,
         'preview_enabled': False,
-        'description': 'Basic budget tracking and visualization',
+        'description': 'Advanced budgets with rollover, threshold alerts, budget-vs-actual',
     },
     'family.tracking': {
         'tier': Tier.ULTIMATE,
@@ -65,17 +60,17 @@ feature_requirements: dict[str, dict[str, Any]] = {
         'description': 'Family/couple net worth tracking and account assignment',
     },
     'investment.aggregation': {
-        'tier': Tier.PRO,
+        'tier': Tier.FREE,
         'preview_enabled': False,
         'description': 'Investment account aggregation via Plaid Investments API',
     },
     'marketplace.preview': {
         'tier': Tier.PRO,
-        'preview_enabled': True,
+        'preview_enabled': False,
         'description': 'Access to install and use marketplace widgets',
     },
     'marketplace.publish': {
-        'tier': Tier.FREE,
+        'tier': Tier.PRO,
         'preview_enabled': False,
         'description': 'Ability to publish widgets to marketplace (Requires Developer Agreement)',
     },
@@ -83,16 +78,6 @@ feature_requirements: dict[str, dict[str, Any]] = {
         'tier': Tier.FREE,
         'preview_enabled': False,
         'description': 'Automated detection of recurring transactions',
-    },
-    'reporting.advanced': {
-        'tier': Tier.PRO,
-        'preview_enabled': True,
-        'description': 'Advanced reporting and analytics',
-    },
-    'reporting.basic': {
-        'tier': Tier.FREE,
-        'preview_enabled': False,
-        'description': 'Basic reporting and infographics',
     },
 }
 

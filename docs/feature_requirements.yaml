@@ -11,19 +11,14 @@ features:
     description: Cloud AI chat interface with RAG context (Tiered limits: Free 10/day, Essential 30/day, Pro 40/day)
 
   # Budget Features
-  budgets.basic:
+  budgets.advanced:
     tier: free
     preview_enabled: false
-    description: Basic budget tracking and visualization
-
-  budgets.advanced:
-    tier: pro
-    preview_enabled: true
     description: Advanced budgets with rollover, threshold alerts, budget-vs-actual
 
   # Investment Features
   investment.aggregation:
-    tier: pro
+    tier: free
     preview_enabled: false
     description: Investment account aggregation via Plaid Investments API
 
@@ -66,11 +61,11 @@ features:
   # Marketplace Features
   marketplace.preview:
     tier: pro
-    preview_enabled: true
+    preview_enabled: false
     description: Access to install and use marketplace widgets
 
   marketplace.publish:
-    tier: free
+    tier: pro
     preview_enabled: false
     description: Ability to publish widgets to marketplace (Requires Developer Agreement)
 
@@ -91,14 +86,3 @@ features:
     tier: free
     preview_enabled: false
     description: Automated detection of recurring transactions
-
-  # Reporting
-  reporting.basic:
-    tier: free
-    preview_enabled: false
-    description: Basic reporting and infographics
-
-  reporting.advanced:
-    tier: pro
-    preview_enabled: true
-    description: Advanced reporting and analytics

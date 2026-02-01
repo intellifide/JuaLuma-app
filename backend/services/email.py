@@ -18,6 +18,16 @@ class EmailClient(Protocol):
         """Send welcome email for new subscription."""
         ...
 
+    def send_subscription_payment_failed(
+        self, to_email: str, plan_name: str, grace_end_date: str
+    ) -> None:
+        """Send payment failure notice with grace period."""
+        ...
+
+    def send_subscription_downgraded(self, to_email: str, reason: str) -> None:
+        """Send downgrade notice with reason."""
+        ...
+
     def send_otp(self, to_email: str, code: str) -> None:
         """Send specific 2FA OTP code."""
         ...
@@ -104,6 +114,28 @@ class TestmailEmailClient:
             f"Thank you for subscribing to the {display_name} plan.\n\n"
             "We are excited to have you on board! You now have access to all premium features.\n"
             "If you have any questions, please contact support."
+        )
+        self._send_via_api(to_email, subject, body)
+
+    def send_subscription_payment_failed(
+        self, to_email: str, plan_name: str, grace_end_date: str
+    ) -> None:
+        display_name = plan_name.replace("_", " ").title()
+        subject = f"Payment failed for your JuaLuma {display_name} plan"
+        body = (
+            f"We couldn't process your payment for the {display_name} plan.\n\n"
+            "Your subscription will remain active during a 3-day grace period so you can update your payment method.\n"
+            f"If payment isn't completed by {grace_end_date}, your account will be moved to the Free plan.\n\n"
+            "Please log in to update your billing details."
+        )
+        self._send_via_api(to_email, subject, body)
+
+    def send_subscription_downgraded(self, to_email: str, reason: str) -> None:
+        subject = "Your JuaLuma subscription was downgraded"
+        body = (
+            "Your account has been moved to the Free plan.\n\n"
+            f"Reason: {reason}\n\n"
+            "If you'd like to restore your paid plan, please update your billing details and resubscribe."
         )
         self._send_via_api(to_email, subject, body)
 
@@ -281,6 +313,68 @@ class SmtpEmailClient:
             logger.info(f"Sent subscription welcome email to {to_email}")
         except Exception as e:
             logger.error(f"Failed to send welcome email: {e}")
+
+    def send_subscription_payment_failed(
+        self, to_email: str, plan_name: str, grace_end_date: str
+    ) -> None:
+        msg = MIMEMultipart()
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        display_name = plan_name.replace("_", " ").title()
+        msg["Subject"] = f"Payment failed for your JuaLuma {display_name} plan"
+
+        body = (
+            f"We couldn't process your payment for the {display_name} plan.\n\n"
+            "Your subscription will remain active during a 3-day grace period so you can update your payment method.\n"
+            f"If payment isn't completed by {grace_end_date}, your account will be moved to the Free plan.\n\n"
+            "Please log in to update your billing details."
+        )
+        msg.attach(MIMEText(body, "plain"))
+
+        try:
+            if self.host == "mock":
+                logger.info(
+                    f"[SMTP MOCK PAYMENT FAILED] To: {to_email} | Plan: {plan_name} | Grace: {grace_end_date}"
+                )
+                return
+
+            with smtplib.SMTP(self.host, self.port) as server:
+                server.starttls()
+                self._login_if_configured(server)
+                server.send_message(msg)
+
+            logger.info(f"Sent payment failed email to {to_email}")
+        except Exception as e:
+            logger.error(f"Failed to send payment failed email: {e}")
+
+    def send_subscription_downgraded(self, to_email: str, reason: str) -> None:
+        msg = MIMEMultipart()
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        msg["Subject"] = "Your JuaLuma subscription was downgraded"
+
+        body = (
+            "Your account has been moved to the Free plan.\n\n"
+            f"Reason: {reason}\n\n"
+            "If you'd like to restore your paid plan, please update your billing details and resubscribe."
+        )
+        msg.attach(MIMEText(body, "plain"))
+
+        try:
+            if self.host == "mock":
+                logger.info(
+                    f"[SMTP MOCK DOWNGRADE] To: {to_email} | Reason: {reason}"
+                )
+                return
+
+            with smtplib.SMTP(self.host, self.port) as server:
+                server.starttls()
+                self._login_if_configured(server)
+                server.send_message(msg)
+
+            logger.info(f"Sent downgrade email to {to_email}")
+        except Exception as e:
+            logger.error(f"Failed to send downgrade email: {e}")
 
     def send_otp(self, to_email: str, code: str) -> None:
         """
