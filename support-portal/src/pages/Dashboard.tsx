@@ -1,3 +1,4 @@
+// Support Portal Dashboard. Last modified: 2026-02-02 18:50 CST
 import { useEffect, useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -192,12 +193,17 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
             <aside className="w-64 flex-shrink-0 flex flex-col" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-                <div className="p-6 flex items-start justify-between gap-2">
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight">jualuma Support</h1>
-                        <div className="mt-2 text-xs opacity-80 uppercase font-semibold tracking-wider">Agent Portal</div>
+                <div className="p-6 pb-8 border-b border-white/5">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                            <img src="/logo.png" alt="JuaLuma logo" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-primary/20" />
+                            <ThemeToggle />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">JuaLuma</h1>
+                            <div className="text-[10px] uppercase tracking-widest opacity-50 font-bold mt-1">Support Agent Portal</div>
+                        </div>
                     </div>
-                    <ThemeToggle />
                 </div>
                 <nav className="px-4 space-y-2 flex-1">
                     <button

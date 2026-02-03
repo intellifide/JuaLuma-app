@@ -14,6 +14,7 @@ from backend.core.constants import UserStatus
 from backend.models import AISettings, Payment, PendingSignup, Subscription, User
 from backend.schemas.legal import AgreementAcceptancePayload
 from backend.services.email import get_email_client
+from backend.services.notifications import NotificationService
 from backend.services.legal import record_agreement_acceptances
 
 logger = logging.getLogger(__name__)
@@ -71,9 +72,28 @@ def _format_date_for_email(value: datetime) -> str:
     return value.strftime("%B %d, %Y")
 
 
+def _get_user(db: Session, uid: str) -> User | None:
+    return db.query(User).filter(User.uid == uid).first()
+
+
 def _get_user_email(db: Session, uid: str) -> str | None:
-    user = db.query(User).filter(User.uid == uid).first()
+    user = _get_user(db, uid)
     return user.email if user else None
+
+
+def _notify_subscription_update(
+    db: Session, uid: str, title: str, message: str, dedupe_key: str
+) -> None:
+    user = _get_user(db, uid)
+    if not user:
+        return
+    NotificationService(db).create_notification_for_event(
+        user,
+        "subscription_updates",
+        title,
+        message,
+        dedupe_key=dedupe_key,
+    )
 
 
 def _send_payment_failed_email(
@@ -82,6 +102,13 @@ def _send_payment_failed_email(
     to_email = _get_user_email(db, uid)
     if not to_email:
         return
+    _notify_subscription_update(
+        db,
+        uid,
+        "Payment failed",
+        f"Payment failed for your {plan_name} plan. Update your payment method by {_format_date_for_email(grace_end_date)}.",
+        f"subscription_payment_failed:{uid}:{grace_end_date.date().isoformat()}",
+    )
     client = get_email_client()
     client.send_subscription_payment_failed(
         to_email,
@@ -94,6 +121,13 @@ def _send_downgrade_email(db: Session, uid: str, reason: str) -> None:
     to_email = _get_user_email(db, uid)
     if not to_email:
         return
+    _notify_subscription_update(
+        db,
+        uid,
+        "Subscription downgraded",
+        reason,
+        f"subscription_downgraded:{uid}:{datetime.utcnow().date().isoformat()}",
+    )
     client = get_email_client()
     client.send_subscription_downgraded(to_email, reason)
 
@@ -753,11 +787,25 @@ async def _handle_subscription_updated(subscription: dict[str, Any], db: Session
         if paid_plan:
             # They should be on this plan
             update_user_tier(db, uid, paid_plan, status, renew_at)
+            _notify_subscription_update(
+                db,
+                uid,
+                "Subscription updated",
+                f"Your subscription is now {paid_plan.title()} ({status}).",
+                f"subscription_updated:{uid}:{paid_plan}:{status}:{(renew_at.date().isoformat() if renew_at else 'none')}",
+            )
         else:
             # Active but unknown price? Fallback to free or log error.
             # This might happen if we didn't map the price ID correctly.
             logger.error(f"Webhook: Active subscription for unknown price {price_id}")
             update_user_tier(db, uid, "free", status, renew_at)
+            _notify_subscription_update(
+                db,
+                uid,
+                "Subscription updated",
+                "Your subscription status changed, but the plan could not be identified. Please contact support if this seems wrong.",
+                f"subscription_updated:{uid}:unknown:{status}:{(renew_at.date().isoformat() if renew_at else 'none')}",
+            )
     elif status in ["past_due", "unpaid"]:
         sub_record = db.query(Subscription).filter(Subscription.uid == uid).first()
         now = datetime.utcnow()
@@ -817,6 +865,13 @@ async def _handle_subscription_deleted(subscription: dict[str, Any], db: Session
     logger.info("Webhook: Subscription deleted - downgrading to free")
     update_user_tier(db, uid, "free", "canceled", None)
     handle_downgrade_logic(db, uid)
+    _notify_subscription_update(
+        db,
+        uid,
+        "Subscription canceled",
+        "Your subscription was canceled and your plan has been moved to Free.",
+        f"subscription_deleted:{uid}:{datetime.utcnow().date().isoformat()}",
+    )
 
 
 async def _handle_checkout_session_completed(session: dict[str, Any], db: Session):
@@ -858,6 +913,13 @@ async def _handle_checkout_session_completed(session: dict[str, Any], db: Sessio
         if tier:
             update_user_tier(db, uid, tier, status="active")
             logger.info(f"Webhook: User {uid} activated on {tier} via checkout.")
+            _notify_subscription_update(
+                db,
+                uid,
+                "Subscription activated",
+                f"Your subscription is now active on the {tier.title()} plan.",
+                f"subscription_activated:{uid}:{tier}:{datetime.utcnow().date().isoformat()}",
+            )
         else:
             logger.warning(
                 f"Webhook: Unknown plan type {plan_type} in checkout metadata."

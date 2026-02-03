@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Transaction } from '../types'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
+import { useUserTimeZone } from '../hooks/useUserTimeZone'
+import { formatDate } from '../utils/datetime'
 
 type TransactionRowProps = {
   transaction: Transaction
@@ -13,11 +15,6 @@ type TransactionRowProps = {
 
 const defaultCategories = TRANSACTION_CATEGORIES
 
-const formatDate = (iso: string) => {
-  const date = new Date(iso)
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
 const formatAmount = (amount: number, currency = 'USD') =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount)
 
@@ -25,6 +22,7 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
   const [category, setCategory] = useState(transaction.category ?? '')
   const [prevCategory, setPrevCategory] = useState(transaction.category ?? '')
   const [pending, setPending] = useState(false)
+  const timeZone = useUserTimeZone()
 
   useEffect(() => {
     setCategory(transaction.category ?? '')
@@ -61,7 +59,9 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
 
   return (
     <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-      <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(transaction.ts)}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary">
+        {formatDate(transaction.ts, timeZone, { month: 'short', day: 'numeric' })}
+      </td>
       <td className="px-4 py-3 text-sm text-text-primary" title={hashTooltip}>
         {transaction.merchantName || transaction.description || '—'}
       </td>

@@ -12,6 +12,8 @@ import { Modal } from '../../components/ui/Modal'
 import Switch from '../../components/ui/Switch'
 
 import { useAuth } from '../../hooks/useAuth'
+import { useUserTimeZone } from '../../hooks/useUserTimeZone'
+import { formatDate } from '../../utils/datetime'
 
 // Simple Input component if not exists, or use HTML input with styling
 // eslint-disable-next-line react/prop-types
@@ -27,6 +29,7 @@ const SimpleInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { labe
 
 export const HouseholdPage: React.FC = () => {
   const { user, refetchProfile } = useAuth()
+  const timeZone = useUserTimeZone()
   // const navigate = useNavigate() // Unused
   const [household, setHousehold] = useState<Household | null>(null)
   const [loading, setLoading] = useState(true)
@@ -215,9 +218,19 @@ export const HouseholdPage: React.FC = () => {
                                 {(member.email?.[0] || 'U').toUpperCase()}
                             </div>
                             <div>
-                                {member.username && (
-                                    <p className="text-lg font-semibold text-deep-indigo mb-0.5">{member.username}</p>
-                                )}
+                                {(() => {
+                                    const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ').trim();
+                                    return (
+                                        <>
+                                            <p className="text-lg font-semibold text-deep-indigo mb-0.5">
+                                                {fullName || member.username || 'Member'}
+                                            </p>
+                                            {fullName && member.username && (
+                                                <p className="text-xs text-text-muted mb-1">@{member.username}</p>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                                 <p className="text-sm text-deep-indigo">{member.email || 'Unknown User'}</p>
                                 <p className="text-xs text-text-muted capitalize">{member.role}</p>
                             </div>
@@ -252,7 +265,7 @@ export const HouseholdPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                              <Badge variant="warning" className="bg-yellow-100 text-yellow-800">Invited</Badge>
-                             <span className="text-xs text-text-muted">Expires: {new Date(invite.expires_at || '').toLocaleDateString()}</span>
+                             <span className="text-xs text-text-muted">Expires: {formatDate(invite.expires_at || '', timeZone)}</span>
                         </div>
                     </div>
                 ))}

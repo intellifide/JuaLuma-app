@@ -7,6 +7,8 @@ import { Button } from './ui/Button'
 import { useToast } from './ui/Toast'
 import { updateTransaction } from '../services/transactions'
 import { Transaction } from '../types'
+import { useUserTimeZone } from '../hooks/useUserTimeZone'
+import { formatDateTime } from '../utils/datetime'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
 
 interface EditTransactionModalProps {
@@ -18,6 +20,7 @@ interface EditTransactionModalProps {
 
 export const EditTransactionModal = ({ open, transaction, onClose, onSuccess }: EditTransactionModalProps) => {
   const [loading, setLoading] = useState(false)
+  const timeZone = useUserTimeZone()
   const { show } = useToast()
   
   const [formData, setFormData] = useState({
@@ -180,7 +183,7 @@ export const EditTransactionModal = ({ open, transaction, onClose, onSuccess }: 
             <p className="font-semibold mb-1">Automated Transaction</p>
             <p>This transaction was imported from a connected account. Only category and description can be edited.</p>
             <div className="mt-2 space-y-1">
-              <p><strong>Date:</strong> {new Date(transaction.ts).toLocaleString()}</p>
+              <p><strong>Date:</strong> {formatDateTime(transaction.ts, timeZone)}</p>
               <p><strong>Amount:</strong> {(() => {
                 // Handle crypto currencies that aren't valid ISO 4217 codes
                 const isCrypto = !['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY'].includes(transaction.currency.toUpperCase())

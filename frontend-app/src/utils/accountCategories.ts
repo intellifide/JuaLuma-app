@@ -10,6 +10,7 @@ export type PrimaryAccountCategory =
   | 'web3'
   | 'cex'
   | 'real_estate'
+  | 'collectible'
   | 'other'
 
 export type InvestmentBucket = 'traditional' | 'cex' | 'web3' | 'other'
@@ -24,6 +25,7 @@ const PRIMARY_LABELS: Record<PrimaryAccountCategory, string> = {
   web3: 'Web3',
   cex: 'Centralized Exchange (CEX)',
   real_estate: 'Real Estate',
+  collectible: 'Collectibles',
   other: 'Other',
 }
 

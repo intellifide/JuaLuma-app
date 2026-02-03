@@ -1,3 +1,4 @@
+// Marketing site layout. Last modified: 2026-02-02 18:50 CST
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
@@ -9,6 +10,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'JuaLuma - Master Your Finances',
   description: 'The ultimate financial aggregation and tracking platform.',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/assets/logo.png',
+  },
 }
 
 export default function RootLayout({

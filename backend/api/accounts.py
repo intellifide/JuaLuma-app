@@ -1113,9 +1113,9 @@ def _build_web3_description(txn: dict) -> str | None:
 
 def _process_single_transaction(
     db: Session, uid: str, account_id: uuid.UUID, txn: dict, currency_fallback: str
-) -> bool:
+) -> Transaction | None:
     """
-    Returns True if a new transaction was created, False if updated.
+    Returns the new Transaction if created, otherwise None.
     
     Applies sign to amount based on direction:
     - CEX: buy = negative (money out), sell = positive (money in)
@@ -1219,7 +1219,7 @@ def _process_single_transaction(
         existing.raw_json = _clean_raw(txn)
         existing.external_id = tx_id
         db.add(existing)
-        return False
+        return None
 
     new_txn = Transaction(
         uid=uid,
@@ -1236,7 +1236,7 @@ def _process_single_transaction(
         raw_json=_clean_raw(txn),
     )
     db.add(new_txn)
-    return True
+    return new_txn
 
 
 def _resolve_sync_dates(
@@ -1291,21 +1291,23 @@ def _save_sync_batch(
     account_id: uuid.UUID,
     txns: list[dict],
     currency_fallback: str,
-) -> tuple[int, int]:
+) -> tuple[int, int, list[uuid.UUID]]:
     account = db.query(Account).filter(Account.id == account_id).first()
     is_web3 = account and account.account_type == "web3"
     synced = 0
     new_count = 0
+    new_ids: list[uuid.UUID] = []
     for txn in txns:
-        is_new = _process_single_transaction(
+        new_txn = _process_single_transaction(
             db, uid, account_id, txn, currency_fallback
         )
         synced += 1
-        if is_new:
+        if new_txn:
             new_count += 1
+            new_ids.append(new_txn.id)
     if is_web3:
         _dedupe_web3_transactions(db, uid, account_id)
-    return synced, new_count
+    return synced, new_count, new_ids
 
 
 def _dedupe_web3_transactions(
@@ -1430,12 +1432,22 @@ def sync_account_transactions(
     resolved_start, resolved_end = _resolve_sync_dates(start_date, end_date, account.account_type)
 
     # Dispatch Sync & process
-    fetched_txns, next_cursor, cursor_chain, update_cursor = _execute_provider_sync(
-        account, resolved_start, resolved_end, current_user
-    )
+    try:
+        fetched_txns, next_cursor, cursor_chain, update_cursor = _execute_provider_sync(
+            account, resolved_start, resolved_end, current_user
+        )
+    except Exception as exc:
+        from backend.services.notification_triggers import notify_sync_failure
+
+        logger.error("Sync failed for account %s: %s", account.id, exc)
+        notify_sync_failure(db, current_user, account, str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Sync failed. Please try again later.",
+        ) from exc
 
     currency_fallback = account.currency or "USD"
-    synced, new_count = _save_sync_batch(
+    synced, new_count, new_ids = _save_sync_batch(
         db, current_user.uid, account.id, fetched_txns, currency_fallback
     )
 
@@ -1476,7 +1488,21 @@ def sync_account_transactions(
     try:
         from backend.services.budget_alerts import evaluate_budget_thresholds
         from backend.services.recurring import send_recurring_notifications
+        from backend.services.notification_triggers import (
+            evaluate_low_balance,
+            evaluate_transaction_triggers,
+        )
 
+        if new_ids:
+            new_txns = (
+                db.query(Transaction)
+                .filter(Transaction.id.in_(new_ids))
+                .all()
+            )
+            for txn in new_txns:
+                evaluate_transaction_triggers(db, current_user, txn)
+
+        evaluate_low_balance(db, current_user, account)
         evaluate_budget_thresholds(db, current_user.uid)
         send_recurring_notifications(db, current_user.uid)
     except Exception as exc:

@@ -31,14 +31,14 @@ export const settingsService = {
     return response.json()
   },
 
-  async getNotificationSettings(): Promise<{ timezone: string; quiet_hours_start: string | null; quiet_hours_end: string | null; low_balance_threshold: number | null; large_transaction_threshold: number | null }> {
-    // Fetch global notification settings such as quiet hours.
+  async getNotificationSettings(): Promise<{ low_balance_threshold: number | null; large_transaction_threshold: number | null }> {
+    // Fetch global notification settings such as alert thresholds.
     const response = await apiFetch('/notifications/settings')
     return response.json()
   },
 
-  async updateNotificationSettings(data: { timezone?: string; quiet_hours_start?: string | null; quiet_hours_end?: string | null; low_balance_threshold?: number | null; large_transaction_threshold?: number | null }): Promise<{ timezone: string; quiet_hours_start: string | null; quiet_hours_end: string | null; low_balance_threshold: number | null; large_transaction_threshold: number | null }> {
-    // Update global notification settings such as quiet hours.
+  async updateNotificationSettings(data: { low_balance_threshold?: number | null; large_transaction_threshold?: number | null }): Promise<{ low_balance_threshold: number | null; large_transaction_threshold: number | null }> {
+    // Update global notification settings such as alert thresholds.
     const response = await apiFetch('/notifications/settings', {
       method: 'PUT',
       body: JSON.stringify(data),

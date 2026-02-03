@@ -3,6 +3,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
+import { formatDate } from '../utils/datetime';
 import { useAccounts } from '../hooks/useAccounts';
 import { useManualAssets } from '../hooks/useManualAssets';
 import { useBudget } from '../hooks/useBudget';
@@ -106,6 +108,7 @@ const calculateBudgetProgress = (
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const timeZone = useUserTimeZone();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
   const { accounts } = useAccounts({
@@ -769,7 +772,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-semibold text-text-secondary">{item.merchant}</p>
                       <p className="text-xs text-text-muted">
-                        {new Date(item.next_date).toLocaleDateString()} · {item.cadence}
+                        {formatDate(item.next_date, timeZone)} · {item.cadence}
                       </p>
                     </div>
                     <div className="text-right">
@@ -948,7 +951,7 @@ export default function Dashboard() {
                         <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(progress * 100)}%` }} />
                       </div>
                       {goal.targetDate && (
-                        <p className="text-xs text-text-muted">Target date: {new Date(goal.targetDate).toLocaleDateString()}</p>
+                        <p className="text-xs text-text-muted">Target date: {formatDate(goal.targetDate, timeZone)}</p>
                       )}
                     </div>
                   );

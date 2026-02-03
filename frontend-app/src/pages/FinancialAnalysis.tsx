@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { useBudget, Budget } from '../hooks/useBudget';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
 import { useManualAssets } from '../hooks/useManualAssets';
@@ -33,9 +34,9 @@ const parseDateUTC = (dateStr: string) => {
 };
 
 // Format month/year labels with apostrophe to avoid day/month ambiguity.
-const formatMonthYearLabel = (value: Date) => {
-  const month = value.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' });
-  const year = value.getUTCFullYear().toString().slice(-2);
+const formatMonthYearLabel = (value: Date, timeZone: string) => {
+  const month = value.toLocaleDateString(undefined, { month: 'short', timeZone });
+  const year = value.toLocaleDateString(undefined, { year: '2-digit', timeZone });
   return `${month} \u2019${year}`;
 };
 
@@ -140,7 +141,13 @@ const formatCompactCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: "compact", maximumFractionDigits: 1 }).format(value);
 
 // SVG Generators
-const generateLinePath = (data: DataPoint[], width: number, height: number, labelMode: 'day' | 'monthYear') => {
+const generateLinePath = (
+  data: DataPoint[],
+  width: number,
+  height: number,
+  labelMode: 'day' | 'monthYear',
+  timeZone: string,
+) => {
   const padding = { top: 10, right: 30, bottom: 20, left: 12 };
   const drawWidth = width - padding.left - padding.right;
   const drawHeight = height - padding.top - padding.bottom;
@@ -174,8 +181,8 @@ const generateLinePath = (data: DataPoint[], width: number, height: number, labe
   const xLabels = labelIndices.map(i => {
     const value = parseDateUTC(data[i].date);
     const label = labelMode === 'monthYear'
-      ? formatMonthYearLabel(value)
-      : value.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      ? formatMonthYearLabel(value, timeZone)
+      : value.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone });
     return {
       label,
       x: padding.left + (i / (data.length - 1)) * drawWidth
@@ -197,7 +204,14 @@ const generateLinePath = (data: DataPoint[], width: number, height: number, labe
   };
 };
 
-const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: number, height: number, cfInterval: string) => {
+const generateBarChart = (
+  income: DataPoint[],
+  expenses: DataPoint[],
+  width: number,
+  height: number,
+  cfInterval: string,
+  timeZone: string,
+) => {
   const padding = { top: 10, right: 10, bottom: 20, left: 12 };
   const drawWidth = width - padding.left - padding.right;
   const drawHeight = height - padding.top - padding.bottom;
@@ -246,9 +260,9 @@ const generateBarChart = (income: DataPoint[], expenses: DataPoint[], width: num
       label: (() => {
         const d = parseDateUTC(date);
         if (cfInterval === 'week') {
-          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone });
         }
-        return formatMonthYearLabel(d);
+        return formatMonthYearLabel(d, timeZone);
       })()
     };
   });
@@ -492,6 +506,7 @@ const INSIGHTS_OPTIONS = [
 
 export default function FinancialAnalysis() {
   const { profile } = useAuth();
+  const timeZone = useUserTimeZone();
   const toast = useToast();
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
   const isUltimate = Boolean(profile?.plan?.toLowerCase().includes('ultimate'));
@@ -628,12 +643,12 @@ export default function FinancialAnalysis() {
     [cashFlowIncomeSeries.length, cashFlowPointWidth],
   );
   const netWorthChart = useMemo(
-    () => generateLinePath(netWorthSeries, netWorthChartWidth, 140, netWorthLabelMode),
-    [netWorthSeries, netWorthChartWidth, netWorthLabelMode],
+    () => generateLinePath(netWorthSeries, netWorthChartWidth, 140, netWorthLabelMode, timeZone),
+    [netWorthSeries, netWorthChartWidth, netWorthLabelMode, timeZone],
   ); // Height 140 match SVG
   const cashFlowChart = useMemo(
-    () => generateBarChart(cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, 160, cfInterval),
-    [cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, cfInterval],
+    () => generateBarChart(cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, 160, cfInterval, timeZone),
+    [cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, cfInterval, timeZone],
   );
 
   const [netWorthHover, setNetWorthHover] = useState<{
@@ -891,7 +906,7 @@ export default function FinancialAnalysis() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <div>{parseDateUTC(netWorthHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</div>
+                      <div>{parseDateUTC(netWorthHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone })}</div>
                       <div className="font-semibold">{formatCurrency(netWorthHover.value)}</div>
                     </div>
                   )}
@@ -1021,7 +1036,7 @@ export default function FinancialAnalysis() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <div>{parseDateUTC(cashFlowHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</div>
+                      <div>{parseDateUTC(cashFlowHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone })}</div>
                       <div className="text-cyan-300">Inflow: {formatCurrency(cashFlowHover.income)}</div>
                       <div className="text-red-300">Outflow: {formatCurrency(cashFlowHover.expense)}</div>
                     </div>

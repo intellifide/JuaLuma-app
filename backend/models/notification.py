@@ -3,7 +3,7 @@
 # Last Updated: 2026-01-23 22:39 CST
 
 import uuid
-from datetime import datetime, time
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
@@ -12,7 +12,6 @@ from sqlalchemy import (
     ForeignKey,
     String,
     Text,
-    Time,
     UniqueConstraint,
     func,
 )
@@ -50,8 +49,6 @@ class NotificationPreference(Base):
     channel_in_app: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
-    quiet_hours_start: Mapped[time | None] = mapped_column(Time, nullable=True)
-    quiet_hours_end: Mapped[time | None] = mapped_column(Time, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -82,8 +79,6 @@ class NotificationPreference(Base):
             "channel_sms": self.channel_sms,
             "channel_push": self.channel_push,
             "channel_in_app": self.channel_in_app,
-            "quiet_hours_start": self.quiet_hours_start.isoformat() if self.quiet_hours_start else None,
-            "quiet_hours_end": self.quiet_hours_end.isoformat() if self.quiet_hours_end else None,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -141,5 +136,24 @@ class LocalNotification(Base):
             f"ticket_id={self.ticket_id!r}, event_key={self.event_key!r})"
         )
 
+class NotificationDedupe(Base):
+    """Persist dedupe keys to prevent repeat outbound notifications."""
 
-__all__ = ["NotificationPreference", "LocalNotification"]
+    __tablename__ = "notification_dedupe"
+    __table_args__ = (
+        UniqueConstraint("uid", "dedupe_key", name="uq_notification_dedupe"),
+    )
+
+    uid: Mapped[str] = mapped_column(
+        String(128), ForeignKey("users.uid", ondelete="CASCADE"), primary_key=True
+    )
+    dedupe_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"NotificationDedupe(uid={self.uid!r}, dedupe_key={self.dedupe_key!r})"
+
+
+__all__ = ["NotificationPreference", "LocalNotification", "NotificationDedupe"]

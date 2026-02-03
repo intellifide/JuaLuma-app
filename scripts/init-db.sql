@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(32) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'support_agent', 'support_manager')),
     theme_pref VARCHAR(32) DEFAULT 'glass',
     currency_pref VARCHAR(3) DEFAULT 'USD',
+    time_zone VARCHAR(64) NOT NULL DEFAULT 'UTC',
+    weekly_digest_sent_at TIMESTAMPTZ,
     developer_payout_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -72,12 +74,21 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     uid VARCHAR(128) NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     event_key VARCHAR(64) NOT NULL,
     channel_email BOOLEAN DEFAULT true,
-    channel_sms BOOLEAN DEFAULT false,
-    quiet_hours_start TIME,
-    quiet_hours_end TIME,
+    channel_sms BOOLEAN DEFAULT true,
+    channel_push BOOLEAN DEFAULT true,
+    channel_in_app BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(uid, event_key)
+);
+
+-- Notification dedupe table
+CREATE TABLE IF NOT EXISTS notification_dedupe (
+    uid VARCHAR(128) NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
+    dedupe_key VARCHAR(128) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (uid, dedupe_key),
+    UNIQUE(uid, dedupe_key)
 );
 
 -- Payments table

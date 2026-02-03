@@ -16,10 +16,6 @@ from backend.services.email import SmtpEmailClient, get_email_client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TESTMAIL_API_KEY = "22e7f53b-de5c-4aae-bc7d-54641fc55174"
-TESTMAIL_NAMESPACE = "l2zpw"
-
-
 def verify_end_to_end():
     client = get_email_client()
 
@@ -33,12 +29,16 @@ def verify_end_to_end():
             logger.error("SMTP_HOST not set in .env")
             return
 
+    if not settings.testmail_api_key or not settings.testmail_namespace:
+        logger.error("TESTMAIL_API_KEY or TESTMAIL_NAMESPACE not set in .env")
+        return
+
     # 2. Generate a unique tag and code to verify exact delivery
     unique_tag = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
     otp_code = "".join(random.choices(string.digits, k=6))
 
     # Construct Testmail Address: {namespace}.{tag}@inbox.testmail.app
-    to_email = f"{TESTMAIL_NAMESPACE}.{unique_tag}@inbox.testmail.app"
+    to_email = f"{settings.testmail_namespace}.{unique_tag}@inbox.testmail.app"
 
     print("--- Step 1: Sending Email ---")
     print(f"Target: {to_email}")
@@ -58,8 +58,8 @@ def verify_end_to_end():
     # Testmail API: https://api.testmail.app/api/json?apikey={key}&namespace={ns}&tag={tag}
     url = "https://api.testmail.app/api/json"
     params = {
-        "apikey": TESTMAIL_API_KEY,
-        "namespace": TESTMAIL_NAMESPACE,
+        "apikey": settings.testmail_api_key,
+        "namespace": settings.testmail_namespace,
         "tag": unique_tag,
         "live": "true",  # Query mostly real-time
     }

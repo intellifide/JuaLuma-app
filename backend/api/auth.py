@@ -158,6 +158,7 @@ class ProfileUpdateRequest(BaseModel):
     username: str | None = Field(default=None, max_length=64, example="johndoe")
     display_name_pref: str | None = Field(default=None, max_length=16, example="name")
     phone_number: str | None = Field(default=None, max_length=32, example="+12125551234")
+    time_zone: str | None = Field(default=None, max_length=64, example="America/Chicago")
     # currency_pref: str | None = Field(
     #     default=None, min_length=3, max_length=3, example="USD"
     # )
@@ -168,7 +169,7 @@ class ProfileUpdateRequest(BaseModel):
         """Convert empty strings to None for optional fields."""
         logger.debug(f"ProfileUpdateRequest before validation - raw data: {data}")
         if isinstance(data, dict):
-            for field in ["username", "first_name", "last_name", "phone_number"]:
+            for field in ["username", "first_name", "last_name", "phone_number", "time_zone"]:
                 if field in data:
                     value = data[field]
                     # Convert empty string or whitespace-only string to None
@@ -314,6 +315,7 @@ def _serialize_pending_profile(pending: PendingSignup) -> dict:
         "subscriptions": [],
         "ai_settings": None,
         "is_developer": False,
+        "time_zone": "UTC",
         "household_member": None,
     }
 
@@ -1171,6 +1173,17 @@ def update_profile(
         user.phone_number = payload.phone_number
     elif payload.phone_number is None and user.phone_number:
         user.phone_number = None
+    if payload.time_zone is not None:
+        try:
+            from zoneinfo import ZoneInfo
+
+            ZoneInfo(payload.time_zone)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid time_zone. Use an IANA timezone like 'America/Chicago'.",
+            ) from exc
+        user.time_zone = payload.time_zone
     # if payload.currency_pref is not None:
     #     user.currency_pref = payload.currency_pref.upper()
 

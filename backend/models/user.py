@@ -59,6 +59,9 @@ class User(Base):
     )
     theme_pref: Mapped[str | None] = mapped_column(String(32), nullable=True)
     currency_pref: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    time_zone: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="UTC", server_default="UTC"
+    )
     developer_payout_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True
     )
@@ -69,6 +72,9 @@ class User(Base):
     )
     email_otp: Mapped[str | None] = mapped_column(String(6), nullable=True)
     email_otp_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    weekly_digest_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -205,6 +211,7 @@ class User(Base):
             "display_name_pref": self.display_name_pref,
             "theme_pref": self.theme_pref,
             "currency_pref": self.currency_pref,
+            "time_zone": self.time_zone,
             "developer_payout_id": str(self.developer_payout_id)
             if self.developer_payout_id
             else None,

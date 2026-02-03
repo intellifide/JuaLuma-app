@@ -37,8 +37,6 @@ type NotificationPreference = {
   event_key?: string
   channel_email?: boolean
   channel_sms?: boolean
-  quiet_hours_start?: string | null
-  quiet_hours_end?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -60,6 +58,7 @@ export type UserProfile = {
   subscription_status?: string
   theme_pref?: string | null
   currency_pref?: string | null
+  time_zone?: string | null
   first_name?: string | null
   last_name?: string | null
   username?: string | null
@@ -82,6 +81,9 @@ type AuthContextValue = {
     email: string,
     password: string,
     agreements?: AgreementAcceptanceInput[],
+    first_name?: string,
+    last_name?: string,
+    username?: string,
   ) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>

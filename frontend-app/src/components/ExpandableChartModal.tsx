@@ -4,6 +4,7 @@
 import React, { useMemo, useState, useRef } from 'react'
 import { Modal } from './ui/Modal'
 import { DataPoint } from '../services/analytics'
+import { useUserTimeZone } from '../hooks/useUserTimeZone'
 
 interface ExpandableChartModalProps {
   isOpen: boolean
@@ -23,9 +24,9 @@ const parseDateUTC = (dateStr: string) => {
 }
 
 // Format month/year labels with apostrophe for clarity.
-const formatMonthYearLabel = (value: Date) => {
-  const month = value.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' })
-  const year = value.getUTCFullYear().toString().slice(-2)
+const formatMonthYearLabel = (value: Date, timeZone: string) => {
+  const month = value.toLocaleDateString(undefined, { month: 'short', timeZone })
+  const year = value.toLocaleDateString(undefined, { year: '2-digit', timeZone })
   return `${month} \u2019${year}`
 }
 
@@ -43,6 +44,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
   expensesData,
   interval = 'month',
 }) => {
+  const timeZone = useUserTimeZone()
   const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; date: string } | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
@@ -101,8 +103,8 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
       const dateValue = parseDateUTC(sortedData[i].date)
       const includeYear = sortedData.length > 90
       const label = includeYear
-        ? formatMonthYearLabel(dateValue)
-        : dateValue.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+        ? formatMonthYearLabel(dateValue, timeZone)
+        : dateValue.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone })
       return {
         label,
         x: padding.left + (i / span) * drawWidth,
@@ -191,8 +193,8 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const xLabels = xLabelIndices.map(i => {
       const dateValue = parseDateUTC(normalizedIncome[i].date)
       const label = interval === 'week'
-        ? dateValue.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
-        : formatMonthYearLabel(dateValue)
+        ? dateValue.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone })
+        : formatMonthYearLabel(dateValue, timeZone)
       return {
         label,
         x: padding.left + i * groupWidth + barWidth / 2,
@@ -417,7 +419,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                       textAnchor="middle"
                       className="text-xs fill-gray-300"
                     >
-                      {parseDateUTC(hoveredPoint.date).toLocaleDateString()}
+                      {parseDateUTC(hoveredPoint.date).toLocaleDateString(undefined, { timeZone })}
                     </text>
                   </g>
                 )}
@@ -524,7 +526,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                       fill="#10B981"
                       className="hover:opacity-80 transition-opacity cursor-pointer"
                     />
-                    <title>{`Inflow ${parseDateUTC(bar.date).toLocaleDateString()}: ${formatCurrency(bar.value)}`}</title>
+                    <title>{`Inflow ${parseDateUTC(bar.date).toLocaleDateString(undefined, { timeZone })}: ${formatCurrency(bar.value)}`}</title>
                   </g>
                 ))}
 
@@ -539,7 +541,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                       fill="#EF4444"
                       className="hover:opacity-80 transition-opacity cursor-pointer"
                     />
-                    <title>{`Outflow ${parseDateUTC(bar.date).toLocaleDateString()}: ${formatCurrency(bar.value)}`}</title>
+                    <title>{`Outflow ${parseDateUTC(bar.date).toLocaleDateString(undefined, { timeZone })}: ${formatCurrency(bar.value)}`}</title>
                   </g>
                 ))}
 

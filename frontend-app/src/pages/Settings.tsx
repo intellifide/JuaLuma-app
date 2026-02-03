@@ -11,8 +11,10 @@ import type { UserProfile } from '../hooks/useAuth';
 import Switch from '../components/ui/Switch';
 import { settingsService, NotificationPreference } from '../services/settingsService';
 import { useToast } from '../components/ui/Toast';
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
+import { formatDate, formatDateTime } from '../utils/datetime';
 
-type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref'>> & {
+type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref' | 'time_zone'>> & {
   phone_number?: string | null;
 };
 
@@ -72,11 +74,6 @@ const getDefaultSettings = () => ({
     supportUpdates: true,
     subscriptionUpdates: true,
   },
-  quietHours: {
-    start: '22:00',
-    end: '08:00',
-    timezone: 'UTC',
-  },
   triggers: {
     lowBalanceThreshold: '100',
     largeTransactionThreshold: '500',
@@ -98,8 +95,14 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
   const [username, setUsername] = useState(profile?.username ?? '');
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number ?? '');
   const [displayNamePref, setDisplayNamePref] = useState(profile?.display_name_pref ?? 'name');
+  const [timeZone, setTimeZone] = useState(
+    profile?.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  );
   const [saving, setSaving] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const timeZones = typeof Intl.supportedValuesOf === 'function'
+    ? Intl.supportedValuesOf('timeZone')
+    : ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'];
 
   useEffect(() => {
     if (profile) {
@@ -108,6 +111,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
       setUsername(profile.username ?? '');
       setPhoneNumber(profile.phone_number ?? '');
       setDisplayNamePref(profile.display_name_pref ?? 'name');
+      setTimeZone(profile.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
     }
   }, [profile]);
 
@@ -149,6 +153,9 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
       }
       if (displayNamePref) {
         payload.display_name_pref = displayNamePref;
+      }
+      if (timeZone) {
+        payload.time_zone = timeZone;
       }
       
       console.log('Sending profile update payload:', payload);
@@ -245,6 +252,20 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
       </div>
 
       <div>
+        <label htmlFor="time-zone" className="block text-sm font-medium text-text-secondary mb-1">Local Time Zone</label>
+        <select
+          id="time-zone"
+          className="form-input w-full"
+          value={timeZone}
+          onChange={(e) => setTimeZone(e.target.value)}
+        >
+          {timeZones.map((tz) => (
+            <option key={tz} value={tz}>{tz}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <label htmlFor="profile-username" className="block text-sm font-medium text-text-secondary mb-1">
           Username (Optional)
         </label>
@@ -334,6 +355,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
 export const Settings = () => {
   const { user, profile } = useAuth();
   const toast = useToast();
+  const timeZone = useUserTimeZone();
   const [activeTab, setActiveTab] = useState('profile');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -406,9 +428,6 @@ export const Settings = () => {
         }
 
         if (notificationSettings) {
-          newSettings.quietHours.start = notificationSettings.quiet_hours_start?.slice(0, 5) ?? '22:00';
-          newSettings.quietHours.end = notificationSettings.quiet_hours_end?.slice(0, 5) ?? '08:00';
-          newSettings.quietHours.timezone = notificationSettings.timezone || 'UTC';
           newSettings.triggers.lowBalanceThreshold =
             notificationSettings.low_balance_threshold !== null && notificationSettings.low_balance_threshold !== undefined
               ? String(notificationSettings.low_balance_threshold)
@@ -502,15 +521,11 @@ export const Settings = () => {
     }
   };
 
-  // Persist quiet hours to the backend notification settings.
+  // Persist notification settings to the backend.
   const handleNotificationSave = async () => {
     setNotificationSaving(true);
     try {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || settings.quietHours.timezone;
       await settingsService.updateNotificationSettings({
-        timezone,
-        quiet_hours_start: settings.quietHours.start ? `${settings.quietHours.start}:00` : null,
-        quiet_hours_end: settings.quietHours.end ? `${settings.quietHours.end}:00` : null,
         low_balance_threshold: settings.triggers.lowBalanceThreshold
           ? Number(settings.triggers.lowBalanceThreshold)
           : null,
@@ -781,7 +796,7 @@ export const Settings = () => {
                     <div className="card-body">
                       <p className="mb-2"><strong>Billing:</strong> {profile?.plan && profile.plan !== 'free' ? 'Paid Subscription' : 'Free'}</p>
                       {profile?.subscriptions?.[0]?.renew_at && (
-                        <p className="mb-2"><strong>Next Billing Date:</strong> {new Date(profile.subscriptions[0].renew_at).toLocaleDateString()}</p>
+                        <p className="mb-2"><strong>Next Billing Date:</strong> {formatDate(profile.subscriptions[0].renew_at, timeZone)}</p>
                       )}
                       <p className="mb-2"><strong>Status:</strong> <span className={`px-2 py-0.5 rounded text-xs font-semibold ${profile?.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{profile?.subscription_status || 'Inactive'}</span></p>
 
@@ -854,7 +869,7 @@ export const Settings = () => {
                             .map((invoice) => (
                             <tr key={invoice.id} className="border-b border-border/50 last:border-0 hover:bg-surface-2 transition-colors">
                               <td className="py-3 text-text-primary">
-                                {new Date(invoice.created * 1000).toLocaleDateString()}
+                                {formatDate(invoice.created * 1000, timeZone)}
                               </td>
                               <td className="py-3 text-text-primary">
                                 {(invoice.amount_paid / 100).toLocaleString('en-US', {
@@ -1282,32 +1297,6 @@ export const Settings = () => {
                   </div>
                 </div>
 
-                <h3 className="mt-8 mb-4 font-semibold">Quiet Hours</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="mb-4">
-                    <label htmlFor="quiet-start" className="block text-sm font-medium text-text-secondary mb-1">Start Time</label>
-                    <input
-                      type="time"
-                      id="quiet-start"
-                      name="quiet-start"
-                      className="form-input w-full"
-                      value={settings.quietHours.start}
-                      onChange={(e) => setSettings(s => ({ ...s, quietHours: { ...s.quietHours, start: e.target.value } }))}
-                    />
-                  </div>
-                  <div className="mb-4">
-                    <label htmlFor="quiet-end" className="block text-sm font-medium text-text-secondary mb-1">End Time</label>
-                    <input
-                      type="time"
-                      id="quiet-end"
-                      name="quiet-end"
-                      className="form-input w-full"
-                      value={settings.quietHours.end}
-                      onChange={(e) => setSettings(s => ({ ...s, quietHours: { ...s.quietHours, end: e.target.value } }))}
-                    />
-                  </div>
-                </div>
-
                 <button type="submit" className="btn btn-primary mt-6" disabled={notificationSaving}>
                   {notificationSaving ? 'Saving...' : 'Save Preferences'}
                 </button>
@@ -1357,7 +1346,7 @@ export const Settings = () => {
                           const url = window.URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;
-                          a.download = `jualuma-export-${new Date().toISOString().split('T')[0]}.json`;
+                          a.download = `JuaLuma-export-${new Date().toISOString().split('T')[0]}.json`;
                           document.body.appendChild(a);
                           a.click();
                           a.remove();
@@ -1554,7 +1543,7 @@ export const Settings = () => {
                             <div className="text-xs text-text-muted">{session.ip_address || 'Unknown IP'}</div>
                           </td>
                           <td className="py-3 text-sm text-text-primary">
-                            {new Date(session.last_active).toLocaleString()}
+                            {formatDateTime(session.last_active, timeZone)}
                           </td>
                           <td className="py-3 text-sm">
                             <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${session.is_active 

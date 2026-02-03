@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
+import { formatDate, formatTime } from '../utils/datetime';
 import { useAccounts } from '../hooks/useAccounts';
 import { useManualAssets } from '../hooks/useManualAssets';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
@@ -793,6 +795,7 @@ export const ConnectAccounts = () => {
     remove: removeManualAsset,
   } = useManualAssets();
   const { profile } = useAuth();
+  const timeZone = useUserTimeZone();
   const toast = useToast();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showCexModal, setShowCexModal] = useState(false);
@@ -804,7 +807,7 @@ export const ConnectAccounts = () => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [accountsExpanded, setAccountsExpanded] = useState(false);
   const [connectMenuOpen, setConnectMenuOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'checking' | 'savings' | 'credit' | 'loans' | 'investment' | 'real_estate' | 'web3' | 'cex' | 'manual'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'checking' | 'savings' | 'credit' | 'loans' | 'investment' | 'real_estate' | 'collectible' | 'web3' | 'cex' | 'manual'>('all');
   const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
   const [linkedAccountsPage, setLinkedAccountsPage] = useState(1);
   const [linkedAccountsPageSize, setLinkedAccountsPageSize] = useState(10);
@@ -865,7 +868,7 @@ export const ConnectAccounts = () => {
     const member = assignedMemberLookup.get(uid);
     if (!member) return 'Assigned';
     const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ').trim();
-    return member.username || fullName || member.email || 'Member';
+    return fullName || member.username || member.email || 'Member';
   };
 
   const connectedCounts = useMemo(() => {
@@ -1376,7 +1379,7 @@ export const ConnectAccounts = () => {
                       <h3 className="text-lg font-semibold text-text-primary">{asset.name}</h3>
                       {asset.purchaseDate && (
                         <p className="text-xs text-text-secondary">
-                          Added {new Date(asset.purchaseDate).toLocaleDateString()}
+                          Added {formatDate(asset.purchaseDate, timeZone)}
                         </p>
                       )}
                     </div>
@@ -1533,6 +1536,7 @@ export const ConnectAccounts = () => {
                   <li><button className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'loans' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('loans')}>Loans</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'investment' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('investment')}>Investment</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'real_estate' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('real_estate')}>Real Estate</button></li>
+                  <li><button className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'collectible' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('collectible')}>Collectibles</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'web3' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('web3')}>Web3</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'cex' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('cex')}>CEX</button></li>
                   <li><button className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'manual' ? 'border-primary text-primary font-medium' : 'border-transparent text-text-muted hover:text-text-secondary'}`} onClick={() => setActiveTab('manual')}>Manual</button></li>
@@ -1593,7 +1597,7 @@ export const ConnectAccounts = () => {
                             </div>
                             <div className="flex items-center justify-between text-xs text-text-secondary">
                               <span>{account.accountType === 'manual' ? 'Manual' : 'Auto-synced'}</span>
-                              <span>{account.updatedAt ? `${new Date(account.updatedAt).toLocaleDateString()}` : 'Recent'}</span>
+                              <span>{account.updatedAt ? `${formatDate(account.updatedAt, timeZone)}` : 'Recent'}</span>
                             </div>
                             {account.accountType !== 'manual' && (
                               <div className="flex items-center gap-2">
@@ -1669,7 +1673,7 @@ export const ConnectAccounts = () => {
                                 <span className="badge badge-success">Connected</span>
                               )}
                             </td>
-                            <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'Just now'}</td>
+                            <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? formatTime(account.updatedAt, timeZone) : 'Just now'}</td>
                             <td className="py-4">
                               <div className="flex gap-2 items-center">
                                 {account.syncStatus === 'needs_reauth' && account.accountType === 'cex' && (

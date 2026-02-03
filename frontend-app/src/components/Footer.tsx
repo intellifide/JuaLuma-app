@@ -66,7 +66,7 @@ export const Footer = () => (
       <div className="footer-bottom">
         <p>&copy; 2025 Intellifide, LLC. All rights reserved.</p>
         <p style={{ marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-size-xs)' }}>
-          jualuma is for informational and educational purposes only. jualuma does not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.
+          JuaLuma is for informational and educational purposes only. JuaLuma does not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.
         </p>
       </div>
     </div>

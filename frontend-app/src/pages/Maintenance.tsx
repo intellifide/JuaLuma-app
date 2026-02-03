@@ -1,3 +1,4 @@
+// Maintenance Page. Last modified: 2026-02-02 18:50 CST
 import { useTheme } from '../hooks/useTheme'
 
 export default function Maintenance() {
@@ -8,7 +9,7 @@ export default function Maintenance() {
             <div className="max-w-md w-full text-center">
                 <div className="backdrop-blur-glass bg-white/70 dark:bg-gray-900/75 rounded-2xl border border-white/60 dark:border-white/10 shadow-glass p-8 md:p-12">
                     <img
-                        src="/assets/jualuma-logo.png"
+                        src="/assets/logo.png"
                         alt="jualuma Logo"
                         className="h-12 mx-auto mb-8"
                     />

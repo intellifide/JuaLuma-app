@@ -1,3 +1,4 @@
+// Support Portal Login. Last modified: 2026-02-02 18:50 CST
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
@@ -28,7 +29,11 @@ export default function Login() {
                 <ThemeToggle />
             </div>
             <div className="max-w-md w-full rounded-lg shadow-lg p-8" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-                <h2 className="text-2xl font-bold text-center mb-6" style={{ color: 'var(--text-primary)' }}>Support Portal</h2>
+                <div className="flex flex-col items-center justify-center mb-8 gap-4">
+                    <img src="/logo.png" alt="JuaLuma logo" className="w-20 h-20 rounded-2xl object-contain shadow-xl shadow-primary/20" />
+                    <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600">JuaLuma</h1>
+                </div>
+                <h2 className="text-lg font-medium text-center mb-8 opacity-70">Support Agent Portal</h2>
 
                 {error && (
                     <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">

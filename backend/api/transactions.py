@@ -653,8 +653,14 @@ def create_manual_transaction(
 
     try:
         from backend.services.budget_alerts import evaluate_budget_thresholds
+        from backend.services.notification_triggers import (
+            evaluate_low_balance,
+            evaluate_transaction_triggers,
+        )
         from backend.services.recurring import send_recurring_notifications
 
+        evaluate_transaction_triggers(db, current_user, txn)
+        evaluate_low_balance(db, current_user, account)
         evaluate_budget_thresholds(db, current_user.uid)
         send_recurring_notifications(db, current_user.uid)
     except Exception as exc:

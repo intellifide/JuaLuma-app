@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Document } from '../services/documentService';
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
+import { formatDate } from '../utils/datetime';
 
 interface DocumentListProps {
     documents: Document[];
@@ -13,6 +15,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
     const [hoveredDoc, setHoveredDoc] = useState<Document | null>(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const timeZone = useUserTimeZone();
 
     const filteredDocs = documents.filter(doc => filter === 'all' || doc.type === filter);
 
@@ -158,7 +161,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-text-secondary">
-                                            {new Date(doc.date).toLocaleDateString()}
+                                            {formatDate(doc.date, timeZone)}
                                         </td>
                                         <td className="px-4 py-3 text-right text-text-secondary font-mono text-xs">
                                             {doc.size}

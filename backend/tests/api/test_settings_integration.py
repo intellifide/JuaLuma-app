@@ -102,21 +102,19 @@ def test_update_privacy_settings(test_client: TestClient, mock_auth: User, test_
     assert response.json()["data_sharing_consent"] is False
 
 
-def test_update_notification_settings_quiet_hours(test_client: TestClient, mock_auth: User):
+def test_update_notification_settings_thresholds(test_client: TestClient, mock_auth: User):
     """
-    Verify that users can update global notification settings (quiet hours).
+    Verify that users can update global notification settings (thresholds).
     """
     payload = {
-        "timezone": "America/Chicago",
-        "quiet_hours_start": "22:00:00",
-        "quiet_hours_end": "08:00:00",
+        "low_balance_threshold": 150.0,
+        "large_transaction_threshold": 750.0,
     }
     response = test_client.put("/api/notifications/settings", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["timezone"] == "America/Chicago"
-    assert data["quiet_hours_start"] == "22:00:00"
-    assert data["quiet_hours_end"] == "08:00:00"
+    assert data["low_balance_threshold"] == 150.0
+    assert data["large_transaction_threshold"] == 750.0
 
 
 def test_register_notification_device(test_client: TestClient, mock_auth: User):

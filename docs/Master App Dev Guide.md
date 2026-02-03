@@ -15,7 +15,7 @@ All engineering decisions must strictly adhere to these six non\-negotiable pill
   - **US Residency Restriction:** To mitigate international liability (GDPR etc.), service is strictly contractually limited to US residents. All signup flows must require US residency certification.
 - **Accessibility via Engineered Vibrancy:** The platform utilizes an "Engineered Liquid Glass" framework\. The default UI uses advanced compositing \(blur, saturation, luminance clamping\) to ensure all text/interactive elements maintain WCAG 2\.1 AA \(4\.5:1\) contrast dynamically\.
 - **Legal\-First Product Lifecycle:** Legal is a mandatory stakeholder\. No features regarding "sending," "swapping," or "rebalancing" assets may be prototyped without specific counsel approval \(FinCEN MSB trigger\)\. All user\-facing disclaimers, Terms of Service, Privacy Policies, and legal documentation must be reviewed and approved by qualified legal counsel before publication\. All developer agreements, contractor agreements, and third\-party development contracts must be reviewed and approved by qualified legal counsel before execution\.
-- **Intellectual Property Ownership:** All property developed on, for, or in connection with the jualuma application is the exclusive property of Intellifide, LLC\. This includes all source code, features, designs, algorithms, documentation, and derivative works\. All developer agreements must explicitly include intellectual property assignment clauses that assign all rights, title, and interest to Intellifide, LLC\. This provision is non\-negotiable\.
+- **Intellectual Property Ownership:** All property developed on, for, or in connection with the JuaLuma application is the exclusive property of Intellifide, LLC\. This includes all source code, features, designs, algorithms, documentation, and derivative works\. All developer agreements must explicitly include intellectual property assignment clauses that assign all rights, title, and interest to Intellifide, LLC\. This provision is non\-negotiable\.
 - **Operational Resilience \(Circuit Breakers\):** The system must fail safely and cheaply\. Automated kill switches and hard budget caps are architected into the codebase to prevent "runaway" API costs or infinite loops\.
 - **Developer Payout Integrity:** Mandate the tracking of **Downloads** and **Ratings** must be **immutable** \(written to the Cloud SQL log ledger plus Firestore `widget_engagement`\) to ensure accurate and auditable developer payouts\.
 
@@ -42,9 +42,9 @@ The production target is **Cloud Run v2 + Cloud SQL (Postgres, private IP) + Art
 - Cloud SQL runs with private IP only and requires private service connection.
 - Enforce TLS for database connections; never use insecure connection modes in production.
 
-### 1\.3 Operational Tooling (jualuma Dev Tools)
+### 1\.3 Operational Tooling (JuaLuma Dev Tools)
 
-Maintenance tasks are handled via the **jualuma Dev Tools MCP Server**, running inside the backend container.
+Maintenance tasks are handled via the **JuaLuma Dev Tools MCP Server**, running inside the backend container.
 
 - **Access:** `http://localhost:8001/mcp-dev` (Local Environment Only).
 - **Standard Tools:**
@@ -251,8 +251,6 @@ This is a curated catalog where developers earn revenue based on user engagement
 - **Free & Essential Tiers**: Preview-only access to widgets (interactions blocked, upgrade CTA shown). Cannot publish widgets.
 - **Pro & Ultimate Tiers**: Full marketplace access including ability to publish and distribute widgets via the Developer Marketplace.
 
-The static website template (`website_template/`) includes mock Developer Marketplace and Developer SDK pages demonstrating the submission workflow, SDK tools, and tier-based access controls.
-
 #### 2.4.1 MCP Server & Developer SDK
 
 The jualuma platform provides a Model Context Protocol (MCP) server as the single capability surface for marketplace widgets and the Developer SDK. This architecture enhances security by preventing direct API access and provides a standardized, typed interface for all developer interactions.
@@ -274,7 +272,7 @@ _Note: This "Public Widget MCP" is distinct from the "Internal jualuma App MCP" 
 - **Palette:** Royal Purple, Deep Indigo, Aqua\.
 - **Modes:** System\-based Light/Dark\.
 - **Intellifide Corporate Logo:** Business logo naming matches the entity \("Intellifide"\). Deliver vector-first lockups \(primary horizontal, stacked, monochrome\), provide SVG + PNG exports, define clear-space/usage specs, and include trademark briefing notes for `Trademark-Filing-Strategy.md`\.
-- **jualuma Product Icon System:** Refresh the jualuma app logo/icon, produce a 1024x1024 master asset, and export platform-specific slices \(PWA manifest, iOS @1x/@3x, Android adaptive foreground/background\) while documenting gradient stops and elevation rules for the Engineered Liquid Glass aesthetic\.
+- **JuaLuma Product Icon System:** Refresh the JuaLuma app logo/icon, produce a 1024x1024 master asset, and export platform-specific slices \(PWA manifest, iOS @1x/@3x, Android adaptive foreground/background\) while documenting gradient stops and elevation rules for the Engineered Liquid Glass aesthetic\.
 - **App Store Creative Kit:** Create six-screenshot storytelling sets for Apple and Google, hero/feature graphics \(Google Play 1024x500\) and App Store promotional artwork \(4320x1080\)\. Each frame must highlight budgeting, AI chat, and aggregation, with caption overlays driven by `Marketing-Content-Guidelines.md`\.
 
 #### 2\.6 Notifications
@@ -622,8 +620,8 @@ Zero secrets in DB\.
   - event_key \(VARCHAR\)\.
   - channel_email \(BOOL\)\.
   - channel_sms \(BOOL\)\.
-  - quiet_hours_start \(TIME\)\.
-  - quiet_hours_end \(TIME\)\.
+  - channel_push \(BOOL\)\.
+  - channel_in_app \(BOOL\)\.
 - **payments**
   - id \(PK\)\.
   - uid \(FK\)\.

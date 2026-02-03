@@ -44,7 +44,13 @@ export const Login = () => {
     <div className="min-h-screen bg-bg-primary flex items-center justify-center">
       <div className="container py-16 w-full">
         <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
-          <p className="text-xl font-semibold text-text-primary text-center">
+          <div className="flex flex-col items-center gap-4 mb-2">
+            <Link to="/" className="flex flex-col items-center gap-2 group">
+              <img src="/assets/logo.png" alt="JuaLuma logo" className="w-20 h-20 rounded-2xl object-contain shadow-xl shadow-primary/20 transition-transform group-hover:scale-110" />
+              <span className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight">JuaLuma</span>
+            </Link>
+          </div>
+          <p className="text-xl font-semibold text-text-primary text-center opacity-80">
             Welcome Back. Please sign in to continue
           </p>
           <div className="glass-panel w-full">

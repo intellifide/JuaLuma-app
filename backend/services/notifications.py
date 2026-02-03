@@ -3,14 +3,17 @@
 # Last Updated: 2026-01-23 23:05 CST
 
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime
 import uuid
 import logging
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from backend.models.notification import LocalNotification, NotificationPreference
+from backend.models.notification import (
+    LocalNotification,
+    NotificationDedupe,
+    NotificationPreference,
+)
 from backend.models.notification_device import NotificationDevice
 from backend.models.notification_settings import NotificationSettings
 from backend.models.user import User
@@ -197,19 +200,11 @@ class NotificationService:
     def update_settings(
         self,
         uid: str,
-        quiet_hours_start: time | None = None,
-        quiet_hours_end: time | None = None,
-        timezone: str | None = None,
         low_balance_threshold: float | None = None,
         large_transaction_threshold: float | None = None,
     ) -> NotificationSettings:
-        """Update quiet hours or timezone for notification delivery."""
+        """Update notification settings such as alert thresholds."""
         settings = self.get_settings(uid)
-        if quiet_hours_start is not None or quiet_hours_end is not None:
-            settings.quiet_hours_start = quiet_hours_start
-            settings.quiet_hours_end = quiet_hours_end
-        if timezone:
-            settings.timezone = timezone
         if low_balance_threshold is not None:
             settings.low_balance_threshold = low_balance_threshold
         if large_transaction_threshold is not None:
@@ -293,10 +288,6 @@ class NotificationService:
             self.db.commit()
             self.db.refresh(notification)
 
-        settings = self.get_settings(user.uid)
-        if self._is_quiet_hours(settings):
-            return notification
-
         if pref.channel_email:
             self._send_email(user.email, title)
         if pref.channel_sms:
@@ -321,11 +312,13 @@ class NotificationService:
             logger.warning("Notification event not configured: %s", event_key)
             return None
 
-        local_key = dedupe_key or event_key
         if dedupe_key:
             existing = (
-                self.db.query(LocalNotification)
-                .filter(LocalNotification.uid == user.uid, LocalNotification.event_key == dedupe_key)
+                self.db.query(NotificationDedupe)
+                .filter(
+                    NotificationDedupe.uid == user.uid,
+                    NotificationDedupe.dedupe_key == dedupe_key,
+                )
                 .first()
             )
             if existing:
@@ -337,16 +330,20 @@ class NotificationService:
                 uid=user.uid,
                 title=title,
                 message=message,
-                event_key=local_key,
+                event_key=event_key,
                 is_read=False,
             )
             self.db.add(notification)
-            self.db.commit()
-            self.db.refresh(notification)
+            self.db.flush()
 
-        settings = self.get_settings(user.uid)
-        if self._is_quiet_hours(settings):
-            return notification
+        if dedupe_key:
+            self.db.add(
+                NotificationDedupe(uid=user.uid, dedupe_key=dedupe_key)
+            )
+
+        self.db.commit()
+        if notification:
+            self.db.refresh(notification)
 
         if pref.channel_email:
             self._send_email(user.email, title)
@@ -370,29 +367,6 @@ class NotificationService:
             notification.is_read = True
             self.db.add(notification)
             self.db.commit()
-
-    def _is_quiet_hours(self, settings: NotificationSettings) -> bool:
-        """Check whether the current time is within the user's quiet hours."""
-        if not settings.quiet_hours_start or not settings.quiet_hours_end:
-            return False
-        now = self._now_in_timezone(settings.timezone)
-        return self._within_quiet_hours(
-            now, settings.quiet_hours_start, settings.quiet_hours_end
-        )
-
-    def _within_quiet_hours(self, now: time, start: time, end: time) -> bool:
-        """Evaluate quiet hours window for the provided time."""
-        if start <= end:
-            return start <= now <= end
-        return now >= start or now <= end
-
-    def _now_in_timezone(self, timezone: str) -> time:
-        """Resolve the current time in the requested timezone."""
-        try:
-            zone = ZoneInfo(timezone)
-        except Exception:
-            zone = ZoneInfo("UTC")
-        return datetime.now(tz=zone).time()
 
     def _send_email(self, to_email: str, title: str) -> None:
         """Dispatch a generic email alert with error logging."""

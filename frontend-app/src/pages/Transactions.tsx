@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAuth } from '../hooks/useAuth'
+import { useUserTimeZone } from '../hooks/useUserTimeZone'
+import { formatDate } from '../utils/datetime'
 import { useAccounts } from '../hooks/useAccounts'
 import { useToast } from '../components/ui/Toast'
 import { AddManualTransactionModal } from '../components/AddManualTransactionModal'
@@ -52,6 +54,7 @@ export const Transactions = () => {
   const [isManualFilter, setIsManualFilter] = useState<'all' | 'manual' | 'auto'>(savedPreferences.isManualFilter)
 
   const { profile } = useAuth()
+  const timeZone = useUserTimeZone()
   const toast = useToast()
   const [scope, setScope] = useState<'personal' | 'household'>('personal')
   const { accounts } = useAccounts({ filters: { scope } })
@@ -420,7 +423,7 @@ export const Transactions = () => {
 
                   return (
                     <tr key={txn.id} className="hover:bg-white/5 transition-colors">
-                    <td className="py-3 text-sm">{new Date(txn.ts).toLocaleDateString()}</td>
+                    <td className="py-3 text-sm">{formatDate(txn.ts, timeZone)}</td>
                     <td className="py-3 font-medium text-text-primary">
                       <div
                         className="relative inline-flex items-center"
@@ -450,11 +453,7 @@ export const Transactions = () => {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 text-sm text-text-secondary max-w-[180px] whitespace-nowrap truncate" title={
-                      accountLookup.get(txn.accountId)?.customLabel ||
-                      accountLookup.get(txn.accountId)?.accountName ||
-                      '—'
-                    }>
+                    <td className="py-3 text-sm font-medium text-text-primary whitespace-nowrap">
                       {accountLookup.get(txn.accountId)?.customLabel ||
                         accountLookup.get(txn.accountId)?.accountName ||
                         '—'}

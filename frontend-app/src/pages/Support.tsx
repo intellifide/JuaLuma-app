@@ -9,6 +9,8 @@ import { Button } from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
+import { formatDate } from '../utils/datetime';
 
 type SystemHealth = Record<string, unknown>;
 
@@ -114,6 +116,7 @@ export const Support = () => {
     const [showStatus, setShowStatus] = useState(false);
     const toast = useToast();
     const navigate = useNavigate();
+    const timeZone = useUserTimeZone();
 
     const fetchTickets = useCallback(async () => {
         try {
@@ -188,7 +191,7 @@ export const Support = () => {
                                     <div>
                                         <h4 className="font-medium group-hover:text-primary transition-colors">{ticket.subject}</h4>
                                         <p className="text-xs text-text-secondary mt-0.5">
-                                            #{ticket.id.slice(0, 8)} &bull; {new Date(ticket.created_at).toLocaleDateString()}
+                                            #{ticket.id.slice(0, 8)} &bull; {formatDate(ticket.created_at, timeZone)}
                                         </p>
                                     </div>
                                 </div>

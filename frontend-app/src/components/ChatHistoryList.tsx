@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { HistoryItem } from '../services/aiService';
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
+import { formatDateTime } from '../utils/datetime';
 
 interface ChatHistoryListProps {
   items: HistoryItem[];
@@ -7,6 +9,7 @@ interface ChatHistoryListProps {
 
 export const ChatHistoryList: React.FC<ChatHistoryListProps> = ({ items }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const timeZone = useUserTimeZone();
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -60,7 +63,7 @@ export const ChatHistoryList: React.FC<ChatHistoryListProps> = ({ items }) => {
             >
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-text-secondary mb-1">
-                  {item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Just now'}
+                  {item.timestamp ? formatDateTime(item.timestamp, timeZone) : 'Just now'}
                 </p>
                 <p className="font-medium truncate pr-4 text-text-primary">
                   {item.prompt}

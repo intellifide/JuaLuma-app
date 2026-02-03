@@ -2,7 +2,8 @@ const CACHE_NAME = 'jualuma-pwa-v1';
 
 const STATIC_ASSETS = [
     '/',
-    '/assets/jualuma-logo.png'
+    '/favicon.ico',
+    '/assets/logo.png'
 ];
 
 self.addEventListener('install', (event) => {

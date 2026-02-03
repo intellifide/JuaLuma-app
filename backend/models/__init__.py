@@ -13,7 +13,7 @@ from .household import Household, HouseholdInvite, HouseholdMember
 from .ledger import LedgerHotEssential, LedgerHotFree
 from .legal import LegalAgreementAcceptance
 from .manual_asset import ManualAsset
-from .notification import LocalNotification, NotificationPreference
+from .notification import LocalNotification, NotificationDedupe, NotificationPreference
 from .notification_device import NotificationDevice
 from .notification_settings import NotificationSettings
 from .pending_signup import PendingSignup
@@ -49,6 +49,7 @@ __all__ = [
     "AISettings",
     "NotificationPreference",
     "LocalNotification",
+    "NotificationDedupe",
     "NotificationDevice",
     "NotificationSettings",
     "PendingSignup",

@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import { api } from '../../services/api';
 import { useToast } from '../ui/Toast';
+import { useUserTimeZone } from '../../hooks/useUserTimeZone';
+import { formatDateTime } from '../../utils/datetime';
 
 interface LocalNotification {
     id: string;
@@ -21,6 +23,7 @@ const fetcher = (url: string) => api.get(url).then(res => res.data);
 
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose }) => {
     const toast = useToast();
+    const timeZone = useUserTimeZone();
 
     // Fetch notifications only when drawer is open
     const { data: notifications = [] } = useSWR<LocalNotification[]>(
@@ -109,7 +112,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
                                     {n.message}
                                 </p>
                                 <div className="flex items-center justify-between text-xs text-text-muted">
-                                    <span>{new Date(n.created_at).toLocaleString()}</span>
+                                    <span>{formatDateTime(n.created_at, timeZone)}</span>
                                     {n.is_read && (
                                         <span className="flex items-center gap-1">
                                             {/* Check Icon */}

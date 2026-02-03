@@ -3,7 +3,7 @@
 # Last Updated: 2026-01-23 23:05 CST
 
 import uuid
-from datetime import datetime, time
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
@@ -65,8 +65,6 @@ class NotificationPreferenceRead(BaseModel):
     channel_sms: bool
     channel_push: bool
     channel_in_app: bool
-    quiet_hours_start: time | None = None
-    quiet_hours_end: time | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -113,9 +111,6 @@ def update_notification_preference(
 # --- Notification Settings ---
 
 class NotificationSettingsRead(BaseModel):
-    timezone: str
-    quiet_hours_start: time | None = None
-    quiet_hours_end: time | None = None
     low_balance_threshold: float | None = None
     large_transaction_threshold: float | None = None
 
@@ -123,9 +118,6 @@ class NotificationSettingsRead(BaseModel):
 
 
 class NotificationSettingsUpdate(BaseModel):
-    timezone: str | None = None
-    quiet_hours_start: time | None = None
-    quiet_hours_end: time | None = None
     low_balance_threshold: float | None = None
     large_transaction_threshold: float | None = None
 
@@ -135,7 +127,7 @@ def get_notification_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return global notification settings such as quiet hours."""
+    """Return global notification settings such as alert thresholds."""
     service = NotificationService(db)
     return service.get_settings(current_user.uid)
 
@@ -146,13 +138,10 @@ def update_notification_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update global notification settings such as quiet hours."""
+    """Update global notification settings such as alert thresholds."""
     service = NotificationService(db)
     return service.update_settings(
         current_user.uid,
-        quiet_hours_start=payload.quiet_hours_start,
-        quiet_hours_end=payload.quiet_hours_end,
-        timezone=payload.timezone,
         low_balance_threshold=payload.low_balance_threshold,
         large_transaction_threshold=payload.large_transaction_threshold,
     )

@@ -1,11 +1,11 @@
-"""Core Purpose: Store global notification settings like quiet hours."""
+"""Core Purpose: Store global notification settings like alert thresholds."""
 
 # Last Updated: 2026-01-23 23:05 CST
 
-from datetime import datetime, time
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Time, func
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,11 +23,6 @@ class NotificationSettings(Base):
     uid: Mapped[str] = mapped_column(
         String(128), ForeignKey("users.uid", ondelete="CASCADE"), primary_key=True
     )
-    timezone: Mapped[str] = mapped_column(
-        String(64), nullable=False, default="UTC", server_default="UTC"
-    )
-    quiet_hours_start: Mapped[time | None] = mapped_column(Time, nullable=True)
-    quiet_hours_end: Mapped[time | None] = mapped_column(Time, nullable=True)
     low_balance_threshold: Mapped[float | None] = mapped_column(
         nullable=True, default=None
     )
@@ -51,13 +46,6 @@ class NotificationSettings(Base):
     def to_dict(self) -> dict[str, object | None]:
         """Serialize settings to a JSON-friendly dict."""
         return {
-            "timezone": self.timezone,
-            "quiet_hours_start": self.quiet_hours_start.isoformat()
-            if self.quiet_hours_start
-            else None,
-            "quiet_hours_end": self.quiet_hours_end.isoformat()
-            if self.quiet_hours_end
-            else None,
             "low_balance_threshold": self.low_balance_threshold,
             "large_transaction_threshold": self.large_transaction_threshold,
         }

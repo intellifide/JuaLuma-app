@@ -143,8 +143,15 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
         <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
-                     <Link to="/developers" className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                        JuaLuma Developers
+                     <Link to="/developers" className="flex flex-col items-center gap-3 group">
+                        <img 
+                            src="/assets/logo.png" 
+                            alt="JuaLuma logo" 
+                            className="w-16 h-16 rounded-2xl object-contain shadow-xl shadow-primary/20 transition-transform group-hover:scale-110" 
+                        />
+                        <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight">
+                            JuaLuma Developers
+                        </span>
                     </Link>
                     <h2 className="text-xl font-semibold mt-4 text-white">
                         {mode === 'login' ? 'Log in to your dashboard' : 'Create your developer account'}

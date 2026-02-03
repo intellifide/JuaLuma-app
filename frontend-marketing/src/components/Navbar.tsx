@@ -1,4 +1,4 @@
-// Marketing site top nav. Last modified: 2025-01-30
+// Marketing site top nav. Last modified: 2026-02-02 18:50 CST
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -39,9 +39,7 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative w-10 h-10 overflow-hidden rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
-             J
-          </div>
+          <img src="/assets/logo.png" alt="JuaLuma logo" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-primary/20 transition-transform group-hover:scale-110" />
           <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight">
             JuaLuma
           </span>

@@ -4,6 +4,8 @@ import { supportService, Ticket } from '../services/support';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { Badge } from '../components/ui/Badge'; // Assuming Badge exists
+import { useUserTimeZone } from '../hooks/useUserTimeZone';
+import { formatDateTime } from '../utils/datetime';
 
 export const TicketDetail = () => {
     const { ticketId } = useParams<{ ticketId: string }>();
@@ -14,6 +16,7 @@ export const TicketDetail = () => {
     const [reply, setReply] = useState('');
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const timeZone = useUserTimeZone();
 
     const fetchTicket = React.useCallback(async () => {
         if (!ticketId) return;
@@ -82,7 +85,7 @@ export const TicketDetail = () => {
                     <div className="flex gap-2 items-center text-sm text-text-secondary">
                         <span>#{ticket.id.slice(0, 8)}</span>
                         <span>&bull;</span>
-                        <span>{new Date(ticket.created_at).toLocaleString()}</span>
+                        <span>{formatDateTime(ticket.created_at, timeZone)}</span>
                         <span>&bull;</span>
                         <span className="capitalize">{ticket.category}</span>
                     </div>
@@ -121,7 +124,7 @@ export const TicketDetail = () => {
                                 }`}>
                                 <p className="whitespace-pre-wrap mb-1">{msg.message}</p>
                                 <p className="text-xs opacity-70">
-                                    {msg.sender_type === 'user' ? 'You' : 'Support Agent'} &bull; {new Date(msg.created_at).toLocaleString()}
+                                    {msg.sender_type === 'user' ? 'You' : 'Support Agent'} &bull; {formatDateTime(msg.created_at, timeZone)}
                                 </p>
                             </div>
                         </div>

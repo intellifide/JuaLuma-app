@@ -120,20 +120,22 @@ export const AppLayout: React.FC = () => {
                 className="hidden md:flex flex-col border-r border-white/5 bg-surface-1/50 backdrop-blur-xl relative z-20"
             >
                 {/* Header */}
-                <div className="h-20 flex items-center px-6 border-b border-white/5">
-                   <Link to="/" className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-9 h-9 min-w-9 rounded-lg bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary/20 shrink-0">
-                            J
-                        </div>
+                <div className="h-24 flex items-center px-6 border-b border-white/5">
+                   <Link to="/" className="flex items-center gap-3 group overflow-hidden">
+                        <img 
+                            src="/assets/logo.png" 
+                            alt="JuaLuma logo" 
+                            className="w-10 h-10 min-w-10 rounded-xl object-contain shadow-lg shadow-primary/20 transition-transform group-hover:scale-110 shrink-0" 
+                        />
                         <AnimatePresence>
                             {sidebarOpen && (
                                 <motion.span 
                                     initial={{ opacity: 0, x: -10 }} 
                                     animate={{ opacity: 1, x: 0 }} 
                                     exit={{ opacity: 0, x: -10 }}
-                                    className="font-bold text-xl tracking-tight whitespace-nowrap"
+                                    className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight whitespace-nowrap"
                                 >
-                                    jualuma
+                                    JuaLuma
                                 </motion.span>
                             )}
                         </AnimatePresence>
@@ -229,7 +231,10 @@ export const AppLayout: React.FC = () => {
 
             {/* Mobile Header */}
             <header className="md:hidden flex items-center justify-between px-6 h-20 bg-surface-1/80 backdrop-blur-md border-b border-white/5 fixed top-0 w-full z-40">
-                <Link to="/" className="font-bold text-xl text-primary">jualuma</Link>
+                <Link to="/" className="flex items-center gap-2">
+                    <img src="/assets/logo.png" alt="logo" className="w-8 h-8 object-contain" />
+                    <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">JuaLuma</span>
+                </Link>
                 <div className="flex items-center gap-4">
                     <button onClick={() => setDrawerOpen(true)} className="p-2 text-text-secondary hover:text-text-primary"><Bell className="w-5 h-5" /></button>
                      <button onClick={() => setMobileMenuOpen(true)} className="p-2 text-text-primary"><Menu className="w-6 h-6" /></button>

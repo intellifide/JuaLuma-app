@@ -100,8 +100,6 @@ export interface NotificationPreference {
   eventKey: string
   channelEmail: boolean
   channelSms: boolean
-  quietHoursStart?: string | null
-  quietHoursEnd?: string | null
   createdAt?: string
   updatedAt?: string
 }
