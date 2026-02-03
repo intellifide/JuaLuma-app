@@ -10,6 +10,7 @@ import { useAccounts } from '../hooks/useAccounts'
 import { useToast } from '../components/ui/Toast'
 import { AddManualTransactionModal } from '../components/AddManualTransactionModal'
 import { EditTransactionModal } from '../components/EditTransactionModal'
+import { Select } from '../components/ui/Select'
 import Switch from '../components/ui/Switch'
 import { Transaction } from '../types'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
@@ -36,8 +37,9 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
 
 export const Transactions = () => {
-  // Load preferences from localStorage on mount
-  const savedPreferences = useMemo(() => loadTransactionPreferences(), [])
+  const { profile, user } = useAuth()
+  // Load preferences from localStorage per-user (prevents cross-account leakage).
+  const savedPreferences = useMemo(() => loadTransactionPreferences(user?.uid), [user?.uid])
   
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState(savedPreferences.category)
@@ -53,7 +55,6 @@ export const Transactions = () => {
   const [sortBy, setSortBy] = useState<'ts_desc' | 'ts_asc' | 'amount_desc' | 'amount_asc' | 'merchant_asc' | 'merchant_desc'>(savedPreferences.sortBy)
   const [isManualFilter, setIsManualFilter] = useState<'all' | 'manual' | 'auto'>(savedPreferences.isManualFilter)
 
-  const { profile } = useAuth()
   const timeZone = useUserTimeZone()
   const toast = useToast()
   const [scope, setScope] = useState<'personal' | 'household'>('personal')
@@ -119,8 +120,8 @@ export const Transactions = () => {
       sortBy,
       pageSize,
       showAdvancedFilters,
-    })
-  }, [accountTypesIncluded, category, timeframe, isManualFilter, sortBy, pageSize, showAdvancedFilters])
+    }, user?.uid)
+  }, [accountTypesIncluded, category, timeframe, isManualFilter, sortBy, pageSize, showAdvancedFilters, user?.uid])
 
   // Track if this is the initial mount to avoid unnecessary refetch
   const isInitialMountRef = useRef(true)
@@ -192,13 +193,13 @@ export const Transactions = () => {
             onKeyDown={handleSearchKeyDown}
             className="form-input"
           />
-          <select
+          <Select
             value={category}
             onChange={(e) => {
               setCategory(e.target.value)
               handleFilterChange()
             }}
-            className="form-select"
+            wrapperClassName="relative"
           >
             <option value="">All categories</option>
             {CATEGORIES.map((cat) => (
@@ -206,14 +207,14 @@ export const Transactions = () => {
                 {cat}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             value={timeframe}
             onChange={(e) => {
               setPage(1)
               setTimeframe(e.target.value)
             }}
-            className="form-select"
+            wrapperClassName="relative"
           >
             <option value="all">All time</option>
             <option value="1w">Last 7 days</option>
@@ -222,14 +223,14 @@ export const Transactions = () => {
             <option value="6m">Last 180 days</option>
             <option value="1y">Last 12 months</option>
             <option value="ytd">Year to date</option>
-          </select>
-          <select
+          </Select>
+          <Select
             value={sortBy}
             onChange={(e) => {
               setSortBy(e.target.value as typeof sortBy)
               handleFilterChange()
             }}
-            className="form-select"
+            wrapperClassName="relative"
           >
             <option value="ts_desc">Date (Newest First)</option>
             <option value="ts_asc">Date (Oldest First)</option>
@@ -237,7 +238,7 @@ export const Transactions = () => {
             <option value="amount_asc">Amount (Low to High)</option>
             <option value="merchant_asc">Merchant (A-Z)</option>
             <option value="merchant_desc">Merchant (Z-A)</option>
-          </select>
+          </Select>
         </div>
 
         {excludeAccountTypes ? (
@@ -344,18 +345,19 @@ export const Transactions = () => {
               {/* Transaction Type Filter */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-text-primary">Transaction Type</label>
-                <select
+                <Select
                   value={isManualFilter}
                   onChange={(e) => {
                     setIsManualFilter(e.target.value as typeof isManualFilter)
                     handleFilterChange()
                   }}
-                  className="form-select text-sm"
+                  className="text-sm"
+                  wrapperClassName="relative"
                 >
                   <option value="all">All Transactions</option>
                   <option value="manual">Manual Only</option>
                   <option value="auto">Automated Only</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>
@@ -459,8 +461,10 @@ export const Transactions = () => {
                         '—'}
                     </td>
                     <td className="py-3">
-                      <select
-                        className="bg-transparent border-none text-sm text-primary font-medium focus:ring-0 cursor-pointer"
+                      <Select
+                        variant="none"
+                        wrapperClassName="relative inline-block"
+                        className="bg-transparent border-none text-sm text-primary font-medium focus:ring-0 cursor-pointer pr-8"
                         value={txn.category || "Uncategorized"}
                         onChange={(e) => handleCategoryChange(txn.id, e.target.value)}
                       >
@@ -468,7 +472,7 @@ export const Transactions = () => {
                         {CATEGORIES.map(c => (
                           <option key={c} value={c}>{c}</option>
                         ))}
-                      </select>
+                      </Select>
                     </td>
                     <td className={`py-3 text-right font-bold ${txn.amount < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                       {formatCurrency(txn.amount)}
@@ -511,9 +515,11 @@ export const Transactions = () => {
         <div className="mt-6 flex justify-center">
           <div className="flex items-center gap-3">
             <label className="text-xs text-text-muted" htmlFor="transactions-page-size">Rows</label>
-            <select
+            <Select
               id="transactions-page-size"
-              className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary"
+              variant="none"
+              wrapperClassName="relative inline-block"
+              className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary pr-8"
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value))
@@ -523,7 +529,7 @@ export const Transactions = () => {
               {[10, 25, 50, 100].map((size) => (
                 <option key={size} value={size}>{size}</option>
               ))}
-            </select>
+            </Select>
             <button
               className="btn btn-sm btn-outline"
               onClick={() => setPage((p) => Math.max(1, p - 1))}

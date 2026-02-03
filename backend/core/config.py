@@ -24,7 +24,9 @@ class AppSettings(BaseSettings):
     api_port: int = Field(default=8001, alias="API_PORT")
     frontend_url: str = Field(default="http://localhost:5175", alias="FRONTEND_URL")
     cors_origins_raw: str | None = Field(default=None, alias="BACKEND_CORS_ORIGINS")
-    rate_limit_max_requests: int = Field(default=100, alias="RATE_LIMIT_MAX_REQUESTS")
+    # Frontend loads can fan out into multiple concurrent API calls; 100/min was too easy
+    # to hit during normal tab switching in dev. Still configurable via env.
+    rate_limit_max_requests: int = Field(default=250, alias="RATE_LIMIT_MAX_REQUESTS")
     rate_limit_window_seconds: int = Field(
         default=60, alias="RATE_LIMIT_WINDOW_SECONDS"
     )
@@ -83,6 +85,10 @@ class AppSettings(BaseSettings):
     )
     gcp_kms_key_name: str | None = Field(default=None, alias="GCP_KMS_KEY_NAME")
     local_encryption_key: str | None = Field(default=None, alias="LOCAL_ENCRYPTION_KEY")
+
+    # Job runner auth (Cloud Scheduler / Cloud Run Jobs style)
+    # In production, require a secret header to trigger internal scheduled tasks.
+    job_runner_secret: str | None = Field(default=None, alias="JOB_RUNNER_SECRET")
 
     # Email / SMTP Config
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")

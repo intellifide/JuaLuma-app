@@ -36,6 +36,25 @@ def _resolve_period_window(period: str, today: date) -> tuple[date, date, str]:
         period_key = f"{today.isocalendar().year}-W{today.isocalendar().week:02d}"
         return start, end, period_key
 
+    if normalized == "annual":
+        start = date(today.year, 1, 1)
+        end = date(today.year, 12, 31)
+        period_key = str(today.year)
+        return start, end, period_key
+
+    if normalized == "quarterly":
+        quarter = ((today.month - 1) // 3) + 1
+        start_month = (quarter - 1) * 3 + 1
+        start = date(today.year, start_month, 1)
+        end_month = start_month + 2
+        if end_month == 12:
+            next_month = date(today.year + 1, 1, 1)
+        else:
+            next_month = date(today.year, end_month + 1, 1)
+        end = next_month - timedelta(days=1)
+        period_key = f"{today.year}-Q{quarter}"
+        return start, end, period_key
+
     start = date(today.year, today.month, 1)
     next_month = date(today.year + (1 if today.month == 12 else 0), 1 if today.month == 12 else today.month + 1, 1)
     end = next_month - timedelta(days=1)

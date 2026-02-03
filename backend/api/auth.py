@@ -199,6 +199,7 @@ class ProfileUpdateRequest(BaseModel):
                     "username",
                     "display_name_pref",
                     "phone_number",
+                    "time_zone",
                 ]
             )
             logger.debug(
@@ -1110,6 +1111,52 @@ def get_profile(
     return {"user": _serialize_profile(user)}
 
 
+class DevBootstrapRequest(BaseModel):
+    """Local-only helper to create a DB user for a verified identity token."""
+
+    first_name: str | None = Field(default="Test", max_length=128)
+    last_name: str | None = Field(default="User", max_length=128)
+    username: str | None = Field(default=None, max_length=64)
+
+
+@router.post("/dev/bootstrap")
+def dev_bootstrap_user(
+    payload: DevBootstrapRequest,
+    identity: dict = Depends(get_current_identity),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    LOCAL/TEST ONLY: Ensure a User row exists for the authenticated identity.
+
+    This exists to support deterministic API smoke tests (e.g., Postman collections)
+    without requiring OTP + browser flows.
+    """
+    if settings.app_env.lower() not in {"local", "test"}:
+        raise HTTPException(status_code=404, detail="Not found.")
+
+    uid = identity.get("uid")
+    email = identity.get("email")
+    if not uid or not email:
+        raise HTTPException(status_code=401, detail="Invalid session data.")
+
+    user = db.query(User).filter(User.uid == uid).first()
+    if not user:
+        user = create_user_record(
+            db,
+            uid=uid,
+            email=email,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            username=payload.username,
+        )
+        user.status = UserStatus.ACTIVE
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    return {"user": _serialize_profile(user)}
+
+
 @router.patch("/profile")
 def update_profile(
     payload: ProfileUpdateRequest,
@@ -1184,6 +1231,33 @@ def update_profile(
                 detail="Invalid time_zone. Use an IANA timezone like 'America/Chicago'.",
             ) from exc
         user.time_zone = payload.time_zone
+        # Keep scheduled digests aligned if user changes timezone.
+        try:
+            from datetime import UTC as _UTC, datetime as _datetime
+            from zoneinfo import ZoneInfo
+
+            from backend.models import DigestSettings
+            from backend.services.digests import compute_next_send_at_utc
+
+            digest = (
+                db.query(DigestSettings)
+                .filter(DigestSettings.uid == current_user.uid)
+                .first()
+            )
+            if digest and digest.next_send_at_utc is not None:
+                tz = ZoneInfo(user.time_zone or "UTC")
+                digest.next_send_at_utc = compute_next_send_at_utc(
+                    now_utc=_datetime.now(_UTC),
+                    user_tz=tz,
+                    cadence=digest.cadence,
+                    send_time_local=digest.send_time_local,
+                    weekly_day_of_week=getattr(digest, "weekly_day_of_week", 0),
+                    day_of_month=getattr(digest, "day_of_month", 1),
+                )
+                db.add(digest)
+        except Exception:
+            # Do not block profile updates on digest rescheduling; retry on next digest update.
+            logger.exception("Failed to reschedule digest after timezone update.")
     # if payload.currency_pref is not None:
     #     user.currency_pref = payload.currency_pref.upper()
 

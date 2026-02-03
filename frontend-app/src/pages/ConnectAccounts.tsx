@@ -10,6 +10,7 @@ import { useManualAssets } from '../hooks/useManualAssets';
 import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { Select } from '../components/ui/Select';
 import { api as apiClient } from '../services/api';
 import { householdService } from '../services/householdService';
 import { Household, HouseholdMember } from '../types/household';
@@ -174,15 +175,15 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
           </div>
           <div>
             <label className="form-label text-sm">Blockchain Network</label>
-            <select 
-              className="input" 
+            <Select
+              variant="input"
               value={chain} 
               onChange={(e) => setChain(e.target.value)}
             >
               {CHAIN_PRESETS.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {chain === 'custom' && (
@@ -288,12 +289,12 @@ const AddCexModal = ({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="form-label">Exchange</label>
-            <select className="input" value={exchange} onChange={(e) => setExchange(e.target.value)}>
+            <Select variant="input" value={exchange} onChange={(e) => setExchange(e.target.value)}>
               <option value="coinbase">Coinbase</option>
               <option value="kraken">Kraken</option>
               <option value="binance">Binance</option>
               <option value="binanceus">Binance US</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className="form-label">Label</label>
@@ -419,8 +420,8 @@ const EditAccountModal = ({
             {loading ? (
               <div className="animate-pulse h-10 w-full bg-surface-2 rounded"></div>
             ) : household ? (
-              <select
-                className="input"
+              <Select
+                variant="input"
                 value={assignedUid}
                 onChange={(e) => setAssignedUid(e.target.value)}
               >
@@ -430,7 +431,7 @@ const EditAccountModal = ({
                     {formatHouseholdMemberLabel(member)} ({member.role})
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
                <div className="text-sm text-text-secondary p-2 bg-surface-2 rounded border border-border">
                  You are not in a household.
@@ -440,8 +441,8 @@ const EditAccountModal = ({
           </div>
           <div>
             <label className="form-label">Account Classification</label>
-            <select
-              className="input"
+            <Select
+              variant="input"
               value={categoryOverride}
               onChange={(e) => setCategoryOverride(e.target.value)}
             >
@@ -449,7 +450,7 @@ const EditAccountModal = ({
               {MANUAL_ACCOUNT_CATEGORY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
-            </select>
+            </Select>
             <p className="text-xs text-text-secondary mt-1">
               Overrides how this account is grouped in assets and liabilities.
             </p>
@@ -557,15 +558,15 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
           </div>
           <div>
             <label className="form-label text-sm">Category</label>
-            <select
-              className="input"
+            <Select
+              variant="input"
               value={categoryOverride}
               onChange={(e) => setCategoryOverride(e.target.value)}
             >
               {MANUAL_ACCOUNT_CATEGORY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
-            </select>
+            </Select>
             <p className="text-xs text-text-secondary mt-1">
               Helps place this account in assets vs liabilities and dashboards.
             </p>
@@ -594,8 +595,8 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
             {householdLoading ? (
               <div className="animate-pulse h-10 w-full bg-surface-2 rounded"></div>
             ) : household ? (
-              <select
-                className="input"
+              <Select
+                variant="input"
                 value={assignedUid}
                 onChange={(e) => setAssignedUid(e.target.value)}
               >
@@ -605,7 +606,7 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
                     {formatHouseholdMemberLabel(member)} ({member.role})
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
               <div className="text-sm text-text-secondary p-2 bg-surface-2 rounded border border-border">
                 You are not in a household.
@@ -722,19 +723,19 @@ const ManualAssetModal = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="form-label text-sm">Category</label>
-              <select name="assetType" className="input" value={form.assetType} onChange={handleChange}>
+              <Select variant="input" name="assetType" value={form.assetType} onChange={handleChange}>
                 {MANUAL_ASSET_TYPES.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="form-label text-sm">Asset or Liability</label>
-              <select name="balanceType" className="input" value={form.balanceType} onChange={handleChange}>
+              <Select variant="input" name="balanceType" value={form.balanceType} onChange={handleChange}>
                 {BALANCE_TYPE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1743,9 +1744,11 @@ export const ConnectAccounts = () => {
                 <div className="mt-6 flex justify-center">
                 <div className="flex items-center gap-3">
                   <label className="text-xs text-text-muted" htmlFor="linked-accounts-page-size">Rows</label>
-                  <select
+                  <Select
                     id="linked-accounts-page-size"
-                    className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary"
+                    variant="none"
+                    wrapperClassName="relative inline-block"
+                    className="bg-transparent border border-white/10 rounded-md text-sm px-2 py-1 text-text-secondary pr-8"
                     value={linkedAccountsPageSize}
                     onChange={(e) => {
                       setLinkedAccountsPageSize(Number(e.target.value));
@@ -1755,7 +1758,7 @@ export const ConnectAccounts = () => {
                     {[10, 25, 50, 100].map((size) => (
                       <option key={size} value={size}>{size}</option>
                     ))}
-                  </select>
+                  </Select>
                   <button
                     className="btn btn-sm btn-outline"
                     onClick={() => setLinkedAccountsPage((prev) => Math.max(1, prev - 1))}

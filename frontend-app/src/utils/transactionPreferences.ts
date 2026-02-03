@@ -22,7 +22,11 @@ export interface TransactionPreferences {
   showAdvancedFilters: boolean
 }
 
-const STORAGE_KEY = 'jualuma_transaction_preferences'
+const STORAGE_KEY_PREFIX = 'jualuma_transaction_preferences'
+
+export const getTransactionPreferencesStorageKey = (uid?: string | null): string => {
+  return uid ? `${STORAGE_KEY_PREFIX}_${uid}` : `${STORAGE_KEY_PREFIX}_anon`
+}
 
 const DEFAULT_PREFERENCES: TransactionPreferences = {
   accountTypesIncluded: [...ACCOUNT_TYPES],
@@ -39,9 +43,9 @@ const DEFAULT_PREFERENCES: TransactionPreferences = {
  * Returns default preferences if none are saved or if parsing fails.
  * Migrates old includeWeb3/includeCEX to accountTypesIncluded when present.
  */
-export const loadTransactionPreferences = (): TransactionPreferences => {
+export const loadTransactionPreferences = (uid?: string | null): TransactionPreferences => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(getTransactionPreferencesStorageKey(uid))
     if (!stored) return DEFAULT_PREFERENCES
 
     const parsed = JSON.parse(stored) as Record<string, unknown>
@@ -73,11 +77,14 @@ export const loadTransactionPreferences = (): TransactionPreferences => {
 /**
  * Save transaction preferences to localStorage.
  */
-export const saveTransactionPreferences = (preferences: Partial<TransactionPreferences>): void => {
+export const saveTransactionPreferences = (
+  preferences: Partial<TransactionPreferences>,
+  uid?: string | null,
+): void => {
   try {
-    const current = loadTransactionPreferences()
+    const current = loadTransactionPreferences(uid)
     const updated = { ...current, ...preferences }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    localStorage.setItem(getTransactionPreferencesStorageKey(uid), JSON.stringify(updated))
   } catch (error) {
     console.error('Failed to save transaction preferences:', error)
   }
@@ -86,9 +93,9 @@ export const saveTransactionPreferences = (preferences: Partial<TransactionPrefe
 /**
  * Reset transaction preferences to defaults.
  */
-export const resetTransactionPreferences = (): void => {
+export const resetTransactionPreferences = (uid?: string | null): void => {
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(getTransactionPreferencesStorageKey(uid))
   } catch (error) {
     console.error('Failed to reset transaction preferences:', error)
   }

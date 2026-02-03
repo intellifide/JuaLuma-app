@@ -6,6 +6,7 @@ import { RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { useBudget, Budget } from '../hooks/useBudget';
+import { useBudgetHistory, useBudgetStatus, type BudgetPeriod, type BudgetStatusItem } from '../hooks/useBudgetReporting';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
 import { useManualAssets } from '../hooks/useManualAssets';
 import { DataPoint } from '../services/analytics';
@@ -14,8 +15,9 @@ import { Modal } from '../components/ui/Modal';
 import { FeaturePreview } from '../components/ui/FeaturePreview';
 import { ExpandableChartModal } from '../components/ExpandableChartModal';
 import Switch from '../components/ui/Switch';
+import { Select } from '../components/ui/Select';
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
-import { loadTransactionPreferences, ACCOUNT_TYPES } from '../utils/transactionPreferences';
+import { loadTransactionPreferences, getTransactionPreferencesStorageKey, ACCOUNT_TYPES } from '../utils/transactionPreferences';
 import { getManualNetWorthAtDate } from '../utils/manualAssets';
 
 // Helpers for Date Management
@@ -148,15 +150,15 @@ const generateLinePath = (
   labelMode: 'day' | 'monthYear',
   timeZone: string,
 ) => {
-  const padding = { top: 10, right: 30, bottom: 20, left: 12 };
+  const padding = { top: 30, right: 30, bottom: 20, left: 12 };
   const drawWidth = width - padding.left - padding.right;
   const drawHeight = height - padding.top - padding.bottom;
 
   if (!data || data.length === 0) return { path: '', areaPath: '', dots: [], yLabels: [], xLabels: [], padding, points: [] };
 
   const values = data.map(d => d.value);
-  const min = Math.min(...values) * 0.98;
-  const max = Math.max(...values) * 1.02;
+  const min = Math.min(...values) * 0.95;
+  const max = Math.max(...values) * 1.08;
   const range = max - min || 1;
 
   const points = data.map((d, i) => {
@@ -212,7 +214,7 @@ const generateBarChart = (
   cfInterval: string,
   timeZone: string,
 ) => {
-  const padding = { top: 10, right: 10, bottom: 20, left: 12 };
+  const padding = { top: 30, right: 10, bottom: 20, left: 12 };
   const drawWidth = width - padding.left - padding.right;
   const drawHeight = height - padding.top - padding.bottom;
 
@@ -233,7 +235,7 @@ const generateBarChart = (
   Object.values(dataMap).forEach(v => {
     maxVal = Math.max(maxVal, v.inc, v.exp);
   });
-  maxVal = maxVal * 1.1 || 1000;
+  maxVal = maxVal * 1.3 || 1000;
 
   const slotWidth = drawWidth / sortedDates.length;
   const barWidth = slotWidth * 0.4;
@@ -279,27 +281,41 @@ const generateBarChart = (
 const BudgetTool = ({
   categories,
   budgets,
+  statusItems,
   saveBudget,
+  bulkSetPeriod,
   resetBudgets
 }: {
   categories: string[],
   budgets: Budget[],
-  saveBudget: (cat: string, amount: number | null, threshold?: number, enabled?: boolean) => Promise<void>,
+  statusItems: BudgetStatusItem[] | null | undefined,
+  saveBudget: (cat: string, amount: number | null, period?: Budget['period'], threshold?: number, enabled?: boolean) => Promise<void>,
+  bulkSetPeriod: (period: Budget['period']) => Promise<void>,
   resetBudgets: () => Promise<void>
 }) => {
   const { user } = useAuth();
   const [editing, setEditing] = useState<string | null>(null);
   const [tempAmount, setTempAmount] = useState<string>('');
+  const [tempPeriod, setTempPeriod] = useState<Budget['period']>('monthly');
   const [tempThreshold, setTempThreshold] = useState<string>('80');
   const [tempAlertEnabled, setTempAlertEnabled] = useState<boolean>(true);
   const [expanded, setExpanded] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   const activeBudgets = budgets;
   const showAll = expanded || activeBudgets.length === 0;
   const categoriesToDisplay = showAll ? categories : activeBudgets.map(b => b.category);
   const showEmptyMessage = !expanded && activeBudgets.length === 0;
+
+  const statusByCategory = useMemo(() => {
+    const map = new Map<string, BudgetStatusItem>();
+    (statusItems ?? []).forEach((item) => {
+      map.set(item.category, item);
+    });
+    return map;
+  }, [statusItems]);
 
   const getBudget = (cat: string) => {
     const matchingBudgets = budgets.filter(b => b.category === cat);
@@ -316,14 +332,22 @@ const BudgetTool = ({
     const ownBudget = getOwnBudget(cat);
     setEditing(cat);
     setTempAmount(getBudget(cat)?.toString() || '');
+    setTempPeriod(ownBudget?.period ?? 'monthly');
     setTempThreshold(
       ownBudget ? String(Math.round(ownBudget.alert_threshold_percent * 100)) : '80'
     );
     setTempAlertEnabled(ownBudget ? ownBudget.alert_enabled : true);
   };
 
-  const handleSave = (cat: string, finalAmount?: string, finalThreshold?: string, finalEnabled?: boolean) => {
+  const handleSave = (
+    cat: string,
+    finalAmount?: string,
+    finalPeriod?: Budget['period'],
+    finalThreshold?: string,
+    finalEnabled?: boolean,
+  ) => {
     const amountStr = finalAmount !== undefined ? finalAmount : tempAmount;
+    const periodVal = finalPeriod !== undefined ? finalPeriod : tempPeriod;
     const thresholdStr = finalThreshold !== undefined ? finalThreshold : tempThreshold;
     const enabled = finalEnabled !== undefined ? finalEnabled : tempAlertEnabled;
 
@@ -334,6 +358,7 @@ const BudgetTool = ({
     saveBudget(
       cat,
       val,
+      periodVal,
       Math.min(100, Math.max(0, thresholdPercent)) / 100,
       enabled
     );
@@ -350,7 +375,40 @@ const BudgetTool = ({
     <div className="glass-panel mb-10 transition-all duration-300">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Budget Goals</h2>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-2">
+          {expanded && activeBudgets.length > 0 && (
+            <div className="flex items-center gap-3 text-[11px] text-text-muted">
+              <span className="whitespace-nowrap">Set all budgets:</span>
+              <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
+                {(['monthly', 'quarterly', 'annual'] as const).map((p) => (
+                  <button
+                    key={p}
+                    disabled={bulkUpdating}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (
+                        !window.confirm(
+                          `Set all budgets to ${p}? Amounts will be interpreted as per-${p}.`,
+                        )
+                      )
+                        return;
+                      setBulkUpdating(true);
+                      await bulkSetPeriod(p);
+                      setBulkUpdating(false);
+                    }}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                      bulkUpdating
+                        ? 'opacity-60 cursor-not-allowed'
+                        : 'text-primary hover:bg-white/10'
+                    }`}
+                  >
+                    {p === 'monthly' ? 'Monthly' : p === 'quarterly' ? 'Quarterly' : 'Annual'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-sm font-medium text-primary hover:underline"
@@ -417,6 +475,24 @@ const BudgetTool = ({
                       min={cat === 'Income' ? '0' : undefined}
                       autoFocus
                     />
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-text-muted">Period</label>
+                      <Select
+                        variant="none"
+                        wrapperClassName="relative inline-block"
+                        className="input py-1 px-2 text-xs bg-transparent border border-white/20 rounded text-text-primary pr-8"
+                        value={tempPeriod}
+                        onChange={(e) => {
+                          const next = e.target.value as Budget['period'];
+                          setTempPeriod(next);
+                          handleSave(cat, tempAmount, next, tempThreshold, tempAlertEnabled);
+                        }}
+                      >
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annual">Annual</option>
+                      </Select>
+                    </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <input
                         type="number"
@@ -434,7 +510,7 @@ const BudgetTool = ({
                           checked={tempAlertEnabled}
                           onChange={(val) => {
                             setTempAlertEnabled(val);
-                            handleSave(cat, tempAmount, tempThreshold, val);
+                            handleSave(cat, tempAmount, tempPeriod, tempThreshold, val);
                           }}
                           label="Enabled"
                           compact
@@ -453,6 +529,36 @@ const BudgetTool = ({
                     )}
                   </div>
                 )}
+
+                {(() => {
+                  const status = statusByCategory.get(cat);
+                  if (!status || getBudget(cat) === undefined) return null;
+                  const color =
+                    status.status === 'over'
+                      ? 'bg-rose-400'
+                      : status.status === 'at'
+                        ? 'bg-primary'
+                        : 'bg-emerald-400';
+                  const label =
+                    status.period === 'monthly' ? 'MTD' : status.period === 'quarterly' ? 'QTD' : 'YTD';
+                  return (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-text-muted">
+                        <span>
+                          {label} • {status.status.toUpperCase()}
+                        </span>
+                        <span className="font-medium text-text-secondary">{Math.round(status.percent_used)}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div className={`h-full ${color}`} style={{ width: `${Math.min(100, Math.max(0, status.percent_used))}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-text-muted">
+                        <span>{formatCompactCurrency(status.spent)} spent</span>
+                        <span>of {formatCompactCurrency(status.budget_amount)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -504,8 +610,76 @@ const INSIGHTS_OPTIONS = [
   { value: 'all', label: 'ALL' },
 ];
 
+const HISTORY_LOOKBACK: Record<BudgetPeriod, number> = {
+  monthly: 6,
+  quarterly: 4,
+  annual: 2,
+};
+
+const BudgetHistoryCard = ({ scope }: { scope: 'personal' | 'household' }) => {
+  const [period, setPeriod] = useState<BudgetPeriod>('monthly');
+  const lookback = HISTORY_LOOKBACK[period];
+  const { data, loading, error } = useBudgetHistory(period, lookback, scope);
+
+  return (
+    <div className="glass-panel mb-10 transition-all duration-300">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-xl font-semibold">Budget History</h2>
+          <p className="text-sm text-text-muted">How you performed in completed periods.</p>
+        </div>
+        <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
+          {(['monthly', 'quarterly', 'annual'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                period === p ? 'bg-primary/20 text-primary' : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              {p === 'monthly' ? 'Monthly' : p === 'quarterly' ? 'Quarterly' : 'Annual'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="py-6 text-center text-text-muted">Loading history...</div>
+      ) : error ? (
+        <div className="py-6 text-center text-rose-400">{error}</div>
+      ) : !data?.buckets?.length ? (
+        <div className="py-6 text-center text-text-muted">No history yet.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {data.buckets.map((bucket) => (
+            <div
+              key={bucket.key}
+              className="p-4 border border-white/10 rounded-lg bg-transparent hover:bg-white/5 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-sm">{bucket.key}</div>
+                <div className="text-sm font-semibold text-text-secondary">{Math.round(bucket.percent_used)}%</div>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, bucket.percent_used))}%` }} />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[11px] text-text-muted">
+                <span>{formatCompactCurrency(bucket.total_spent)} spent</span>
+                <span>of {formatCompactCurrency(bucket.total_budget)}</span>
+              </div>
+              <div className="mt-2 text-[11px] text-text-muted">
+                Under {bucket.counts.under} • At {bucket.counts.at} • Over {bucket.counts.over}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function FinancialAnalysis() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const timeZone = useUserTimeZone();
   const toast = useToast();
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
@@ -522,12 +696,13 @@ export default function FinancialAnalysis() {
   const { start: fullStart, end: fullEnd } = useMemo(() => getDateRange('all'), []);
 
   // Load transaction preferences from localStorage and listen for changes
-  const [transactionPreferences, setTransactionPreferences] = useState(() => loadTransactionPreferences());
+  const [transactionPreferences, setTransactionPreferences] = useState(() => loadTransactionPreferences(user?.uid));
 
   // Listen for localStorage changes to update preferences in real-time
   useEffect(() => {
+    const key = getTransactionPreferencesStorageKey(user?.uid);
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'jualuma_transaction_preferences' && e.newValue) {
+      if (e.key === key && e.newValue) {
         try {
           setTransactionPreferences(JSON.parse(e.newValue));
         } catch (err) {
@@ -538,7 +713,7 @@ export default function FinancialAnalysis() {
 
     // Also check for changes periodically (in case storage event doesn't fire in same tab)
     const intervalId = setInterval(() => {
-      const current = loadTransactionPreferences();
+      const current = loadTransactionPreferences(user?.uid);
       setTransactionPreferences(prev => {
         // Only update if preferences actually changed
         if (JSON.stringify(prev) !== JSON.stringify(current)) {
@@ -553,7 +728,7 @@ export default function FinancialAnalysis() {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(intervalId);
     };
-  }, []);
+  }, [user?.uid]);
 
   // Exclude account types not selected in transaction preferences (default = all)
   const excludeAccountTypes = useMemo(() => {
@@ -575,7 +750,8 @@ export default function FinancialAnalysis() {
     isManual: isManualFilterValue,
   }), [excludeAccountTypes, transactionPreferences.category, isManualFilterValue])
 
-  const { budgets, saveBudget, resetBudgets } = useBudget(dashboardScope);
+  const { budgets, saveBudget, resetBudgets, bulkSetPeriod } = useBudget(dashboardScope);
+  const { data: budgetStatus } = useBudgetStatus(dashboardScope);
   const { assets: manualAssets } = useManualAssets();
 
   // Keep the dashboard scope aligned with the user's household access.
@@ -782,9 +958,15 @@ export default function FinancialAnalysis() {
         <BudgetTool
           categories={CATEGORIES}
           budgets={budgets}
+          statusItems={budgetStatus?.items}
           saveBudget={saveBudget}
+          bulkSetPeriod={bulkSetPeriod}
           resetBudgets={resetBudgets}
         />
+      </FeaturePreview>
+
+      <FeaturePreview featureKey="budgets.advanced">
+        <BudgetHistoryCard scope={dashboardScope} />
       </FeaturePreview>
 
       {/* Infographics & Charts */}
@@ -812,7 +994,7 @@ export default function FinancialAnalysis() {
                   </div>
                 ))}
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pt-10">
                 <div className="relative" style={{ width: netWorthChartWidth }}>
                   <svg
                     className="chart-svg"
@@ -902,7 +1084,7 @@ export default function FinancialAnalysis() {
                       style={{
                         left: `${netWorthHover.xPct}%`,
                         top: `${netWorthHover.yPct}%`,
-                        transform: 'translate(-50%, -120%)',
+                        transform: netWorthHover.xPct < 15 ? 'translate(0, -120%)' : netWorthHover.xPct > 85 ? 'translate(-100%, -120%)' : 'translate(-50%, -120%)',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -950,7 +1132,7 @@ export default function FinancialAnalysis() {
                   </div>
                 ))}
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pt-10">
                 <div className="relative" style={{ width: cashFlowChartWidth }}>
                   <svg
                     className="chart-svg"
@@ -1032,7 +1214,7 @@ export default function FinancialAnalysis() {
                       style={{
                         left: `${cashFlowHover.xPct}%`,
                         top: `${cashFlowHover.yPct}%`,
-                        transform: 'translate(-50%, -120%)',
+                        transform: cashFlowHover.xPct < 15 ? 'translate(0, -120%)' : cashFlowHover.xPct > 85 ? 'translate(-100%, -120%)' : 'translate(-50%, -120%)',
                         whiteSpace: 'nowrap',
                       }}
                     >

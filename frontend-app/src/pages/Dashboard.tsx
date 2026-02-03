@@ -7,10 +7,11 @@ import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatDate } from '../utils/datetime';
 import { useAccounts } from '../hooks/useAccounts';
 import { useManualAssets } from '../hooks/useManualAssets';
-import { useBudget } from '../hooks/useBudget';
+import { useBudgetStatus } from '../hooks/useBudgetReporting';
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../hooks/useAnalytics';
 import { useRecurringForecast } from '../hooks/useRecurringForecast';
 import { useToast } from '../components/ui/Toast';
+import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
 import { InfoPopover } from '../components/ui/InfoPopover';
@@ -82,32 +83,8 @@ const normalizePlan = (value?: string | null): PlanTier | null => {
   return null
 }
 
-const calculateBudgetProgress = (
-  spendData: { data: { category: string; amount: number }[] } | null | undefined,
-  budgets: { category: string; amount: number; alert_enabled: boolean }[],
-) => {
-  if (!spendData?.data || budgets.length === 0) {
-    return { budgetSpent: 0, totalBudget: 0 };
-  }
-
-  const budgetsByCategory = new Map<string, number>();
-  budgets.forEach((b) => {
-    if (b.alert_enabled) {
-      const existing = budgetsByCategory.get(b.category) || 0;
-      budgetsByCategory.set(b.category, existing + b.amount);
-    }
-  });
-
-  const total = Array.from(budgetsByCategory.values()).reduce((sum, amount) => sum + amount, 0);
-  const spent = spendData.data
-    .filter((item) => budgetsByCategory.has(item.category))
-    .reduce((sum, item) => sum + item.amount, 0);
-
-  return { budgetSpent: spent, totalBudget: total };
-};
-
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const timeZone = useUserTimeZone();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
@@ -125,14 +102,15 @@ export default function Dashboard() {
   const canSeeScopeToggle = (isUltimate && isHouseholdAdmin) || canViewHousehold;
   const hasHouseholdAccess = canSeeScopeToggle;
   const familyPreviewTier = hasHouseholdAccess ? 'ultimate' : undefined;
-  const savedDashboardPreferences = useMemo(() => loadDashboardPreferences(), []);
+  const uid = user?.uid ?? profile?.uid ?? null;
+  const savedDashboardPreferences = useMemo(() => loadDashboardPreferences(uid), [uid]);
   const [insightsPeriod, setInsightsPeriod] = useState<InsightsPeriod>(
     savedDashboardPreferences.insightsPeriod,
   );
 
   useEffect(() => {
-    saveDashboardPreferences({ insightsPeriod });
-  }, [insightsPeriod]);
+    saveDashboardPreferences({ insightsPeriod }, uid);
+  }, [insightsPeriod, uid]);
 
   const insightsLabel = formatTimeframeLabel(insightsPeriod);
 
@@ -169,7 +147,7 @@ export default function Dashboard() {
     [insightsPeriod],
   );
 
-  const { budgets } = useBudget(dashboardScope);
+  const { data: budgetStatus, loading: budgetStatusLoading } = useBudgetStatus(dashboardScope);
   const toast = useToast();
 
   
@@ -182,7 +160,7 @@ export default function Dashboard() {
   const [inviteCanViewHousehold, setInviteCanViewHousehold] = useState(true);
   const [sendingInvite, setSendingInvite] = useState(false);
   const [goalsModalOpen, setGoalsModalOpen] = useState(false);
-  const [goals, setGoals] = useState<Goal[]>(() => loadGoals());
+  const [goals, setGoals] = useState<Goal[]>(() => loadGoals(uid));
   const [goalTitle, setGoalTitle] = useState('');
   const [goalType, setGoalType] = useState<GoalType>('savings');
   const [goalTarget, setGoalTarget] = useState('');
@@ -197,8 +175,8 @@ export default function Dashboard() {
   }, [canSeeScopeToggle, dashboardScope]);
 
   useEffect(() => {
-    saveGoals(goals);
-  }, [goals]);
+    saveGoals(goals, uid);
+  }, [goals, uid]);
 
   const activeSubscription = profile?.subscriptions?.find(
     (sub) => sub.status === 'active'
@@ -347,15 +325,9 @@ export default function Dashboard() {
     };
   }, [accounts, manualTotals]);
 
-  const { budgetSpent: insightsBudgetSpent, totalBudget: insightsTotalBudget } = useMemo(
-    () => calculateBudgetProgress(insightsSpendData, budgets),
-    [insightsSpendData, budgets],
-  );
-
-  const insightsBudgetPercent =
-    insightsTotalBudget > 0
-      ? Math.min(100, (insightsBudgetSpent / insightsTotalBudget) * 100)
-      : 0;
+  const budgetTotal = budgetStatus?.total_budget ?? 0;
+  const budgetSpent = budgetStatus?.total_spent ?? 0;
+  const budgetPercent = budgetStatus?.percent_used ?? 0;
 
   const insightsSavingsRate = useMemo(() => {
     if (!insightsCashFlowStats.income) return null;
@@ -615,20 +587,22 @@ export default function Dashboard() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm text-text-muted">Budget Status</h3>
-                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+                <p className="text-xs text-text-muted">Based on each budget's period (MTD/QTD/YTD)</p>
               </div>
               <InfoPopover label="Budget status calculation">
-                Percent of active budget targets spent in the selected period.
+                Budget progress is computed server-side per budget category using its own period (monthly, quarterly, annual) and does not change with the Insights period selector.
               </InfoPopover>
             </div>
-            {insightsTotalBudget > 0 ? (
+            {budgetStatusLoading ? (
+              <p className="text-sm text-text-muted">Loading budget status...</p>
+            ) : budgetTotal > 0 ? (
               <>
-                <p className="text-3xl font-bold text-primary">{insightsBudgetPercent.toFixed(0)}%</p>
+                <p className="text-3xl font-bold text-primary">{budgetPercent.toFixed(0)}%</p>
                 <p className="text-xs text-text-muted">
-                  {formatCompactCurrency(insightsBudgetSpent)} of {formatCompactCurrency(insightsTotalBudget)} spent
+                  {formatCompactCurrency(budgetSpent)} of {formatCompactCurrency(budgetTotal)} spent
                 </p>
                 <div className="w-full bg-white/10 rounded-full h-2 mt-1" aria-label="Budget usage">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: `${insightsBudgetPercent}%` }} />
+                  <div className="h-2 rounded-full bg-primary" style={{ width: `${budgetPercent}%` }} />
                 </div>
               </>
             ) : (
@@ -709,7 +683,7 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-text-muted">Budget use</p>
-                    <p className="text-sm font-semibold">{insightsBudgetPercent.toFixed(0)}%</p>
+                    <p className="text-sm font-semibold">{budgetPercent.toFixed(0)}%</p>
                   </div>
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-2">
@@ -870,16 +844,16 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Allocation Snapshot */}
+          {/* Capital Concentration */}
           <FeaturePreview featureKey="investment.aggregation">
             <div className="card gap-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold">Investment Allocation Snapshot</h3>
+                  <h3 className="text-lg font-semibold">Capital Concentration</h3>
                   <p className="text-xs text-text-muted">As of today</p>
                 </div>
-                <InfoPopover label="Investment allocation details">
-                  Breakdown of invested balances across account types and platforms.
+                <InfoPopover label="Capital concentration details">
+                  Analysis of your capital spread across different investment buckets and platforms.
                 </InfoPopover>
               </div>
               {investmentAllocation.total <= 0 ? (
@@ -898,7 +872,7 @@ export default function Dashboard() {
                     </div>
                   ))}
                   <p className="text-xs text-text-muted">Invested balance {formatCompactCurrency(investmentAllocation.total)}</p>
-                  <p className="text-xs text-text-secondary">Shows how your invested assets are split across account types.</p>
+                  <p className="text-xs text-text-secondary">Visualizes your capital spread across diverse asset classes and account types.</p>
                 </div>
               )}
             </div>
@@ -980,11 +954,11 @@ export default function Dashboard() {
         <div className="space-y-4 py-2">
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Goal Type</label>
-            <select className="form-select w-full" value={goalType} onChange={(e) => setGoalType(e.target.value as GoalType)}>
+            <Select value={goalType} onChange={(e) => setGoalType(e.target.value as GoalType)}>
               {Object.entries(GOAL_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Goal Title</label>

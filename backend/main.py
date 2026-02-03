@@ -33,6 +33,8 @@ from backend.api.webhooks import router as webhooks_router
 from backend.api.webhooks import router as webhooks_router
 from backend.api.widgets import router as widgets_router
 from backend.api.documents import router as documents_router
+from backend.api.digests import router as digests_router
+from backend.api.jobs import router as jobs_router
 from backend.core import configure_logging, settings
 from backend.core.events import initialize_events
 from backend.models import SessionLocal
@@ -113,7 +115,8 @@ if settings.app_env.lower() != "test":
         RateLimitMiddleware,
         max_requests=settings.rate_limit_max_requests,
         window_seconds=settings.rate_limit_window_seconds,
-        path_prefixes=("/api/auth", "/", "/health", "/api/health"),
+        # Limit API calls only (not static/proxy paths). "/api" includes "/api/auth" and "/api/health".
+        path_prefixes=("/api",),
     )
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -147,6 +150,8 @@ app.include_router(notifications_router)
 app.include_router(support_portal_router)  # New router inclusion
 app.include_router(documents_router)
 app.include_router(recurring_router)
+app.include_router(digests_router)
+app.include_router(jobs_router)
 
 # Initialize and Mount Main MCP Server (Phase 3)
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI

@@ -62,3 +62,41 @@ def test_delete_nonexistent_budget(test_client, mock_auth):
     """Test deleting a budget that does not exist."""
     response = test_client.delete("/api/budgets/NonExistent")
     assert response.status_code == 404
+
+
+def test_budget_status_at_exact_amount(test_client, test_db, mock_auth):
+    """Budget status should report 'at' when spending equals the budget exactly."""
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from backend.models import Account, Transaction
+
+    # Create budget
+    test_client.post("/api/budgets/", json={"category": "Food", "amount": 100.0, "period": "monthly"})
+
+    # Create account + transaction that exactly matches the budget.
+    acct = Account(uid=mock_auth.uid)
+    test_db.add(acct)
+    test_db.commit()
+    test_db.refresh(acct)
+
+    txn = Transaction(
+        uid=mock_auth.uid,
+        account_id=acct.id,
+        ts=datetime.now(UTC),
+        amount=Decimal("-100.00"),
+        currency="USD",
+        category="Food",
+        archived=False,
+        is_manual=False,
+    )
+    test_db.add(txn)
+    test_db.commit()
+
+    status_res = test_client.get("/api/budgets/status")
+    assert status_res.status_code == 200
+    payload = status_res.json()
+    assert payload["total_budget"] == 100.0
+    assert payload["total_spent"] == 100.0
+    assert payload["counts"]["at"] == 1
+    assert payload["items"][0]["status"] == "at"

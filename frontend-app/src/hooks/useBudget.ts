@@ -9,7 +9,7 @@ export interface Budget {
     uid: string;
     category: string;
     amount: number; // Changed from number | null to number, assuming 0 or delete for "no budget"
-    period: string;
+    period: 'monthly' | 'quarterly' | 'annual' | string;
     alert_enabled: boolean;
     alert_threshold_percent: number;
 }
@@ -42,6 +42,7 @@ export const useBudget = (scope: 'personal' | 'household' = 'personal') => {
     const saveBudget = async (
         category: string,
         amount: number | null,
+        period: Budget['period'] = 'monthly',
         alertThresholdPercent?: number,
         alertEnabled?: boolean,
     ) => {
@@ -50,18 +51,18 @@ export const useBudget = (scope: 'personal' | 'household' = 'personal') => {
         try {
             if (amount === null) {
                 // Delete
-                await apiFetch(`/budgets/${category}`, {
+                await apiFetch(`/budgets/${category}?scope=${scope}`, {
                     method: 'DELETE'
                 });
             } else {
                 // Upsert
-                await apiFetch('/budgets/', {
+                await apiFetch(`/budgets/?scope=${scope}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         category,
                         amount,
-                        period: 'monthly',
+                        period,
                         alert_threshold_percent: alertThresholdPercent ?? 0.8,
                         alert_enabled: alertEnabled ?? true,
                     })
@@ -76,7 +77,7 @@ export const useBudget = (scope: 'personal' | 'household' = 'personal') => {
     const resetBudgets = async () => {
         if (!user) return;
         try {
-            await apiFetch('/budgets/', {
+            await apiFetch(`/budgets/?scope=${scope}`, {
                 method: 'DELETE'
             });
             await fetchBudgets();
@@ -85,5 +86,19 @@ export const useBudget = (scope: 'personal' | 'household' = 'personal') => {
         }
     };
 
-    return { budgets, saveBudget, resetBudgets, loading, refetch: fetchBudgets };
+    const bulkSetPeriod = async (period: Budget['period']) => {
+        if (!user) return;
+        try {
+            await apiFetch(`/budgets/bulk-period?scope=${scope}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ period }),
+            });
+            await fetchBudgets();
+        } catch (e) {
+            console.error("Failed to bulk update budget periods", e);
+        }
+    };
+
+    return { budgets, saveBudget, resetBudgets, bulkSetPeriod, loading, refetch: fetchBudgets };
 };

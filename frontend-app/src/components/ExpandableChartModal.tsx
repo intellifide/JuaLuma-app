@@ -54,7 +54,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const sortedData = [...data].sort((a, b) => b.date.localeCompare(a.date))
 
     const height = 520
-    const padding = { top: 40, right: 40, bottom: 80, left: 20 }
+    const padding = { top: 60, right: 40, bottom: 80, left: 20 }
     const minPointSpacing = 64
     const minWidth = 900
     const width = Math.max(
@@ -66,7 +66,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
 
     const values = sortedData.map(d => d.value)
     const min = Math.min(...values) * 0.95
-    const max = Math.max(...values) * 1.05
+    const max = Math.max(...values) * 1.08
     const range = max - min || 1
 
     const span = Math.max(sortedData.length - 1, 1)
@@ -139,7 +139,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
       .map(d => ({ ...d, value: Math.abs(d.value) }))
 
     const height = 520
-    const padding = { top: 40, right: 40, bottom: 80, left: 20 }
+    const padding = { top: 60, right: 40, bottom: 80, left: 20 }
     const minGroupSpacing = 72
     const minWidth = 900
     const seriesLength = Math.max(normalizedIncome.length, normalizedExpenses.length, 1)
@@ -150,7 +150,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
     const drawWidth = width - padding.left - padding.right
     const drawHeight = height - padding.top - padding.bottom
     const allValues = [...normalizedIncome.map(d => d.value), ...normalizedExpenses.map(d => d.value)]
-    const max = Math.max(1, ...allValues) * 1.1
+    const max = Math.max(1, ...allValues) * 1.3
     const groupWidth = drawWidth / seriesLength
     const barWidth = Math.max(12, Math.min(32, groupWidth * 0.35))
     const barGap = Math.min(8, groupWidth * 0.12)
@@ -294,7 +294,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                     </span>
                   ))}
                 </div>
-                <div className="chart-scroll-area">
+                <div className="chart-scroll-area pt-10">
                   <div className="chart-track" style={{ width: lineChartData.width, height: lineChartData.height }}>
                     <svg
                       ref={svgRef}
@@ -382,47 +382,54 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                 ))}
 
                 {/* Hover tooltip */}
-                {hoveredPoint && (
-                  <g>
-                    <line
-                      x1={hoveredPoint.x}
-                      y1={lineChartData.padding.top}
-                      x2={hoveredPoint.x}
-                      y2={lineChartData.height - lineChartData.padding.bottom}
-                      stroke="#7C3AED"
-                      strokeWidth="2"
-                      strokeDasharray="4 4"
-                      opacity="0.5"
-                    />
-                    <rect
-                      x={hoveredPoint.x - 80}
-                      y={hoveredPoint.y - 60}
-                      width="160"
-                      height="50"
-                      fill="#1e293b"
-                      stroke="#7C3AED"
-                      strokeWidth="2"
-                      rx="8"
-                      opacity="0.95"
-                    />
-                    <text
-                      x={hoveredPoint.x}
-                      y={hoveredPoint.y - 40}
-                      textAnchor="middle"
-                      className="text-sm fill-white font-semibold"
-                    >
-                      {formatCurrency(hoveredPoint.value)}
-                    </text>
-                    <text
-                      x={hoveredPoint.x}
-                      y={hoveredPoint.y - 22}
-                      textAnchor="middle"
-                      className="text-xs fill-gray-300"
-                    >
-                      {parseDateUTC(hoveredPoint.date).toLocaleDateString(undefined, { timeZone })}
-                    </text>
-                  </g>
-                )}
+                {hoveredPoint && (() => {
+                  const tooltipWidth = 160;
+                  const tooltipHeight = 50;
+                  const tooltipX = Math.max(10, Math.min(lineChartData.width - tooltipWidth - 10, hoveredPoint.x - tooltipWidth / 2));
+                  const tooltipY = Math.max(10, hoveredPoint.y - tooltipHeight - 10);
+                  
+                  return (
+                    <g>
+                      <line
+                        x1={hoveredPoint.x}
+                        y1={lineChartData.padding.top}
+                        x2={hoveredPoint.x}
+                        y2={lineChartData.height - lineChartData.padding.bottom}
+                        stroke="#7C3AED"
+                        strokeWidth="2"
+                        strokeDasharray="4 4"
+                        opacity="0.5"
+                      />
+                      <rect
+                        x={tooltipX}
+                        y={tooltipY}
+                        width={tooltipWidth}
+                        height={tooltipHeight}
+                        fill="#1e293b"
+                        stroke="#7C3AED"
+                        strokeWidth="2"
+                        rx="8"
+                        opacity="0.95"
+                      />
+                      <text
+                        x={tooltipX + tooltipWidth / 2}
+                        y={tooltipY + 20}
+                        textAnchor="middle"
+                        className="text-sm fill-white font-semibold"
+                      >
+                        {formatCurrency(hoveredPoint.value)}
+                      </text>
+                      <text
+                        x={tooltipX + tooltipWidth / 2}
+                        y={tooltipY + 38}
+                        textAnchor="middle"
+                        className="text-xs fill-gray-300"
+                      >
+                        {parseDateUTC(hoveredPoint.date).toLocaleDateString(undefined, { timeZone })}
+                      </text>
+                    </g>
+                  );
+                })()}
 
                 {/* X-axis labels */}
                 {lineChartData.xLabels.map((label, i) => (
@@ -478,7 +485,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                     </span>
                   ))}
                 </div>
-                <div className="chart-scroll-area">
+                <div className="chart-scroll-area pt-10">
                   <div className="chart-track" style={{ width: barChartData.width, height: barChartData.height }}>
                     <svg
                       viewBox={`0 0 ${barChartData.width} ${barChartData.height}`}

@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { supportService, TicketCreate } from '../../services/support';
 import { useToast } from '../ui/Toast';
+import { Select } from '../ui/Select';
 
 interface CreateTicketModalProps {
     open: boolean;
@@ -66,10 +67,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ open, onCl
                     <label htmlFor="category" className="block text-sm font-bold mb-1">
                         Category
                     </label>
-                    <select
+                    <Select
                         id="category"
                         name="category"
-                        className="form-select w-full"
                         value={formData.category}
                         onChange={handleChange}
                         required
@@ -78,7 +78,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ open, onCl
                         <option value="billing">Billing & Payments</option>
                         <option value="technical">Technical Support</option>
                         <option value="feature_request">Feature Request</option>
-                    </select>
+                    </Select>
                 </div>
 
 

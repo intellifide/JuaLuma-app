@@ -8,6 +8,7 @@ import { widgetService } from '../../services/widgets';
 import { developerService, DeveloperPayout } from '../../services/developers';
 import { Widget, PaginatedResponse } from '../../types';
 import { Link, useNavigate } from 'react-router-dom';
+import { Select } from '../../components/ui/Select';
 
 export const DeveloperDashboard = () => {
     const { profile } = useAuth();
@@ -229,8 +230,8 @@ export const DeveloperDashboard = () => {
                             </div>
                             <div>
                                 <label className="block text-sm text-text-secondary mb-1">Category</label>
-                                <select
-                                    className="input w-full"
+                                <Select
+                                    variant="input"
                                     value={submitForm.category}
                                     onChange={e => setSubmitForm({ ...submitForm, category: e.target.value })}
                                 >
@@ -239,7 +240,7 @@ export const DeveloperDashboard = () => {
                                     <option value="productivity">Productivity</option>
                                     <option value="analysis">Analysis</option>
                                     <option value="utility">Utility</option>
-                                </select>
+                                </Select>
                             </div>
                             <div>
                                 <label className="block text-sm text-text-secondary mb-1">Version</label>

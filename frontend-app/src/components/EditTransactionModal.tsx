@@ -7,6 +7,7 @@ import { Button } from './ui/Button'
 import { useToast } from './ui/Toast'
 import { updateTransaction } from '../services/transactions'
 import { Transaction } from '../types'
+import { Select } from './ui/Select'
 import { useUserTimeZone } from '../hooks/useUserTimeZone'
 import { formatDateTime } from '../utils/datetime'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
@@ -205,10 +206,9 @@ export const EditTransactionModal = ({ open, transaction, onClose, onSuccess }: 
           <label htmlFor="category" className="block text-sm font-bold mb-1">
             Category
           </label>
-          <select
+          <Select
             id="category"
             name="category"
-            className="form-select w-full"
             value={formData.category}
             onChange={handleChange}
           >
@@ -218,7 +218,7 @@ export const EditTransactionModal = ({ open, transaction, onClose, onSuccess }: 
                 {cat}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>

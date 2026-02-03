@@ -7,15 +7,20 @@ export type DashboardPreferences = {
   insightsPeriod: InsightsPeriod
 }
 
-const STORAGE_KEY = 'jualuma_dashboard_preferences'
+const STORAGE_KEY_PREFIX = 'jualuma_dashboard_preferences'
 
 const DEFAULT_PREFERENCES: DashboardPreferences = {
   insightsPeriod: '1m',
 }
 
-export const loadDashboardPreferences = (): DashboardPreferences => {
+const getDashboardPreferencesStorageKey = (uid?: string | null): string => {
+  if (!uid) return `${STORAGE_KEY_PREFIX}_anon`
+  return `${STORAGE_KEY_PREFIX}_${uid}`
+}
+
+export const loadDashboardPreferences = (uid?: string | null): DashboardPreferences => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(getDashboardPreferencesStorageKey(uid))
     if (!stored) return DEFAULT_PREFERENCES
     const parsed = JSON.parse(stored)
     return { ...DEFAULT_PREFERENCES, ...parsed }
@@ -25,11 +30,14 @@ export const loadDashboardPreferences = (): DashboardPreferences => {
   }
 }
 
-export const saveDashboardPreferences = (preferences: Partial<DashboardPreferences>): void => {
+export const saveDashboardPreferences = (
+  preferences: Partial<DashboardPreferences>,
+  uid?: string | null,
+): void => {
   try {
-    const current = loadDashboardPreferences()
+    const current = loadDashboardPreferences(uid)
     const updated = { ...current, ...preferences }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    localStorage.setItem(getDashboardPreferencesStorageKey(uid), JSON.stringify(updated))
   } catch (error) {
     console.error('Failed to save dashboard preferences:', error)
   }

@@ -241,13 +241,14 @@ def update_widget(
     db: Session = Depends(get_db),
 ) -> Widget:
     """Update a widget. Owner only."""
-    widget = db.query(Widget).filter(Widget.id == widget_id).first()
+    widget = (
+        db.query(Widget)
+        .filter(Widget.id == widget_id, Widget.developer_uid == current_user.uid)
+        .first()
+    )
     if not widget:
-        raise HTTPException(status_code=404, detail="The specified widget could not be found.")
-
-    if widget.developer_uid != current_user.uid:
         raise HTTPException(
-            status_code=403, detail="You do not have permission to edit this widget."
+            status_code=404, detail="The specified widget could not be found."
         )
 
     updated = False
@@ -296,14 +297,13 @@ def delete_widget(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Soft delete a widget. Owner only."""
-    widget = db.query(Widget).filter(Widget.id == widget_id).first()
+    widget = (
+        db.query(Widget)
+        .filter(Widget.id == widget_id, Widget.developer_uid == current_user.uid)
+        .first()
+    )
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
-
-    if widget.developer_uid != current_user.uid:
-        raise HTTPException(
-            status_code=403, detail="You do not have permission to delete this widget."
-        )
 
     widget.status = "removed"
 

@@ -375,7 +375,10 @@ a:hover {
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   background: var(--bg-primary);
-  transition: color var(--transition-base), border-color var(--transition-base), background var(--transition-base);
+  transition:
+    color var(--transition-base),
+    border-color var(--transition-base),
+    background var(--transition-base);
 }
 
 .info-popover-trigger:hover {
@@ -2073,7 +2076,6 @@ input[type="number"] {
   opacity: 0.7;
 }
 
-
 .chat-input-container {
   display: flex;
   gap: var(--spacing-sm);
@@ -2118,7 +2120,8 @@ input[type="number"] {
 
 .chart-scroll-area {
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
+  padding-top: 2rem;
 }
 
 .chart-track {

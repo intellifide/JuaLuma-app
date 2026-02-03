@@ -1127,7 +1127,12 @@ def _process_single_transaction(
         d = date.fromisoformat(d)
     txn_ts = datetime.combine(d, datetime.min.time(), tzinfo=UTC)
 
-    resolved_account = db.query(Account).filter(Account.id == account_id).first()
+    # Defense-in-depth: scope by uid in case this helper is ever used with untrusted IDs.
+    resolved_account = (
+        db.query(Account)
+        .filter(Account.id == account_id, Account.uid == uid)
+        .first()
+    )
     account_type = resolved_account.account_type if resolved_account else None
     is_web3 = account_type == "web3"
 
@@ -1292,7 +1297,8 @@ def _save_sync_batch(
     txns: list[dict],
     currency_fallback: str,
 ) -> tuple[int, int, list[uuid.UUID]]:
-    account = db.query(Account).filter(Account.id == account_id).first()
+    # Defense-in-depth: scope by uid in case this helper is ever used with untrusted IDs.
+    account = db.query(Account).filter(Account.id == account_id, Account.uid == uid).first()
     is_web3 = account and account.account_type == "web3"
     synced = 0
     new_count = 0

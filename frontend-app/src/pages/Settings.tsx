@@ -9,10 +9,13 @@ import type { Household } from '../types/household';
 import type { UserProfile } from '../hooks/useAuth';
 
 import Switch from '../components/ui/Switch';
+import { Select } from '../components/ui/Select';
+import { TimeZonePicker } from '../components/TimeZonePicker';
 import { settingsService, NotificationPreference } from '../services/settingsService';
 import { useToast } from '../components/ui/Toast';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatDate, formatDateTime } from '../utils/datetime';
+import { digestService, DigestSettings } from '../services/digestService';
 
 type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref' | 'time_zone'>> & {
   phone_number?: string | null;
@@ -40,7 +43,6 @@ const getDefaultSettings = () => ({
     budgetThreshold: true,
     recurringBill: true,
     syncFailure: true,
-    weeklyDigest: true,
     supportUpdates: true,
     subscriptionUpdates: true,
   },
@@ -50,7 +52,6 @@ const getDefaultSettings = () => ({
     budgetThreshold: true,
     recurringBill: true,
     syncFailure: true,
-    weeklyDigest: true,
     supportUpdates: true,
     subscriptionUpdates: true,
   },
@@ -60,7 +61,6 @@ const getDefaultSettings = () => ({
     budgetThreshold: true,
     recurringBill: true,
     syncFailure: true,
-    weeklyDigest: true,
     supportUpdates: true,
     subscriptionUpdates: true,
   },
@@ -70,7 +70,6 @@ const getDefaultSettings = () => ({
     budgetThreshold: true,
     recurringBill: true,
     syncFailure: true,
-    weeklyDigest: true,
     supportUpdates: true,
     subscriptionUpdates: true,
   },
@@ -100,9 +99,6 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
   );
   const [saving, setSaving] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
-  const timeZones = typeof Intl.supportedValuesOf === 'function'
-    ? Intl.supportedValuesOf('timeZone')
-    : ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'];
 
   useEffect(() => {
     if (profile) {
@@ -253,16 +249,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
 
       <div>
         <label htmlFor="time-zone" className="block text-sm font-medium text-text-secondary mb-1">Local Time Zone</label>
-        <select
-          id="time-zone"
-          className="form-input w-full"
-          value={timeZone}
-          onChange={(e) => setTimeZone(e.target.value)}
-        >
-          {timeZones.map((tz) => (
-            <option key={tz} value={tz}>{tz}</option>
-          ))}
-        </select>
+        <TimeZonePicker value={timeZone} onChange={setTimeZone} />
       </div>
 
       <div>
@@ -294,15 +281,14 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
         <label htmlFor="profile-display-pref" className="block text-sm font-medium text-text-secondary mb-1">
           Display Name Preference
         </label>
-        <select
+        <Select
           id="profile-display-pref"
-          className="form-select w-full"
           value={displayNamePref}
           onChange={(e) => setDisplayNamePref(e.target.value)}
         >
           <option value="name">First Name + Last Name</option>
           <option value="username">Username (if set)</option>
-        </select>
+        </Select>
         <p className="text-xs text-text-muted mt-1">
           How your name appears in transactions and other places.
         </p>
@@ -369,17 +355,20 @@ export const Settings = () => {
   const [settings, setSettings] = useState<SettingsState>(getDefaultSettings());
 
   const [notificationSaving, setNotificationSaving] = useState(false);
+  const [digestSettings, setDigestSettings] = useState<DigestSettings | null>(null);
+  const [digestSaving, setDigestSaving] = useState(false);
 
   // Load Settings from Backend
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const [prefs, userProfile, notificationSettings] = await Promise.all([
+        const [prefs, userProfile, notificationSettings, digest] = await Promise.all([
           settingsService.getNotificationPreferences(),
           // Use auth profile if available, but for data_sharing_consent we might need fresh fetch or check if profile includes it
           // Assuming profile from useAuth is up to date or we fetch /me
           apiFetch('/users/me').then(res => res.json()),
           settingsService.getNotificationSettings(),
+          digestService.getSettings(),
         ]);
 
         const newSettings = getDefaultSettings();
@@ -439,6 +428,7 @@ export const Settings = () => {
         }
 
         setSettings(newSettings);
+        setDigestSettings(digest);
 
       } catch (err) {
         console.error("Failed to load settings", err);
@@ -539,6 +529,29 @@ export const Settings = () => {
       toast.show('Failed to update notification settings', 'error');
     } finally {
       setNotificationSaving(false);
+    }
+  };
+
+  const handleDigestSave = async () => {
+    if (!digestSettings) return;
+    setDigestSaving(true);
+    try {
+      const updated = await digestService.updateSettings({
+        enabled: digestSettings.enabled,
+        cadence: digestSettings.cadence,
+        weekly_day_of_week: digestSettings.weekly_day_of_week,
+        day_of_month: digestSettings.day_of_month,
+        send_time_local: digestSettings.send_time_local,
+        delivery_in_app: digestSettings.delivery_in_app,
+        delivery_email: digestSettings.delivery_email,
+      });
+      setDigestSettings(updated);
+      toast.show('Digest settings updated', 'success');
+    } catch (e) {
+      console.error(e);
+      toast.show('Failed to update digest settings', 'error');
+    } finally {
+      setDigestSaving(false);
     }
   };
 
@@ -1091,11 +1104,6 @@ export const Settings = () => {
                     label="Sync failure notifications"
                   />
                   <Switch
-                    checked={settings.email.weeklyDigest}
-                    onChange={(c) => handleEmailToggle('weeklyDigest', c)}
-                    label="Weekly financial digest"
-                  />
-                  <Switch
                     checked={settings.email.supportUpdates}
                     onChange={(c) => handleEmailToggle('supportUpdates', c)}
                     label="Support ticket updates"
@@ -1133,11 +1141,6 @@ export const Settings = () => {
                     checked={settings.sms.syncFailure}
                     onChange={(c) => handleSmsToggle('syncFailure', c)}
                     label="Sync failure notifications"
-                  />
-                  <Switch
-                    checked={settings.sms.weeklyDigest}
-                    onChange={(c) => handleSmsToggle('weeklyDigest', c)}
-                    label="Weekly financial digest"
                   />
                   <Switch
                     checked={settings.sms.supportUpdates}
@@ -1179,11 +1182,6 @@ export const Settings = () => {
                     label="Sync failure notifications"
                   />
                   <Switch
-                    checked={settings.push.weeklyDigest}
-                    onChange={(c) => handlePushToggle('weeklyDigest', c)}
-                    label="Weekly financial digest"
-                  />
-                  <Switch
                     checked={settings.push.supportUpdates}
                     onChange={(c) => handlePushToggle('supportUpdates', c)}
                     label="Support ticket updates"
@@ -1223,11 +1221,6 @@ export const Settings = () => {
                     label="Sync failure notifications"
                   />
                   <Switch
-                    checked={settings.inApp.weeklyDigest}
-                    onChange={(c) => handleInAppToggle('weeklyDigest', c)}
-                    label="Weekly financial digest"
-                  />
-                  <Switch
                     checked={settings.inApp.supportUpdates}
                     onChange={(c) => handleInAppToggle('supportUpdates', c)}
                     label="Support ticket updates"
@@ -1238,6 +1231,142 @@ export const Settings = () => {
                     label="Subscription updates"
                   />
                 </div>
+
+                <h3 className="mt-8 mb-4 font-semibold">Financial Digest</h3>
+                {digestSettings ? (
+                  <div className="space-y-4">
+                    <Switch
+                      checked={digestSettings.enabled}
+                      onChange={(c) => setDigestSettings((s) => (s ? { ...s, enabled: c } : s))}
+                      label="Enable scheduled digest"
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          Cadence
+                        </label>
+                        <Select
+                          value={digestSettings.cadence}
+                          onChange={(e) =>
+                            setDigestSettings((s) => (s ? { ...s, cadence: e.target.value as DigestSettings['cadence'] } : s))
+                          }
+                        >
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                          <option value="annually">Annually</option>
+                        </Select>
+                        <p className="text-xs text-text-muted mt-1">
+                          Schedule uses your local time zone; runner executes in UTC in production.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          Time of day
+                        </label>
+                        <input
+                          type="time"
+                          className="form-input w-full"
+                          value={digestSettings.send_time_local}
+                          onChange={(e) =>
+                            setDigestSettings((s) => (s ? { ...s, send_time_local: e.target.value } : s))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    {digestSettings.cadence === 'weekly' ? (
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          Day of week
+                        </label>
+                        <Select
+                          value={digestSettings.weekly_day_of_week}
+                          onChange={(e) =>
+                            setDigestSettings((s) =>
+                              s ? { ...s, weekly_day_of_week: Number(e.target.value) } : s,
+                            )
+                          }
+                        >
+                          <option value={0}>Monday</option>
+                          <option value={1}>Tuesday</option>
+                          <option value={2}>Wednesday</option>
+                          <option value={3}>Thursday</option>
+                          <option value={4}>Friday</option>
+                          <option value={5}>Saturday</option>
+                          <option value={6}>Sunday</option>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          Day of month
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={28}
+                          step={1}
+                          className="form-input w-full"
+                          value={digestSettings.day_of_month}
+                          onChange={(e) =>
+                            setDigestSettings((s) =>
+                              s ? { ...s, day_of_month: Number(e.target.value) } : s,
+                            )
+                          }
+                        />
+                        <p className="text-xs text-text-muted mt-1">
+                          Limited to 1–28 to stay valid across all months.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          Delivery
+                        </label>
+                        <div className="space-y-3">
+                          <Switch
+                            checked={digestSettings.delivery_in_app}
+                            onChange={(c) =>
+                              setDigestSettings((s) => (s ? { ...s, delivery_in_app: c } : s))
+                            }
+                            label="In-app (AI chat history)"
+                          />
+                          <Switch
+                            checked={digestSettings.delivery_email}
+                            onChange={(c) =>
+                              setDigestSettings((s) => (s ? { ...s, delivery_email: c } : s))
+                            }
+                            label="Email"
+                          />
+                        </div>
+                      </div>
+                      <div />
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleDigestSave}
+                        className="btn btn-primary"
+                        disabled={digestSaving}
+                      >
+                        {digestSaving ? 'Saving...' : 'Save Digest Settings'}
+                      </button>
+                      {digestSettings.next_send_at_utc ? (
+                        <p className="text-xs text-text-muted">
+                          Next run: {formatDateTime(digestSettings.next_send_at_utc, timeZone)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-text-muted">Loading digest settings...</p>
+                )}
 
                 <h3 className="mt-8 mb-4 font-semibold">Notification Triggers</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

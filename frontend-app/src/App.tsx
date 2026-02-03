@@ -1,6 +1,7 @@
 // Updated 2025-01-25 18:30 CST by Antigravity
 
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
+import { SWRConfig } from 'swr'
 import { AuthProvider } from './hooks/useAuth'
 import { ThemeProvider } from './hooks/useTheme'
 import { CookieConsentBanner } from './components/CookieConsentBanner'
@@ -46,9 +47,20 @@ function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ThemeProvider>
-        <AuthProvider>
-          <CookieConsentBanner />
-          <Routes>
+        <SWRConfig
+          value={{
+            // Avoid SWR retry storms when the backend rate limiter returns 429s.
+            shouldRetryOnError: (error: any) => {
+              const status = error?.response?.status ?? error?.status
+              return status !== 429
+            },
+            errorRetryInterval: 5000,
+            dedupingInterval: 1000,
+          }}
+        >
+          <AuthProvider>
+            <CookieConsentBanner />
+            <Routes>
             {/* --- Root Redirect --- */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -90,8 +102,9 @@ function App() {
 
 
           
-          </Routes>
-        </AuthProvider>
+            </Routes>
+          </AuthProvider>
+        </SWRConfig>
       </ThemeProvider>
     </BrowserRouter>
   )

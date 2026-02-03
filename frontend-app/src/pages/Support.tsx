@@ -80,7 +80,7 @@ const SystemStatus = ({ onClose }: { onClose: () => void }) => {
                     ) : (
                         <div className="space-y-2 p-2">
                             {Object.entries(serviceMap).map(([key, label]) => {
-                                const value = status?.[key];
+                                const value = status?.[key] as string | undefined;
                                 if (!value && key !== 'status') return null; // Skip if service result not in response
                                 
                                 return (

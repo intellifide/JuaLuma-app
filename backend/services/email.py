@@ -58,6 +58,10 @@ class EmailClient(Protocol):
         """Notify support team about a ticket update."""
         ...
 
+    def send_financial_digest(self, to_email: str, subject: str, body: str) -> None:
+        """Send an opt-in financial digest email."""
+        ...
+
 
 class TestmailEmailClient:
     """Email client using Testmail.app API for development testing."""
@@ -105,6 +109,16 @@ class TestmailEmailClient:
             "We do not include sensitive details in emails."
         )
         self._send_via_api(to_email, title, body)
+
+    def send_financial_digest(self, to_email: str, subject: str, body: str) -> None:
+        # User opted in to receive a digest via email; keep content high-level and avoid account numbers.
+        footer = (
+            "\n\n---\n"
+            "This digest was generated for you by JuaLuma.\n"
+            "You can view more details securely in the app: "
+            f"{settings.frontend_url}/ai\n"
+        )
+        self._send_via_api(to_email, subject, f"{body}{footer}")
 
     def send_subscription_welcome(self, to_email: str, plan_name: str) -> None:
         """Send welcome email for new subscription."""
@@ -282,6 +296,32 @@ class SmtpEmailClient:
             logger.info(f"Sent generic alert to {to_email}")
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
+
+    def send_financial_digest(self, to_email: str, subject: str, body: str) -> None:
+        msg = MIMEMultipart()
+        msg["From"] = self.from_email
+        msg["To"] = to_email
+        msg["Subject"] = subject
+
+        footer = (
+            "\n\n---\n"
+            "This digest was generated for you by JuaLuma.\n"
+            f"View more details securely: {settings.frontend_url}/ai\n"
+        )
+        msg.attach(MIMEText(f"{body}{footer}", "plain"))
+
+        try:
+            if self.host == "mock":
+                logger.info(f"[SMTP-DIGEST] To: {to_email} | Subject: {subject}")
+                return
+
+            with smtplib.SMTP(self.host, self.port) as server:
+                server.starttls()
+                self._login_if_configured(server)
+                server.send_message(msg)
+            logger.info("Sent financial digest email to %s", to_email)
+        except Exception as e:
+            logger.error("Failed to send financial digest email: %s", e)
 
     def send_subscription_welcome(self, to_email: str, plan_name: str) -> None:
         """

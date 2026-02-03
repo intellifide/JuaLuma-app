@@ -873,7 +873,11 @@ def delete_transaction(
         )
 
     # Reverse the balance change when deleting a manual transaction
-    account = db.query(Account).filter(Account.id == txn.account_id).first()
+    account = (
+        db.query(Account)
+        .filter(Account.id == txn.account_id, Account.uid == current_user.uid)
+        .first()
+    )
     balance_before = None
     balance_after = None
     if account:

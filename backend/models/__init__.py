@@ -9,6 +9,7 @@ from .base import Base, SessionLocal, engine, get_session
 from .budget import Budget
 from .category_rule import CategoryRule
 from .developer import Developer
+from .digest import DigestMessage, DigestSettings
 from .household import Household, HouseholdInvite, HouseholdMember
 from .ledger import LedgerHotEssential, LedgerHotFree
 from .legal import LegalAgreementAcceptance
@@ -41,6 +42,8 @@ __all__ = [
     "get_session",
     "User",
     "Developer",
+    "DigestSettings",
+    "DigestMessage",
     "Subscription",
     "SubscriptionTier",
     "Account",

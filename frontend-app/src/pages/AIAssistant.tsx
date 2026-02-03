@@ -11,6 +11,7 @@ import { aiService, QuotaStatus } from '../services/aiService';
 import { AIPrivacyModal } from '../components/AIPrivacyModal';
 import { AISidebar } from '../components/AISidebar';
 import { documentService, Document } from '../services/documentService';
+import { digestService } from '../services/digestService';
 import { legalService } from '../services/legal';
 import { LEGAL_AGREEMENTS } from '../constants/legal';
 
@@ -86,6 +87,7 @@ export default function AIAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [digestThreads, setDigestThreads] = useState<Thread[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -121,6 +123,7 @@ export default function AIAssistant() {
     if (!user?.uid) {
       // Clear state if no user
       setThreads([]);
+      setDigestThreads([]);
       setProjects([]);
       setMessages([]);
       setCurrentThreadId(null);
@@ -163,6 +166,25 @@ export default function AIAssistant() {
         }
       }
     }
+
+    // Load server-side digest threads (do not persist to localStorage).
+    digestService
+      .listThreads()
+      .then((items) => {
+        const mapped: Thread[] = items.map((t) => ({
+          id: `digest:${t.thread_id}`,
+          title: t.title,
+          timestamp: t.timestamp,
+          preview: t.preview,
+          messages: [],
+          projectId: null,
+        }))
+        setDigestThreads(mapped)
+      })
+      .catch((err) => {
+        console.error('Failed to load digest threads:', err)
+        setDigestThreads([])
+      })
   }, [user?.uid, threadsStorageKey, threadStorageKey, storageKey, projectsStorageKey]);
 
   useEffect(() => {
@@ -247,15 +269,42 @@ export default function AIAssistant() {
   };
 
   const handleSelectThread = (threadId: string) => {
-    const thread = threads.find(t => t.id === threadId);
-    if (thread) {
-      setCurrentThreadId(threadId);
-      setMessages(thread.messages);
-      localStorage.setItem(threadStorageKey, threadId);
+    if (threadId.startsWith('digest:')) {
+      const digestId = threadId.slice('digest:'.length)
+      setCurrentThreadId(threadId)
+      digestService
+        .getThread(digestId)
+        .then((data) => {
+          const mappedMessages: Message[] = data.messages.map((m) => ({
+            role: m.role,
+            text: m.text,
+            time: formatTime(m.time, timeZone),
+          }))
+          setMessages(mappedMessages)
+        })
+        .catch((err) => {
+          console.error('Failed to load digest thread messages:', err)
+          setMessages([
+            {
+              role: 'assistant',
+              text: 'Unable to load this digest right now.',
+              time: formatTime(new Date().toISOString(), timeZone),
+            },
+          ])
+        })
+      return
     }
+
+    const thread = threads.find((t) => t.id === threadId)
+    if (!thread) return
+
+    setCurrentThreadId(threadId)
+    setMessages(thread.messages)
+    localStorage.setItem(threadStorageKey, threadId)
   };
 
   const handleDeleteThread = (threadId: string) => {
+    if (threadId.startsWith('digest:')) return
     // Remove from threads list
     const updatedThreads = threads.filter(t => t.id !== threadId);
     setThreads(updatedThreads);
@@ -458,13 +507,13 @@ export default function AIAssistant() {
         {/* Sidebar */}
         {sidebarOpen && (
           <aside className="w-80 flex-shrink-0">
-            <AISidebar
-              documents={documents}
-              projects={projects}
-              threads={threads}
-              currentThreadId={currentThreadId}
-              onSelectThread={handleSelectThread}
-              onDeleteThread={handleDeleteThread}
+      <AISidebar
+        documents={documents}
+        projects={projects}
+        threads={[...digestThreads, ...threads]}
+        currentThreadId={currentThreadId}
+        onSelectThread={handleSelectThread}
+        onDeleteThread={handleDeleteThread}
               onCreateProject={handleCreateProject}
               onDeleteProject={handleDeleteProject}
               onAssignThreadToProject={handleAssignThreadToProject}

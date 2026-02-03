@@ -8,6 +8,7 @@ import { useAccounts } from '../hooks/useAccounts'
 import { useToast } from './ui/Toast'
 import { createTransaction } from '../services/transactions'
 import { Account } from '../types'
+import { Select } from './ui/Select'
 import { getAccountCategoryDisplay } from '../utils/accountCategories'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
 
@@ -102,10 +103,9 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
           <label htmlFor="accountId" className="block text-sm font-bold mb-1">
             Account <span className="text-red-500">*</span>
           </label>
-          <select
+          <Select
             id="accountId"
             name="accountId"
-            className="form-select w-full"
             value={formData.accountId}
             onChange={handleChange}
             required
@@ -135,7 +135,7 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
                 )
               })
             )}
-          </select>
+          </Select>
           {accounts.length === 0 && (
             <p className="text-xs text-slate-500 mt-1">
               Please create a manual account first from the Accounts page.
@@ -181,10 +181,9 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
             <label htmlFor="currency" className="block text-sm font-bold mb-1">
               Currency
             </label>
-            <select
+            <Select
               id="currency"
               name="currency"
-              className="form-select w-full"
               value={formData.currency}
               onChange={handleChange}
             >
@@ -206,7 +205,7 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
                 <option value="USDC">USDC (USD Coin)</option>
                 <option value="DAI">DAI (Dai Stablecoin)</option>
               </optgroup>
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -230,10 +229,9 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
           <label htmlFor="category" className="block text-sm font-bold mb-1">
             Category
           </label>
-          <select
+          <Select
             id="category"
             name="category"
-            className="form-select w-full"
             value={formData.category}
             onChange={handleChange}
           >
@@ -243,7 +241,7 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
                 {cat}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>

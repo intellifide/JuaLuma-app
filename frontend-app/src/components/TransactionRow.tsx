@@ -5,6 +5,7 @@ import { Transaction } from '../types'
 import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories'
 import { useUserTimeZone } from '../hooks/useUserTimeZone'
 import { formatDate } from '../utils/datetime'
+import { Select } from './ui/Select'
 
 type TransactionRowProps = {
   transaction: Transaction
@@ -67,8 +68,8 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
       </td>
       <td className="px-4 py-3 text-sm">
         <div className="flex items-center gap-2">
-          <select
-            className="form-select px-2 py-1 text-sm"
+          <Select
+            className="px-2 py-1 text-sm"
             value={category}
             disabled={pending}
             onChange={(e) => handleCategoryChange(e.target.value)}
@@ -79,7 +80,7 @@ export const TransactionRow = ({ transaction, categories = defaultCategories, on
                 {c}
               </option>
             ))}
-          </select>
+          </Select>
           {category !== prevCategory && (
             <button
               type="button"

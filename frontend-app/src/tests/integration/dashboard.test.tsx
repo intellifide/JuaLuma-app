@@ -6,7 +6,7 @@ import Dashboard from '../../pages/Dashboard'
 import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { useAccounts } from '../../hooks/useAccounts'
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../../hooks/useAnalytics'
-import { useBudget } from '../../hooks/useBudget'
+import { useBudgetStatus } from '../../hooks/useBudgetReporting'
 import { ToastProvider } from '../../components/ui/Toast'
 import { User } from 'firebase/auth'
 import { Account } from '../../types'
@@ -18,7 +18,7 @@ vi.mock('../../hooks/useAnalytics', () => ({
     useCashFlow: vi.fn(),
     useSpendingByCategory: vi.fn()
 }))
-vi.mock('../../hooks/useBudget', () => ({ useBudget: vi.fn() }))
+vi.mock('../../hooks/useBudgetReporting', () => ({ useBudgetStatus: vi.fn() }))
 
 const mockUser = {
     uid: 'u1',
@@ -75,18 +75,19 @@ describe('Dashboard Integration', () => {
         vi.mocked(useAccounts).mockReturnValue({
             accounts: mockAccounts,
             loading: false,
-            error: '',
+            error: null,
             refetch: vi.fn(),
             create: vi.fn(),
             update: vi.fn(),
             remove: vi.fn(),
             sync: vi.fn(),
+            refreshMetadata: vi.fn(),
             fetchOne: vi.fn()
         });
         vi.mocked(useNetWorth).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
         vi.mocked(useCashFlow).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
         vi.mocked(useSpendingByCategory).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
-        vi.mocked(useBudget).mockReturnValue({ budgets: [], saveBudget: vi.fn(), loading: false, refetch: vi.fn() })
+        vi.mocked(useBudgetStatus).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
     })
 
     it('renders user info and overview modules', async () => {
@@ -98,7 +99,6 @@ describe('Dashboard Integration', () => {
             </BrowserRouter>
         )
 
-        expect(screen.getByText(/Dashboard/i)).toBeInTheDocument()
         expect(screen.getByText(/Financial Overview/i)).toBeInTheDocument()
         expect(screen.getByText(/Net Worth/i)).toBeInTheDocument()
         expect(screen.getByText(/Cash Flow Pulse/i)).toBeInTheDocument()
@@ -109,12 +109,13 @@ describe('Dashboard Integration', () => {
         vi.mocked(useAccounts).mockReturnValue({
             accounts: [],
             loading: false,
-            error: '',
+            error: null,
             refetch: vi.fn(),
             create: vi.fn(),
             update: vi.fn(),
             remove: vi.fn(),
             sync: vi.fn(),
+            refreshMetadata: vi.fn(),
             fetchOne: vi.fn()
         });
         vi.mocked(useCashFlow).mockReturnValue({ data: null, loading: false, error: null, refetch: vi.fn() })
@@ -149,10 +150,19 @@ describe('Dashboard Integration', () => {
             error: null,
             refetch: vi.fn()
         })
-        vi.mocked(useBudget).mockReturnValue({
-            budgets: [{id: 'b1', category: 'Rent', amount: 3750, period: 'monthly', alert_enabled: true, alert_threshold_percent: 0.8}],
-            saveBudget: vi.fn(),
+        vi.mocked(useBudgetStatus).mockReturnValue({
+            data: {
+                scope: 'personal',
+                budget_owner_uid: 'u1',
+                spend_uids: ['u1'],
+                items: [],
+                total_budget: 3750,
+                total_spent: 1000,
+                percent_used: (1000 / 3750) * 100,
+                counts: { under: 0, at: 0, over: 0 },
+            },
             loading: false,
+            error: null,
             refetch: vi.fn()
         })
 

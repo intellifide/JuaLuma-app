@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supportService } from '../services/support';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
+import { Select } from '../components/ui/Select';
 
 export const FeatureRequest = () => {
     const navigate = useNavigate();
@@ -78,13 +79,13 @@ ${problem}`;
 
                         <div className="mb-4">
                             <label htmlFor="fr-tier" className="form-label mb-1 block">Your Plan</label>
-                            <select id="fr-tier" name="tier" className="form-select w-full">
+                            <Select id="fr-tier" name="tier">
                                 <option value="">Select...</option>
                                 <option>Free</option>
                                 <option>Essential</option>
                                 <option>Pro</option>
                                 <option>Ultimate</option>
-                            </select>
+                            </Select>
                         </div>
                         <div className="mb-4">
                             <label htmlFor="fr-link" className="form-label mb-1 block">Reference URL (optional)</label>

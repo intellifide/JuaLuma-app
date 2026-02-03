@@ -13,11 +13,16 @@ export type Goal = {
   createdAt: string
 }
 
-const STORAGE_KEY = 'jualuma_goals'
+const STORAGE_KEY_PREFIX = 'jualuma_goals'
 
-export const loadGoals = (): Goal[] => {
+const getGoalsStorageKey = (uid?: string | null): string => {
+  if (!uid) return `${STORAGE_KEY_PREFIX}_anon`
+  return `${STORAGE_KEY_PREFIX}_${uid}`
+}
+
+export const loadGoals = (uid?: string | null): Goal[] => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(getGoalsStorageKey(uid))
     if (!stored) return []
     const parsed = JSON.parse(stored)
     return Array.isArray(parsed) ? parsed : []
@@ -27,9 +32,9 @@ export const loadGoals = (): Goal[] => {
   }
 }
 
-export const saveGoals = (goals: Goal[]): void => {
+export const saveGoals = (goals: Goal[], uid?: string | null): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(goals))
+    localStorage.setItem(getGoalsStorageKey(uid), JSON.stringify(goals))
   } catch (error) {
     console.error('Failed to save goals:', error)
   }

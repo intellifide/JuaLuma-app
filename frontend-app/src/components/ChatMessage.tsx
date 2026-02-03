@@ -25,19 +25,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time }) =>
                     <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
                         components={{
-                            code: ({ inline, className, children, ...props}) => {
-                                return inline ? (
-                                    <code className="bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
-                                        {children}
-                                    </code>
-                                ) : (
-                                    <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto my-2">
-                                        <code className={className} {...props}>
-                                            {children}
-                                        </code>
-                                    </pre>
-                                );
-                            },
+                            pre: ({ children }) => (
+                                <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto my-2">
+                                    {children}
+                                </pre>
+                            ),
+                            code: ({ className, children, ...props}) => (
+                                <code
+                                    className={className ?? "bg-black/20 px-1.5 py-0.5 rounded text-sm font-mono"}
+                                    {...props}
+                                >
+                                    {children}
+                                </code>
+                            ),
                             p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
                             ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
                             ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
