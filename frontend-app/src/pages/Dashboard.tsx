@@ -456,11 +456,10 @@ export default function Dashboard() {
   };
 
   const assetSnapshot = useMemo(() => {
-    const buckets: Record<'checking' | 'savings' | 'cash' | 'other', number> = {
+    const buckets: Record<'checking' | 'savings' | 'other_assets', number> = {
       checking: 0,
       savings: 0,
-      cash: 0,
-      other: 0,
+      other_assets: 0,
     };
 
     accounts.forEach((account) => {
@@ -477,19 +476,21 @@ export default function Dashboard() {
         buckets.savings += balance;
         return;
       }
-      if (account.accountType === 'manual') {
-        buckets.cash += balance;
-        return;
-      }
-      buckets.other += balance;
+      buckets.other_assets += balance;
+    });
+
+    manualAssets.forEach((asset) => {
+      if (asset.balanceType !== 'asset') return;
+      const value = asset.value || 0;
+      if (value <= 0) return;
+      buckets.other_assets += value;
     });
 
     const total = Object.values(buckets).reduce((sum, v) => sum + v, 0);
     const labelMap: Record<keyof typeof buckets, string> = {
       checking: 'Checking',
       savings: 'Savings',
-      cash: 'Cash',
-      other: 'Other liquid',
+      other_assets: 'Other assets',
     };
 
     const rows = (Object.keys(buckets) as Array<keyof typeof buckets>)
@@ -503,7 +504,7 @@ export default function Dashboard() {
       .sort((a, b) => b.amount - a.amount);
 
     return { total, rows };
-  }, [accounts]);
+  }, [accounts, manualAssets]);
 
   const debtSnapshot = useMemo(() => {
     const buckets: Record<
@@ -556,6 +557,42 @@ export default function Dashboard() {
       buckets.other += amount;
     });
 
+    manualAssets.forEach((asset) => {
+      if (asset.balanceType !== 'liability') return;
+      const amount = asset.value || 0;
+      if (amount <= 0) return;
+
+      const assetType = normalize(asset.assetType);
+      const name = (asset.name || '').toLowerCase();
+
+      if (assetType.includes('house') || assetType.includes('real_estate') || name.includes('mortgage')) {
+        buckets.mortgage += amount;
+        return;
+      }
+
+      if (assetType.includes('car') || name.includes('auto')) {
+        buckets.auto_loans += amount;
+        return;
+      }
+
+      if (name.includes('student')) {
+        buckets.student_loans += amount;
+        return;
+      }
+
+      if (name.includes('credit') || name.includes('card')) {
+        buckets.credit_cards += amount;
+        return;
+      }
+
+      if (name.includes('loan')) {
+        buckets.other_loans += amount;
+        return;
+      }
+
+      buckets.other += amount;
+    });
+
     const total = Object.values(buckets).reduce((sum, v) => sum + v, 0);
     const labelMap: Record<keyof typeof buckets, string> = {
       credit_cards: 'Credit cards',
@@ -577,7 +614,7 @@ export default function Dashboard() {
       .sort((a, b) => b.amount - a.amount);
 
     return { total, rows };
-  }, [accounts]);
+  }, [accounts, manualAssets]);
 
   const netWorthSeries = useMemo(() => {
     if (!insightsNetWorthData?.data) return [];
@@ -994,14 +1031,14 @@ export default function Dashboard() {
 	            <div className="flex items-start justify-between gap-3">
 	              <div>
 	                <h3 className="text-lg font-semibold">Asset Snapshot</h3>
-	                <p className="text-xs text-text-muted">Liquid assets (today)</p>
+	                <p className="text-xs text-text-muted">Assets (today)</p>
 	              </div>
 	              <InfoPopover label="Asset snapshot details">
-	                Where your liquid money sits (checking, savings, and cash). Excludes investments and debt balances.
+	                Breakdown of your assets across checking, savings, and everything else (investments, property, vehicles, crypto, etc). Includes manual assets and excludes liabilities.
 	              </InfoPopover>
 	            </div>
 	            {assetSnapshot.total <= 0 ? (
-	              <p className="text-sm text-text-muted">Add a checking or savings balance to see your liquid allocation.</p>
+	              <p className="text-sm text-text-muted">Add an asset balance to see your allocation.</p>
 	            ) : (
 	              <div className="space-y-3 text-sm">
 	                {assetSnapshot.rows.map((item) => (
@@ -1015,7 +1052,7 @@ export default function Dashboard() {
 	                    </div>
 	                  </div>
 	                ))}
-	                <p className="text-xs text-text-muted">Liquid total {formatCompactCurrency(assetSnapshot.total)}</p>
+	                <p className="text-xs text-text-muted">Total assets {formatCompactCurrency(assetSnapshot.total)}</p>
 	              </div>
 	            )}
 	          </div>
@@ -1028,7 +1065,7 @@ export default function Dashboard() {
 	                <p className="text-xs text-text-muted">Liabilities (today)</p>
 	              </div>
 	              <InfoPopover label="Debt snapshot details">
-	                Breakdown of outstanding balances for credit cards, loans, and mortgages.
+	                Breakdown of outstanding balances for credit cards, loans, mortgages, and manual liabilities you’ve added.
 	              </InfoPopover>
 	            </div>
 	            {debtSnapshot.total <= 0 ? (
