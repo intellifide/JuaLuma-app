@@ -858,13 +858,15 @@ export default function Dashboard() {
 	                      }}
 	                    />
 	                    <div
-	                      className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border border-white/30 bg-bg-primary shadow"
+	                      className="absolute top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/80 bg-slate-950/80 shadow-lg shadow-black/40 ring-2 ring-white/15"
 	                      style={{
 	                        left: `${Math.min(98, Math.max(2, (spendingHealth.scaleIndex / 4) * 100))}%`,
 	                        transform: 'translate(-50%, -50%)',
 	                      }}
 	                      aria-hidden="true"
-	                    />
+	                    >
+	                      <span className="h-2 w-2 rounded-full bg-white/90" />
+	                    </div>
 	                  </div>
 	                  <div className="flex justify-between text-[10px] text-text-muted">
 	                    <span>Overspending</span>
