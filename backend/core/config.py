@@ -194,7 +194,7 @@ class AppSettings(BaseSettings):
 
     @property
     def is_local(self) -> bool:
-        return self.app_env.lower() == "local"
+        return self.app_env.lower() in {"local", "test"}
 
     @property
     def resolved_gcp_project_id(self) -> str | None:

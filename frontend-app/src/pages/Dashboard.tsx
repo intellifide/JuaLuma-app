@@ -20,7 +20,7 @@ import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
 import { formatDateParam, formatTimeframeLabel, getTransactionDateRange } from '../utils/dateRanges';
 import { loadDashboardPreferences, saveDashboardPreferences, type InsightsPeriod } from '../utils/dashboardPreferences';
-import { getAccountPrimaryCategory, getCategoryLabel, getInvestmentBucket, type PrimaryAccountCategory } from '../utils/accountCategories';
+import { getAccountPrimaryCategory, getCategoryLabel, type PrimaryAccountCategory } from '../utils/accountCategories';
 import { getManualAssetTotals, getManualNetWorthAtDate } from '../utils/manualAssets';
 import { loadGoals, saveGoals, type Goal, type GoalType } from '../utils/goalsStorage';
 
@@ -334,18 +334,51 @@ export default function Dashboard() {
     return insightsCashFlowStats.net / insightsCashFlowStats.income;
   }, [insightsCashFlowStats]);
 
-  const spendingHealthScore = useMemo(() => {
-    if (!insightsCashFlowStats.income) return null;
-    const rawScore = (1 - insightsCashFlowStats.expense / insightsCashFlowStats.income) * 100;
-    return Math.max(0, Math.min(100, Math.round(rawScore)));
-  }, [insightsCashFlowStats]);
+  const spendingHealth = useMemo(() => {
+    const income = insightsCashFlowStats.income;
+    const expense = insightsCashFlowStats.expense;
+    const net = insightsCashFlowStats.net;
 
-  const spendingHealthLabel = useMemo(() => {
-    if (spendingHealthScore === null) return 'Needs data';
-    if (spendingHealthScore >= 75) return 'Strong';
-    if (spendingHealthScore >= 50) return 'Balanced';
-    return 'Caution';
-  }, [spendingHealthScore]);
+    if (!income || income <= 0) {
+      return {
+        state: 'needs_data' as const,
+        label: 'Needs data',
+        summary: 'Add at least one income transaction to generate spending health.',
+        scaleIndex: 0,
+      };
+    }
+
+    const margin = net / income; // <0 means overspending
+
+    const scale = [
+      { key: 'overspending', label: 'Overspending' },
+      { key: 'tight', label: 'Tight' },
+      { key: 'stable', label: 'Stable' },
+      { key: 'healthy', label: 'Healthy' },
+      { key: 'strong', label: 'Strong' },
+    ] as const;
+
+    let scaleIndex = 0;
+    if (margin < 0) scaleIndex = 0;
+    else if (margin < 0.1) scaleIndex = 1;
+    else if (margin < 0.25) scaleIndex = 2;
+    else if (margin < 0.4) scaleIndex = 3;
+    else scaleIndex = 4;
+
+    const label = scale[scaleIndex].label;
+    const summary =
+      margin < 0
+        ? 'Spending is higher than income for this period.'
+        : margin < 0.1
+        ? 'You are close to break-even after spending.'
+        : margin < 0.25
+        ? 'You are saving a modest share of income after spending.'
+        : margin < 0.4
+        ? 'You are keeping a healthy share of income after spending.'
+        : 'You are keeping a strong share of income after spending.';
+
+    return { state: 'ok' as const, label, summary, scaleIndex };
+  }, [insightsCashFlowStats.expense, insightsCashFlowStats.income, insightsCashFlowStats.net]);
 
   const insightsTopCategories = useMemo(() => {
     if (!insightsSpendData?.data?.length) return [];
@@ -422,28 +455,126 @@ export default function Dashboard() {
     toast.show('Goal removed', 'success');
   };
 
-  const investmentAllocation = useMemo(() => {
-    const buckets: Record<'traditional' | 'cex' | 'web3' | 'other', number> = {
-      traditional: 0,
-      cex: 0,
-      web3: 0,
+  const assetSnapshot = useMemo(() => {
+    const buckets: Record<'checking' | 'savings' | 'cash' | 'other', number> = {
+      checking: 0,
+      savings: 0,
+      cash: 0,
       other: 0,
     };
 
     accounts.forEach((account) => {
-      const bucket = getInvestmentBucket(account);
-      if (!bucket) return;
+      const primary = getAccountPrimaryCategory(account);
+      if (primary.isLiability) return;
       const balance = account.balance || 0;
       if (balance <= 0) return;
-      buckets[bucket] += balance;
+
+      if (primary.key === 'checking') {
+        buckets.checking += balance;
+        return;
+      }
+      if (primary.key === 'savings') {
+        buckets.savings += balance;
+        return;
+      }
+      if (account.accountType === 'manual') {
+        buckets.cash += balance;
+        return;
+      }
+      buckets.other += balance;
     });
 
-    const total = Object.values(buckets).reduce((sum, value) => sum + value, 0);
-    const rows = (Object.keys(buckets) as Array<keyof typeof buckets>).map((bucket) => ({
-      bucket,
-      amount: buckets[bucket],
-      percent: total > 0 ? buckets[bucket] / total : 0,
-    }));
+    const total = Object.values(buckets).reduce((sum, v) => sum + v, 0);
+    const labelMap: Record<keyof typeof buckets, string> = {
+      checking: 'Checking',
+      savings: 'Savings',
+      cash: 'Cash',
+      other: 'Other liquid',
+    };
+
+    const rows = (Object.keys(buckets) as Array<keyof typeof buckets>)
+      .map((bucket) => ({
+        bucket,
+        label: labelMap[bucket],
+        amount: buckets[bucket],
+        percent: total > 0 ? buckets[bucket] / total : 0,
+      }))
+      .filter((row) => row.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+
+    return { total, rows };
+  }, [accounts]);
+
+  const debtSnapshot = useMemo(() => {
+    const buckets: Record<
+      'credit_cards' | 'mortgage' | 'auto_loans' | 'student_loans' | 'other_loans' | 'other',
+      number
+    > = {
+      credit_cards: 0,
+      mortgage: 0,
+      auto_loans: 0,
+      student_loans: 0,
+      other_loans: 0,
+      other: 0,
+    };
+
+    const normalize = (value?: string | null) =>
+      value
+        ? value
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, '_')
+            .replace(/-+/g, '_')
+        : '';
+
+    accounts.forEach((account) => {
+      const primary = getAccountPrimaryCategory(account);
+      if (!primary.isLiability) return;
+
+      const rawBalance = account.balance || 0;
+      const amount = Math.abs(rawBalance);
+      if (amount <= 0) return;
+
+      if (primary.key === 'credit') {
+        buckets.credit_cards += amount;
+        return;
+      }
+
+      if (primary.key === 'mortgage') {
+        buckets.mortgage += amount;
+        return;
+      }
+
+      if (primary.key === 'loan') {
+        const subtype = normalize(account.plaidSubtype);
+        if (subtype.includes('auto')) buckets.auto_loans += amount;
+        else if (subtype.includes('student')) buckets.student_loans += amount;
+        else buckets.other_loans += amount;
+        return;
+      }
+
+      buckets.other += amount;
+    });
+
+    const total = Object.values(buckets).reduce((sum, v) => sum + v, 0);
+    const labelMap: Record<keyof typeof buckets, string> = {
+      credit_cards: 'Credit cards',
+      mortgage: 'Mortgage',
+      auto_loans: 'Auto loans',
+      student_loans: 'Student loans',
+      other_loans: 'Other loans',
+      other: 'Other debt',
+    };
+
+    const rows = (Object.keys(buckets) as Array<keyof typeof buckets>)
+      .map((bucket) => ({
+        bucket,
+        label: labelMap[bucket],
+        amount: buckets[bucket],
+        percent: total > 0 ? buckets[bucket] / total : 0,
+      }))
+      .filter((row) => row.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
 
     return { total, rows };
   }, [accounts]);
@@ -661,37 +792,51 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Spending Health Score */}
-          <div className="card gap-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold">Spending Health Score</h3>
-                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
-              </div>
-              <InfoPopover label="Spending health score details">
-                Composite score based on budget use, spending stability, and cash flow.
-              </InfoPopover>
-            </div>
-            {spendingHealthScore === null ? (
-              <p className="text-sm text-text-muted">Waiting on spending signals.</p>
-            ) : (
-              <>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-3xl font-bold text-primary">{spendingHealthScore}</p>
-                    <p className="text-xs text-text-muted">{spendingHealthLabel}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-text-muted">Budget use</p>
-                    <p className="text-sm font-semibold">{budgetPercent.toFixed(0)}%</p>
-                  </div>
-                </div>
-                <div className="w-full bg-white/10 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: `${spendingHealthScore}%` }} />
-                </div>
-              </>
-            )}
-          </div>
+	          {/* Spending Health */}
+	          <div className="card gap-4">
+	            <div className="flex items-start justify-between gap-3">
+	              <div>
+	                <h3 className="text-lg font-semibold">Spending Health</h3>
+	                <p className="text-xs text-text-muted">Period: {insightsLabel}</p>
+	              </div>
+	              <InfoPopover label="Spending health details">
+	                Quick read on whether your spending is sustainable for the selected period, based on your income versus expenses.
+	              </InfoPopover>
+	            </div>
+	            {spendingHealth.state === 'needs_data' ? (
+	              <p className="text-sm text-text-muted">{spendingHealth.summary}</p>
+	            ) : (
+	              <div className="space-y-3">
+	                <div>
+	                  <p className="text-xl font-semibold text-primary">{spendingHealth.label}</p>
+	                  <p className="text-xs text-text-muted">{spendingHealth.summary}</p>
+	                </div>
+	                <div className="space-y-2">
+	                  <div className="relative">
+	                    <div
+	                      className="h-2 rounded-full"
+	                      style={{
+	                        background:
+	                          'linear-gradient(90deg, rgba(244,63,94,0.85) 0%, rgba(251,191,36,0.85) 50%, rgba(34,197,94,0.85) 100%)',
+	                      }}
+	                    />
+	                    <div
+	                      className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border border-white/30 bg-bg-primary shadow"
+	                      style={{
+	                        left: `${Math.min(98, Math.max(2, (spendingHealth.scaleIndex / 4) * 100))}%`,
+	                        transform: 'translate(-50%, -50%)',
+	                      }}
+	                      aria-hidden="true"
+	                    />
+	                  </div>
+	                  <div className="flex justify-between text-[10px] text-text-muted">
+	                    <span>Overspending</span>
+	                    <span>Strong</span>
+	                  </div>
+	                </div>
+	              </div>
+	            )}
+	          </div>
 
           {/* Top Money Drivers */}
           <div className="card gap-4">
@@ -844,39 +989,67 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Capital Concentration */}
-          <FeaturePreview featureKey="investment.aggregation">
-            <div className="card gap-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold">Capital Concentration</h3>
-                  <p className="text-xs text-text-muted">As of today</p>
-                </div>
-                <InfoPopover label="Capital concentration details">
-                  Analysis of your capital spread across different investment buckets and platforms.
-                </InfoPopover>
-              </div>
-              {investmentAllocation.total <= 0 ? (
-                <p className="text-sm text-text-muted">Connect investment or crypto accounts to see allocation.</p>
-              ) : (
-                <div className="space-y-3 text-sm">
-                  {investmentAllocation.rows.map((item) => (
-                    <div key={item.bucket} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-text-secondary capitalize">{item.bucket === 'cex' ? 'CEX' : item.bucket}</span>
-                        <span className="font-semibold">{formatPercent(item.percent)}</span>
-                      </div>
-                      <div className="w-full bg-white/10 rounded-full h-2">
-                        <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(item.percent * 100)}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                  <p className="text-xs text-text-muted">Invested balance {formatCompactCurrency(investmentAllocation.total)}</p>
-                  <p className="text-xs text-text-secondary">Visualizes your capital spread across diverse asset classes and account types.</p>
-                </div>
-              )}
-            </div>
-          </FeaturePreview>
+	          {/* Asset Snapshot */}
+	          <div className="card gap-4">
+	            <div className="flex items-start justify-between gap-3">
+	              <div>
+	                <h3 className="text-lg font-semibold">Asset Snapshot</h3>
+	                <p className="text-xs text-text-muted">Liquid assets (today)</p>
+	              </div>
+	              <InfoPopover label="Asset snapshot details">
+	                Where your liquid money sits (checking, savings, and cash). Excludes investments and debt balances.
+	              </InfoPopover>
+	            </div>
+	            {assetSnapshot.total <= 0 ? (
+	              <p className="text-sm text-text-muted">Add a checking or savings balance to see your liquid allocation.</p>
+	            ) : (
+	              <div className="space-y-3 text-sm">
+	                {assetSnapshot.rows.map((item) => (
+	                  <div key={item.bucket} className="space-y-1">
+	                    <div className="flex items-center justify-between">
+	                      <span className="text-text-secondary">{item.label}</span>
+	                      <span className="font-semibold">{formatPercent(item.percent)}</span>
+	                    </div>
+	                    <div className="w-full bg-white/10 rounded-full h-2">
+	                      <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(item.percent * 100)}%` }} />
+	                    </div>
+	                  </div>
+	                ))}
+	                <p className="text-xs text-text-muted">Liquid total {formatCompactCurrency(assetSnapshot.total)}</p>
+	              </div>
+	            )}
+	          </div>
+
+	          {/* Debt Snapshot */}
+	          <div className="card gap-4">
+	            <div className="flex items-start justify-between gap-3">
+	              <div>
+	                <h3 className="text-lg font-semibold">Debt Snapshot</h3>
+	                <p className="text-xs text-text-muted">Liabilities (today)</p>
+	              </div>
+	              <InfoPopover label="Debt snapshot details">
+	                Breakdown of outstanding balances for credit cards, loans, and mortgages.
+	              </InfoPopover>
+	            </div>
+	            {debtSnapshot.total <= 0 ? (
+	              <p className="text-sm text-text-muted">No liability balances detected yet.</p>
+	            ) : (
+	              <div className="space-y-3 text-sm">
+	                {debtSnapshot.rows.map((item) => (
+	                  <div key={item.bucket} className="space-y-1">
+	                    <div className="flex items-center justify-between">
+	                      <span className="text-text-secondary">{item.label}</span>
+	                      <span className="font-semibold">{formatPercent(item.percent)}</span>
+	                    </div>
+	                    <div className="w-full bg-white/10 rounded-full h-2">
+	                      <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(item.percent * 100)}%` }} />
+	                    </div>
+	                  </div>
+	                ))}
+	                <p className="text-xs text-text-muted">Total debt {formatCompactCurrency(debtSnapshot.total)}</p>
+	              </div>
+	            )}
+	          </div>
 
           {/* Goals Tracker */}
           <div className="card gap-4">

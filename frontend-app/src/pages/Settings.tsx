@@ -1,9 +1,25 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
 // Last Updated 2026-01-26 13:00 CST
 
-import React, { useCallback, useEffect, useState, FormEvent } from 'react';
+import React, { useCallback, useEffect, useRef, useState, FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { changePassword, apiFetch, listSessions, endSession, endOtherSessions, UserSessionData } from '../services/auth';
+import {
+  changePassword,
+  apiFetch,
+  disableMfa,
+  enableAuthenticator,
+  getIdToken,
+  getPasskeyAuthOptions,
+  getPasskeyRegistrationOptions,
+  listSessions,
+  endSession,
+  endOtherSessions,
+  setupAuthenticator,
+  setMfaLabel,
+  setPrimaryMfaMethod,
+  UserSessionData,
+  verifyPasskeyRegistration,
+} from '../services/auth';
 import { householdService } from '../services/householdService';
 import type { Household } from '../types/household';
 import type { UserProfile } from '../hooks/useAuth';
@@ -16,6 +32,9 @@ import { useToast } from '../components/ui/Toast';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { digestService, DigestSettings } from '../services/digestService';
+import { createPasskeyCredential, getPasskeyAssertion } from '../services/passkey';
+import { CopyIconButton } from '../components/ui/CopyIconButton';
+import QRCode from 'qrcode';
 
 type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref' | 'time_zone'>> & {
   phone_number?: string | null;
@@ -339,7 +358,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
 
 // Render the account settings experience with tabbed sections.
 export const Settings = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, refetchProfile } = useAuth();
   const toast = useToast();
   const timeZone = useUserTimeZone();
   const [activeTab, setActiveTab] = useState('profile');
@@ -560,6 +579,18 @@ export const Settings = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
+  const [securityCode, setSecurityCode] = useState('');
+  const [authenticatorSecret, setAuthenticatorSecret] = useState<string | null>(null);
+  const [authenticatorOtpAuthUrl, setAuthenticatorOtpAuthUrl] = useState<string | null>(null);
+  const [authenticatorQrDataUrl, setAuthenticatorQrDataUrl] = useState<string | null>(null);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [showTotpCodeEntry, setShowTotpCodeEntry] = useState(false);
+  const lastAutoVerifyCodeRef = useRef<string | null>(null);
+  const [mfaLabelModalOpen, setMfaLabelModalOpen] = useState(false);
+  const [mfaLabelMethod, setMfaLabelMethod] = useState<'totp' | 'passkey' | null>(null);
+  const [mfaLabelValue, setMfaLabelValue] = useState('');
+  const [mfaLabelSaving, setMfaLabelSaving] = useState(false);
+  const [primaryMfaCandidate, setPrimaryMfaCandidate] = useState<'totp' | 'passkey'>('totp');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
@@ -574,6 +605,20 @@ export const Settings = () => {
     profile?.household_member &&
     !['admin', 'owner'].includes(profile?.household_member?.role || '')
   );
+
+  const totpEnabled = Boolean(profile?.totp_enabled);
+  const passkeyEnabled = Boolean(profile?.passkey_enabled);
+  const bothMfaMethodsEnabled = totpEnabled && passkeyEnabled;
+  const primaryMfaMethod = profile?.mfa_method === 'passkey' ? 'passkey' : 'totp';
+  const primaryMfaLabel = primaryMfaMethod === 'passkey' ? 'Passkey' : 'Authenticator';
+
+  useEffect(() => {
+    if (profile?.mfa_method === 'passkey') {
+      setPrimaryMfaCandidate('passkey');
+      return;
+    }
+    setPrimaryMfaCandidate('totp');
+  }, [profile?.mfa_method]);
 
   // Session Management State
   const [sessions, setSessions] = useState<UserSessionData[]>([]);
@@ -614,6 +659,313 @@ export const Settings = () => {
       alert(err instanceof Error ? err.message : 'Failed to end other sessions');
     }
   };
+
+  const getSessionPasskeyAssertion = useCallback(async () => {
+    const token = await getIdToken(true);
+    if (!token) {
+      throw new Error('Session expired. Please sign in again.');
+    }
+    const options = await getPasskeyAuthOptions(token);
+    return getPasskeyAssertion(options);
+  }, []);
+
+  const openMfaLabelPrompt = useCallback((method: 'totp' | 'passkey') => {
+    setMfaLabelMethod(method);
+    setMfaLabelValue('');
+    setMfaLabelModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!profile?.uid) return;
+    if (!profile?.mfa_enabled) return;
+    if (mfaLabelModalOpen) return;
+
+    // Robustness: if the label prompt was missed (due to navigation/overlay),
+    // prompt once after the method becomes enabled.
+    if (profile?.totp_enabled && !profile?.totp_label) {
+      const key = `mfa_label_prompted_totp_${profile.uid}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        openMfaLabelPrompt('totp');
+        return;
+      }
+    }
+
+    if (profile?.passkey_enabled && !profile?.passkey_label) {
+      const key = `mfa_label_prompted_passkey_${profile.uid}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        openMfaLabelPrompt('passkey');
+      }
+    }
+  }, [
+    mfaLabelModalOpen,
+    openMfaLabelPrompt,
+    profile?.mfa_enabled,
+    profile?.passkey_enabled,
+    profile?.passkey_label,
+    profile?.totp_enabled,
+    profile?.totp_label,
+    profile?.uid,
+  ]);
+
+  const handleSaveMfaLabel = useCallback(async () => {
+    if (!mfaLabelMethod) return;
+    const label = mfaLabelValue.trim();
+    if (!label) {
+      toast.show('Enter a label to continue.', 'error');
+      return;
+    }
+    setMfaLabelSaving(true);
+    try {
+      if (profile?.uid) {
+        const key = `mfa_label_prompted_${mfaLabelMethod}_${profile.uid}`;
+        sessionStorage.setItem(key, '1');
+      }
+      await setMfaLabel(mfaLabelMethod, label);
+      setMfaLabelModalOpen(false);
+      setMfaLabelMethod(null);
+      setMfaLabelValue('');
+      await refetchProfile();
+      toast.show('2FA method labeled.', 'success');
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Failed to save label.', 'error');
+    } finally {
+      setMfaLabelSaving(false);
+    }
+  }, [mfaLabelMethod, mfaLabelValue, profile?.uid, refetchProfile, toast]);
+
+  // When starting authenticator setup, keep the code entry visible; after setup completes, hide it again.
+  useEffect(() => {
+    if (authenticatorSecret) {
+      setShowTotpCodeEntry(true);
+      return;
+    }
+    if (totpEnabled) {
+      setShowTotpCodeEntry(false);
+    }
+  }, [authenticatorSecret, totpEnabled]);
+
+  const getCurrentMfaProof = useCallback(async () => {
+    if (!profile?.mfa_enabled) {
+      return { mfa_code: undefined as string | undefined, passkey_assertion: undefined as Record<string, unknown> | undefined };
+    }
+    if (profile?.mfa_method === 'passkey') {
+      return { mfa_code: undefined, passkey_assertion: await getSessionPasskeyAssertion() };
+    }
+    if (!securityCode.trim()) {
+      throw new Error('Enter your current 2FA code first.');
+    }
+    return { mfa_code: securityCode.trim(), passkey_assertion: undefined };
+  }, [getSessionPasskeyAssertion, profile?.mfa_enabled, profile?.mfa_method, securityCode]);
+
+  const handleEnableAuthenticator = useCallback(async () => {
+    setMfaLoading(true);
+    try {
+      const proof = await getCurrentMfaProof();
+      const setup = await setupAuthenticator(proof.mfa_code, proof.passkey_assertion);
+      setAuthenticatorSecret(setup.secret);
+      setAuthenticatorOtpAuthUrl(setup.otpauth_url);
+      setShowTotpCodeEntry(true);
+      toast.show('Authenticator setup ready. Enter the generated code to finish.', 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : null;
+      if (message && /Enter your current 2FA code first/i.test(message)) {
+        setShowTotpCodeEntry(true);
+      }
+      toast.show(message ?? 'Failed to start authenticator setup.', 'error');
+    } finally {
+      setMfaLoading(false);
+    }
+  }, [getCurrentMfaProof, toast]);
+
+  const handleVerifyAuthenticator = useCallback(async () => {
+    if (!securityCode.trim()) {
+      toast.show('Enter the authenticator code to continue.', 'error');
+      return;
+    }
+    setMfaLoading(true);
+    try {
+      const wasEnabled = Boolean(profile?.mfa_enabled);
+      await enableAuthenticator(securityCode.trim());
+      setSecurityCode('');
+      setAuthenticatorSecret(null);
+      setAuthenticatorOtpAuthUrl(null);
+      setAuthenticatorQrDataUrl(null);
+      setShowTotpCodeEntry(false);
+      lastAutoVerifyCodeRef.current = null;
+      const updated = await refetchProfile();
+      openMfaLabelPrompt('totp');
+      if (!wasEnabled) {
+        toast.show('Authenticator app enabled for sign-in.', 'success');
+      } else {
+        toast.show('Authenticator app enabled.', 'success');
+      }
+      if (updated?.totp_enabled && updated?.passkey_enabled) {
+        toast.show('Both methods are enabled. Choose your primary method below.', 'success');
+      }
+    } catch (err) {
+      lastAutoVerifyCodeRef.current = null;
+      setSecurityCode('');
+      const raw = err instanceof Error ? err.message : null;
+      // Friendly, actionable guidance for the common failure case.
+      if (raw && /code|otp|totp|invalid/i.test(raw)) {
+        toast.show("That code didn't match. Please try again.", 'error');
+      } else {
+        toast.show(raw ?? 'Failed to enable authenticator.', 'error');
+      }
+    } finally {
+      setMfaLoading(false);
+    }
+  }, [openMfaLabelPrompt, profile?.mfa_enabled, refetchProfile, securityCode, toast]);
+
+  // Setup UX: when the user enters the 6th digit during setup, auto-verify.
+  useEffect(() => {
+    if (!authenticatorSecret) return;
+    const code = securityCode.trim();
+    if (code.length !== 6) return;
+    if (mfaLoading) return;
+    if (lastAutoVerifyCodeRef.current === code) return;
+    lastAutoVerifyCodeRef.current = code;
+    void handleVerifyAuthenticator();
+  }, [authenticatorSecret, handleVerifyAuthenticator, mfaLoading, securityCode]);
+
+  const handleEnablePasskey = useCallback(async () => {
+    setMfaLoading(true);
+    try {
+      const wasEnabled = Boolean(profile?.mfa_enabled);
+      const proof = await getCurrentMfaProof();
+      const options = await getPasskeyRegistrationOptions(proof.mfa_code, proof.passkey_assertion);
+      const credential = await createPasskeyCredential(options);
+      await verifyPasskeyRegistration(credential, proof.mfa_code, proof.passkey_assertion);
+      const updated = await refetchProfile();
+      setAuthenticatorSecret(null);
+      setAuthenticatorOtpAuthUrl(null);
+      setAuthenticatorQrDataUrl(null);
+      setSecurityCode('');
+      setShowTotpCodeEntry(false);
+      openMfaLabelPrompt('passkey');
+      if (!wasEnabled) {
+        toast.show('Passkey enabled for sign-in.', 'success');
+      } else {
+        toast.show('Passkey enabled.', 'success');
+      }
+      if (updated?.totp_enabled && updated?.passkey_enabled) {
+        toast.show('Both methods are enabled. Choose your primary method below.', 'success');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : null;
+      if (message && /Enter your current 2FA code first/i.test(message)) {
+        setShowTotpCodeEntry(true);
+      }
+      toast.show(message ?? 'Failed to enable passkey.', 'error');
+    } finally {
+      setMfaLoading(false);
+    }
+  }, [getCurrentMfaProof, openMfaLabelPrompt, profile?.mfa_enabled, refetchProfile, toast]);
+
+  const handleDisableMfaWithPasskey = useCallback(async () => {
+    setMfaLoading(true);
+    try {
+      const assertion = await getSessionPasskeyAssertion();
+      await disableMfa(undefined, assertion);
+      setSecurityCode('');
+      setAuthenticatorSecret(null);
+      setAuthenticatorOtpAuthUrl(null);
+      setAuthenticatorQrDataUrl(null);
+      await refetchProfile();
+      toast.show('2FA has been disabled.', 'success');
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Failed to disable 2FA.', 'error');
+    } finally {
+      setMfaLoading(false);
+    }
+  }, [getSessionPasskeyAssertion, refetchProfile, toast]);
+
+  const handleDisableMfaWithCode = useCallback(async () => {
+    if (!securityCode.trim()) {
+      setShowTotpCodeEntry(true);
+      toast.show('Enter your current 2FA code to disable 2FA.', 'error');
+      return;
+    }
+    setMfaLoading(true);
+    try {
+      await disableMfa(securityCode.trim());
+      setSecurityCode('');
+      setAuthenticatorSecret(null);
+      setAuthenticatorOtpAuthUrl(null);
+      setAuthenticatorQrDataUrl(null);
+      setShowTotpCodeEntry(false);
+      await refetchProfile();
+      toast.show('2FA has been disabled.', 'success');
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Failed to disable 2FA.', 'error');
+    } finally {
+      setMfaLoading(false);
+    }
+  }, [refetchProfile, securityCode, toast]);
+
+  const handleSetPrimaryMfa = useCallback(async () => {
+    if (!profile?.mfa_enabled) {
+      toast.show('Enable 2FA first.', 'error');
+      return;
+    }
+
+    const currentPrimary = profile?.mfa_method === 'passkey' ? 'passkey' : 'totp';
+    if (primaryMfaCandidate === currentPrimary) {
+      toast.show('That method is already primary.', 'success');
+      return;
+    }
+
+    setMfaLoading(true);
+    try {
+      if (primaryMfaCandidate === 'passkey') {
+        const assertion = await getSessionPasskeyAssertion();
+        await setPrimaryMfaMethod('passkey', undefined, assertion);
+      } else {
+        if (!securityCode.trim()) {
+          setShowTotpCodeEntry(true);
+          toast.show('Enter your authenticator code to set it as primary.', 'error');
+          return;
+        }
+        await setPrimaryMfaMethod('totp', securityCode.trim(), undefined);
+      }
+      setSecurityCode('');
+      setShowTotpCodeEntry(false);
+      await refetchProfile();
+      toast.show('Primary 2FA method updated.', 'success');
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : 'Failed to update primary method.', 'error');
+    } finally {
+      setMfaLoading(false);
+    }
+  }, [getSessionPasskeyAssertion, primaryMfaCandidate, profile?.mfa_enabled, profile?.mfa_method, refetchProfile, securityCode, toast]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const build = async () => {
+      if (!authenticatorOtpAuthUrl) {
+        setAuthenticatorQrDataUrl(null);
+        return;
+      }
+      try {
+        const url = await QRCode.toDataURL(authenticatorOtpAuthUrl, {
+          width: 180,
+          margin: 2,
+          errorCorrectionLevel: 'M',
+          color: { dark: '#0b1220', light: '#ffffff' },
+        });
+        if (!cancelled) setAuthenticatorQrDataUrl(url);
+      } catch (err) {
+        console.error('Failed to generate QR code:', err);
+        if (!cancelled) setAuthenticatorQrDataUrl(null);
+      }
+    };
+    void build();
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticatorOtpAuthUrl]);
 
   // Format a household role string for display in the UI.
 
@@ -1524,10 +1876,10 @@ export const Settings = () => {
                   <h3 className="text-xl font-bold">Change Password</h3>
                 </div>
                 <div className="card-body">
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    setPasswordError(null);
-                    setPasswordSuccess(false);
+	                  <form onSubmit={async (e) => {
+	                    e.preventDefault();
+	                    setPasswordError(null);
+	                    setPasswordSuccess(false);
 
                     if (newPassword !== confirmPassword) {
                       setPasswordError("Passwords do not match.");
@@ -1536,7 +1888,12 @@ export const Settings = () => {
 
                     setPasswordLoading(true);
                     try {
-                      await changePassword(currentPassword, newPassword, mfaCode);
+                      if (profile?.mfa_method === 'passkey') {
+                        const assertion = await getSessionPasskeyAssertion();
+                        await changePassword(currentPassword, newPassword, undefined, assertion);
+                      } else {
+                        await changePassword(currentPassword, newPassword, mfaCode);
+                      }
                       setPasswordSuccess(true);
                       setCurrentPassword('');
                       setNewPassword('');
@@ -1547,19 +1904,32 @@ export const Settings = () => {
                     } finally {
                       setPasswordLoading(false);
                     }
-                  }}>
-                    {passwordError && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{passwordError}</div>}
-                    {passwordSuccess && <div className="mb-4 p-3 bg-emerald-100 text-emerald-700 rounded-lg text-sm">Password updated successfully.</div>}
-
-                    <div className="mb-4">
-                      <label htmlFor="current-password" className="block text-sm font-medium text-text-secondary mb-1">Current Password</label>
-                      <input
+	                  }}>
+	                    {passwordError && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{passwordError}</div>}
+	                    {passwordSuccess && <div className="mb-4 p-3 bg-emerald-100 text-emerald-700 rounded-lg text-sm">Password updated successfully.</div>}
+	
+	                    {/* Chrome/assistive-tech hint: include a username field alongside password fields. */}
+	                    <input
+	                      type="text"
+	                      name="username"
+	                      autoComplete="username"
+	                      value={profile?.email ?? ''}
+	                      readOnly
+	                      tabIndex={-1}
+	                      aria-hidden="true"
+	                      className="sr-only"
+	                    />
+	
+	                    <div className="mb-4">
+	                      <label htmlFor="current-password" className="block text-sm font-medium text-text-secondary mb-1">Current Password</label>
+	                      <input
                         type="password"
                         id="current-password"
                         className="form-input w-full"
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         required
+                        autoComplete="current-password"
                       />
                     </div>
                     <div className="mb-4">
@@ -1572,6 +1942,7 @@ export const Settings = () => {
                         onChange={(e) => setNewPassword(e.target.value)}
                         required
                         minLength={8}
+                        autoComplete="new-password"
                       />
                     </div>
                     <div className="mb-4">
@@ -1583,10 +1954,11 @@ export const Settings = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
+                        autoComplete="new-password"
                       />
                     </div>
 
-                    {profile?.mfa_enabled && (
+                    {profile?.mfa_enabled && profile?.mfa_method !== 'passkey' && (
                       <div className="mb-6">
                         <label htmlFor="mfa-code" className="block text-sm font-medium text-text-secondary mb-1">2FA Verification Code</label>
                         <input
@@ -1603,6 +1975,12 @@ export const Settings = () => {
                       </div>
                     )}
 
+                    {profile?.mfa_enabled && profile?.mfa_method === 'passkey' && (
+                      <p className="mb-6 text-xs text-text-muted">
+                        Since passkey 2FA is enabled, you will be prompted to verify with your passkey when submitting.
+                      </p>
+                    )}
+
                     <button type="submit" className="btn btn-primary" disabled={passwordLoading}>
                       {passwordLoading ? "Updating..." : "Update Password"}
                     </button>
@@ -1616,14 +1994,237 @@ export const Settings = () => {
                 </div>
                 <div className="card-body">
                   <p className="mb-4">
-                    <strong>Status:</strong> <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">Not Enabled</span>
+                    <strong>Status:</strong>{' '}
+                    {profile?.mfa_enabled ? (
+                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">
+                        Enabled (Primary: {primaryMfaLabel})
+                      </span>
+                    ) : authenticatorSecret ? (
+                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">
+                        Setup in progress
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">
+                        Not Enabled
+                      </span>
+                    )}
                   </p>
                   <p className="mb-4 text-text-secondary">
-                    Add an extra layer of security to your account by enabling two-factor authentication.
+                    After you choose a method, it is required for sign-in, password changes, and 2FA updates.
                   </p>
-                </div>
-                <div className="card-footer">
-                  <button type="button" className="btn btn-primary">Enable 2FA</button>
+
+                  {profile?.mfa_enabled && (
+                    <div className="mb-4 rounded-lg border border-border bg-surface-2 p-3">
+                      <p className="text-sm font-medium mb-2">Enabled methods</p>
+                      <div className="space-y-2">
+                        {totpEnabled && (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium">Authenticator app</div>
+                              <div className="text-xs text-text-muted truncate">
+                                {profile?.totp_label ? profile.totp_label : 'Unlabeled'}
+                              </div>
+                            </div>
+                            {primaryMfaMethod === 'totp' && (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {passkeyEnabled && (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium">Passkey</div>
+                              <div className="text-xs text-text-muted truncate">
+                                {profile?.passkey_label ? profile.passkey_label : 'Unlabeled'}
+                              </div>
+                            </div>
+                            {primaryMfaMethod === 'passkey' && (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-primary/10 text-primary">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {bothMfaMethodsEnabled && (
+                        <div className="mt-4 pt-3 border-t border-border">
+                          <label htmlFor="primary-mfa" className="block text-sm font-medium text-text-secondary mb-1">
+                            Primary method
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <select
+                              id="primary-mfa"
+                              className="form-input flex-1"
+                              value={primaryMfaCandidate}
+                              onChange={(e) => setPrimaryMfaCandidate(e.target.value === 'passkey' ? 'passkey' : 'totp')}
+                            >
+                              <option value="totp">Authenticator app</option>
+                              <option value="passkey">Passkey</option>
+                            </select>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={handleSetPrimaryMfa}
+                              disabled={mfaLoading || primaryMfaCandidate === primaryMfaMethod}
+                            >
+                              Set primary
+                            </button>
+                          </div>
+                          <p className="mt-2 text-xs text-text-muted">
+                            This method is required for sign-in and password changes.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {authenticatorSecret && (
+                    <div className="mb-4 p-3 rounded-lg border border-border bg-surface-2">
+                      <p className="text-sm mb-3">Scan this QR code with your authenticator app (industry standard):</p>
+                      {authenticatorQrDataUrl ? (
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-lg bg-white p-2 shadow-sm">
+                            <img
+                              src={authenticatorQrDataUrl}
+                              alt="Authenticator setup QR code"
+                              className="block h-[180px] w-[180px]"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-text-secondary mb-2">
+                              If you can&apos;t scan, you can manually enter the secret below.
+                            </p>
+                            <div className="relative">
+                              <input
+                                readOnly
+                                value={authenticatorSecret}
+                                className="form-input w-full font-mono text-xs pr-10"
+                                aria-label="Authenticator secret"
+                              />
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                <CopyIconButton value={authenticatorSecret} label="Copy authenticator secret" onCopiedMessage="Secret copied" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            readOnly
+                            value={authenticatorSecret}
+                            className="form-input w-full font-mono text-xs pr-10"
+                            aria-label="Authenticator secret"
+                          />
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                            <CopyIconButton value={authenticatorSecret} label="Copy authenticator secret" onCopiedMessage="Secret copied" />
+                          </div>
+                          <p className="mt-2 text-xs text-text-muted">Generating QR code…</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+		                  {(authenticatorSecret || (totpEnabled && showTotpCodeEntry)) && (
+		                    <div className="mb-4">
+		                      <label htmlFor="security-2fa-code" className="block text-sm font-medium text-text-secondary mb-1">
+		                        {authenticatorSecret ? 'Authenticator verification code' : 'Authenticator code'}
+		                      </label>
+		                      <input
+		                        type="text"
+		                        id="security-2fa-code"
+		                        className="form-input w-full"
+		                        placeholder="123456"
+		                        value={securityCode}
+		                        onChange={(e) => {
+		                          const next = e.target.value.replace(/\D/g, '').slice(0, 6);
+		                          setSecurityCode(next);
+		                        }}
+		                        maxLength={6}
+		                        inputMode="numeric"
+		                        autoComplete="one-time-code"
+		                      />
+	                      {authenticatorSecret && (
+	                        <div className="mt-2 flex flex-wrap items-center gap-2">
+	                          <button
+	                            type="button"
+	                            className="btn btn-outline"
+	                            onClick={handleVerifyAuthenticator}
+	                            disabled={mfaLoading || securityCode.trim().length !== 6}
+	                          >
+	                            {mfaLoading ? 'Working...' : 'Verify & Enable'}
+	                          </button>
+	                          <span className="text-xs text-text-muted">
+	                            After verifying, you&apos;ll label this method.
+	                          </span>
+	                        </div>
+	                      )}
+	                    </div>
+	                  )}
+	                </div>
+                <div className="card-footer flex flex-wrap gap-2">
+                  {!profile?.totp_enabled && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleEnableAuthenticator}
+                      disabled={mfaLoading}
+                    >
+                      {mfaLoading ? 'Working...' : 'Enable Authenticator App'}
+                    </button>
+                  )}
+                  {authenticatorSecret && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleVerifyAuthenticator}
+                      disabled={mfaLoading}
+                    >
+                      Verify & Enable Authenticator
+                    </button>
+                  )}
+                  {!profile?.passkey_enabled && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleEnablePasskey}
+                      disabled={mfaLoading}
+                    >
+                      {mfaLoading ? 'Working...' : 'Enable Passkey'}
+                    </button>
+                  )}
+                  {profile?.mfa_enabled && (
+                    profile?.totp_enabled && profile?.passkey_enabled ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-outline text-red-600 border-red-500 hover:bg-red-50"
+                          onClick={handleDisableMfaWithPasskey}
+                          disabled={mfaLoading}
+                        >
+                          Disable with Passkey
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline text-red-600 border-red-500 hover:bg-red-50"
+                          onClick={handleDisableMfaWithCode}
+                          disabled={mfaLoading}
+                        >
+                          Disable with Code
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-outline text-red-600 border-red-500 hover:bg-red-50"
+                        onClick={profile?.passkey_enabled ? handleDisableMfaWithPasskey : handleDisableMfaWithCode}
+                        disabled={mfaLoading}
+                      >
+                        Disable 2FA
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
 
@@ -1768,6 +2369,71 @@ export const Settings = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mfaLabelModalOpen && mfaLabelMethod && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
+          <div className="modal-content max-w-md">
+            <div className="modal-header">
+              <h3>Label your {mfaLabelMethod === 'passkey' ? 'passkey' : 'authenticator app'}</h3>
+              <button
+                onClick={() => {
+                  if (mfaLabelSaving) return
+                  setMfaLabelModalOpen(false)
+                  setMfaLabelMethod(null)
+                  setMfaLabelValue('')
+                }}
+                className="modal-close"
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div>
+              <p className="mb-4 text-text-secondary">
+                Add a label to help you recognize this 2FA method later.
+              </p>
+              <div className="mb-6">
+                <label htmlFor="mfa-label" className="form-label">
+                  Label
+                </label>
+                <input
+                  id="mfa-label"
+                  className="input"
+                  type="text"
+                  value={mfaLabelValue}
+                  onChange={(e) => setMfaLabelValue(e.target.value)}
+                  placeholder={mfaLabelMethod === 'passkey' ? 'MacBook' : 'iPhone Authenticator'}
+                  maxLength={128}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleSaveMfaLabel}
+                  disabled={mfaLabelSaving}
+                >
+                  {mfaLabelSaving ? 'Saving...' : 'Save label'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline flex-1"
+                  onClick={() => {
+                    if (mfaLabelSaving) return
+                    setMfaLabelModalOpen(false)
+                    setMfaLabelMethod(null)
+                    setMfaLabelValue('')
+                  }}
+                  disabled={mfaLabelSaving}
+                >
+                  Skip
+                </button>
+              </div>
             </div>
           </div>
         </div>

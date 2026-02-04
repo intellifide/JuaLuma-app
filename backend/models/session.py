@@ -29,6 +29,10 @@ class UserSession(Base):
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     device_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     location: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    mfa_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    mfa_method_verified: Mapped[str | None] = mapped_column(String(16), nullable=True)
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     
@@ -54,6 +58,8 @@ class UserSession(Base):
             "user_agent": self.user_agent,
             "device_type": self.device_type,
             "location": self.location,
+            "mfa_verified_at": self.mfa_verified_at.isoformat() if self.mfa_verified_at else None,
+            "mfa_method_verified": self.mfa_method_verified,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_active": self.last_active.isoformat() if self.last_active else None,

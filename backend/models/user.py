@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -66,10 +66,20 @@ class User(Base):
         UUID(as_uuid=True), nullable=True
     )
     mfa_secret: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    totp_secret_pending: Mapped[str | None] = mapped_column(String(32), nullable=True)
     mfa_enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
     mfa_method: Mapped[str | None] = mapped_column(
-        String(16), default="totp", nullable=True, comment="totp|email|sms"
+        String(16), default="totp", nullable=True, comment="totp|email|passkey|sms"
     )
+    totp_label: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    passkey_credential_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    passkey_public_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    passkey_sign_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    passkey_challenge: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    passkey_challenge_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    passkey_label: Mapped[str | None] = mapped_column(String(128), nullable=True)
     email_otp: Mapped[str | None] = mapped_column(String(6), nullable=True)
     email_otp_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -216,6 +226,11 @@ class User(Base):
             if self.developer_payout_id
             else None,
             "mfa_enabled": self.mfa_enabled,
+            "mfa_method": self.mfa_method,
+            "totp_enabled": bool(self.mfa_secret),
+            "totp_label": self.totp_label,
+            "passkey_enabled": bool(self.passkey_credential_id),
+            "passkey_label": self.passkey_label,
             "status": self.status,
             "data_sharing_consent": self.data_sharing_consent,
             "created_at": self.created_at,

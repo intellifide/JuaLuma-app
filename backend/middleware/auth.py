@@ -12,6 +12,13 @@ from backend.services.auth import verify_token
 from backend.utils import get_db
 
 _plan_rank = {"free": 0, "essential": 1, "pro": 2, "ultimate": 3}
+_MFA_EXEMPT_PATH_PREFIXES = (
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/auth/mfa/",
+    "/api/auth/reset-password",
+)
+_MFA_SESSION_ROLLOVER_SECONDS = 6 * 60 * 60  # keep MFA verified across Firebase token refreshes
 
 
 async def get_current_user(
@@ -128,6 +135,57 @@ async def get_current_user(
         else:
             # Update last active
             session_rec.last_active = func.now()
+
+        if user.mfa_enabled:
+            path = str(request.url.path or "")
+            is_exempt = any(path.startswith(prefix) for prefix in _MFA_EXEMPT_PATH_PREFIXES)
+
+            # Firebase ID tokens can be refreshed periodically, which changes `iat`.
+            # That would create a "new" session row and incorrectly force MFA again.
+            # Roll MFA verification forward for the same device if we recently verified.
+            if session_rec.mfa_verified_at is None and not is_exempt:
+                recent_verified = (
+                    db.query(UserSession)
+                    .filter(
+                        UserSession.uid == uid,
+                        UserSession.is_active == True,  # noqa: E712 - SQLAlchemy bool
+                        UserSession.iat != iat,
+                        UserSession.mfa_verified_at.isnot(None),
+                        UserSession.user_agent == session_rec.user_agent,
+                        UserSession.ip_address == session_rec.ip_address,
+                    )
+                    .order_by(UserSession.mfa_verified_at.desc())
+                    .first()
+                )
+                if recent_verified and recent_verified.mfa_method_verified == user.mfa_method:
+                    import datetime as _dt
+
+                    now = _dt.datetime.now(_dt.UTC)
+                    if (now - recent_verified.mfa_verified_at).total_seconds() <= _MFA_SESSION_ROLLOVER_SECONDS:
+                        session_rec.mfa_verified_at = recent_verified.mfa_verified_at
+                        session_rec.mfa_method_verified = recent_verified.mfa_method_verified
+                        db.add(session_rec)
+                        db.commit()
+
+            if not is_exempt and session_rec.mfa_verified_at is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="MFA_REQUIRED",
+                )
+
+            if (
+                session_rec.mfa_verified_at is not None
+                and session_rec.mfa_method_verified != user.mfa_method
+            ):
+                session_rec.mfa_verified_at = None
+                session_rec.mfa_method_verified = None
+                db.add(session_rec)
+                db.commit()
+                if not is_exempt:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="MFA_REQUIRED",
+                    )
         
         try:
             db.commit()

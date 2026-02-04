@@ -44,12 +44,16 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     onUploadDoc,
     onDownloadDoc,
 }) => {
-    const [expandedSection, setExpandedSection] = useState<'documents' | 'history' | 'projects' | null>('documents');
+    // Default to "Your chats" open on navigation; other sections collapsed.
+    const [expandedSection, setExpandedSection] = useState<'documents' | 'history' | 'projects' | null>('history');
     const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
     const [expandedProjectChats, setExpandedProjectChats] = useState<Set<string>>(new Set());
     const [openThreadMenu, setOpenThreadMenu] = useState<{ id: string; x: number; y: number } | null>(null);
     const [openProjectMenu, setOpenProjectMenu] = useState<{ id: string; x: number; y: number } | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const [chatPage, setChatPage] = useState(1);
+    const chatsPerPage = 7;
 
     const toggleSection = (section: 'documents' | 'history' | 'projects') => {
         setExpandedSection(expandedSection === section ? null : section);
@@ -114,6 +118,20 @@ export const AISidebar: React.FC<AISidebarProps> = ({
         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(type)) return '🖼️';
         return '📎';
     };
+
+    const unassignedThreads = threads.filter((thread) => !thread.projectId);
+    const totalChatPages = Math.max(1, Math.ceil(unassignedThreads.length / chatsPerPage));
+    const clampedChatPage = Math.min(Math.max(1, chatPage), totalChatPages);
+    const pagedUnassignedThreads = unassignedThreads.slice(
+        (clampedChatPage - 1) * chatsPerPage,
+        clampedChatPage * chatsPerPage,
+    );
+
+    React.useEffect(() => {
+        // Keep pagination stable as chats are created/deleted, and reset when reopening section.
+        if (expandedSection !== 'history') return;
+        setChatPage((prev) => Math.min(Math.max(1, prev), totalChatPages));
+    }, [expandedSection, totalChatPages]);
 
     const renderThreadItem = (thread: Thread, options?: { showPreview?: boolean; nested?: boolean }) => {
         const showPreview = options?.showPreview ?? true;
@@ -379,14 +397,45 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                     
                     {expandedSection === 'history' && (
                         <div className="px-1 pb-3">
-                            {threads.filter((thread) => !thread.projectId).length === 0 ? (
+                            {unassignedThreads.length === 0 ? (
                                 <div className="px-4 py-6 text-center">
                                     <p className="text-xs text-text-secondary">No chats yet</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1">
-                                    {threads.filter((thread) => !thread.projectId).map((thread) => renderThreadItem(thread, { showPreview: false }))}
-                                </div>
+                                <>
+                                    <div className="space-y-1">
+                                        {pagedUnassignedThreads.map((thread) => renderThreadItem(thread, { showPreview: false }))}
+                                    </div>
+                                    {totalChatPages > 1 && (
+                                        <div className="mt-2 flex items-center justify-between px-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setChatPage((p) => Math.max(1, p - 1))}
+                                                disabled={clampedChatPage === 1}
+                                                className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-white/10 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5"
+                                                aria-label="Previous page"
+                                            >
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                            </button>
+                                            <span className="text-[11px] text-text-secondary tabular-nums">
+                                                {clampedChatPage}/{totalChatPages}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setChatPage((p) => Math.min(totalChatPages, p + 1))}
+                                                disabled={clampedChatPage === totalChatPages}
+                                                className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-white/10 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5"
+                                                aria-label="Next page"
+                                            >
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}

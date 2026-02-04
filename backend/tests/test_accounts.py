@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.models import Account, Household, HouseholdMember, Subscription, User
+from backend.models import Account, Household, HouseholdMember, Subscription, Transaction, User
 
 # Tests for backend/api/accounts.py
 
@@ -127,6 +127,17 @@ def test_sync_account(test_client: TestClient, test_db, mock_auth):
             "merchant_name": "Burger King",
             "name": "Burger King #123",
         }
+        ,
+        {
+            # Plaid convention: inflows are negative; normalize to positive income.
+            "transaction_id": "txn_2",
+            "date": date(2023, 1, 2),
+            "amount": -100.0,
+            "currency": "USD",
+            "category": "Income",
+            "merchant_name": "Employer",
+            "name": "Payroll",
+        },
     ]
     mock_accts = [{"mask": "1234", "balance_current": 1000.0, "currency": "USD"}]
 
@@ -140,8 +151,19 @@ def test_sync_account(test_client: TestClient, test_db, mock_auth):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["synced_count"] == 1
-    assert data["new_transactions"] == 1
+    assert data["synced_count"] == 2
+    assert data["new_transactions"] == 2
+
+    txns = (
+        test_db.query(Transaction)
+        .filter(Transaction.uid == mock_auth.uid, Transaction.account_id == acct.id)
+        .all()
+    )
+    assert len(txns) == 2
+    by_external_id = {t.external_id: t for t in txns}
+    # Traditional (Plaid) amounts are normalized so outflows are negative and inflows are positive.
+    assert by_external_id["txn_1"].amount == Decimal("-50.00")
+    assert by_external_id["txn_2"].amount == Decimal("100.00")
 
 
 def test_update_account_assignments(test_client: TestClient, test_db, mock_auth):

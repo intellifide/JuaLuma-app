@@ -1120,7 +1120,8 @@ def _process_single_transaction(
     Applies sign to amount based on direction:
     - CEX: buy = negative (money out), sell = positive (money in)
     - Web3: outflow = negative, inflow = positive
-    - Traditional: negative amounts stay negative
+    - Traditional (Plaid): Plaid uses positive for outflows and negative for inflows;
+      invert so expenses are negative and income is positive.
     """
     d = txn["date"]
     if isinstance(d, str):
@@ -1172,7 +1173,8 @@ def _process_single_transaction(
         )
 
     # Apply sign based on direction for CEX and Web3 transactions
-    amount = txn["amount"]
+    amount_raw = txn["amount"]
+    amount = amount_raw if isinstance(amount_raw, Decimal) else Decimal(str(amount_raw))
     direction = txn.get("direction")
     transaction_type = txn.get("transaction_type")
     
@@ -1184,7 +1186,9 @@ def _process_single_transaction(
         elif direction == "inflow":
             # Money coming in: make positive
             amount = abs(amount)
-    # For traditional accounts (Plaid), amount already has correct sign
+    elif account_type == "traditional":
+        # Plaid convention: positive is money leaving the account.
+        amount = -amount
 
     # Auto categorization with improved logic for crypto
     if is_web3:

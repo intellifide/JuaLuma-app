@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from backend.models import Account, Transaction, User
 from backend.services.household_service import get_household_member_uids
+from backend.core import settings
 from backend.utils.firestore import get_firestore_client
 from sqlalchemy import or_
 
@@ -39,6 +40,8 @@ def invalidate_analytics_cache(uid: str):
     """
     Invalidate all analytics cache entries for a specific user.
     """
+    if settings.app_env.lower() == "test":
+        return
     try:
         db_fs = get_firestore_client()
         if not db_fs:

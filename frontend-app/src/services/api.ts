@@ -1,6 +1,6 @@
 // Updated 2026-01-20 03:40 CST by Antigravity
 import axios, { AxiosError, AxiosHeaders } from 'axios'
-import { clearCachedToken, getIdToken } from './auth'
+import { clearCachedToken, getIdToken, MfaRequiredError } from './auth'
 
 // Prevent using Docker hostname in browser
 const envBase = import.meta.env.VITE_API_BASE_URL;
@@ -36,6 +36,19 @@ api.interceptors.response.use(
         ?.detail ||
       (error.response?.data as { message?: string } | undefined)?.message ||
       error.message
+
+    if (status === 403 && (message === 'MFA_REQUIRED' || message === 'MFA_PASSKEY_REQUIRED')) {
+      try {
+        window.dispatchEvent(
+          new CustomEvent('mfa-required', { detail: { reason: message } }),
+        )
+      } catch {
+        // no-op
+      }
+      return Promise.reject(
+        new MfaRequiredError(message === 'MFA_PASSKEY_REQUIRED' ? 'passkey' : 'totp'),
+      )
+    }
 
     if (status === 401) {
       clearCachedToken()

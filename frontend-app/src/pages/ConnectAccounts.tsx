@@ -1781,9 +1781,6 @@ export const ConnectAccounts = () => {
           )}
         </div>
 
-        <div className="alert alert-info mb-8">
-          <strong>Read-Only Access:</strong> We never move funds or place trades. Keys and tokens are stored securely.
-        </div>
 
       </section>
     </div>

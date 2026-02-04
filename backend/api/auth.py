@@ -1,6 +1,7 @@
 # CORE PURPOSE: Authentication and identity endpoints for user access control.
 # LAST MODIFIED: 2026-01-23 22:39 CST
 import logging
+import json
 import random
 import re
 import string
@@ -16,6 +17,21 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
+from webauthn import (
+    generate_authentication_options,
+    generate_registration_options,
+    verify_authentication_response,
+    verify_registration_response,
+)
+from webauthn.helpers import options_to_json
+from webauthn.helpers.base64url_to_bytes import base64url_to_bytes
+from webauthn.helpers.bytes_to_base64url import bytes_to_base64url
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    PublicKeyCredentialDescriptor,
+    ResidentKeyRequirement,
+    UserVerificationRequirement,
+)
 
 from backend.core import settings
 from backend.core.constants import UserStatus
@@ -118,6 +134,7 @@ class TokenRequest(BaseModel):
     mfa_code: str | None = Field(
         default=None, min_length=6, max_length=6, example="123456"
     )
+    passkey_assertion: dict | None = Field(default=None)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -129,7 +146,10 @@ class TokenRequest(BaseModel):
 
 
 class MFAVerifyRequest(BaseModel):
-    code: str = Field(min_length=6, max_length=6, example="123456")
+    code: str | None = Field(default=None, min_length=6, max_length=6, example="123456")
+    passkey_assertion: dict | None = Field(default=None)
+    current_mfa_code: str | None = Field(default=None, min_length=6, max_length=6)
+    current_passkey_assertion: dict | None = Field(default=None)
 
 
 class ResetPasswordRequest(BaseModel):
@@ -137,6 +157,7 @@ class ResetPasswordRequest(BaseModel):
     mfa_code: str | None = Field(
         default=None, min_length=6, max_length=6, example="123456"
     )
+    passkey_assertion: dict | None = Field(default=None)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -149,6 +170,35 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=8, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
     mfa_code: str | None = Field(default=None, min_length=6, max_length=6)
+    passkey_assertion: dict | None = Field(default=None)
+
+
+class MFAReauthRequest(BaseModel):
+    mfa_code: str | None = Field(default=None, min_length=6, max_length=6)
+    passkey_assertion: dict | None = Field(default=None)
+
+
+class PasskeyAuthOptionsRequest(BaseModel):
+    token: str = Field(min_length=10, example="eyJhbGciOiJSUzI1NiIsImtpZCI6...")
+
+
+class PasskeyRegistrationVerifyRequest(BaseModel):
+    credential: dict
+    mfa_code: str | None = Field(default=None, min_length=6, max_length=6)
+    passkey_assertion: dict | None = Field(default=None)
+
+
+class MFALabelRequest(BaseModel):
+    method: str = Field(min_length=3, max_length=16, example="totp")
+    label: str = Field(min_length=1, max_length=128, example="Personal phone")
+    code: str | None = Field(default=None, min_length=6, max_length=6)
+    passkey_assertion: dict | None = Field(default=None)
+
+
+class MFASetPrimaryRequest(BaseModel):
+    method: str = Field(min_length=3, max_length=16, example="passkey")
+    code: str | None = Field(default=None, min_length=6, max_length=6)
+    passkey_assertion: dict | None = Field(default=None)
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -382,25 +432,170 @@ def _verify_email_otp(user: User, mfa_code: str, db: Session) -> None:
     db.commit()
 
 
-def _verify_mfa(user: User, mfa_code: str | None, db: Session) -> None:
+def _get_passkey_rp() -> tuple[str, str]:
+    parsed = urlparse(settings.frontend_url)
+    rp_id = parsed.hostname or "localhost"
+    origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else settings.frontend_url
+    return rp_id, origin
+
+
+def _set_passkey_challenge(user: User, challenge: bytes, db: Session) -> None:
+    user.passkey_challenge = bytes_to_base64url(challenge)
+    user.passkey_challenge_expires_at = datetime.now(UTC) + timedelta(minutes=5)
+    db.add(user)
+    db.commit()
+
+
+def _verify_passkey_assertion(user: User, passkey_assertion: dict | None, db: Session) -> None:
+    if not passkey_assertion:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MFA_PASSKEY_REQUIRED",
+        )
+    if not user.passkey_credential_id or not user.passkey_public_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No passkey is configured for this account.",
+        )
+    if not user.passkey_challenge or not user.passkey_challenge_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No passkey challenge was found. Please try signing in again.",
+        )
+    if datetime.now(UTC) > user.passkey_challenge_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The passkey challenge has expired. Please try again.",
+        )
+
+    rp_id, expected_origin = _get_passkey_rp()
+    try:
+        verification = verify_authentication_response(
+            credential=passkey_assertion,
+            expected_challenge=base64url_to_bytes(user.passkey_challenge),
+            expected_rp_id=rp_id,
+            expected_origin=expected_origin,
+            credential_public_key=base64url_to_bytes(user.passkey_public_key),
+            credential_current_sign_count=user.passkey_sign_count or 0,
+            require_user_verification=True,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Passkey verification failed.",
+        ) from exc
+
+    user.passkey_sign_count = verification.new_sign_count
+    user.passkey_challenge = None
+    user.passkey_challenge_expires_at = None
+    db.add(user)
+    db.commit()
+
+
+def _verify_mfa(
+    user: User,
+    mfa_code: str | None,
+    db: Session,
+    passkey_assertion: dict | None = None,
+) -> None:
     """Helper to verify MFA code for a user."""
     if not user.mfa_enabled:
         return
 
-    if not mfa_code:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="MFA_REQUIRED",
-        )
-
     method = user.mfa_method or "totp"
 
     if method == "totp":
+        if not mfa_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MFA_REQUIRED",
+            )
         _verify_totp(user, mfa_code)
     elif method == "email":
+        if not mfa_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MFA_REQUIRED",
+            )
         _verify_email_otp(user, mfa_code, db)
+    elif method == "passkey":
+        _verify_passkey_assertion(user, passkey_assertion, db)
     elif method == "sms":
         raise HTTPException(status_code=501, detail="SMS MFA not implemented")
+
+
+def _verify_any_mfa(
+    user: User,
+    mfa_code: str | None,
+    db: Session,
+    passkey_assertion: dict | None = None,
+) -> str:
+    """
+    Verify a user using *any* enabled MFA method.
+
+    Used for 2FA administration actions (enable another method, disable 2FA, change labels).
+    For sign-in, always verify the configured primary method via `_verify_mfa`.
+    """
+    if not user.mfa_enabled:
+        return "none"
+
+    totp_enabled = bool(user.mfa_secret)
+    passkey_enabled = bool(user.passkey_credential_id and user.passkey_public_key)
+
+    if passkey_assertion is not None:
+        if not passkey_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No passkey is configured for this account.",
+            )
+        _verify_passkey_assertion(user, passkey_assertion, db)
+        return "passkey"
+
+    if mfa_code is not None:
+        if not totp_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No authenticator app is configured for this account.",
+            )
+        _verify_totp(user, mfa_code)
+        return "totp"
+
+    # If neither credential is provided, mirror the primary-method semantics so the
+    # frontend can render the right prompt.
+    method = user.mfa_method or ("passkey" if passkey_enabled else "totp")
+    if method == "passkey":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MFA_PASSKEY_REQUIRED",
+        )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="MFA_REQUIRED",
+    )
+
+
+def _session_mfa_is_verified(user: User, request: Request, db: Session) -> bool:
+    iat = getattr(request.state, "iat", None)
+    if not iat:
+        return False
+    session_rec = (
+        db.query(UserSession).filter(UserSession.uid == user.uid, UserSession.iat == iat).first()
+    )
+    return bool(session_rec and session_rec.mfa_verified_at is not None)
+
+
+def _mark_session_mfa_verified(uid: str, iat: int | None, method: str | None, db: Session) -> None:
+    if not iat:
+        return
+    session_rec = (
+        db.query(UserSession).filter(UserSession.uid == uid, UserSession.iat == iat).first()
+    )
+    if not session_rec:
+        return
+    session_rec.mfa_verified_at = datetime.now(UTC)
+    session_rec.mfa_method_verified = method
+    db.add(session_rec)
+    db.commit()
 
 
 def _build_frontend_reset_link(reset_link: str) -> str:
@@ -962,7 +1157,10 @@ def login(
         )
 
     if user.mfa_enabled:
-        _verify_mfa(user, payload.mfa_code, db)
+        _verify_mfa(user, payload.mfa_code, db, payload.passkey_assertion)
+
+    if user.mfa_enabled:
+        _mark_session_mfa_verified(uid, decoded.get("iat"), user.mfa_method, db)
 
     subscription = db.query(Subscription).filter(Subscription.uid == uid).first()
     if subscription and subscription.plan not in ["free", "trial"] and not subscription.welcome_email_sent:
@@ -997,11 +1195,13 @@ def reset_password(
         # Prevent enumeration
         return {"message": "Reset link sent"}
 
-    if user.mfa_enabled and not payload.mfa_code:
-        return {"message": "MFA_REQUIRED"}
-
     if user.mfa_enabled:
-        _verify_mfa(user, payload.mfa_code, db)
+        try:
+            _verify_mfa(user, payload.mfa_code, db, payload.passkey_assertion)
+        except HTTPException as exc:
+            if exc.status_code == status.HTTP_403_FORBIDDEN and isinstance(exc.detail, str):
+                return {"message": exc.detail}
+            raise
 
     try:
         reset_link = generate_password_reset_link(payload.email)
@@ -1039,9 +1239,12 @@ def change_password(
     """Update password for the logged-in user. Requires current password and MFA if enabled."""
     # 1. Verify MFA
     if current_user.mfa_enabled:
-        if not payload.mfa_code:
-            return {"message": "MFA_REQUIRED"}
-        _verify_mfa(current_user, payload.mfa_code, db)
+        try:
+            _verify_mfa(current_user, payload.mfa_code, db, payload.passkey_assertion)
+        except HTTPException as exc:
+            if exc.status_code == status.HTTP_403_FORBIDDEN and isinstance(exc.detail, str):
+                return {"message": exc.detail}
+            raise
 
     # 2. Verify Current Password
     if not verify_password(current_user.email, payload.current_password):
@@ -1317,6 +1520,14 @@ def enable_email_mfa(
     current_user = db.query(User).filter(User.uid == uid).first()
 
     if current_user:
+        if current_user.mfa_enabled and current_user.mfa_method != "email":
+            _verify_mfa(
+                current_user,
+                payload.current_mfa_code,
+                db,
+                payload.current_passkey_assertion,
+            )
+
         if not current_user.email_otp or not current_user.email_otp_expires_at:
             raise HTTPException(status_code=400, detail="Please request a verification code before enabling MFA.")
 
@@ -1374,6 +1585,12 @@ def enable_email_mfa(
 
         current_user.mfa_enabled = True
         current_user.mfa_method = "email"
+        current_user.mfa_secret = None
+        current_user.passkey_credential_id = None
+        current_user.passkey_public_key = None
+        current_user.passkey_sign_count = None
+        current_user.passkey_challenge = None
+        current_user.passkey_challenge_expires_at = None
         db.commit()
 
         return {"message": "Email MFA enabled."}
@@ -1409,10 +1626,19 @@ def enable_email_mfa(
 
 @router.post("/mfa/setup")
 def mfa_setup(
+    payload: MFAReauthRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Generate a new TOTP secret for the user."""
+    if current_user.mfa_enabled:
+        _verify_any_mfa(
+            current_user,
+            payload.mfa_code if payload else None,
+            db,
+            payload.passkey_assertion if payload else None,
+        )
+
     secret = pyotp.random_base32()
     # Provisioning URI for QR code
     uri = pyotp.totp.TOTP(secret).provisioning_uri(
@@ -1421,34 +1647,181 @@ def mfa_setup(
 
     # Store secret temporarily (or overwrite existing).
     # Not enabled until verified.
-    current_user.mfa_secret = secret
+    current_user.totp_secret_pending = secret
     db.commit()
 
     return {"secret": secret, "otpauth_url": uri}
 
 
+@router.post("/mfa/passkey/auth/options")
+def passkey_auth_options(
+    payload: PasskeyAuthOptionsRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        decoded = verify_token(payload.token)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token.",
+        ) from exc
+
+    uid = decoded.get("uid") or decoded.get("sub")
+    if not uid:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session data.")
+
+    user = db.query(User).filter(User.uid == uid).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Your account could not be found.")
+    if not user.passkey_credential_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No passkey is configured.")
+
+    options = generate_authentication_options(
+        rp_id=_get_passkey_rp()[0],
+        allow_credentials=[
+            PublicKeyCredentialDescriptor(id=base64url_to_bytes(user.passkey_credential_id))
+        ],
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    _set_passkey_challenge(user, options.challenge, db)
+    return json.loads(options_to_json(options))
+
+
+@router.post("/mfa/passkey/register/options")
+def passkey_register_options(
+    payload: MFAReauthRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if current_user.mfa_enabled:
+        _verify_any_mfa(
+            current_user,
+            payload.mfa_code if payload else None,
+            db,
+            payload.passkey_assertion if payload else None,
+        )
+
+    rp_id, _ = _get_passkey_rp()
+    exclude_credentials: list[PublicKeyCredentialDescriptor] = []
+    if current_user.passkey_credential_id:
+        exclude_credentials.append(
+            PublicKeyCredentialDescriptor(id=base64url_to_bytes(current_user.passkey_credential_id))
+        )
+
+    options = generate_registration_options(
+        rp_id=rp_id,
+        rp_name="JuaLuma",
+        user_id=current_user.uid.encode("utf-8"),
+        user_name=current_user.email,
+        user_display_name=current_user.email,
+        authenticator_selection=AuthenticatorSelectionCriteria(
+            resident_key=ResidentKeyRequirement.DISCOURAGED,
+            user_verification=UserVerificationRequirement.REQUIRED,
+        ),
+        exclude_credentials=exclude_credentials,
+    )
+    _set_passkey_challenge(current_user, options.challenge, db)
+    return json.loads(options_to_json(options))
+
+
+@router.post("/mfa/passkey/register/verify")
+def passkey_register_verify(
+    payload: PasskeyRegistrationVerifyRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if current_user.mfa_enabled:
+        _verify_any_mfa(current_user, payload.mfa_code, db, payload.passkey_assertion)
+    was_mfa_enabled = current_user.mfa_enabled
+
+    if not current_user.passkey_challenge or not current_user.passkey_challenge_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No passkey setup is in progress. Start setup again.",
+        )
+    if datetime.now(UTC) > current_user.passkey_challenge_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The passkey setup challenge expired. Start setup again.",
+        )
+
+    rp_id, expected_origin = _get_passkey_rp()
+    try:
+        verification = verify_registration_response(
+            credential=payload.credential,
+            expected_challenge=base64url_to_bytes(current_user.passkey_challenge),
+            expected_rp_id=rp_id,
+            expected_origin=expected_origin,
+            require_user_verification=True,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Passkey registration could not be verified.",
+        ) from exc
+
+    current_user.passkey_credential_id = bytes_to_base64url(verification.credential_id)
+    current_user.passkey_public_key = bytes_to_base64url(verification.credential_public_key)
+    current_user.passkey_sign_count = verification.sign_count
+    current_user.passkey_challenge = None
+    current_user.passkey_challenge_expires_at = None
+    current_user.mfa_enabled = True
+    # If this is the first enabled method, default primary to passkey (even if
+    # mfa_method has a legacy default value).
+    if not was_mfa_enabled:
+        current_user.mfa_method = "passkey"
+    # Keep any existing authenticator secret so users can enable both methods.
+    current_user.email_otp = None
+    current_user.email_otp_expires_at = None
+    db.add(current_user)
+    db.commit()
+
+    if current_user.mfa_method == "passkey":
+        iat = getattr(request.state, "iat", None)
+        _mark_session_mfa_verified(current_user.uid, iat, "passkey", db)
+    return {"message": "Passkey MFA enabled."}
+
+
 @router.post("/mfa/enable")
 def mfa_enable(
     payload: MFAVerifyRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Verify and enable MFA."""
-    if not current_user.mfa_secret:
+    if not payload.code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A verification code is required.",
+        )
+
+    if not current_user.totp_secret_pending:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The multi-factor authentication setup has not been initiated.",
         )
 
-    totp = pyotp.TOTP(current_user.mfa_secret)
+    totp = pyotp.TOTP(current_user.totp_secret_pending)
     if not totp.verify(payload.code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid MFA code.",
         )
 
+    was_mfa_enabled = current_user.mfa_enabled
     current_user.mfa_enabled = True
+    current_user.mfa_secret = current_user.totp_secret_pending
+    current_user.totp_secret_pending = None
+    # If this is the first enabled method, default primary to authenticator app.
+    if not was_mfa_enabled:
+        current_user.mfa_method = "totp"
     db.commit()
+
+    if current_user.mfa_method == "totp":
+        iat = getattr(request.state, "iat", None)
+        _mark_session_mfa_verified(current_user.uid, iat, "totp", db)
 
     return {"message": "MFA enabled successfully."}
 
@@ -1456,6 +1829,7 @@ def mfa_enable(
 @router.post("/mfa/disable")
 def mfa_disable(
     payload: MFAVerifyRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -1463,18 +1837,130 @@ def mfa_disable(
     if not current_user.mfa_enabled:
         return {"message": "MFA is already disabled."}
 
-    totp = pyotp.TOTP(current_user.mfa_secret)
-    if not totp.verify(payload.code):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="The multi-factor authentication code provided is incorrect.",
-        )
+    _verify_any_mfa(current_user, payload.code, db, payload.passkey_assertion)
 
     current_user.mfa_enabled = False
     current_user.mfa_secret = None
+    current_user.totp_secret_pending = None
+    current_user.totp_label = None
+    current_user.mfa_method = None
+    current_user.email_otp = None
+    current_user.email_otp_expires_at = None
+    current_user.passkey_credential_id = None
+    current_user.passkey_public_key = None
+    current_user.passkey_sign_count = None
+    current_user.passkey_challenge = None
+    current_user.passkey_challenge_expires_at = None
+    current_user.passkey_label = None
     db.commit()
 
+    iat = getattr(request.state, "iat", None)
+    if iat:
+        session_rec = (
+            db.query(UserSession).filter(UserSession.uid == current_user.uid, UserSession.iat == iat).first()
+        )
+        if session_rec:
+            session_rec.mfa_verified_at = None
+            session_rec.mfa_method_verified = None
+            db.add(session_rec)
+            db.commit()
+
     return {"message": "MFA disabled successfully."}
+
+
+@router.post("/mfa/label")
+def mfa_set_label(
+    payload: MFALabelRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Set a user-friendly label for an enabled MFA method."""
+    method = (payload.method or "").strip().lower()
+    if method not in {"totp", "passkey"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Method must be one of: totp, passkey.",
+        )
+    if not current_user.mfa_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MFA is not enabled for this account.",
+        )
+
+    if method == "totp" and not current_user.mfa_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No authenticator app is configured for this account.",
+        )
+    if method == "passkey" and not current_user.passkey_credential_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No passkey is configured for this account.",
+        )
+
+    # Allow labeling immediately after enabling (session is MFA-verified) without
+    # forcing the user through a second prompt. If session isn't verified, require
+    # proof via either enabled method.
+    if not _session_mfa_is_verified(current_user, request, db):
+        _verify_any_mfa(current_user, payload.code, db, payload.passkey_assertion)
+
+    if method == "totp":
+        current_user.totp_label = payload.label.strip()
+    else:
+        current_user.passkey_label = payload.label.strip()
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    return {"message": "MFA label updated.", "user": _serialize_profile(current_user)}
+
+
+@router.post("/mfa/primary")
+def mfa_set_primary(
+    payload: MFASetPrimaryRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Set which MFA method is required (primary) when multiple methods are configured."""
+    method = (payload.method or "").strip().lower()
+    if method not in {"totp", "passkey"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Method must be one of: totp, passkey.",
+        )
+
+    if method == "totp":
+        if not current_user.mfa_secret:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No authenticator app is configured for this account.",
+            )
+        if not payload.code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MFA_REQUIRED",
+            )
+        _verify_totp(current_user, payload.code)
+    else:
+        if not current_user.passkey_credential_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No passkey is configured for this account.",
+            )
+        _verify_passkey_assertion(current_user, payload.passkey_assertion, db)
+
+    current_user.mfa_enabled = True
+    current_user.mfa_method = method
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    iat = getattr(request.state, "iat", None)
+    _mark_session_mfa_verified(current_user.uid, iat, method, db)
+
+    return {"message": "Primary MFA method updated.", "user": _serialize_profile(current_user)}
 
 
 @router.post("/logout")
