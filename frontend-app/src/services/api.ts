@@ -38,6 +38,7 @@ api.interceptors.response.use(
       error.message
 
     if (status === 403 && (message === 'MFA_REQUIRED' || message === 'MFA_PASSKEY_REQUIRED')) {
+      clearCachedToken()
       try {
         window.dispatchEvent(
           new CustomEvent('mfa-required', { detail: { reason: message } }),

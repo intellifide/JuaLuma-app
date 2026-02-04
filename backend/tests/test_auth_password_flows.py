@@ -50,7 +50,7 @@ def test_change_password_mfa_required_but_missing(
     test_client: TestClient, test_db, mock_auth
 ):
     """
-    Test that changing password requires MFA code if user has MFA enabled.
+    Test that changing password does not require MFA code after login.
     """
     # Enable MFA for the mock user
     mock_auth.mfa_enabled = True
@@ -61,18 +61,22 @@ def test_change_password_mfa_required_but_missing(
     payload = {
         "current_password": "OldPassword123!",
         "new_password": "NewPassword123!",
-        # mfa_code missing
+        # mfa_code intentionally omitted
     }
 
-    response = test_client.post("/api/auth/change-password", json=payload)
+    with patch("backend.api.auth.verify_password", return_value=True) as mock_verify:
+        with patch("backend.api.auth.update_user_password") as mock_update:
+            response = test_client.post("/api/auth/change-password", json=payload)
 
     assert response.status_code == 200
-    assert response.json()["message"] == "MFA_REQUIRED"
+    assert response.json()["message"] == "Password updated successfully"
+    mock_verify.assert_called_once_with(mock_auth.email, "OldPassword123!")
+    mock_update.assert_called_once_with(mock_auth.uid, "NewPassword123!")
 
 
 def test_change_password_mfa_success(test_client: TestClient, test_db, mock_auth):
     """
-    Test that changing password works with valid MFA code.
+    Test that changing password works even if an MFA code is provided.
     """
     # Enable MFA
     secret = pyotp.random_base32()

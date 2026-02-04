@@ -584,6 +584,44 @@ def _session_mfa_is_verified(user: User, request: Request, db: Session) -> bool:
     return bool(session_rec and session_rec.mfa_verified_at is not None)
 
 
+def _upsert_user_session(uid: str, iat: int | None, request: Request, db: Session) -> UserSession | None:
+    if not iat:
+        return None
+
+    session_rec = db.query(UserSession).filter(UserSession.uid == uid, UserSession.iat == iat).first()
+    if session_rec:
+        session_rec.last_active = func.now()
+        db.add(session_rec)
+        return session_rec
+
+    ua_string = request.headers.get("user-agent", "")
+    device_type = "Desktop"
+    try:
+        import user_agents  # type: ignore[import-not-found]
+
+        ua = user_agents.parse(ua_string)
+        if ua.is_mobile:
+            device_type = "Mobile"
+        elif ua.is_tablet:
+            device_type = "Tablet"
+        elif ua.is_bot:
+            device_type = "Bot"
+    except Exception:
+        # Best-effort: device_type stays "Desktop"
+        pass
+
+    session_rec = UserSession(
+        uid=uid,
+        iat=iat,
+        ip_address=request.client.host if request.client else None,
+        user_agent=ua_string[:512],
+        device_type=device_type,
+        is_active=True,
+    )
+    db.add(session_rec)
+    return session_rec
+
+
 def _mark_session_mfa_verified(uid: str, iat: int | None, method: str | None, db: Session) -> None:
     if not iat:
         return
@@ -1156,11 +1194,28 @@ def login(
             detail="Your account could not be found.",
         )
 
-    if user.mfa_enabled:
-        _verify_mfa(user, payload.mfa_code, db, payload.passkey_assertion)
+    iat = decoded.get("iat")
+    if iat:
+        request.state.iat = iat
+    session_rec = _upsert_user_session(uid, iat, request, db)
 
     if user.mfa_enabled:
-        _mark_session_mfa_verified(uid, decoded.get("iat"), user.mfa_method, db)
+        # Sign-in always requires the configured MFA method.
+        _verify_mfa(user, payload.mfa_code, db, payload.passkey_assertion)
+        if session_rec is not None:
+            session_rec.mfa_verified_at = datetime.now(UTC)
+            session_rec.mfa_method_verified = user.mfa_method
+            db.add(session_rec)
+
+    if session_rec is not None:
+        try:
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to establish login session. Please try again.",
+            ) from exc
 
     subscription = db.query(Subscription).filter(Subscription.uid == uid).first()
     if subscription and subscription.plan not in ["free", "trial"] and not subscription.welcome_email_sent:
@@ -1236,24 +1291,15 @@ def change_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Update password for the logged-in user. Requires current password and MFA if enabled."""
-    # 1. Verify MFA
-    if current_user.mfa_enabled:
-        try:
-            _verify_mfa(current_user, payload.mfa_code, db, payload.passkey_assertion)
-        except HTTPException as exc:
-            if exc.status_code == status.HTTP_403_FORBIDDEN and isinstance(exc.detail, str):
-                return {"message": exc.detail}
-            raise
-
-    # 2. Verify Current Password
+    """Update password for the logged-in user. Requires current password."""
+    # Verify Current Password
     if not verify_password(current_user.email, payload.current_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="The current password provided is incorrect.",
         )
 
-    # 3. Update Password
+    # Update Password
     try:
         update_user_password(current_user.uid, payload.new_password)
     except RuntimeError as exc:

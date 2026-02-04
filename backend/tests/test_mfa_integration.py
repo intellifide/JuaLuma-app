@@ -57,7 +57,7 @@ def test_mfa_complete_flow(
 
     # Verify secret stored
     test_db.refresh(user)
-    assert user.mfa_secret == secret
+    assert user.totp_secret_pending == secret
     assert not user.mfa_enabled
 
     # Enable TOTP

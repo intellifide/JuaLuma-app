@@ -3,11 +3,10 @@ import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import Switch from '../components/ui/Switch'
-import { getIdToken, getPasskeyAuthOptions, MfaRequiredError } from '../services/auth'
-import { getPasskeyAssertion } from '../services/passkey'
+import { MfaRequiredError } from '../services/auth'
 
 export const Login = () => {
-  const { login, completeLoginMfa } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const returnUrl = params.get('returnUrl') || '/dashboard'
@@ -17,21 +16,6 @@ export const Login = () => {
   const [rememberMe, setRememberMe] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mfaCode, setMfaCode] = useState('')
-  const [mfaMethod, setMfaMethod] = useState<'totp' | 'passkey' | null>(null)
-
-  const runPasskeyStep = async () => {
-    if (!completeLoginMfa) {
-      throw new Error('Unable to complete login challenge.')
-    }
-    const token = await getIdToken(true)
-    if (!token) {
-      throw new Error('Session expired. Please sign in again.')
-    }
-    const options = await getPasskeyAuthOptions(token)
-    const assertion = await getPasskeyAssertion(options)
-    await completeLoginMfa(undefined, assertion)
-  }
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -47,32 +31,11 @@ export const Login = () => {
 
     setSubmitting(true)
     try {
-      if (mfaMethod) {
-        if (mfaMethod === 'passkey') {
-          await runPasskeyStep()
-        } else {
-          if (!mfaCode.trim()) {
-            setError('Enter your authenticator code to continue.')
-            setSubmitting(false)
-            return
-          }
-          if (!completeLoginMfa) {
-            throw new Error('Unable to complete login challenge.')
-          }
-          await completeLoginMfa(mfaCode.trim())
-        }
-      } else {
-        await login(trimmedEmail, trimmedPassword)
-      }
+      await login(trimmedEmail, trimmedPassword)
       navigate(returnUrl, { replace: true })
     } catch (err) {
       if (err instanceof MfaRequiredError) {
-        setMfaMethod(err.method)
-        setError(
-          err.method === 'passkey'
-            ? 'Passkey verification is required. Continue to verify.'
-            : 'Two-factor authentication is required. Enter your code to continue.',
-        )
+        setError('Verification required. Complete the modal prompt to continue signing in.')
         return
       }
       const message = err instanceof Error ? err.message : 'Unable to log in. Try again.'
@@ -124,23 +87,6 @@ export const Login = () => {
                 />
               </div>
 
-              {mfaMethod === 'totp' && (
-                <div>
-                  <label htmlFor="mfa-code" className="form-label">Authenticator Code</label>
-                  <input
-                    id="mfa-code"
-                    type="text"
-                    inputMode="numeric"
-                    value={mfaCode}
-                    onChange={(e) => setMfaCode(e.target.value)}
-                    className="form-input"
-                    placeholder="123456"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                  />
-                </div>
-              )}
-
               <div className="flex items-center justify-between">
                 <Switch
                   checked={rememberMe}
@@ -159,13 +105,7 @@ export const Login = () => {
                 disabled={submitting}
                 className="btn w-full justify-center"
               >
-                {submitting
-                  ? 'Signing in...'
-                  : mfaMethod === 'passkey'
-                    ? 'Continue with Passkey'
-                    : mfaMethod === 'totp'
-                      ? 'Verify and Sign In'
-                      : 'Sign In'}
+                {submitting ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
 

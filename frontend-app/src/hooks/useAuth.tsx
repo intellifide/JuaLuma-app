@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react'
 import { User, onAuthStateChanged } from 'firebase/auth'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { auth } from '../services/firebase'
 import {
   apiFetch,
@@ -109,6 +110,8 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -147,6 +150,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null)
 
       if (nextUser) {
+        // Clear any stale profile while re-establishing backend auth for this session.
+        setProfile(null)
         // Prevent infinite loading if backend is unreachable
         const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000))
         await Promise.race([refetchProfile(), timeoutPromise])
@@ -215,7 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true)
     try {
       await loginWithFirebase(email, password)
-      const token = await auth.currentUser?.getIdToken(true)
+      const token = await getIdToken(true)
       if (!token) {
         throw new Error('Unable to establish a secure session token.')
       }
@@ -242,7 +247,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!auth.currentUser) {
         throw new Error('Please sign in again to continue.')
       }
-      const token = await auth.currentUser.getIdToken(true)
+      const token = await getIdToken(true)
+      if (!token) {
+        throw new Error('Unable to establish a secure session token.')
+      }
       await completeBackendLogin(token, mfa_code, passkey_assertion)
       await refetchProfile()
     },
@@ -268,16 +276,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!code) {
           throw new Error('Enter your authenticator code to continue.')
         }
-        const token = await auth.currentUser.getIdToken(true)
+        const token = await getIdToken(true)
+        if (!token) {
+          throw new Error('Session expired. Please sign in again.')
+        }
         await completeBackendLogin(token, code, undefined)
       }
       await refetchProfile()
       setMfaGateOpen(false)
       setMfaGateCode('')
+      if (location.pathname === '/login') {
+        const params = new URLSearchParams(location.search)
+        const returnUrl = params.get('returnUrl') || '/dashboard'
+        navigate(returnUrl, { replace: true })
+      }
     } finally {
       setMfaGateWorking(false)
     }
-  }, [mfaGateCode, mfaGateMethod, refetchProfile])
+  }, [location.pathname, location.search, mfaGateCode, mfaGateMethod, navigate, refetchProfile])
 
   const logout = useCallback(async () => {
     setError(null)
@@ -334,6 +350,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 onClick={() => {
                   if (mfaGateWorking) return
                   setMfaGateOpen(false)
+                  void logout()
                 }}
                 className="modal-close"
                 aria-label="Close modal"
@@ -383,7 +400,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 <button
                   type="button"
                   className="btn btn-outline flex-1"
-                  onClick={() => setMfaGateOpen(false)}
+                  onClick={() => {
+                    setMfaGateOpen(false)
+                    void logout()
+                  }}
                   disabled={mfaGateWorking}
                 >
                   Cancel

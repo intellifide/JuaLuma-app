@@ -142,14 +142,36 @@ export const completeBackendLogin = async (
     throwOnError: false,
   })
 
-  if (response.ok) return
+  if (response.ok) {
+    // Keep shared token cache aligned with the token that just completed backend login.
+    // This prevents API clients from continuing to send a pre-MFA token.
+    cachedToken = token
+    lastTokenAt = Date.now()
+    return
+  }
 
   const data = await response.json().catch(() => null)
   const detail = data?.detail || data?.message
   if (response.status === 403 && detail === 'MFA_PASSKEY_REQUIRED') {
+    clearCachedToken()
+    try {
+      window.dispatchEvent(
+        new CustomEvent('mfa-required', { detail: { reason: detail } }),
+      )
+    } catch {
+      // no-op (SSR/tests)
+    }
     throw new MfaRequiredError('passkey')
   }
   if (response.status === 403 && detail === 'MFA_REQUIRED') {
+    clearCachedToken()
+    try {
+      window.dispatchEvent(
+        new CustomEvent('mfa-required', { detail: { reason: detail } }),
+      )
+    } catch {
+      // no-op (SSR/tests)
+    }
     throw new MfaRequiredError('totp')
   }
 
@@ -421,6 +443,7 @@ export const apiFetch = async (
     // Central MFA gating signal: when the backend requires MFA verification for the
     // current session, notify the app shell so it can prompt once, then unblock.
     if (response.status === 403 && (message === 'MFA_REQUIRED' || message === 'MFA_PASSKEY_REQUIRED')) {
+      clearCachedToken()
       try {
         window.dispatchEvent(
           new CustomEvent('mfa-required', { detail: { reason: message } }),
