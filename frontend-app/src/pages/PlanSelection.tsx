@@ -181,6 +181,14 @@ export const PlanSelection = () => {
     })
     .sort((a, b) => a.amount_cents - b.amount_cents)
 
+  const getPlanSubtitle = (planCode: string) => {
+    if (planCode === 'free') return 'Money Basics'
+    if (planCode.includes('essential')) return 'Level Up'
+    if (planCode.includes('pro')) return 'Wealth Builder'
+    if (planCode.includes('ultimate')) return 'Household HQ'
+    return null
+  }
+
   const getButtonText = (plan: SubscriptionTier) => {
     if (plan.code === 'free') return 'Get Started'
     if (plan.code.includes('pro') || plan.code.includes('ultimate')) return 'Start Free Trial'
@@ -311,6 +319,20 @@ export const PlanSelection = () => {
                     {plan.name}
                   </h3>
 
+                  {getPlanSubtitle(plan.code) && (
+                    <div className={`text-sm font-normal mb-4 ${
+                      plan.code === 'free'
+                        ? 'text-gray-500'
+                        : plan.code.includes('essential')
+                          ? 'text-blue-500/80'
+                          : plan.code.includes('pro')
+                            ? 'text-primary/80'
+                            : 'text-accent/80'
+                    }`}>
+                      {getPlanSubtitle(plan.code)}
+                    </div>
+                  )}
+
                   <div className="text-4xl font-bold mb-2">
                     {priceInfo.display}
                     <span className="text-lg font-normal text-muted">{priceInfo.period}</span>
@@ -362,25 +384,25 @@ export const PlanSelection = () => {
                   <thead>
                     <tr>
                       <th className="text-left p-4 pb-8 w-1/4"></th>
-                      <th className="p-4 pb-8 text-center w-[18%]">
-                        <div className="text-xl font-bold text-gray-400 mb-1">Free</div>
-                        <div className="text-sm font-normal text-gray-500">Starter</div>
-                      </th>
-                      <th className="p-4 pb-8 text-center w-[18%]">
-                        <div className="text-xl font-bold text-blue-400 mb-1">Essential</div>
-                        <div className="text-sm font-normal text-blue-500/80">Growth</div>
-                      </th>
-                      <th className="p-4 pb-8 text-center w-[18%] relative">
-                        <div className="absolute inset-x-2 top-0 bottom-0 bg-primary/10 rounded-t-2xl -z-10" />
-                        <div className="text-xl font-bold text-primary mb-1">Pro</div>
-                        <div className="text-sm font-normal text-primary/80">Most Popular</div>
-                      </th>
-                      <th className="p-4 pb-8 text-center w-[18%]">
-                        <div className="text-xl font-bold text-accent mb-1">Ultimate</div>
-                        <div className="text-sm font-normal text-accent/80">Power User</div>
-                      </th>
-                    </tr>
-                  </thead>
+	                      <th className="p-4 pb-8 text-center w-[18%]">
+	                        <div className="text-xl font-bold text-gray-400 mb-1">Free</div>
+	                        <div className="text-sm font-normal text-gray-500">Money Basics</div>
+	                      </th>
+	                      <th className="p-4 pb-8 text-center w-[18%]">
+	                        <div className="text-xl font-bold text-blue-400 mb-1">Essential</div>
+	                        <div className="text-sm font-normal text-blue-500/80">Level Up</div>
+	                      </th>
+		                      <th className="p-4 pb-8 text-center w-[18%] relative">
+		                        <div className="absolute inset-x-2 top-0 bottom-0 bg-primary/10 rounded-t-2xl -z-10" />
+		                        <div className="text-xl font-bold text-primary mb-1">Pro</div>
+		                        <div className="text-sm font-normal text-primary/80">Wealth Builder</div>
+		                      </th>
+		                      <th className="p-4 pb-8 text-center w-[18%]">
+		                        <div className="text-xl font-bold text-accent mb-1">Ultimate</div>
+		                        <div className="text-sm font-normal text-accent/80">Household HQ</div>
+	                      </th>
+	                    </tr>
+	                  </thead>
                   <tbody className="text-text-secondary">
                     {[
                       { label: 'Traditional Accounts', free: '2', essential: '3', pro: '5', ultimate: '20', icon: Globe },
