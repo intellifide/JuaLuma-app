@@ -3,7 +3,7 @@
 # Updated 2026-01-25 12:00 CST
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 import logging
 
@@ -305,6 +305,22 @@ def _apply_filters(
     return db_query
 
 
+def _essential_retention_cutoff(db: Session, uid: str) -> datetime | None:
+    """
+    Essential tier users are limited to a rolling 365-day transaction window.
+    """
+    subscription = (
+        db.query(Subscription)
+        .filter(Subscription.uid == uid, Subscription.status == "active")
+        .first()
+    )
+    plan_code = subscription.plan if subscription else SubscriptionPlans.FREE
+    base_tier = SubscriptionPlans.get_base_tier(plan_code)
+    if base_tier == SubscriptionPlans.ESSENTIAL:
+        return datetime.now(UTC) - timedelta(days=365)
+    return None
+
+
 @router.get("", response_model=TransactionListResponse)
 def list_transactions(
     account_id: uuid.UUID | None = Query(default=None),
@@ -392,6 +408,11 @@ def list_transactions(
         Transaction.uid.in_(target_uids),
         Transaction.archived.is_(False),
     )
+
+    if scope == "personal":
+        retention_cutoff = _essential_retention_cutoff(db, current_user.uid)
+        if retention_cutoff is not None:
+            query = query.filter(Transaction.ts >= retention_cutoff)
 
     # Parse exclude_account_types if provided
     exclude_types_list = None
@@ -485,6 +506,10 @@ def search_transactions(
         Transaction.uid == current_user.uid,
         Transaction.archived.is_(False),
     )
+
+    retention_cutoff = _essential_retention_cutoff(db, current_user.uid)
+    if retention_cutoff is not None:
+        query = query.filter(Transaction.ts >= retention_cutoff)
     
     # Parse exclude_account_types if provided
     exclude_types_list = None
@@ -690,6 +715,9 @@ def get_transaction(
         )
         .first()
     )
+    retention_cutoff = _essential_retention_cutoff(db, current_user.uid)
+    if txn and retention_cutoff and txn.ts < retention_cutoff:
+        txn = None
     if not txn:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="The specified transaction could not be found."

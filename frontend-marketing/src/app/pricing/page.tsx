@@ -45,7 +45,8 @@ export default function Pricing() {
                             '1 Investment Account',
                             '1 Web3 Wallet',
                             '1 CEX Account',
-                            '20 AI Queries/Day'
+                            '10 AI Queries/Day',
+                            'Transaction History: Last 45 Days'
                         ]
                     },
                     {
@@ -59,8 +60,9 @@ export default function Pricing() {
                             '3 Traditional Accounts',
                             '2 Investment Accounts',
                             '1 Web3 Wallet',
-                            '3 CEX Accounts',
-                            '30 AI Queries/Day'
+                            '1 CEX Account',
+                            '30 AI Queries/Day',
+                            'Transaction History: Rolling 365 Days'
                         ]
                     },
                     {
@@ -73,8 +75,8 @@ export default function Pricing() {
                         features: [
                             '5 Traditional Accounts',
                             '5 Investment Accounts',
-                            '5 Web3 Wallets',
-                            '10 CEX Accounts',
+                            '2 Web3 Wallets',
+                            '3 CEX Accounts',
                             '40 AI Queries/Day',
                             'Marketplace Access',
                             '14-Day Free Trial'
@@ -103,10 +105,10 @@ export default function Pricing() {
                         features: [
                             '20 Traditional Accounts',
                             '20 Investment Accounts',
-                            '20 Web3 Wallets',
-                            '20 CEX Accounts',
+                            '8 Web3 Wallets',
+                            '5 CEX Accounts',
                             '80 AI Queries/Day',
-                            'Family Sharing (4 users)',
+                            'Family Features (4 members total)',
                             '14-Day Free Trial'
                         ]
                     },
@@ -120,7 +122,7 @@ export default function Pricing() {
                         features: [
                             'Everything in Ultimate Monthly',
                             'Save $120/year',
-                            'Family Features Included',
+                            'Family Features (4 members total)',
                             '14-Day Free Trial'
                         ]
                     }
@@ -349,11 +351,11 @@ export default function Pricing() {
                                         {[
                                             { label: 'Traditional Accounts', free: '2', essential: '3', pro: '5', ultimate: '20', icon: Globe },
                                             { label: 'Investment Accounts', free: '1', essential: '2', pro: '5', ultimate: '20', icon: Activity },
-                                            { label: 'Web3 Wallets', free: '1', essential: '1', pro: '5', ultimate: '20', icon: Database },
-                                            { label: 'CEX Accounts', free: '1', essential: '3', pro: '10', ultimate: '20', icon: Shield },
-                                            { label: 'AI Queries/Day', free: '20', essential: '30', pro: '40', ultimate: '80', icon: Zap },
-                                            { label: 'Data Retention', free: '45 days', essential: 'Current + Prev', pro: 'Full History', ultimate: 'Full History', icon: Database },
-                                            { label: 'Family Features', free: false, essential: false, pro: false, ultimate: true, icon: Users },
+                                            { label: 'Web3 Wallets', free: '1', essential: '1', pro: '2', ultimate: '8', icon: Database },
+                                            { label: 'CEX Accounts', free: '1', essential: '1', pro: '3', ultimate: '5', icon: Shield },
+                                            { label: 'AI Queries/Day', free: '10', essential: '30', pro: '40', ultimate: '80', icon: Zap },
+                                            { label: 'Transaction History', free: 'Last 45 Days', essential: 'Rolling 365 Days', pro: 'All-Time', ultimate: 'All-Time', icon: Database },
+                                            { label: 'Family Features', free: false, essential: false, pro: false, ultimate: '4 members total', icon: Users },
                                             { label: 'Free Trial', free: false, essential: false, pro: '14 days', ultimate: '14 days', icon: Star },
                                             { label: 'Developer Marketplace', free: false, essential: false, pro: true, ultimate: true, icon: Globe },
                                         ].map((row, idx) => (
@@ -403,17 +405,18 @@ export default function Pricing() {
                                 </p>
                             </div>
                             <div className="mb-8">
-                                <h3 className="mb-2">What happens to my data if I cancel?</h3>
+                                <h3 className="mb-2">What account types does JuaLuma support?</h3>
                                 <p className="text-text-secondary">
-                                    You can export your data at any time. After cancellation, your data is retained according to your tier&apos;s
-                                    retention policy, then securely deleted per our Privacy Policy.
+                                    Traditional accounts are standard bank accounts (checking, savings, and credit card accounts). Investment accounts are
+                                    brokerage and retirement accounts that hold securities. Web3 wallets are self-custody blockchain wallet addresses, and CEX
+                                    means centralized exchanges such as Coinbase, Kraken, or similar custodial trading platforms.
                                 </p>
                             </div>
                             <div className="mb-8">
-                                <h3 className="mb-2">Do you offer refunds?</h3>
+                                <h3 className="mb-2">What happens to my data if I cancel?</h3>
                                 <p className="text-text-secondary">
-                                    Subscription fees are non-refundable except as required by law. Pro and Ultimate Tiers include a 14-day free trial so
-                                    you can try before committing.
+                                    You can export your data at any time. Data retention and deletion are governed by legal and compliance requirements,
+                                    then securely handled according to our Privacy Policy.
                                 </p>
                             </div>
                         </div>

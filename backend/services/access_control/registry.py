@@ -82,18 +82,18 @@ feature_requirements: dict[str, dict[str, Any]] = {
 }
 
 account_limits: dict[str, dict[str, int]] = {
-    'cex': {'free': 1, 'essential': 3, 'pro': 10, 'ultimate': 20},
+    'cex': {'free': 1, 'essential': 1, 'pro': 3, 'ultimate': 5},
     'investment': {'free': 1, 'essential': 2, 'pro': 5, 'ultimate': 20},
     'manual': {'free': 5, 'essential': 10, 'pro': 20, 'ultimate': 50},
     'traditional': {'free': 2, 'essential': 3, 'pro': 5, 'ultimate': 20},
-    'web3': {'free': 1, 'essential': 1, 'pro': 5, 'ultimate': 20},
+    'web3': {'free': 1, 'essential': 1, 'pro': 2, 'ultimate': 8},
 }
 
 account_limits_by_tier: dict[str, dict[str, int]] = {
     'free': {'cex': 1, 'investment': 1, 'manual': 5, 'traditional': 2, 'web3': 1},
-    'essential': {'cex': 3, 'investment': 2, 'manual': 10, 'traditional': 3, 'web3': 1},
-    'pro': {'cex': 10, 'investment': 5, 'manual': 20, 'traditional': 5, 'web3': 5},
-    'ultimate': {'cex': 20, 'investment': 20, 'manual': 50, 'traditional': 20, 'web3': 20},
+    'essential': {'cex': 1, 'investment': 2, 'manual': 10, 'traditional': 3, 'web3': 1},
+    'pro': {'cex': 3, 'investment': 5, 'manual': 20, 'traditional': 5, 'web3': 2},
+    'ultimate': {'cex': 5, 'investment': 20, 'manual': 50, 'traditional': 20, 'web3': 8},
 }
 
 def tier_from_string(value: str | Tier | None) -> Tier:

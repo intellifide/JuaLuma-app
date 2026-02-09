@@ -23,6 +23,30 @@ from backend.services.billing import update_user_tier
 from backend.services.email import get_email_client
 
 logger = logging.getLogger(__name__)
+MAX_HOUSEHOLD_MEMBERS = 4
+
+
+def _enforce_household_capacity(db: Session, household_id: uuid.UUID, include_pending_invites: bool) -> None:
+    member_count = (
+        db.query(HouseholdMember)
+        .filter(HouseholdMember.household_id == household_id)
+        .count()
+    )
+    pending_invite_count = 0
+    if include_pending_invites:
+        pending_invite_count = (
+            db.query(HouseholdInvite)
+            .filter(
+                HouseholdInvite.household_id == household_id,
+                HouseholdInvite.status == "pending",
+            )
+            .count()
+        )
+    if member_count + pending_invite_count >= MAX_HOUSEHOLD_MEMBERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Households are limited to {MAX_HOUSEHOLD_MEMBERS} total members.",
+        )
 
 
 # Send a household welcome email to a new member after verification.
@@ -154,6 +178,7 @@ def invite_member(
         )
 
     household_id = member.household_id
+    _enforce_household_capacity(db, household_id, include_pending_invites=True)
 
     # 2. Check overlap
     # Check if email is already in the household (need User lookup)
@@ -260,6 +285,8 @@ def accept_invite(db: Session, user_uid: str, token: str):
         raise HTTPException(
             status_code=400, detail="You are already a member of a household. You must leave your current household before joining a new one."
         )
+
+    _enforce_household_capacity(db, invite.household_id, include_pending_invites=False)
 
     # 2. Handle Subscription Conflict (The 'Breakup Protocol' Entry)
     # User entering household drops their paid sub to become 'dependent' on household owner

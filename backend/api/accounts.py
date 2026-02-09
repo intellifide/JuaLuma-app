@@ -1274,6 +1274,17 @@ def _resolve_sync_dates(
     return resolved_start, resolved_end
 
 
+def _retention_min_date_for_plan(plan_code: str) -> date | None:
+    """
+    Return the minimum transaction date allowed for the plan.
+    Essential is capped to a rolling 365-day window.
+    """
+    base_tier = SubscriptionPlans.get_base_tier(plan_code)
+    if base_tier == SubscriptionPlans.ESSENTIAL:
+        return date.today() - timedelta(days=365)
+    return None
+
+
 def _execute_provider_sync(
     account: Account, start: date, end: date, user: User
 ) -> tuple[list[dict], str | None, str | None, bool]:
@@ -1300,6 +1311,7 @@ def _save_sync_batch(
     account_id: uuid.UUID,
     txns: list[dict],
     currency_fallback: str,
+    min_date: date | None = None,
 ) -> tuple[int, int, list[uuid.UUID]]:
     # Defense-in-depth: scope by uid in case this helper is ever used with untrusted IDs.
     account = db.query(Account).filter(Account.id == account_id, Account.uid == uid).first()
@@ -1308,6 +1320,16 @@ def _save_sync_batch(
     new_count = 0
     new_ids: list[uuid.UUID] = []
     for txn in txns:
+        if min_date is not None:
+            txn_date = txn.get("date")
+            if isinstance(txn_date, str):
+                try:
+                    txn_date = date.fromisoformat(txn_date)
+                except ValueError:
+                    txn_date = None
+            if isinstance(txn_date, date) and txn_date < min_date:
+                continue
+
         new_txn = _process_single_transaction(
             db, uid, account_id, txn, currency_fallback
         )
@@ -1440,6 +1462,9 @@ def sync_account_transactions(
         _enforce_sync_limit(db, current_user.uid, plan)
 
     resolved_start, resolved_end = _resolve_sync_dates(start_date, end_date, account.account_type)
+    retention_min_date = _retention_min_date_for_plan(plan)
+    if retention_min_date and resolved_start < retention_min_date:
+        resolved_start = retention_min_date
 
     # Dispatch Sync & process
     try:
@@ -1458,8 +1483,19 @@ def sync_account_transactions(
 
     currency_fallback = account.currency or "USD"
     synced, new_count, new_ids = _save_sync_batch(
-        db, current_user.uid, account.id, fetched_txns, currency_fallback
+        db, current_user.uid, account.id, fetched_txns, currency_fallback, retention_min_date
     )
+
+    if retention_min_date:
+        retention_cutoff = datetime.combine(retention_min_date, datetime.min.time(), tzinfo=UTC)
+        (
+            db.query(Transaction)
+            .filter(
+                Transaction.uid == current_user.uid,
+                Transaction.ts < retention_cutoff,
+            )
+            .delete(synchronize_session=False)
+        )
 
     if account.account_type == "web3" and update_cursor:
         account.web3_sync_cursor = next_cursor

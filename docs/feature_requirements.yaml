@@ -40,15 +40,15 @@ features:
   accounts.web3:
     free_limit: 1
     essential_limit: 1
-    pro_limit: 5
-    ultimate_limit: 20
+    pro_limit: 2
+    ultimate_limit: 8
     description: Web3 wallet connection limits
 
   accounts.cex:
     free_limit: 1
-    essential_limit: 3
-    pro_limit: 10
-    ultimate_limit: 20
+    essential_limit: 1
+    pro_limit: 3
+    ultimate_limit: 5
     description: CEX account connection limits
 
   accounts.manual:

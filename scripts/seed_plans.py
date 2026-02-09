@@ -18,9 +18,11 @@ def seed_plans():
             "price_id": None,
             "features": [
                 "2 Traditional Accounts",
-                "1 Investment / Web3 / CEX",
-                "20 AI Queries/Day",
-                "45-day Data Retention",
+                "1 Investment Account",
+                "1 Web3 Wallet",
+                "1 CEX Account",
+                "10 AI Queries/Day",
+                "Transaction History: Last 45 Days",
                 "No Marketplace Access"
             ]
         },
@@ -33,10 +35,12 @@ def seed_plans():
             "interval": "month",
             "price_id": "price_1SftXDRQfRSwy2AaP2V5zy32",
             "features": [
-                "3 Traditional / CEX Accounts",
+                "3 Traditional Accounts",
                 "2 Investment Accounts",
+                "1 Web3 Wallet",
+                "1 CEX Account",
                 "30 AI Queries/Day",
-                "Current + Previous Year Retention",
+                "Transaction History: Rolling 365 Days",
                 "Daily Automated Sync"
             ]
         },
@@ -49,10 +53,12 @@ def seed_plans():
             "interval": "month",
             "price_id": "price_1SftXERQfRSwy2AaoWXBD9Q7",
             "features": [
-                "5 Accounts (All Types)",
-                "10 CEX Accounts",
+                "5 Traditional Accounts",
+                "5 Investment Accounts",
+                "2 Web3 Wallets",
+                "3 CEX Accounts",
                 "40 AI Queries/Day",
-                "Full History Retention",
+                "Transaction History: All-Time",
                 "14-Day Free Trial",
                 "Full Marketplace Access"
             ]
@@ -79,10 +85,13 @@ def seed_plans():
             "interval": "month",
             "price_id": "price_1SftXFRQfRSwy2Aas3bHnACi",
             "features": [
-                "20 Accounts (All Types)",
+                "20 Traditional Accounts",
+                "20 Investment Accounts",
+                "8 Web3 Wallets",
+                "5 CEX Accounts",
                 "80 AI Queries/Day",
-                "Family Features",
-                "Full History Retention",
+                "Family Features (4 members total)",
+                "Transaction History: All-Time",
                 "Full Marketplace Access",
                 "14-Day Free Trial"
             ]
@@ -98,7 +107,7 @@ def seed_plans():
             "features": [
                 "Everything in Ultimate Monthly",
                 "Save $120/year",
-                "Family Features Included"
+                "Family Features (4 members total)"
             ]
         }
     ]
