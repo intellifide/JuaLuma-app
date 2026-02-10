@@ -13,6 +13,8 @@ def test_normalize_category_basic():
     assert normalize_category("Food and Drink") == "Food"
     assert normalize_category("credit card") == "Credit Card Payment"
     assert normalize_category("shopping") == "Shopping"
+    assert normalize_category("miscellaneous") == "Other"
+    assert normalize_category("misc") == "Other"
 
 
 def test_normalize_category_empty():

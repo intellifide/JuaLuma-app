@@ -373,7 +373,7 @@ Roles are separated into four categories: App Users, Marketplace Developers, Int
 
 ### 4.4 Premium Feature Gates & Preview Safeguards
 
-- **Shared Registry:** `feature_requirements.yaml` is the single source of truth for every premium `featureKey`. A build step generates both the frontend module (`packages/shared/accessControl.ts`) and the FastAPI registry (`services/access_control/registry.py`) to prevent drift.
+- **Shared Registry:** `backend/services/access_control/feature_requirements.yaml` is the single source of truth for every premium `featureKey`. A build step generates both the frontend module (`packages/shared/accessControl.ts`) and the FastAPI registry (`services/access_control/registry.py`) to prevent drift.
 - **Runtime Enforcement:** FastAPI dependencies (`require_feature(feature_key)`) validate the caller's subscription tier before executing business logic. Blocks respond with `403` and emit `feature_preview.backend_blocked` events to Cloud SQL (`audit.feature_preview`).
 - **Preview Endpoints:** `/preview/<feature_key>` routes read immutable JSON artifacts stored in a dedicated Cloud Storage bucket (`gs://jualuma-preview-content`). Buckets contain only synthetic data, inherit CMEK, and expose read-only signed URLs. No NPPI or user identifiers may be stored alongside preview data.
 - **Audit Logging:** All accesses (allowed, blocked, preview fetch) record `{uid, feature_key, tier, source_ip, user_agent}`. Logs feed the Security Operations dashboards and trigger anomaly alerts if unusually high preview traffic appears.

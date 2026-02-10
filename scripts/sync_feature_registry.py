@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sync feature registry files from docs/feature_requirements.yaml.
+Sync feature registry files from backend/services/access_control/feature_requirements.yaml.
 
 Generates:
 - frontend-app/src/shared/accessControl.ts
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_PATH = ROOT / "docs" / "feature_requirements.yaml"
+SOURCE_PATH = ROOT / "backend" / "services" / "access_control" / "feature_requirements.yaml"
 TS_OUT = ROOT / "frontend-app" / "src" / "shared" / "accessControl.ts"
 PY_OUT = ROOT / "backend" / "services" / "access_control" / "registry.py"
 

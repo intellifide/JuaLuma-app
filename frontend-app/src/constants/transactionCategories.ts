@@ -11,7 +11,7 @@ export const TRANSACTION_CATEGORIES = [
   "Savings",
   "Personal",
   "Entertainment",
-  "Miscellaneous",
+  "Other",
   "Income",
   "Transfer",
   "Groceries",
@@ -33,7 +33,7 @@ export const CATEGORY_EMOJI: Record<string, string> = {
   Savings: "💰",
   Personal: "👤",
   Entertainment: "🎬",
-  Miscellaneous: "🧩",
+  Other: "🧩",
   Income: "💵",
   Transfer: "🔄",
   Groceries: "🛒",
@@ -85,7 +85,7 @@ export const getCategoryEmoji = (rawCategory: string | null | undefined): string
 
     if (normalized === "entertainment" || normalized === "fun") return "Entertainment"
 
-    if (normalized === "miscellaneous" || normalized === "misc") return "Miscellaneous"
+    if (normalized === "other" || normalized === "miscellaneous" || normalized === "misc") return "Other"
 
     if (normalized === "income") return "Income"
 

@@ -8,6 +8,7 @@ Create Date: 2026-02-04 00:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -18,11 +19,22 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("totp_label", sa.String(length=128), nullable=True))
-    op.add_column("users", sa.Column("passkey_label", sa.String(length=128), nullable=True))
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    user_cols = {col["name"] for col in inspector.get_columns("users")}
+
+    if "totp_label" not in user_cols:
+        op.add_column("users", sa.Column("totp_label", sa.String(length=128), nullable=True))
+    if "passkey_label" not in user_cols:
+        op.add_column("users", sa.Column("passkey_label", sa.String(length=128), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("users", "passkey_label")
-    op.drop_column("users", "totp_label")
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    user_cols = {col["name"] for col in inspector.get_columns("users")}
 
+    if "passkey_label" in user_cols:
+        op.drop_column("users", "passkey_label")
+    if "totp_label" in user_cols:
+        op.drop_column("users", "totp_label")
