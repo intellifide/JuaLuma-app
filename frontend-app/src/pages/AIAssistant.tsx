@@ -14,6 +14,7 @@ import { documentService, Document } from '../services/documentService';
 import { digestService } from '../services/digestService';
 import { legalService } from '../services/legal';
 import { LEGAL_AGREEMENTS } from '../constants/legal';
+import { AI_STORAGE_UPDATED_EVENT, generateThreadTitle, getAIStorageKeys, getStoredMessages, getStoredThreads } from '../utils/aiThreads';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -36,46 +37,6 @@ interface Project {
   createdAt: string;
 }
 
-const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'but', 'to', 'for', 'of', 'on', 'in', 'at', 'by', 'with',
-  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'do', 'does', 'did', 'can', 'could',
-  'should', 'would', 'may', 'might', 'will', 'just', 'please', 'show', 'tell', 'give',
-  'my', 'your', 'our', 'their', 'me', 'us', 'you', 'i', 'we', 'they', 'this', 'that',
-  'these', 'those', 'about', 'from', 'into', 'over', 'under', 'what', 'whats', 'how',
-  'when', 'where', 'why', 'who', 's'
-]);
-
-const generateThreadTitle = (query: string) => {
-  const trimmed = query.trim();
-  if (!trimmed) return 'New Chat';
-  const normalized = trimmed.toLowerCase();
-  const patterns: Array<[RegExp, string]> = [
-    [/net worth/, 'Net Worth Snapshot'],
-    [/cash flow/, 'Cash Flow Update'],
-    [/subscription/, 'Subscription Review'],
-    [/budget/, 'Budget Check'],
-    [/spend|spending/, 'Spending Summary'],
-    [/category|categories/, 'Category Breakdown'],
-    [/income/, 'Income Overview'],
-    [/investment/, 'Investment Overview'],
-    [/debt|loan/, 'Debt Overview'],
-  ];
-
-  for (const [pattern, title] of patterns) {
-    if (pattern.test(normalized)) {
-      return title.toLowerCase() === normalized ? `${title} Overview` : title;
-    }
-  }
-
-  const tokens = normalized.match(/[a-z0-9]+/g) ?? [];
-  const keywords = tokens.filter((token) => !STOP_WORDS.has(token));
-  const unique = Array.from(new Set(keywords)).slice(0, 4);
-  if (unique.length === 0) return 'New Chat';
-  const base = unique.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  const title = `${base} Overview`;
-  return title.toLowerCase() === normalized ? `${base} Insights` : title;
-};
-
 
 export default function AIAssistant() {
   const { user } = useAuth();
@@ -94,9 +55,7 @@ export default function AIAssistant() {
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const storageKey = user?.uid ? `jualuma_ai_thread_${user.uid}` : 'jualuma_ai_thread_anon';
-  const threadStorageKey = user?.uid ? `jualuma_ai_current_thread_${user.uid}` : 'jualuma_ai_current_thread_anon';
-  const threadsStorageKey = user?.uid ? `jualuma_ai_threads_${user.uid}` : 'jualuma_ai_threads_anon';
+  const { storageKey, threadStorageKey, threadsStorageKey } = getAIStorageKeys(user?.uid ?? null);
   const projectsStorageKey = user?.uid ? `jualuma_ai_projects_${user.uid}` : 'jualuma_ai_projects_anon';
 
   // Real documents state
@@ -186,6 +145,27 @@ export default function AIAssistant() {
         setDigestThreads([])
       })
   }, [user?.uid, threadsStorageKey, threadStorageKey, storageKey, projectsStorageKey]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const handleStorageSync = (event: Event) => {
+      const custom = event as CustomEvent<{ threadId?: string }>
+      const updatedThreads = getStoredThreads(threadsStorageKey) as Thread[]
+      setThreads(updatedThreads)
+
+      const changedThreadId = custom.detail?.threadId
+      if (!changedThreadId) return
+      if (!currentThreadId || currentThreadId !== changedThreadId) return
+
+      const syncedMessages = getStoredMessages(storageKey, changedThreadId) as Message[]
+      if (syncedMessages.length > 0) {
+        setMessages(syncedMessages)
+      }
+    }
+
+    window.addEventListener(AI_STORAGE_UPDATED_EVENT, handleStorageSync as EventListener)
+    return () => window.removeEventListener(AI_STORAGE_UPDATED_EVENT, handleStorageSync as EventListener)
+  }, [user?.uid, threadsStorageKey, storageKey, currentThreadId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -609,6 +589,7 @@ export default function AIAssistant() {
             <div className="max-w-4xl mx-auto px-6 py-4">
               <ChatInput
                 onSendMessage={handleSendMessage}
+                onUploadFile={handleUploadDoc}
                 isLoading={isTyping}
                 disabled={!privacyAccepted}
                 quotaExceeded={quotaExceeded}

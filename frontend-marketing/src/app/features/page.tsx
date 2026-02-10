@@ -1,57 +1,246 @@
-import Link from 'next/link'
+'use client'
+
+import { motion } from '@/lib/motion'
+
+const featureStories = [
+  {
+    title: 'Unified Asset Graph',
+    subtitle: 'Traditional finance, crypto, and real assets in one normalized view.',
+    bullets: [
+      'Bank, card, brokerage, wallet, and manual account ingestion',
+      'Cross-account timeline for balances, cash flow, and net worth deltas',
+      'Clear account typing to isolate specific risk buckets',
+    ],
+    tag: 'Aggregation',
+  },
+  {
+    title: 'AI Financial Co-Pilot',
+    subtitle: 'Context-aware analysis over your actual transactions, not generic advice.',
+    bullets: [
+      'Natural language Q&A tied directly to transaction history',
+      'Anomaly detection for spending spikes and recurring drifts',
+      'Insight cards with explainable “what changed” narratives',
+    ],
+    tag: 'Intelligence',
+  },
+  {
+    title: 'Household Command Mode',
+    subtitle: 'Support personal and family scopes without losing data ownership boundaries.',
+    bullets: [
+      'Role-aware visibility across household members',
+      'Scoped transaction review and collaboration workflows',
+      'Plan-based capabilities for premium family analytics',
+    ],
+    tag: 'Collaboration',
+  },
+]
+
+const statCards = [
+  { label: 'Data Connectors', value: '12,000+', note: 'Plaid institutions + account abstractions' },
+  { label: 'Asset Classes', value: '6+', note: 'Cash, investments, crypto, real estate, liabilities, manual' },
+  { label: 'Coverage', value: 'Traditional + Web3', note: 'Unified view across bank, brokerage, wallet, and manual accounts' },
+  { label: 'Modes', value: 'Personal + Family', note: 'Independent controls and visibility layers' },
+]
+
+function AggregationReplica() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:p-5 min-h-[280px]">
+      <p className="text-xs text-text-muted mb-3">Feature replica based on app cards</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="card gap-2">
+          <h4 className="text-sm text-text-muted mb-0">Net Worth</h4>
+          <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
+          <p className="text-2xl font-bold text-primary mb-0">$638,240</p>
+          <p className="text-xs text-text-muted mb-0">Assets $1.05M • Liabilities $412k</p>
+          <p className="text-xs text-emerald-400 mb-0">Up $12.7k in Last 30 days</p>
+        </div>
+
+        <div className="card gap-2">
+          <h4 className="text-sm text-text-muted mb-0">Cash Flow</h4>
+          <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
+          <p className="text-2xl font-bold text-emerald-400 mb-0">+$3,180</p>
+          <p className="text-xs text-text-muted mb-0">In $11,450 • Out $8,270</p>
+        </div>
+
+        <div className="card gap-2">
+          <h4 className="text-sm text-text-muted mb-0">Budget Status</h4>
+          <p className="text-xs text-text-muted mb-0">Based on budget period logic</p>
+          <p className="text-2xl font-bold text-primary mb-0">72%</p>
+          <p className="text-xs text-text-muted mb-0">$5.8k of $8.0k spent</p>
+          <div className="w-full bg-white/10 rounded-full h-2">
+            <div className="h-2 rounded-full bg-primary" style={{ width: '72%' }} />
+          </div>
+        </div>
+
+        <div className="card gap-2">
+          <h4 className="text-sm text-text-muted mb-0">Linked Accounts</h4>
+          <p className="text-xs text-text-muted mb-0">As of today</p>
+          <p className="text-2xl font-bold text-primary mb-0">21</p>
+          <p className="text-xs text-text-muted mb-0">Checking 5 • Savings 4 • Brokerage 3 • +more</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function IntelligenceReplica() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:p-5 min-h-[280px]">
+      <p className="text-xs text-text-muted mb-3">Feature replica based on app cards</p>
+      <div className="grid grid-cols-1 gap-3">
+        <div className="card gap-3">
+          <div>
+            <h4 className="text-base font-semibold mb-0">Spending Health</h4>
+            <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
+          </div>
+          <p className="text-xl font-semibold text-primary mb-0">Stable</p>
+          <p className="text-xs text-text-muted mb-0">Spending is within expected range against income.</p>
+          <div className="h-2 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(244,63,94,0.85) 0%, rgba(251,191,36,0.85) 50%, rgba(34,197,94,0.85) 100%)' }} />
+        </div>
+
+        <div className="card gap-2">
+          <h4 className="text-base font-semibold mb-0">Top Money Drivers</h4>
+          <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between"><span className="text-text-secondary">Housing</span><span className="font-semibold">$2,140</span></div>
+            <div className="flex justify-between"><span className="text-text-secondary">Dining</span><span className="font-semibold">$860</span></div>
+            <div className="flex justify-between"><span className="text-text-secondary">Transport</span><span className="font-semibold">$520</span></div>
+          </div>
+          <p className="text-xs text-text-muted mb-0">Total spend $8,270</p>
+        </div>
+
+        <div className="card gap-2">
+          <h4 className="text-base font-semibold mb-0">Anomaly Watch</h4>
+          <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
+          <div className="rounded-lg px-3 py-2 text-sm bg-rose-500/10 text-rose-200">
+            <p className="font-semibold mb-0">Dining spend elevated</p>
+            <p className="text-xs text-text-muted mb-0">Weekend delivery spend is 18% above baseline.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CollaborationReplica() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:p-5 min-h-[280px]">
+      <p className="text-xs text-text-muted mb-3">Feature replica based on app cards</p>
+      <div className="flex bg-white/5 border border-white/10 rounded-lg p-1 w-fit mb-3">
+        <button className="px-3 py-1 text-sm rounded-md bg-primary text-white shadow font-medium">Personal</button>
+        <button className="px-3 py-1 text-sm rounded-md text-text-muted">Family</button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <div className="card gap-2">
+          <h4 className="text-base font-semibold mb-0">Goals Tracker</h4>
+          <p className="text-xs text-text-muted mb-0">As of today</p>
+          <div className="space-y-2 text-sm">
+            <div>
+              <div className="flex justify-between text-xs text-text-secondary mb-1"><span>Emergency Fund</span><span>$9.2k / $12k</span></div>
+              <div className="w-full bg-white/10 rounded-full h-2"><div className="h-2 rounded-full bg-primary" style={{ width: '77%' }} /></div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs text-text-secondary mb-1"><span>Debt Payoff</span><span>$6.1k / $15k</span></div>
+              <div className="w-full bg-white/10 rounded-full h-2"><div className="h-2 rounded-full bg-primary" style={{ width: '41%' }} /></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="card gap-2">
+            <h4 className="text-sm text-text-muted mb-0">Asset Snapshot</h4>
+            <p className="text-xs text-text-muted mb-0">Assets (today)</p>
+            <p className="text-sm text-text-secondary mb-0">Real estate 65% • Cash 12% • Brokerage 17% • Crypto 6%</p>
+          </div>
+          <div className="card gap-2">
+            <h4 className="text-sm text-text-muted mb-0">Debt Snapshot</h4>
+            <p className="text-xs text-text-muted mb-0">Liabilities (today)</p>
+            <p className="text-sm text-text-secondary mb-0">Mortgage 82% • Credit cards 10% • Loans 8%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Features() {
-    return (
-        <div className="container mx-auto px-4 py-12">
-             <h1 className="text-center mb-4">Features</h1>
-             <p className="text-center text-lg text-text-secondary mb-16 max-w-2xl mx-auto">
-                Comprehensive tools for the modern investor.
-             </p>
-
-             <div className="space-y-20">
-                {/* Feature 1 */}
-                <div className="glass-panel grid md:grid-cols-2 gap-8 items-center">
-                    <div>
-                        <h2 className="text-3xl mb-4">Unified Dashboard</h2>
-                        <p className="text-lg text-text-secondary leading-relaxed">
-                            See your entire net worth in one glance. We aggregate data from Plaid-connected banks, credit cards, investment accounts, and on-chain crypto wallets.
-                        </p>
-                        <ul className="mt-6 space-y-2">
-                             <li className="flex items-center gap-2"><span>✅</span> Real-time balance updates</li>
-                             <li className="flex items-center gap-2"><span>✅</span> Multi-currency support</li>
-                             <li className="flex items-center gap-2"><span>✅</span> Historical net worth tracking</li>
-                        </ul>
-                    </div>
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 border border-white/10 shadow-inner">
-                        <div className="flex justify-between items-center mb-8">
-                            <div className="h-4 w-32 bg-gray-700 rounded animate-pulse"/>
-                            <div className="h-8 w-8 bg-gray-700 rounded-full animate-pulse"/>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="h-24 bg-gray-700/50 rounded-lg animate-pulse"/>
-                            <div className="h-24 bg-gray-700/50 rounded-lg animate-pulse delay-75"/>
-                            <div className="h-24 bg-gray-700/50 rounded-lg animate-pulse delay-150"/>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Feature 2 */}
-                <div className="glass-panel grid md:grid-cols-2 gap-8 items-center">
-                    <div className="order-2 md:order-1 bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-xl p-6 border border-white/10 flex items-center justify-center">
-                        <span className="text-6xl">🤖</span>
-                    </div>
-                    <div className="order-1 md:order-2">
-                        <h2 className="text-3xl mb-4">AI Financial Assistant</h2>
-                        <p className="text-lg text-text-secondary leading-relaxed">
-                            Ask questions about your spending like &quot;How much did I spend on coffee last month?&quot; or &quot;Can I afford a vacation?&quot;. Our AI analyzes your transaction history to give personalized answers.
-                        </p>
-                    </div>
-                </div>
-             </div>
-
-             <div className="text-center mt-20">
-                <a href="http://localhost:5175/signup" className="btn btn-lg btn-primary">Start Exploring Features</a>
-             </div>
+  return (
+    <div className="pb-12 md:pb-16">
+      <section className="relative py-12 md:py-16">
+        <div className="text-center max-w-4xl mx-auto">
+          <p className="marketing-chip mx-auto mb-5">
+            <span className="signal-dot" />
+            Product surface map
+          </p>
+          <h1 className="text-4xl md:text-6xl leading-[1.05] mb-5">
+            Features built for real-world financial complexity.
+          </h1>
+          <p className="text-lg md:text-xl text-text-secondary">
+            Every module is designed to reduce friction between raw account data and high-confidence decisions.
+          </p>
         </div>
-    )
+      </section>
+
+      <section className="grid md:grid-cols-2 gap-5 mb-8">
+        {statCards.map((card, idx) => (
+          <motion.article
+            key={card.label}
+            className="glass-panel"
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.45, delay: idx * 0.07 }}
+          >
+            <p className="text-sm text-text-secondary mb-2">{card.label}</p>
+            <h2 className="text-3xl md:text-4xl mb-1">{card.value}</h2>
+            <p className="text-sm text-text-muted mb-0">{card.note}</p>
+          </motion.article>
+        ))}
+      </section>
+
+      <section className="space-y-6 md:space-y-8">
+        {featureStories.map((story, idx) => (
+          <motion.article
+            key={story.title}
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.5, delay: idx * 0.08 }}
+            className="glass-panel grid lg:grid-cols-[1.1fr_1fr] gap-6 md:gap-8 items-center"
+          >
+            <div>
+              <p className="text-sm uppercase tracking-[0.14em] text-text-muted mb-3">{story.tag}</p>
+              <h2 className="text-3xl md:text-4xl mb-4">{story.title}</h2>
+              <p className="text-lg text-text-secondary leading-relaxed mb-6">{story.subtitle}</p>
+              <ul className="space-y-3">
+                {story.bullets.map((point) => (
+                  <li key={point} className="flex items-start gap-3 text-text-secondary">
+                    <span className="mt-1.5 h-2.5 w-2.5 rounded-full bg-gradient-to-r from-primary to-secondary" />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {story.tag === 'Aggregation' ? <AggregationReplica /> : null}
+            {story.tag === 'Intelligence' ? <IntelligenceReplica /> : null}
+            {story.tag === 'Collaboration' ? <CollaborationReplica /> : null}
+          </motion.article>
+        ))}
+      </section>
+
+      <section className="pt-12 md:pt-16">
+        <div className="glass-panel text-center">
+          <h2 className="text-3xl md:text-5xl mb-4">See it with your own data.</h2>
+          <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-8">
+            Start free, connect what you already use, and evaluate how quickly JuaLuma turns disconnected records into a coherent strategy.
+          </p>
+          <a href="http://localhost:5175/signup" className="btn btn-lg">
+            Start Exploring Features
+          </a>
+        </div>
+      </section>
+    </div>
+  )
 }

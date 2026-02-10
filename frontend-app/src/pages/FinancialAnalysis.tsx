@@ -214,7 +214,7 @@ const generateLinePath = (
   };
 };
 
-const generateBarChart = (
+const generateCashFlowTrendChart = (
   income: DataPoint[],
   expenses: DataPoint[],
   width: number,
@@ -230,7 +230,9 @@ const generateBarChart = (
   const allDates = new Set([...income.map(d => d.date), ...expenses.map(d => d.date)]);
   const sortedDates = Array.from(allDates).sort((a, b) => b.localeCompare(a));
 
-  if (sortedDates.length === 0) return { bars: [], yLabels: [], padding };
+  if (sortedDates.length === 0) {
+    return { points: [], inflowPath: '', outflowPath: '', inflowDots: [], outflowDots: [], yLabels: [], xLabels: [], padding };
+  }
 
   const dataMap: Record<string, { inc: number, exp: number }> = {};
   sortedDates.forEach(d => dataMap[d] = { inc: 0, exp: 0 });
@@ -245,35 +247,29 @@ const generateBarChart = (
   });
   maxVal = maxVal * 1.3 || 1000;
 
-  const slotWidth = drawWidth / sortedDates.length;
-  const barWidth = slotWidth * 0.4;
-  const gap = slotWidth * 0.1;
-
-  const bars = sortedDates.map((date, i) => {
-    const xBase = padding.left + i * slotWidth;
+  const denominator = Math.max(sortedDates.length - 1, 1);
+  const points = sortedDates.map((date, i) => {
     const data = dataMap[date];
-    const incHeight = (data.inc / maxVal) * drawHeight;
-    const expHeight = (data.exp / maxVal) * drawHeight;
+    const x = sortedDates.length === 1
+      ? padding.left + drawWidth / 2
+      : padding.left + (i / denominator) * drawWidth;
+    const yInc = padding.top + drawHeight - ((data.inc / maxVal) * drawHeight);
+    const yExp = padding.top + drawHeight - ((data.exp / maxVal) * drawHeight);
 
     return {
       date,
       inc: data.inc,
       exp: data.exp,
-      xInc: xBase + gap,
-      yInc: padding.top + (drawHeight - incHeight),
-      hInc: incHeight,
-      xExp: xBase + gap + barWidth,
-      yExp: padding.top + (drawHeight - expHeight),
-      hExp: expHeight,
-      xCenter: xBase + barWidth,
-      labelX: xBase + barWidth,
+      x,
+      yInc,
+      yExp,
       label: (() => {
         const d = parseDateUTC(date);
         if (cfInterval === 'week') {
           return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone });
         }
         return formatMonthYearLabel(d, timeZone);
-      })()
+      })(),
     };
   });
 
@@ -283,7 +279,19 @@ const generateBarChart = (
     y: padding.top + drawHeight - (val / maxVal) * drawHeight
   }));
 
-  return { bars, yLabels, padding };
+  const inflowPath = points.map((p) => `${p.x.toFixed(1)},${p.yInc.toFixed(1)}`).join(' ');
+  const outflowPath = points.map((p) => `${p.x.toFixed(1)},${p.yExp.toFixed(1)}`).join(' ');
+
+  const dotIndices = Array.from(new Set([0, Math.floor(points.length / 2), points.length - 1]))
+    .filter((i) => i >= 0 && i < points.length);
+  const inflowDots = dotIndices.map((i) => ({ cx: points[i].x, cy: points[i].yInc }));
+  const outflowDots = dotIndices.map((i) => ({ cx: points[i].x, cy: points[i].yExp }));
+
+  const labelIndices = Array.from(new Set([0, Math.floor(points.length / 2), points.length - 1]))
+    .filter((i) => i >= 0 && i < points.length);
+  const xLabels = labelIndices.map((i) => ({ x: points[i].x, label: points[i].label }));
+
+  return { points, inflowPath, outflowPath, inflowDots, outflowDots, yLabels, xLabels, padding };
 };
 
 const BudgetTool = ({
@@ -831,7 +839,7 @@ export default function FinancialAnalysis() {
     [netWorthSeries, netWorthChartWidth, netWorthLabelMode, timeZone],
   ); // Height 140 match SVG
   const cashFlowChart = useMemo(
-    () => generateBarChart(cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, 160, cfInterval, timeZone),
+    () => generateCashFlowTrendChart(cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, 160, cfInterval, timeZone),
     [cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, cfInterval, timeZone],
   );
 
@@ -885,9 +893,9 @@ export default function FinancialAnalysis() {
     yPct: number;
     label: string;
     date: string;
-    income: number;
-    expense: number;
-    kind: 'income' | 'expense';
+    inflow: number;
+    outflow: number;
+    line: 'inflow' | 'outflow';
   } | null>(null);
   const netWorthSvgSize = { width: netWorthChartWidth, height: 140 };
   const cashFlowSvgSize = { width: cashFlowChartWidth, height: 160 };
@@ -927,34 +935,37 @@ export default function FinancialAnalysis() {
   }, [netWorthChart.points, netWorthSvgSize.width, netWorthSvgSize.height]);
 
   const handleCashFlowMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-    if (!cashFlowChart.bars.length) return;
+    if (!cashFlowChart.points.length) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * cashFlowSvgSize.width;
     const y = ((event.clientY - rect.top) / rect.height) * cashFlowSvgSize.height;
-    const drawWidth = cashFlowSvgSize.width - cashFlowChart.padding.left - cashFlowChart.padding.right;
-    const slotWidth = drawWidth / cashFlowChart.bars.length;
-    const rawIndex = Math.floor((x - cashFlowChart.padding.left) / slotWidth);
-    const index = Math.min(Math.max(rawIndex, 0), cashFlowChart.bars.length - 1);
-    const bar = cashFlowChart.bars[index];
+    const points = cashFlowChart.points;
+    let closestIndex = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      if (Math.abs(points[i].x - x) < Math.abs(points[closestIndex].x - x)) {
+        closestIndex = i;
+      }
+    }
+    const point = points[closestIndex];
     const candidates = [
-      { y: bar.yInc, kind: 'income' as const },
-      { y: bar.yExp, kind: 'expense' as const },
+      { y: point.yInc, line: 'inflow' as const },
+      { y: point.yExp, line: 'outflow' as const },
     ];
     const chosen = candidates.reduce((prev, curr) => (
       Math.abs(curr.y - y) < Math.abs(prev.y - y) ? curr : prev
     ));
     setCashFlowHover({
-      x: bar.xCenter,
+      x: point.x,
       y: chosen.y,
-      xPct: (bar.xCenter / cashFlowSvgSize.width) * 100,
+      xPct: (point.x / cashFlowSvgSize.width) * 100,
       yPct: (chosen.y / cashFlowSvgSize.height) * 100,
-      label: bar.label,
-      date: bar.date,
-      income: bar.inc,
-      expense: bar.exp,
-      kind: chosen.kind,
+      label: point.label,
+      date: point.date,
+      inflow: point.inc,
+      outflow: point.exp,
+      line: chosen.line,
     });
-  }, [cashFlowChart.bars, cashFlowChart.padding, cashFlowSvgSize.width, cashFlowSvgSize.height]);
+  }, [cashFlowChart.points, cashFlowSvgSize.width, cashFlowSvgSize.height]);
 
   return (
     <section className="container mx-auto py-10 px-4 space-y-8">
@@ -1217,7 +1228,7 @@ export default function FinancialAnalysis() {
                     viewBox={`0 0 ${cashFlowChartWidth} 160`}
                     style={{ width: '100%', minWidth: 320 }}
                     role="img"
-                    aria-label="Cash flow bar chart"
+                    aria-label="Cash flow trend"
                     onMouseMove={handleCashFlowMove}
                     onMouseLeave={() => setCashFlowHover(null)}
                   >
@@ -1246,13 +1257,14 @@ export default function FinancialAnalysis() {
                       strokeOpacity="0.3"
                     />
 
-                    {cashFlowChart.bars.map((bar, i) => (
-                      <g key={i}>
-                        {/* Inflow Bar (Cyan) */}
-                        <rect x={bar.xInc} y={bar.yInc} width={((cashFlowChartWidth - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hInc} rx="2" fill="var(--color-accent)" />
-                        {/* Outflow Bar (Red) */}
-                        <rect x={bar.xExp} y={bar.yExp} width={((cashFlowChartWidth - cashFlowChart.padding.left - cashFlowChart.padding.right) / cashFlowChart.bars.length) * 0.4} height={bar.hExp} rx="2" fill="#DC2626" />
-                      </g>
+                    <polyline fill="none" stroke="var(--color-accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={cashFlowChart.inflowPath} />
+                    <polyline fill="none" stroke="#DC2626" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={cashFlowChart.outflowPath} />
+
+                    {cashFlowChart.inflowDots.map((d, i) => (
+                      <circle key={`inflow-${i}`} cx={d.cx} cy={d.cy} r="3.5" fill="var(--color-accent)" />
+                    ))}
+                    {cashFlowChart.outflowDots.map((d, i) => (
+                      <circle key={`outflow-${i}`} cx={d.cx} cy={d.cy} r="3.5" fill="#DC2626" />
                     ))}
 
                     {cashFlowHover && (
@@ -1280,7 +1292,7 @@ export default function FinancialAnalysis() {
                           cy={cashFlowHover.y}
                           r="4"
                           fill="var(--bg-secondary)"
-                          stroke={cashFlowHover.kind === 'income' ? 'var(--color-accent)' : '#DC2626'}
+                          stroke={cashFlowHover.line === 'inflow' ? 'var(--color-accent)' : '#DC2626'}
                           strokeWidth="2"
                         />
                       </g>
@@ -1297,18 +1309,17 @@ export default function FinancialAnalysis() {
                       }}
                     >
                       <div>{parseDateUTC(cashFlowHover.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone })}</div>
-                      <div className="text-cyan-300">Inflow: {formatCurrency(cashFlowHover.income)}</div>
-                      <div className="text-red-300">Outflow: {formatCurrency(cashFlowHover.expense)}</div>
+                      <div className="font-semibold">{formatSignedCurrency(cashFlowHover.inflow - cashFlowHover.outflow)} net</div>
                     </div>
                   )}
                   <div className="relative h-5 mt-2 text-[10px] text-text-muted">
-                    {cashFlowChart.bars.map((bar, index) => (
+                    {cashFlowChart.xLabels.map((label, index) => (
                       <span
-                        key={`${bar.date}-${index}`}
+                        key={`${label.label}-${index}`}
                         className="absolute"
-                        style={getXAxisLabelStyle(index, cashFlowChart.bars.length, bar.labelX)}
+                        style={getXAxisLabelStyle(index, cashFlowChart.xLabels.length, label.x)}
                       >
-                        {bar.label}
+                        {label.label}
                       </span>
                     ))}
                   </div>
@@ -1318,10 +1329,6 @@ export default function FinancialAnalysis() {
           )}
           {!cfLoading && hasCashFlowData && (
             <>
-              <div className="mt-2 flex justify-center gap-4 text-xs text-text-secondary">
-                <span>Inflow {formatCompactCurrency(cashFlowSummary.inflowTotal)}</span>
-                <span>Outflow {formatCompactCurrency(cashFlowSummary.outflowTotal)}</span>
-              </div>
               <div className="chart-legend mt-2 flex justify-center gap-4 text-xs">
                 <span className="flex items-center gap-1"><span className="w-3 h-3 bg-cyan-400 rounded-sm"></span>Inflow</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-600 rounded-sm"></span>Outflow</span>

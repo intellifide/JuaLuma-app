@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { NotificationDrawer } from '../components/notifications/NotificationDrawer'
+import { QuickAIChat } from '../components/QuickAIChat'
 import { 
   LayoutDashboard, 
   LineChart,
@@ -346,6 +347,7 @@ export const AppLayout: React.FC = () => {
             </main>
 
             <NotificationDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+            {!isAiAssistant && <QuickAIChat />}
         </div>
     )
 }

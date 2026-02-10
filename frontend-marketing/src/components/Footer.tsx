@@ -1,4 +1,4 @@
-// Marketing site footer with product/support/developer links. Last modified: 2025-01-30
+// Marketing site footer with product/support/developer links and strong CTA band.
 'use client'
 
 import Link from 'next/link'
@@ -6,7 +6,9 @@ import Link from 'next/link'
 const comingSoonItem = (label: string) => (
   <li className="flex items-center gap-2">
     <span className="text-text-muted cursor-not-allowed">{label}</span>
-    <span className="inline-flex items-center justify-center text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full whitespace-nowrap">Coming soon</span>
+    <span className="inline-flex items-center justify-center text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full whitespace-nowrap">
+      Soon
+    </span>
   </li>
 )
 
@@ -22,15 +24,17 @@ export const Footer = () => (
             {comingSoonItem('Marketplace')}
           </ul>
         </div>
+
         <div className="footer-section">
           <h3>Support</h3>
           <ul>
-            <li><Link href="/support">Community Support</Link></li>
+            <li><Link href="/support">Support Center</Link></li>
             <li><Link href="/support#faq">FAQ</Link></li>
             <li><a href="http://localhost:5175/support/tickets/new" target="_blank" rel="noreferrer">Submit Ticket</a></li>
             <li><Link href="/feature-request">Feature Request</Link></li>
           </ul>
         </div>
+
         <div className="footer-section">
           <h3>Developers</h3>
           <ul>
@@ -38,6 +42,7 @@ export const Footer = () => (
             {comingSoonItem('Developer SDK')}
           </ul>
         </div>
+
         <div className="footer-section">
           <h3>Company</h3>
           <ul>
@@ -47,6 +52,7 @@ export const Footer = () => (
             <li><Link href="/legal/ai-disclaimer">AI Disclaimer</Link></li>
           </ul>
         </div>
+
         <div className="footer-section">
           <h3>Connect</h3>
           <div className="social-links">
@@ -62,10 +68,11 @@ export const Footer = () => (
           </div>
         </div>
       </div>
+
       <div className="footer-bottom">
-        <p>&copy; 2025 Intellifide, LLC. All rights reserved.</p>
+        <p>&copy; 2026 Intellifide, LLC. All rights reserved.</p>
         <p style={{ marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-size-xs)' }}>
-          JuaLuma is for informational and educational purposes only. JuaLuma does not provide financial, investment, tax, or legal advice. Always consult qualified professionals for financial decisions.
+          JuaLuma is for informational and educational purposes only. It does not provide financial, investment, tax, or legal advice.
         </p>
       </div>
     </div>

@@ -1,11 +1,8 @@
 // Marketing site layout. Last modified: 2026-02-02 18:50 CST
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { Navbar } from '../components/Navbar'
 import { Footer } from '../components/Footer'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'JuaLuma - Master Your Finances',
@@ -23,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="dark">
-      <body className={`${inter.className} min-h-screen flex flex-col bg-bg-primary text-text-primary`}>
+      <body className="min-h-screen flex flex-col bg-bg-primary text-text-primary">
         <Navbar />
         <main className="flex-grow pt-20">
           <div className="container mx-auto px-6">

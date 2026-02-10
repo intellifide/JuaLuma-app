@@ -1,73 +1,189 @@
-/* Marketing landing home page — hero, value props, CTA. Last modified: 2025-01-30 */
+'use client'
+
 import Link from 'next/link'
+import { motion, type Variants } from '@/lib/motion'
+
+const container: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.08,
+    },
+  },
+}
+
+const item: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
+}
+
+const timeline = [
+  {
+    title: 'Connect your accounts',
+    body: 'Sync banks, brokerages, wallets, and manual assets in one place with clear ownership and account-type controls.',
+  },
+  {
+    title: 'Watch balances normalize',
+    body: 'We convert data into one timeline so your net worth trend, allocation shifts, and monthly changes are instantly readable.',
+  },
+  {
+    title: 'Act on AI insights',
+    body: 'Get spending anomalies, category drifts, and “what changed” summaries tied directly to real transactions.',
+  },
+]
+
+const featureRailItems = [
+  'Financial Overview: Net Worth, Cash Flow, Budget Status, Linked Accounts',
+  'Cash Flow Pulse with income vs expense snapshot',
+  'Spending Health scale with risk indicators',
+  'Top Money Drivers by category with totals',
+  'Upcoming Bills (Forecast) from recurring transactions',
+  'Savings Progress Snapshot and net saved trends',
+  'Liquidity & Buffer runway estimation',
+  'Anomaly Watch for unusual spending changes',
+  'Asset Snapshot allocation breakdown',
+  'Debt Snapshot liability distribution',
+  'Goals Tracker with progress bars and targets',
+  'Personal and Family scope toggles',
+  'Multi-asset aggregation: bank, brokerage, wallet, manual',
+  'Transaction-level insights with category context',
+]
 
 export default function Home() {
   return (
-    <div className="overflow-x-hidden">
-        {/* Hero Section */}
-        <section className="relative pt-20 pb-32 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
-          <div className="container mx-auto px-4 text-center relative z-10">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in">
-              <span className="text-[var(--text-primary)]">Master Your Wealth.</span>
-              <br />
-              <span className="text-primary">Without Limits.</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-text-secondary max-w-2xl mx-auto mb-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-              The all-in-one platform for tracking traditional finance, crypto, real estate, and more.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <a href="http://localhost:5175/signup" className="btn btn-lg shadow-lg shadow-primary/25">
-                Start Free Trial
-              </a>
-              <Link href="/features" className="btn btn-lg btn-secondary">
-                Explore Features
-              </Link>
-            </div>
-            
-            {/* Hero Image / Preview */}
-            <div className="mt-16 glass-panel max-w-5xl mx-auto p-4 animate-slide-up " style={{ animationDelay: '0.3s' }}>
-               <div className="aspect-video bg-black/50 rounded-lg flex items-center justify-center border border-white/10">
-                  <p className="text-muted">Interactive Dashboard Preview</p>
-               </div>
-            </div>
-          </div>
-        </section>
+    <div className="overflow-x-hidden pb-16">
+      <section className="relative pt-14 pb-24 md:pt-20 md:pb-28">
+        <div className="floating-orb -top-24 -left-20 bg-secondary/30" />
+        <div className="floating-orb top-8 -right-20 bg-primary/35" style={{ animationDelay: '-8s' }} />
 
-        {/* Value Props */}
-        <section className="py-20 bg-surface-2/50">
-          <div className="container mx-auto px-4 grid md:grid-cols-3 gap-8">
-            <div className="glass-panel text-center hover:scale-105 transition-transform duration-300">
-              <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">
-                🏦
-              </div>
-              <h3>Universal Aggregation</h3>
-              <p>Connect 12,000+ banks, credit cards, and investment accounts securely via Plaid.</p>
-            </div>
-            <div className="glass-panel text-center hover:scale-105 transition-transform duration-300">
-               <div className="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">
-                🦊
-              </div>
-              <h3>Web3 Native</h3>
-              <p>Track Ethereum, Bitcoin, Solana, and NFTs alongside your 401k and savings.</p>
-            </div>
-            <div className="glass-panel text-center hover:scale-105 transition-transform duration-300">
-               <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">
-                🤖
-              </div>
-              <h3>AI Intelligence</h3>
-              <p>Get personalized insights, budget forecasting, and net worth analysis powered by AI.</p>
-            </div>
-          </div>
-        </section>
+        <motion.div className="relative z-10" variants={container} initial="hidden" animate="show">
+          <motion.div variants={item} className="mb-6 flex flex-wrap justify-center gap-2">
+            <span className="marketing-chip">
+              <span className="signal-dot" />
+              Unified financial overview
+            </span>
+            <span className="marketing-chip">Multi-asset net worth</span>
+            <span className="marketing-chip">AI-guided decisions</span>
+          </motion.div>
 
-        {/* CTA */}
-         <section className="container mx-auto px-4 py-32 text-center">
-            <h2 className="text-4xl font-bold mb-8">Ready to take control?</h2>
-            <a href="http://localhost:5175/signup" className="btn btn-lg btn-primary">
-              Create Free Account
+          <motion.h1 variants={item} className="text-center text-4xl md:text-6xl xl:text-7xl max-w-5xl mx-auto leading-[1.04]">
+            Build a living map of your money.
+            <span className="block mt-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Not just another static dashboard.
+            </span>
+          </motion.h1>
+
+          <motion.p variants={item} className="text-center text-lg md:text-xl text-text-secondary max-w-3xl mx-auto mt-6 mb-10">
+            JuaLuma aggregates traditional finance, crypto, and real-world assets into one clear, visual overview with feature replicas of the actual workflow.
+          </motion.p>
+
+          <motion.div variants={item} className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="http://localhost:5175/signup" className="btn btn-lg">
+              Start Free Trial
             </a>
-         </section>
+            <Link href="/features" className="btn btn-lg btn-secondary">
+              See Feature Stories
+            </Link>
+          </motion.div>
+
+          <motion.div variants={item} className="mt-14 md:mt-16 glass-panel max-w-6xl mx-auto p-4 md:p-6">
+            <div className="rounded-2xl border border-white/10 overflow-hidden bg-slate-950/30 p-4 md:p-5">
+              <div className="px-1 pb-4 border-b border-white/10 flex flex-wrap gap-3 items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-text-primary">Wealth Builder Preview</span>
+                  <span className="text-xs text-text-muted">Financial overview demo inspired by live dashboard cards</span>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                <div className="card gap-2">
+                  <h4 className="text-sm text-text-muted mb-0">Net Worth</h4>
+                  <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
+                  <p className="text-2xl font-bold text-primary mb-0">$638,240</p>
+                  <p className="text-xs text-text-muted mb-0">Assets $1.05M • Liabilities $412k</p>
+                  <p className="text-xs text-emerald-400 mb-0">Up $12.7k in Last 30 days</p>
+                </div>
+
+                <div className="card gap-2">
+                  <h4 className="text-sm text-text-muted mb-0">Cash Flow</h4>
+                  <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
+                  <p className="text-2xl font-bold text-emerald-400 mb-0">+$3,180</p>
+                  <p className="text-xs text-text-muted mb-0">In $11,450 • Out $8,270</p>
+                </div>
+
+                <div className="card gap-2">
+                  <h4 className="text-sm text-text-muted mb-0">Budget Status</h4>
+                  <p className="text-xs text-text-muted mb-0">Based on budget period logic</p>
+                  <p className="text-2xl font-bold text-primary mb-0">72%</p>
+                  <p className="text-xs text-text-muted mb-0">$5.8k of $8.0k spent</p>
+                  <div className="w-full bg-white/10 rounded-full h-2">
+                    <div className="h-2 rounded-full bg-primary" style={{ width: '72%' }} />
+                  </div>
+                </div>
+
+                <div className="card gap-2">
+                  <h4 className="text-sm text-text-muted mb-0">Linked Accounts</h4>
+                  <p className="text-xs text-text-muted mb-0">As of today</p>
+                  <p className="text-2xl font-bold text-primary mb-0">21</p>
+                  <p className="text-xs text-text-muted mb-0">Checking 5 • Savings 4 • Brokerage 3 • +more</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      <section className="pb-8">
+        <div className="glass-panel px-5 py-4 md:px-7 md:py-5 overflow-hidden">
+          <div className="chip-marquee-track">
+            {[...featureRailItems, ...featureRailItems].map((chip, idx) => (
+              <span key={`${chip}-${idx}`} className="marketing-chip whitespace-nowrap">
+                {chip}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-20">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl md:text-5xl">From scattered data to confident decisions</h2>
+          <p className="max-w-2xl mx-auto text-lg text-text-secondary">
+            The app is built for people managing real complexity: multiple accounts, multiple asset classes, and multiple stakeholders.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-5">
+          {timeline.map((step, index) => (
+            <motion.article
+              key={step.title}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.5, delay: index * 0.07 }}
+              className="glass-panel relative"
+            >
+              <div className="absolute top-4 right-4 text-xs text-text-muted font-semibold">0{index + 1}</div>
+              <h3 className="text-xl md:text-2xl">{step.title}</h3>
+              <p className="text-text-secondary leading-relaxed">{step.body}</p>
+            </motion.article>
+          ))}
+        </div>
+      </section>
+
+      <section className="pt-6 md:pt-10 pb-4">
+        <div className="glass-panel text-center">
+          <h2 className="text-3xl md:text-5xl mb-4">Ready to see your financial system in motion?</h2>
+          <p className="max-w-2xl mx-auto text-lg mb-8">
+            Start with your current accounts and grow into forecasting, household collaboration, and AI-powered optimization.
+          </p>
+          <a href="http://localhost:5175/signup" className="btn btn-lg">
+            Create Free Account
+          </a>
+        </div>
+      </section>
     </div>
   )
 }

@@ -1,61 +1,65 @@
-/**
- * CORE PURPOSE: Feature Request and Roadmap page.
- * LAST MODIFIED: 2026-01-25 21:05 CST
- */
-import React from 'react';
+'use client'
+
+import { motion } from '@/lib/motion'
+
+const roadmap = [
+  'AI-driven budget forecasting enhancements',
+  'Automated tax categorization workflows',
+  'Expanded developer payout and API tooling',
+  'Mobile-native portfolio monitoring experiences',
+]
 
 export default function FeatureRequestPage() {
-    return (
-        <div className="container py-24">
-            <header className="mb-16 text-center max-w-3xl mx-auto">
-                <h1 className="text-5xl font-extrabold mb-6 tracking-tight">
-                    Help Us Shape <span className="text-primary">JuaLuma</span>
-                </h1>
-                <p className="text-xl text-muted">
-                    We're building the most powerful financial platform together. Your feedback directly impacts our roadmap. Have an idea for a new feature? We want to hear it.
-                </p>
-            </header>
+  return (
+    <div className="pb-12">
+      <section className="py-12 md:py-16 text-center max-w-4xl mx-auto">
+        <p className="marketing-chip mx-auto mb-5">
+          <span className="signal-dot" />
+          Product feedback loop
+        </p>
+        <h1 className="text-4xl md:text-6xl mb-5">Help shape what JuaLuma builds next.</h1>
+        <p className="text-lg text-text-secondary">
+          We prioritize requests that improve clarity, control, and trust in financial decision-making.
+        </p>
+      </section>
 
-            <div className="grid md:grid-cols-2 gap-12 items-start max-w-5xl mx-auto">
-                <div className="glass-panel p-10">
-                    <h2 className="text-2xl font-bold mb-6">Submit a Request</h2>
-                    <p className="text-muted mb-8">
-                        Our engineering team reviews every request. For immediate assistance or specialized integration needs, please reach out to our support team.
-                    </p>
-                    <div className="space-y-4">
-                        <a href="http://localhost:5175/support/tickets/new" target="_blank" rel="noreferrer" className="btn btn-primary w-full text-center">Submit via Support Portal</a>
-                        <a href="mailto:support@jualuma.com" className="btn btn-outline w-full text-center">Email Feature Squad</a>
-                    </div>
-                </div>
-
-                <div className="space-y-8">
-                    <section>
-                        <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
-                            <span className="text-primary">🚀</span> Current Focus
-                        </h3>
-                        <p className="text-muted text-sm border-l-2 border-primary pl-4 py-2">
-                            We are currently focused on enhancing AI-driven budget forecasting and RAG-powered analysis for real estate investments.
-                        </p>
-                    </section>
-                    
-                    <section>
-                        <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
-                            <span className="text-primary">📅</span> Upcoming Features
-                        </h3>
-                        <ul className="space-y-3 text-muted text-sm">
-                            <li className="flex gap-2">
-                                <span className="text-primary">•</span> Automated Tax Categorization (Q1 2026)
-                            </li>
-                            <li className="flex gap-2">
-                                <span className="text-primary">•</span> Multi-Currency Global Payouts for Devs (Q2 2026)
-                            </li>
-                            <li className="flex gap-2">
-                                <span className="text-primary">•</span> Native iOS & Android Apps (Q3 2026)
-                            </li>
-                        </ul>
-                    </section>
-                </div>
-            </div>
+      <section className="grid lg:grid-cols-2 gap-6 mb-10">
+        <div className="glass-panel">
+          <h2 className="text-3xl mb-3">Submit a request</h2>
+          <p className="text-text-secondary mb-6">
+            Share your workflow gap, desired outcome, and who benefits. Product and engineering review requests continuously.
+          </p>
+          <div className="space-y-3">
+            <a href="http://localhost:5175/support/tickets/new" target="_blank" rel="noreferrer" className="btn w-full text-center">Submit via Support Portal</a>
+            <a href="mailto:support@jualuma.com" className="btn btn-secondary w-full text-center">Email Feature Team</a>
+          </div>
         </div>
-    );
+
+        <div className="glass-panel">
+          <h2 className="text-3xl mb-3">Current roadmap themes</h2>
+          <div className="space-y-3">
+            {roadmap.map((item, index) => (
+              <motion.div
+                key={item}
+                initial={{ opacity: 0, x: 12 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.4, delay: index * 0.07 }}
+                className="rounded-xl border border-white/15 bg-white/5 p-4 text-text-secondary"
+              >
+                {item}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="glass-panel text-center">
+        <h2 className="text-3xl mb-4">What makes a high-impact request?</h2>
+        <p className="text-text-secondary max-w-2xl mx-auto mb-0">
+          Include the problem, current workaround, and expected result. Requests with clear business impact and reproducible scenarios move faster.
+        </p>
+      </section>
+    </div>
+  )
 }

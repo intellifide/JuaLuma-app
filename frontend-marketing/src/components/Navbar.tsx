@@ -1,9 +1,10 @@
-// Marketing site top nav. Last modified: 2026-02-02 18:50 CST
+// Marketing site top nav with animated interactions.
 'use client'
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { ThemeToggle } from './ThemeToggle'
 
 const navLinks = [
@@ -21,9 +22,7 @@ export const Navbar: React.FC = () => {
   const pathname = usePathname()
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
+    const handleScroll = () => setScrolled(window.scrollY > 18)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -32,21 +31,23 @@ export const Navbar: React.FC = () => {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-surface-1/80 backdrop-blur-glass border-b border-white/10 shadow-glass'
+          ? 'bg-surface-1/72 backdrop-blur-glass border-b border-white/10 shadow-glass'
           : 'bg-transparent'
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <img src="/assets/logo.png" alt="JuaLuma logo" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-primary/20 transition-transform group-hover:scale-110" />
-          <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight">
+          <img
+            src="/assets/logo.png"
+            alt="JuaLuma logo"
+            className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-secondary/20 transition-transform group-hover:scale-105"
+          />
+          <span className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">
             JuaLuma
           </span>
         </Link>
 
-        {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-7">
           {navLinks.map((link) =>
             link.comingSoon ? (
               <span
@@ -55,44 +56,46 @@ export const Navbar: React.FC = () => {
               >
                 {link.name}
                 <span className="text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full">
-                  Coming soon
+                  Soon
                 </span>
               </span>
             ) : (
               <Link
                 key={link.path}
                 href={link.path}
-                className={`text-sm font-medium transition-colors hover:text-accent ${
-                  pathname === link.path ? 'text-accent' : 'text-text-secondary'
+                className={`relative text-sm font-medium transition-colors hover:text-text-primary ${
+                  pathname === link.path ? 'text-text-primary' : 'text-text-secondary'
                 }`}
               >
                 {link.name}
+                {pathname === link.path && (
+                  <motion.span
+                    layoutId="nav-active"
+                    className="absolute left-0 right-0 -bottom-1 h-[2px] bg-gradient-to-r from-primary to-secondary rounded-full"
+                  />
+                )}
               </Link>
-            )
+            ),
           )}
         </div>
 
-        {/* Actions */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
           <a
             href="http://localhost:5175/login"
-            className="text-sm font-medium text-text-primary hover:text-accent transition-colors"
+            className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
           >
             Log In
           </a>
-          <a
-            href="http://localhost:5175/signup"
-            className="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-semibold shadow-lg shadow-primary/25 transition-all hover:scale-105 active:scale-95"
-          >
+          <a href="http://localhost:5175/signup" className="btn btn-sm">
             Get Started
           </a>
         </div>
 
-        {/* Mobile Toggle */}
         <button
           className="md:hidden p-2 text-text-primary"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-label="Toggle mobile menu"
         >
           <div className="w-6 flex flex-col gap-1.5 items-end">
             <span
@@ -114,52 +117,57 @@ export const Navbar: React.FC = () => {
         </button>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-surface-1 border-b border-white/5 overflow-hidden animate-fade-in">
-          <div className="px-6 py-8 flex flex-col gap-4">
-            {navLinks.map((link) =>
-              link.comingSoon ? (
-                <span
-                  key={link.path}
-                  className="text-lg font-medium text-text-muted cursor-not-allowed flex items-center gap-2"
-                >
-                  {link.name}
-                  <span className="text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full">
-                    Coming soon
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22 }}
+            className="md:hidden bg-surface-1/95 border-b border-white/10 overflow-hidden"
+          >
+            <div className="px-6 py-7 flex flex-col gap-4">
+              {navLinks.map((link) =>
+                link.comingSoon ? (
+                  <span
+                    key={link.path}
+                    className="text-lg font-medium text-text-muted cursor-not-allowed flex items-center gap-2"
+                  >
+                    {link.name}
+                    <span className="text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full">
+                      Soon
+                    </span>
                   </span>
-                </span>
-              ) : (
-                <Link
-                  key={link.path}
-                  href={link.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`text-lg font-medium ${
-                    pathname === link.path ? 'text-accent' : 'text-text-secondary'
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              )
-            )}
-            <div className="h-px bg-white/5 my-2" />
-            <a
-              href="http://localhost:5175/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-lg font-medium text-text-primary"
-            >
-              Log In
-            </a>
-            <a
-              href="http://localhost:5175/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-lg font-medium text-primary"
-            >
-              Sign Up
-            </a>
-          </div>
-        </div>
-      )}
+                ) : (
+                  <Link
+                    key={link.path}
+                    href={link.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`text-lg font-medium ${pathname === link.path ? 'text-text-primary' : 'text-text-secondary'}`}
+                  >
+                    {link.name}
+                  </Link>
+                ),
+              )}
+              <div className="h-px bg-white/10 my-1" />
+              <a
+                href="http://localhost:5175/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-lg font-medium text-text-primary"
+              >
+                Log In
+              </a>
+              <a
+                href="http://localhost:5175/signup"
+                onClick={() => setMobileMenuOpen(false)}
+                className="btn btn-sm w-full"
+              >
+                Sign Up
+              </a>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   )
 }

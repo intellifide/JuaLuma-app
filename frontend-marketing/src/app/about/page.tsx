@@ -1,52 +1,83 @@
-/**
- * CORE PURPOSE: About page detailing the mission, team, and regulatory compliance.
- * LAST MODIFIED: 2026-01-25 20:45 CST
- */
-import React from 'react';
+'use client'
+
+import { motion } from '@/lib/motion'
+
+const pillars = [
+  {
+    title: 'Signal over noise',
+    body: 'Most people have data everywhere but clarity nowhere. JuaLuma is designed to reduce account chaos into a coherent, current view of reality.',
+  },
+  {
+    title: 'Trust through transparency',
+    body: 'We favor explainable insight cards and explicit data boundaries so users understand what changed, why it changed, and what to do next.',
+  },
+  {
+    title: 'Built for complexity',
+    body: 'The product is intentionally multi-asset and multi-scope: personal and household workflows, traditional and on-chain finance, and manual assets.',
+  },
+]
+
+const partners = ['PLAID', 'STRIPE', 'FIREBASE', 'VERTEX AI']
 
 export default function AboutPage() {
-    return (
-        <div className="container py-24">
-            <header className="mb-20">
-                <h1 className="text-5xl font-extrabold mb-6">Our <span className="text-primary">Mission</span></h1>
-                <p className="text-2xl text-muted max-w-3xl leading-relaxed">
-                    We believe financial independence is not a destination, but a state of perpetual clarity. JuaLuma was built to give every person the tools to see their entire financial universe in one place, powered by intelligence they can trust.
-                </p>
-            </header>
+  return (
+    <div className="pb-12">
+      <section className="py-12 md:py-16 text-center max-w-4xl mx-auto">
+        <p className="marketing-chip mx-auto mb-5">
+          <span className="signal-dot" />
+          Why JuaLuma exists
+        </p>
+        <h1 className="text-4xl md:text-6xl mb-5">A financial operating system for real life.</h1>
+        <p className="text-lg md:text-xl text-text-secondary">
+          We build for people who manage multiple accounts, multiple asset classes, and multiple priorities.
+        </p>
+      </section>
 
-            <div className="grid md:grid-cols-2 gap-16 mb-24">
-                <section>
-                    <h2 className="text-3xl font-bold mb-6">Built for Accuracy</h2>
-                    <p className="text-lg text-muted mb-4">
-                        Unlike traditional banking apps that offer static snapshots, JuaLuma provides a dynamic canvas. We integrate directly with over 12,000 financial institutions, crypto exchanges, and real estate markets to provide a true reflection of your net worth.
-                    </p>
-                    <p className="text-lg text-muted">
-                        Our AI Assistant doesn't just "chat"—it analyzes your specific transactions using secure RAG technology to provide insights that are strictly personal and highly relevant.
-                    </p>
-                </section>
-                <section>
-                    <h2 className="text-3xl font-bold mb-6">Compliance & Security</h2>
-                    <p className="text-lg text-muted mb-4">
-                        Based in Austin, Texas, JuaLuma adheres to the highest standards of financial security. We are SOC 2 compliant in spirit and implementation, using bank-grade encryption for all data at rest and in transit.
-                    </p>
-                    <div className="glass-panel p-6 border-l-4 border-l-success">
-                        <h4 className="font-bold text-success mb-2">Transparency Note</h4>
-                        <p className="text-sm text-muted">
-                            Texas residents: We collect and remit 80% Texas sales tax on subscription fees, as 20% of JuaLuma services are classified as non-taxable data processing under Chapter 151 of the Texas Tax Code.
-                        </p>
-                    </div>
-                </section>
-            </div>
-
-            <section className="text-center py-20 border-t border-white/5">
-                <h2 className="text-3xl font-bold mb-10">Trusted Partners</h2>
-                <div className="flex flex-wrap justify-center gap-12 grayscale opacity-50">
-                   <span className="text-2xl font-bold">PLAID</span>
-                   <span className="text-2xl font-bold">STRIPE</span>
-                   <span className="text-2xl font-bold">FIREBASE</span>
-                   <span className="text-2xl font-bold">VERTEX AI</span>
-                </div>
-            </section>
+      <section className="grid lg:grid-cols-2 gap-6 mb-8">
+        <div className="glass-panel">
+          <h2 className="text-3xl mb-4">Mission</h2>
+          <p className="text-text-secondary leading-relaxed mb-0">
+            Financial confidence should come from visibility and context, not guesswork. JuaLuma turns disconnected data from banks, brokerages, wallets, and manual assets into a live strategic view you can act on.
+          </p>
         </div>
-    );
+
+        <div className="glass-panel">
+          <h2 className="text-3xl mb-4">Security and compliance</h2>
+          <p className="text-text-secondary leading-relaxed mb-4">
+            Data access is read-only where applicable, encrypted in transit and at rest, and designed for strict operational boundaries.
+          </p>
+          <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+            <p className="text-sm text-text-secondary mb-0">
+              Texas sales-tax note: subscription tax is applied on 80% of the service value, with 20% treated as exempt data processing under Texas rules.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid md:grid-cols-3 gap-5 mb-10">
+        {pillars.map((pillar, index) => (
+          <motion.article
+            key={pillar.title}
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.45, delay: index * 0.06 }}
+            className="glass-panel"
+          >
+            <h3 className="text-2xl mb-3">{pillar.title}</h3>
+            <p className="text-text-secondary mb-0">{pillar.body}</p>
+          </motion.article>
+        ))}
+      </section>
+
+      <section className="glass-panel text-center">
+        <h2 className="text-3xl mb-5">Technology partners</h2>
+        <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+          {partners.map((partner) => (
+            <span key={partner} className="marketing-chip">{partner}</span>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
 }
