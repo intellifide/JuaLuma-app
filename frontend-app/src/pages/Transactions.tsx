@@ -184,14 +184,14 @@ export const Transactions = () => {
     <section className="container mx-auto py-10 px-4 space-y-8">
       {/* Filters */}
       <div className="glass-panel mb-8 space-y-4">
-        <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex flex-col lg:flex-row lg:flex-wrap gap-3">
           <input
             type="text"
             placeholder="Search merchant or description"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="form-input"
+            className="form-input lg:flex-1 lg:min-w-[18rem]"
           />
           <Select
             value={category}
@@ -199,7 +199,7 @@ export const Transactions = () => {
               setCategory(e.target.value)
               handleFilterChange()
             }}
-            wrapperClassName="relative"
+            wrapperClassName="relative lg:min-w-[12rem]"
           >
             <option value="">All categories</option>
             {CATEGORIES.map((cat) => (
@@ -214,7 +214,7 @@ export const Transactions = () => {
               setPage(1)
               setTimeframe(e.target.value)
             }}
-            wrapperClassName="relative"
+            wrapperClassName="relative lg:min-w-[11rem]"
           >
             <option value="all">All time</option>
             <option value="1w">Last 7 days</option>
@@ -230,7 +230,7 @@ export const Transactions = () => {
               setSortBy(e.target.value as typeof sortBy)
               handleFilterChange()
             }}
-            wrapperClassName="relative"
+            wrapperClassName="relative lg:min-w-[14rem]"
           >
             <option value="ts_desc">Date (Newest First)</option>
             <option value="ts_asc">Date (Oldest First)</option>
