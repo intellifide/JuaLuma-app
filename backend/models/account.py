@@ -15,6 +15,7 @@ from .base import Base
 
 if TYPE_CHECKING:
     from .ledger import LedgerHotEssential, LedgerHotFree
+    from .plaid import PlaidItemAccount
     from .transaction import Transaction
     from .user import User
 
@@ -80,6 +81,12 @@ class Account(Base):
     )
     ledger_hot_essential: Mapped[list["LedgerHotEssential"]] = relationship(
         "LedgerHotEssential",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    plaid_item_accounts: Mapped[list["PlaidItemAccount"]] = relationship(
+        "PlaidItemAccount",
         back_populates="account",
         cascade="all, delete-orphan",
         lazy="selectin",

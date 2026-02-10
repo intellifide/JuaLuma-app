@@ -24,12 +24,12 @@ from backend.api.legal import router as legal_router
 from backend.api.manual_assets import router as manual_assets_router
 from backend.api.notifications import router as notifications_router
 from backend.api.plaid import router as plaid_router
+from backend.api.plaid_webhooks import router as plaid_webhooks_router
 from backend.api.recurring import router as recurring_router
 from backend.api.support import router as support_router
 from backend.api.support_portal import router as support_portal_router
 from backend.api.transactions import router as transactions_router
 from backend.api.users import router as users_router
-from backend.api.webhooks import router as webhooks_router
 from backend.api.webhooks import router as webhooks_router
 from backend.api.widgets import router as widgets_router
 from backend.api.documents import router as documents_router
@@ -146,6 +146,7 @@ app.include_router(users_router)
 app.include_router(billing_router)
 app.include_router(budgets_router)
 app.include_router(webhooks_router)
+app.include_router(plaid_webhooks_router)
 app.include_router(notifications_router)
 app.include_router(support_portal_router)  # New router inclusion
 app.include_router(documents_router)

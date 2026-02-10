@@ -11,12 +11,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import desc, or_
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from backend.core.config import settings
 from backend.core.constants import SubscriptionPlans, TierLimits
 from backend.core.dependencies import enforce_account_limit, get_current_active_subscription
 from backend.middleware.auth import get_current_user
-from backend.models import Account, AuditLog, Subscription, Transaction, User
+from backend.models import (
+    Account,
+    AuditLog,
+    PlaidItem,
+    PlaidItemAccount,
+    Subscription,
+    Transaction,
+    User,
+)
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
 from backend.utils.normalization import normalize_category, normalize_merchant_name
@@ -25,10 +33,11 @@ from backend.services.crypto_history import BitqueryUnavailableError, fetch_cryp
 from backend.services.web3_history import ProviderError, ProviderOverloaded, fetch_web3_history
 from backend.services.household_service import get_household_member_uids
 from backend.services.plaid import (
-    PlaidItemLoginRequired,
-    fetch_accounts,
-    fetch_transactions,
     remove_item,
+)
+from backend.services.plaid_sync import (
+    PLAID_SYNC_STATUS_ACTIVE,
+    PLAID_SYNC_STATUS_NEEDS_REAUTH,
 )
 from backend.utils import get_db
 from backend.utils.secret_manager import get_secret, store_secret
@@ -333,6 +342,10 @@ class AccountResponse(BaseModel):
     assigned_member_uid: str | None = None
     custom_label: str | None = None
     sync_status: str | None = None
+    last_synced_at: datetime | None = None
+    connection_health: str | None = None
+    reconnect_required: bool = False
+    sync_mode: str | None = None
     created_at: datetime
     updated_at: datetime
     transactions: list[TransactionSummary] = Field(default_factory=list)
@@ -385,22 +398,31 @@ def _get_subscription_plan(db: Session, uid: str) -> str:
     """Return the user's current subscription plan or 'free' as a fallback."""
     subscription = (
         db.query(Subscription)
+        .filter(Subscription.uid == uid, Subscription.status == "active")
+        .order_by(desc(Subscription.created_at))
+        .first()
+    )
+    if subscription:
+        return subscription.plan
+    fallback = (
+        db.query(Subscription)
         .filter(Subscription.uid == uid)
         .order_by(desc(Subscription.created_at))
         .first()
     )
-    return subscription.plan if subscription else "free"
+    return fallback.plan if fallback else SubscriptionPlans.FREE
 
 
 def _enforce_sync_limit(db: Session, uid: str, plan: str) -> None:
     """Enforce Free-tier manual sync limits."""
-    if plan == "essential":
+    base_tier = SubscriptionPlans.get_base_tier(plan)
+    if base_tier == SubscriptionPlans.ESSENTIAL:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Manual sync is not available for the Essential tier. Your accounts update automatically every 24 hours.",
         )
 
-    if plan != "free":
+    if base_tier != SubscriptionPlans.FREE:
         return
 
     since = datetime.now(UTC) - timedelta(days=1)
@@ -429,6 +451,50 @@ def _serialize_account(
     """Convert an Account ORM object into a response schema."""
     txns = transactions or []
     response_balance = account.balance if include_balance else None
+    resolved_sync_status = account.sync_status
+    resolved_last_synced_at = account.last_synced_at
+    connection_health: str | None = None
+    reconnect_required = False
+    sync_mode: str | None = None
+
+    if account.account_type in {"traditional", "investment"}:
+        sync_mode = "automatic"
+        active_link = next(
+            (
+                link
+                for link in account.plaid_item_accounts
+                if link.is_active
+                and link.plaid_item is not None
+                and link.plaid_item.is_active
+                and link.plaid_item.removed_at is None
+            ),
+            None,
+        )
+        if active_link and active_link.plaid_item:
+            item = active_link.plaid_item
+            resolved_sync_status = item.sync_status
+            if item.last_synced_at:
+                resolved_last_synced_at = item.last_synced_at
+            if item.sync_status == PLAID_SYNC_STATUS_NEEDS_REAUTH:
+                connection_health = "reauth_required"
+                reconnect_required = True
+            elif item.sync_status in {PLAID_SYNC_STATUS_ACTIVE, "sync_needed", "syncing"}:
+                connection_health = "connected"
+            elif item.sync_status in {"failed", "pending_cleanup"}:
+                connection_health = "degraded"
+            elif item.sync_status == "removed":
+                connection_health = "disconnected"
+                reconnect_required = True
+            else:
+                connection_health = item.sync_status
+        else:
+            connection_health = "disconnected"
+            reconnect_required = True
+    elif account.account_type in {"web3", "cex"}:
+        sync_mode = "manual"
+        connection_health = "connected" if account.sync_status != PLAID_SYNC_STATUS_NEEDS_REAUTH else "reauth_required"
+        reconnect_required = account.sync_status == PLAID_SYNC_STATUS_NEEDS_REAUTH
+
     return AccountResponse(
         id=account.id,
         uid=account.uid,
@@ -444,7 +510,11 @@ def _serialize_account(
         currency=account.currency,
         assigned_member_uid=account.assigned_member_uid,
         custom_label=account.custom_label,
-        sync_status=account.sync_status,
+        sync_status=resolved_sync_status,
+        last_synced_at=resolved_last_synced_at,
+        connection_health=connection_health,
+        reconnect_required=reconnect_required,
+        sync_mode=sync_mode,
         created_at=account.created_at,
         updated_at=account.updated_at,
         transactions=txns,
@@ -502,10 +572,14 @@ def list_accounts(
     """
     if scope == "household":
         target_uids = get_household_member_uids(db, current_user.uid)
-        query = db.query(Account).filter(Account.uid.in_(target_uids))
+        query = db.query(Account).options(
+            selectinload(Account.plaid_item_accounts).selectinload(PlaidItemAccount.plaid_item)
+        ).filter(Account.uid.in_(target_uids))
     else:
         allowed_uids = get_household_member_uids(db, current_user.uid)
-        query = db.query(Account).filter(
+        query = db.query(Account).options(
+            selectinload(Account.plaid_item_accounts).selectinload(PlaidItemAccount.plaid_item)
+        ).filter(
             (Account.uid == current_user.uid)
             | (
                 (Account.assigned_member_uid == current_user.uid)
@@ -552,11 +626,34 @@ def get_account_limits(
         "manual": 0,
     }
     user_accounts = db.query(Account).filter(Account.uid == current_user.uid).all()
-    for account in user_accounts:
-        if account.account_type in {"traditional", "investment"} and account.secret_ref:
-            current_counts["plaid"] += 1
-        elif account.account_type in current_counts:
-            current_counts[account.account_type] += 1
+
+    current_counts["plaid"] = (
+        db.query(Account)
+        .join(PlaidItemAccount, PlaidItemAccount.account_id == Account.id)
+        .join(PlaidItem, PlaidItem.id == PlaidItemAccount.plaid_item_id)
+        .filter(
+            Account.uid == current_user.uid,
+            PlaidItemAccount.is_active.is_(True),
+            PlaidItem.is_active.is_(True),
+            PlaidItem.removed_at.is_(None),
+        )
+        .count()
+    )
+    current_counts["web3"] = (
+        db.query(Account)
+        .filter(Account.uid == current_user.uid, Account.account_type == "web3")
+        .count()
+    )
+    current_counts["cex"] = (
+        db.query(Account)
+        .filter(Account.uid == current_user.uid, Account.account_type == "cex")
+        .count()
+    )
+    current_counts["manual"] = (
+        db.query(Account)
+        .filter(Account.uid == current_user.uid, Account.account_type == "manual")
+        .count()
+    )
 
     tier_display = {
         "free": "Free",
@@ -594,6 +691,9 @@ def get_account_details(
     """
     account = (
         db.query(Account)
+        .options(
+            selectinload(Account.plaid_item_accounts).selectinload(PlaidItemAccount.plaid_item)
+        )
         .filter(Account.id == account_id, Account.uid == current_user.uid)
         .first()
     )
@@ -840,26 +940,6 @@ def link_cex_account(
     return _serialize_account(account)
 
 
-def _sync_traditional(account: Account, start: date, end: date) -> list[dict]:
-    try:
-        access_token = get_secret(account.secret_ref or "", uid=account.uid)
-        return fetch_transactions(access_token, start, end)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account credentials."
-        ) from exc
-    except PlaidItemLoginRequired as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This account needs to be reauthorized via Plaid Link before syncing can continue.",
-        ) from exc
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="We encountered an issue syncing with your bank. Please try again later.",
-        ) from exc
-
-
 def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bool]:
     try:
         conn_data = json.loads(account.secret_ref)
@@ -1018,37 +1098,6 @@ def _sync_cex(account: Account, uid: str, start_date: date | None = None, end_da
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             "We encountered an issue connecting to your exchange. Please verify your credentials.",
         ) from e
-
-
-def _refresh_traditional_balance(account: Account, user_pref: str | None) -> str | None:
-    """Updates account balance from Plaid and returns the Plaid account ID if found."""
-    if account.account_type != "traditional":
-        return None
-    try:
-        access_token = get_secret(account.secret_ref or "", uid=account.uid)
-        plaid_accounts = fetch_accounts(access_token)
-        match = next(
-            (
-                acct
-                for acct in plaid_accounts
-                if acct.get("mask") == account.account_number_masked
-            ),
-            None,
-        )
-        if match:
-            if match.get("balance_current") is not None:
-                account.balance = Decimal(str(match.get("balance_current")))
-            account.currency = (
-                match.get("currency") or account.currency or user_pref or "USD"
-            )
-            if match.get("type"):
-                account.plaid_type = match.get("type")
-            if match.get("subtype"):
-                account.plaid_subtype = match.get("subtype")
-            return match.get("account_id")
-    except Exception as e:
-        logger.warning(f"Failed to match Plaid account or refresh balance: {e}")
-    return None
 
 
 def _clean_raw_value(value: Any) -> Any:
@@ -1294,16 +1343,16 @@ def _execute_provider_sync(
     next_cursor = None
     cursor_chain = None
     update_cursor = False
-    if account.account_type == "traditional":
-        fetched = _sync_traditional(account, start, end)
-        pid = _refresh_traditional_balance(account, user.currency_pref)
-        if pid:
-            fetched = [t for t in fetched if t.get("account_id") == pid]
-    elif account.account_type == "web3":
+    if account.account_type == "web3":
         fetched, next_cursor, cursor_chain, update_cursor = _sync_web3(account)
     elif account.account_type == "cex":
         # Pass date range to CEX sync for expanded transaction window
         fetched = _sync_cex(account, user.uid, start_date=start, end_date=end)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account type does not support manual synchronization.",
+        )
     return fetched, next_cursor, cursor_chain, update_cursor
 
 
@@ -1428,12 +1477,13 @@ def sync_account_transactions(
     db: Session = Depends(get_db),
 ) -> AccountSyncResponse:
     """
-    Trigger a manual sync of transactions for a linked account (e.g., via Plaid).
+    Trigger a manual sync of transactions for non-Plaid linked accounts.
 
     - **start_date**: Start of sync window (default: 30 days ago).
     - **end_date**: End of sync window (default: today).
     - **initial_sync**: If true, bypasses manual sync limits (internal use only).
 
+    Plaid-backed accounts sync automatically via webhooks and cursor jobs.
     Rate limited for free tier users (unless initial_sync=True).
     Returns sync statistics.
     """
@@ -1447,7 +1497,16 @@ def sync_account_transactions(
             status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
         )
 
-    if account.account_type not in ["traditional", "web3", "cex"]:
+    if account.account_type in {"traditional", "investment"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Plaid-connected accounts sync automatically in the background. "
+                "Manual sync is disabled."
+            ),
+        )
+
+    if account.account_type not in ["web3", "cex"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This account type does not support manual synchronization.",
@@ -1576,7 +1635,7 @@ def refresh_account_metadata(
     db: Session = Depends(get_db),
 ) -> AccountResponse:
     """
-    Refresh Plaid account metadata (type/subtype/balance) without pulling transactions.
+    Metadata refresh endpoint for backward compatibility.
     """
     account = (
         db.query(Account)
@@ -1587,62 +1646,18 @@ def refresh_account_metadata(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
         )
-    if account.account_type != "traditional":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Metadata refresh is only available for Plaid-connected accounts.",
-        )
-
-    try:
-        access_token = get_secret(account.secret_ref or "", uid=account.uid)
-        plaid_accounts = fetch_accounts(access_token)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account credentials."
-        ) from exc
-    except PlaidItemLoginRequired as exc:
+    if account.account_type in {"traditional", "investment"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This account needs to be reauthorized via Plaid Link before refresh can continue.",
-        ) from exc
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="We encountered an issue refreshing your account details. Please try again later.",
-        ) from exc
-
-    match = None
-    if account.account_number_masked:
-        match = next(
-            (acct for acct in plaid_accounts if acct.get("mask") == account.account_number_masked),
-            None,
-        )
-    if not match and account.account_name:
-        account_name = account.account_name.lower()
-        match = next(
-            (
-                acct
-                for acct in plaid_accounts
-                if (acct.get("official_name") or acct.get("name") or "").lower() == account_name
+            detail=(
+                "Plaid-connected accounts refresh automatically from webhook-driven sync. "
+                "Manual metadata refresh is disabled."
             ),
-            None,
         )
-
-    if not match:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Unable to match this account in Plaid. Try reconnecting it.",
-        )
-
-    if match.get("balance_current") is not None:
-        account.balance = Decimal(str(match.get("balance_current")))
-    account.currency = match.get("currency") or account.currency or current_user.currency_pref or "USD"
-    account.plaid_type = match.get("type") or account.plaid_type
-    account.plaid_subtype = match.get("subtype") or account.plaid_subtype
-    db.add(account)
-    db.commit()
-    db.refresh(account)
-    return _serialize_account(account)
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Metadata refresh is only used for Plaid-linked accounts and is automatic.",
+    )
 
 
 @router.post(
@@ -1768,18 +1783,53 @@ def delete_account(
             status_code=status.HTTP_404_NOT_FOUND, detail="The specified account could not be found."
         )
 
-    # Remove Plaid Item if traditional
-    if account.account_type == "traditional" and account.secret_ref:
-        logger.info(
-            "Removing Plaid item for account %s with secret_ref=%s",
-            account.id,
-            account.secret_ref,
+    # Remove Plaid item only when this is the last active account mapped to the item.
+    if account.account_type in {"traditional", "investment"}:
+        links = (
+            db.query(PlaidItemAccount)
+            .options(selectinload(PlaidItemAccount.plaid_item))
+            .filter(
+                PlaidItemAccount.account_id == account.id,
+                PlaidItemAccount.is_active.is_(True),
+            )
+            .all()
         )
-        try:
-            access_token = get_secret(account.secret_ref, uid=current_user.uid)
-            remove_item(access_token)
-        except Exception as e:
-            logger.error("Failed to remove Plaid item: %s", e)
+        for link in links:
+            plaid_item = link.plaid_item
+            if not plaid_item or not plaid_item.is_active or plaid_item.removed_at is not None:
+                continue
+
+            sibling_count = (
+                db.query(PlaidItemAccount)
+                .filter(
+                    PlaidItemAccount.plaid_item_id == plaid_item.id,
+                    PlaidItemAccount.is_active.is_(True),
+                    PlaidItemAccount.account_id != account.id,
+                )
+                .count()
+            )
+            if sibling_count > 0:
+                logger.info(
+                    "Skipping Plaid item removal for account %s; %s sibling account(s) remain mapped.",
+                    account.id,
+                    sibling_count,
+                )
+                continue
+
+            logger.info(
+                "Removing Plaid item %s because account %s is the final mapped account.",
+                plaid_item.item_id,
+                account.id,
+            )
+            try:
+                access_token = get_secret(plaid_item.secret_ref, uid=current_user.uid)
+                remove_item(access_token)
+                plaid_item.is_active = False
+                plaid_item.removed_at = datetime.now(UTC)
+                plaid_item.sync_status = "removed"
+                db.add(plaid_item)
+            except Exception as e:
+                logger.error("Failed to remove Plaid item %s: %s", plaid_item.item_id, e)
 
     # Invalidate Analytics Cache
     invalidate_analytics_cache(current_user.uid)

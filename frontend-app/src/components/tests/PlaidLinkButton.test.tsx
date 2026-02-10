@@ -1,18 +1,13 @@
-// Updated 2025-12-11 17:55 CST by ChatGPT - cover Plaid post-link sync flow
+// Updated 2026-02-10 14:35 CST - Plaid linking no longer triggers manual sync calls
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PlaidLinkButton } from '../PlaidLinkButton'
 import { vi } from 'vitest'
 
 const postMock = vi.fn()
-const syncAccountMock = vi.fn()
 
 vi.mock('../../services/api', () => ({
   api: { post: (...args: unknown[]) => postMock(...args) },
-}))
-
-vi.mock('../../services/accounts', () => ({
-  syncAccount: (...args: unknown[]) => syncAccountMock(...args),
 }))
 
 const usePlaidLinkMock = vi.fn()
@@ -28,7 +23,6 @@ describe('PlaidLinkButton', () => {
     postMock.mockResolvedValueOnce({
       data: { accounts: [{ id: 'acc-1' }, { id: 'acc-2' }] },
     })
-    syncAccountMock.mockResolvedValue(undefined)
 
     usePlaidLinkMock.mockImplementation((config: { onSuccess?: (token: string, metadata: unknown) => void }) => {
       return {
@@ -43,7 +37,7 @@ describe('PlaidLinkButton', () => {
     })
   })
 
-  it('syncs linked accounts and calls onSuccess after Plaid success', async () => {
+  it('exchanges Plaid token and calls onSuccess after Plaid success', async () => {
     const onSuccess = vi.fn().mockResolvedValue(undefined)
     render(<PlaidLinkButton onSuccess={onSuccess} />)
 
@@ -63,8 +57,6 @@ describe('PlaidLinkButton', () => {
         institution_name: 'Bank',
         selected_account_ids: ['plaid-1', 'plaid-2'],
       })
-      expect(syncAccountMock).toHaveBeenCalledWith('acc-1', true)
-      expect(syncAccountMock).toHaveBeenCalledWith('acc-2', true)
       expect(onSuccess).toHaveBeenCalledTimes(1)
     })
   })

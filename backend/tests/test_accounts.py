@@ -107,14 +107,13 @@ def test_delete_account(test_client: TestClient, test_db, mock_auth):
 
 
 def test_sync_account(test_client: TestClient, test_db, mock_auth):
-    # Setup traditional account
+    # Setup CEX account (manual sync remains enabled for non-Plaid providers)
     acct = Account(
         uid=mock_auth.uid,
-        account_type="traditional",
-        provider="Bank",
-        account_name="Bank Acct",
-        secret_ref="access-token-123",
-        account_number_masked="1234",
+        account_type="cex",
+        provider="coinbaseadvanced",
+        account_name="CEX Acct",
+        secret_ref='{"apiKey":"k","secret":"s"}',
         currency="USD",
     )
     # Add subscription (pro) to bypass free tier rate limits
@@ -123,7 +122,7 @@ def test_sync_account(test_client: TestClient, test_db, mock_auth):
     test_db.add(acct)
     test_db.commit()
 
-    # Mock fetch_transactions and fetch_accounts
+    # Mock provider dispatch for CEX sync
     mock_txns = [
         {
             "transaction_id": "txn_1",
@@ -136,22 +135,18 @@ def test_sync_account(test_client: TestClient, test_db, mock_auth):
         }
         ,
         {
-            # Plaid convention: inflows are negative; normalize to positive income.
             "transaction_id": "txn_2",
             "date": date(2023, 1, 2),
-            "amount": -100.0,
+            "amount": 100.0,
             "currency": "USD",
             "category": "Income",
             "merchant_name": "Employer",
             "name": "Payroll",
+            "direction": "inflow",
         },
     ]
-    mock_accts = [{"mask": "1234", "balance_current": 1000.0, "currency": "USD"}]
 
-    with (
-        patch("backend.api.accounts.fetch_transactions", return_value=mock_txns),
-        patch("backend.api.accounts.fetch_accounts", return_value=mock_accts),
-    ):
+    with patch("backend.api.accounts._sync_cex", return_value=mock_txns):
         response = test_client.post(
             f"/api/accounts/{acct.id}/sync?start_date=2023-01-01"
         )
@@ -168,8 +163,8 @@ def test_sync_account(test_client: TestClient, test_db, mock_auth):
     )
     assert len(txns) == 2
     by_external_id = {t.external_id: t for t in txns}
-    # Traditional (Plaid) amounts are normalized so outflows are negative and inflows are positive.
-    assert by_external_id["txn_1"].amount == Decimal("-50.00")
+    # CEX/Web3 direction-aware sign normalization.
+    assert by_external_id["txn_1"].amount == Decimal("50.00")
     assert by_external_id["txn_2"].amount == Decimal("100.00")
 
 

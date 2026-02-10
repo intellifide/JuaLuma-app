@@ -56,6 +56,10 @@ const mapAccount = (data: any): Account => ({
   plaidType: data.plaid_type ?? data.plaidType ?? null,
   plaidSubtype: data.plaid_subtype ?? data.plaidSubtype ?? null,
   syncStatus: data.sync_status ?? data.syncStatus ?? null,
+  lastSyncedAt: data.last_synced_at ?? data.lastSyncedAt ?? null,
+  connectionHealth: data.connection_health ?? data.connectionHealth ?? null,
+  reconnectRequired: Boolean(data.reconnect_required ?? data.reconnectRequired ?? false),
+  syncMode: data.sync_mode ?? data.syncMode ?? null,
   createdAt: data.created_at ?? data.createdAt,
   updatedAt: data.updated_at ?? data.updatedAt,
 })

@@ -62,18 +62,18 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 **Free Tier (Default):**
 
 - All new users start on Free Tier
-- Limits: 2 traditional accounts, 1 Web3 wallet, 1 CEX account
+- Limits: 3 traditional (Plaid) accounts, 1 Web3 wallet, 1 CEX account
 - Cloud AI model: Vertex AI Gemini 2.5 Flash, limited to 10 queries/day. AI chat history is temporary and never stored (stateless sessions).
 - Standard features
 - Rolling 45-day transaction window stored exclusively in Cloud SQL (`ledger_hot_free`). The nightly `free-ledger-pruner` Cloud Run Job deletes entries older than 45 days—no archive is retained—ensuring low storage costs and straightforward GDPR/GLBA erasure handling.
-- Manual “Sync Now” remains available but is throttled to 10 invocations per user per day via Cloud Tasks to control Plaid usage.
+- Plaid sync is automatic (webhook + cursor jobs). Manual sync actions apply only to Web3/CEX connectors.
 
 **Essential Tier ($10/month):**
 
 - Upgrade option presented alongside Pro during subscription flow.
 - Limits: 5 traditional accounts, 5 investment accounts, 5 Web3 wallets, 5 CEX accounts.
 - Cloud AI models enabled (Vertex AI Gemini 2.5 Flash) with encrypted RAG context.
-- Sync cadence: real-time Plaid/CEX webhooks plus a guaranteed nightly Cloud Scheduler run (`essential-ledger-refresh`). Manual “Sync Now” is disabled to keep aggregator costs predictable.
+- Sync cadence: Plaid uses webhook-first cursor sync with safety-net jobs; Web3/CEX retain manual sync actions.
 - Rolling 30-day hot data window stored in Cloud SQL (`ledger_hot_essential`). The paired `essential-ledger-archiver` job moves data older than 30 days into Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only access.
 - 75 cloud AI queries/day quota set (shared enforcement with Pro Tier through the Firestore `api_usage` collection).
 
@@ -111,13 +111,13 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 **Step 3: Token Exchange**
 
 - Public token received from Plaid
-- Public token exchanged for access token
+- Public token exchanged for access token + Plaid `item_id`
 - Access token stored in Secret Manager (not database)
-- Secret reference stored in Cloud SQL `accounts` table
+- Secret reference stored in Cloud SQL `plaid_items.secret_ref` (legacy `accounts.secret_ref` retained for compatibility only)
 
 **Step 4: Initial Data Sync**
 
-- First data sync triggered automatically
+- Item is marked `sync_needed`; webhook/cursor job processes first sync asynchronously
 - Transactions and balances fetched
 - Data normalized and stored in Cloud SQL
 - User sees accounts in dashboard
@@ -283,7 +283,7 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 
 **Sync Frequency:**
 
-- Traditional accounts (Plaid): Daily automatic sync
+- Traditional accounts (Plaid): webhook-first automatic cursor sync + periodic safety-net job
 - CEX accounts: Daily automatic sync
 - Web3 wallets: Real-time or hourly (depending on chain)
 
@@ -291,20 +291,20 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 
 - Scheduled via Cloud Scheduler
 - Runs during off-peak hours (e.g., 2 AM Central)
-- Can be triggered manually by user
+- Plaid sync cannot be manually triggered by user
 
-### 3.2 Manual Sync
+### 3.2 Manual Sync (Web3/CEX Only)
 
 **User-Initiated Sync:**
 
-- User clicks "Sync Now" button
-- Sync job queued via Cloud Tasks
+- User clicks "Sync" for Web3/CEX account
+- Sync request runs through existing account sync endpoint
 - Status displayed to user
 - User notified when complete
 
 **Sync Limits:**
 
-- Maximum 10 sync attempts per user per day (circuit breaker)
+- Maximum 10 sync attempts per free-tier user per day (circuit breaker)
 - Prevents runaway API costs
 - User notified if limit reached
 

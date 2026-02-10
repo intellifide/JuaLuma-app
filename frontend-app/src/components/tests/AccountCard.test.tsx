@@ -35,9 +35,16 @@ describe('AccountCard', () => {
         expect(screen.queryByText('Sync')).not.toBeInTheDocument()
     })
 
-    it('calls onSync when Sync button is clicked', () => {
+    it('does not render Sync for Plaid-managed accounts', () => {
+        render(<AccountCard account={mockAccount} onSync={vi.fn()} />)
+
+        expect(screen.queryByText('Sync')).not.toBeInTheDocument()
+    })
+
+    it('calls onSync when Sync button is clicked for manual-sync providers', () => {
+        const syncable: Account = { ...mockAccount, provider: 'cex', accountType: 'cex' }
         const onSync = vi.fn()
-        render(<AccountCard account={mockAccount} onSync={onSync} />)
+        render(<AccountCard account={syncable} onSync={onSync} />)
 
         fireEvent.click(screen.getByText('Sync'))
         expect(onSync).toHaveBeenCalledWith('1')

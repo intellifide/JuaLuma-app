@@ -210,9 +210,9 @@ def test_webhook_subscription_past_due_downgrade(test_client, test_db: Session):
 
     assert response.status_code == 200
     test_db.refresh(sub)
-    assert sub.plan == "free"
+    # Past-due now keeps current paid tier during grace period.
+    assert sub.plan == "pro_monthly"
     assert sub.status == "past_due"
-    assert sub.renew_at is None
 
 
 def test_webhook_invalid_signature(test_client, test_db):

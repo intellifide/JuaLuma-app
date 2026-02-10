@@ -840,7 +840,7 @@ const ManualAssetModal = ({
 };
 
 export const ConnectAccounts = () => {
-  const { accounts, loading, remove, sync, refreshMetadata, update, refetch } = useAccounts();
+  const { accounts, loading, remove, sync, update, refetch } = useAccounts();
   const {
     assets: manualAssets,
     loading: manualAssetsLoading,
@@ -1113,29 +1113,27 @@ export const ConnectAccounts = () => {
     });
   }, [accounts, activeTab]);
 
+  const isPlaidManagedAccount = (account: Account) =>
+    account.accountType === 'traditional' || account.accountType === 'investment';
+  const isManualSyncAccount = (account: Account) =>
+    account.accountType === 'web3' || account.accountType === 'cex';
+
   const syncableAccounts = useMemo(
-    () => filteredAccounts.filter((account) => account.accountType !== 'manual'),
+    () => filteredAccounts.filter((account) => isManualSyncAccount(account)),
     [filteredAccounts],
   );
 
   const performSync = async (account: typeof accounts[number]) => {
+    if (!isManualSyncAccount(account)) {
+      toast.show('Plaid accounts sync automatically in the background.', 'error');
+      return false;
+    }
     try {
       await sync(account.id);
       await refetch();
       toast.show('Account synced successfully', 'success');
       return true;
     } catch (err: unknown) {
-      if (account.accountType === 'traditional') {
-        try {
-          await refreshMetadata(account.id);
-          await refetch();
-          toast.show('Transactions sync failed, but account details were refreshed.', 'error');
-          return false;
-        } catch (refreshErr: unknown) {
-          toast.show(getApiErrorMessage(refreshErr, 'Failed to refresh account details'), 'error');
-          return false;
-        }
-      }
       toast.show(getApiErrorMessage(err, 'Failed to sync account'), 'error');
       return false;
     }
@@ -1543,7 +1541,7 @@ export const ConnectAccounts = () => {
                       }}
                       className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded hover:bg-primary/20 flex items-center gap-1 transition-colors"
                     >
-                      <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync All
+                      <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> Sync Web3/CEX
                     </button>
                   </div>
                 </>
@@ -1580,7 +1578,7 @@ export const ConnectAccounts = () => {
                         disabled={syncingAccounts.size > 0}
                       >
                         <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> 
-                        {syncingAccounts.size > 0 ? `Syncing ${syncingAccounts.size}...` : 'Sync All Accounts'}
+                        {syncingAccounts.size > 0 ? `Syncing ${syncingAccounts.size}...` : 'Sync Web3/CEX'}
                       </button>
                     </div>
                   </div>
@@ -1657,7 +1655,13 @@ export const ConnectAccounts = () => {
                               )}
                             </div>
                             <div className="flex items-center justify-between text-xs text-text-secondary">
-                              <span>{account.accountType === 'manual' ? 'Manual' : 'Auto-synced'}</span>
+                              <span>
+                                {account.accountType === 'manual'
+                                  ? 'Manual'
+                                  : isPlaidManagedAccount(account)
+                                    ? 'Auto via Plaid'
+                                    : 'Manual sync'}
+                              </span>
                               <span>{account.updatedAt ? `${formatDate(account.updatedAt, timeZone)}` : 'Recent'}</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1668,7 +1672,7 @@ export const ConnectAccounts = () => {
                               >
                                 Edit Details
                               </button>
-                              {account.accountType !== 'manual' && (
+                              {isManualSyncAccount(account) && (
                                 <button
                                   onClick={(e) => handleSync(account, e)}
                                   disabled={syncingAccounts.has(account.id)}
@@ -1735,13 +1739,25 @@ export const ConnectAccounts = () => {
                               {householdLoading ? 'Loading...' : resolveAssignedLabel(account.assignedMemberUid)}
                             </td>
                             <td className="py-4">
-                              {account.syncStatus === 'needs_reauth' ? (
+                              {isPlaidManagedAccount(account) ? (
+                                account.connectionHealth === 'reauth_required' ? (
+                                  <span className="badge badge-warning">Reconnect needed</span>
+                                ) : account.connectionHealth === 'degraded' ? (
+                                  <span className="badge badge-warning">Delayed sync</span>
+                                ) : account.connectionHealth === 'disconnected' ? (
+                                  <span className="badge badge-warning">Disconnected</span>
+                                ) : (
+                                  <span className="badge badge-success">Auto-sync active</span>
+                                )
+                              ) : account.syncStatus === 'needs_reauth' ? (
                                 <span className="badge badge-warning">Reconnect needed</span>
                               ) : (
                                 <span className="badge badge-success">Connected</span>
                               )}
                             </td>
-                            <td className="py-4 text-sm text-text-secondary">{account.updatedAt ? formatTime(account.updatedAt, timeZone) : 'Just now'}</td>
+                            <td className="py-4 text-sm text-text-secondary">
+                              {account.lastSyncedAt ? formatTime(account.lastSyncedAt, timeZone) : account.updatedAt ? formatTime(account.updatedAt, timeZone) : 'Pending'}
+                            </td>
                             <td className="py-4">
                               <div className="flex gap-2 items-center">
                                 {account.syncStatus === 'needs_reauth' && account.accountType === 'cex' && (
@@ -1776,7 +1792,7 @@ export const ConnectAccounts = () => {
                                       >
                                         Edit Details
                                       </button>
-                                      {account.accountType !== 'manual' && (
+                                      {isManualSyncAccount(account) && (
                                         <button
                                           className="btn btn-sm btn-ghost w-full justify-start"
                                           onClick={() => {

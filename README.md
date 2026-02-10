@@ -8,7 +8,7 @@
 jualuma is a modern financial management app that syncs bank data, tracks manual assets, surfaces AI-powered insights, and offers a marketplace for extensible widgets.
 
 ## Overview
-- **Bank integration**: Plaid-powered sync for accounts and transactions.
+- **Bank integration**: Plaid-powered webhook-first, cursor-based auto-sync for accounts and transactions.
 - **Manual assets**: Track real estate, vehicles, crypto, and other holdings.
 - **AI assistant**: Conversational guidance with spending summaries and budgeting tips.
 - **Marketplace**: Developer-published widgets with ratings and payouts.

@@ -19,6 +19,7 @@ from .notification_device import NotificationDevice
 from .notification_settings import NotificationSettings
 from .pending_signup import PendingSignup
 from .payment import Payment
+from .plaid import PlaidItem, PlaidItemAccount, PlaidWebhookEvent
 from .payout import DeveloperPayout
 from .subscription import Subscription
 from .subscription_tier import SubscriptionTier
@@ -49,6 +50,9 @@ __all__ = [
     "Account",
     "Transaction",
     "Payment",
+    "PlaidItem",
+    "PlaidItemAccount",
+    "PlaidWebhookEvent",
     "AISettings",
     "NotificationPreference",
     "LocalNotification",

@@ -31,7 +31,7 @@ const formatCurrency = (amount?: number | null, currency = 'USD') => {
 
 export const AccountCard = ({ account, onSync, onEdit, onDelete }: AccountCardProps) => {
   const icon = accountTypeIcon[account.accountType || 'manual'] || '🗂️'
-  const isPlaid = account.provider === 'plaid'
+  const isManualSyncSource = account.accountType === 'web3' || account.accountType === 'cex'
 
   return (
     <div className="backdrop-blur-glass bg-white/70 dark:bg-gray-900/75 rounded-2xl border border-white/60 dark:border-white/10 shadow-glass p-4 flex flex-col gap-3">
@@ -59,7 +59,7 @@ export const AccountCard = ({ account, onSync, onEdit, onDelete }: AccountCardPr
       </div>
 
       <div className="flex items-center gap-2">
-        {isPlaid && (
+        {isManualSyncSource && (
           <button
             type="button"
             onClick={() => onSync?.(account.id)}

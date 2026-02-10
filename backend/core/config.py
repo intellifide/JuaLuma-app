@@ -36,6 +36,16 @@ class AppSettings(BaseSettings):
     plaid_client_id: str = Field(..., alias="PLAID_CLIENT_ID")
     plaid_secret: str = Field(..., alias="PLAID_SECRET")
     plaid_env: str = Field(default="sandbox", alias="PLAID_ENV")
+    plaid_webhook_secret: str | None = Field(default=None, alias="PLAID_WEBHOOK_SECRET")
+    plaid_webhook_tolerance_seconds: int = Field(
+        default=300, alias="PLAID_WEBHOOK_TOLERANCE_SECONDS"
+    )
+    plaid_sync_batch_size: int = Field(default=25, alias="PLAID_SYNC_BATCH_SIZE")
+    plaid_safety_net_minutes: int = Field(default=180, alias="PLAID_SAFETY_NET_MINUTES")
+    plaid_cleanup_inactive_days: int = Field(
+        default=45, alias="PLAID_CLEANUP_INACTIVE_DAYS"
+    )
+    plaid_cleanup_grace_days: int = Field(default=7, alias="PLAID_CLEANUP_GRACE_DAYS")
 
     firebase_project_id: str = Field(
         default="jualuma-local", alias="FIREBASE_PROJECT_ID"

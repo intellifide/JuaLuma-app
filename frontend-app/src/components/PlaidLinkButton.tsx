@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata, type PlaidLinkError } from 'react-plaid-link'
 import { api } from '../services/api'
-import { syncAccount } from '../services/accounts'
 import { ExternalLinkModal } from './ExternalLinkModal'
 
 type PlaidLinkButtonProps = {
@@ -75,18 +74,6 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
             institution_name: metadata.institution?.name ?? 'plaid',
             selected_account_ids: selectedAccountIds,
           })
-
-          // Try to hydrate transactions right after linking so the dashboard shows data immediately.
-          const linkedAccounts = (response as { data: { accounts?: Array<{ id?: string }> } }).data.accounts ?? []
-          for (const account of linkedAccounts) {
-            if (account?.id) {
-              try {
-                await syncAccount(account.id, true)
-              } catch (syncErr) {
-                console.warn(`Plaid account sync failed for ${account.id}`, syncErr)
-              }
-            }
-          }
 
           const afterSync = onSuccess?.()
           if (afterSync instanceof Promise) {

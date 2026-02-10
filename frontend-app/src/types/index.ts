@@ -48,6 +48,10 @@ export interface Account {
   plaidType?: string | null
   plaidSubtype?: string | null
   syncStatus?: string | null
+  lastSyncedAt?: string | null
+  connectionHealth?: string | null
+  reconnectRequired?: boolean
+  syncMode?: 'automatic' | 'manual' | null
   createdAt?: string
   updatedAt?: string
 }

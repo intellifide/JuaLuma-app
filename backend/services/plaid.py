@@ -36,6 +36,21 @@ from plaid.model.products import Products
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.transactions_get_response import TransactionsGetResponse
+from plaid.model.transactions_sync_request import TransactionsSyncRequest
+
+try:
+    from plaid.model.link_token_create_request_transactions import (
+        LinkTokenCreateRequestTransactions,
+    )
+except Exception:  # pragma: no cover - compatibility with older SDKs
+    LinkTokenCreateRequestTransactions = None  # type: ignore[assignment]
+
+try:
+    from plaid.model.transactions_sync_request_options import (
+        TransactionsSyncRequestOptions,
+    )
+except Exception:  # pragma: no cover - compatibility with older SDKs
+    TransactionsSyncRequestOptions = None  # type: ignore[assignment]
 
 from backend.core import settings
 
@@ -110,6 +125,10 @@ class PlaidItemLoginRequired(RuntimeError):
     """Raised when Plaid reports that the linked item requires a login update."""
 
 
+class PlaidSyncMutationDuringPagination(RuntimeError):
+    """Raised when Plaid requests restarting sync from the original cursor."""
+
+
 
 def _pick_currency(iso_code: str | None, unofficial_code: str | None) -> str | None:
     """Return the official currency code if present, otherwise unofficial."""
@@ -124,20 +143,34 @@ def _plaid_enum_value(value: object | None) -> str | None:
     return str(resolved)
 
 
-def create_link_token(user_id: str, products: Iterable[str]) -> tuple[str, str]:
+def create_link_token(
+    user_id: str,
+    products: Iterable[str],
+    *,
+    days_requested: int | None = None,
+) -> tuple[str, str]:
     """
     Generate a link_token for the Link flow and return its expiration.
     """
     client = get_plaid_client()
     requested_products = [Products(p) for p in products]
 
-    request = LinkTokenCreateRequest(
-        user=LinkTokenCreateRequestUser(client_user_id=user_id),
-        client_name="jualuma",
-        products=requested_products,
-        country_codes=[CountryCode("US")],
-        language="en",
-    )
+    request_kwargs: dict[str, object] = {
+        "user": LinkTokenCreateRequestUser(client_user_id=user_id),
+        "client_name": "jualuma",
+        "products": requested_products,
+        "country_codes": [CountryCode("US")],
+        "language": "en",
+    }
+    if days_requested and days_requested > 0:
+        if LinkTokenCreateRequestTransactions is not None:
+            request_kwargs["transactions"] = LinkTokenCreateRequestTransactions(
+                days_requested=days_requested
+            )
+        else:
+            request_kwargs["transactions"] = {"days_requested": days_requested}
+
+    request = LinkTokenCreateRequest(**request_kwargs)
 
     try:
         response = client.link_token_create(request)
@@ -328,6 +361,125 @@ def fetch_transactions(
     return all_transactions
 
 
+def _parse_plaid_date(value: date | datetime | str | None) -> date | None:
+    if value is None:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    return None
+
+
+def fetch_transactions_sync_page(
+    access_token: str,
+    cursor: str | None,
+    *,
+    count: int = 500,
+    include_original_description: bool = True,
+) -> dict[str, object]:
+    """
+    Retrieve a single /transactions/sync page for a Plaid Item cursor.
+
+    Returns a normalized dictionary with added/modified/removed deltas.
+    """
+    client = get_plaid_client()
+
+    options: object | None = None
+    if TransactionsSyncRequestOptions is not None:
+        options = TransactionsSyncRequestOptions(
+            count=count,
+            include_original_description=include_original_description,
+        )
+    else:
+        options = {
+            "count": count,
+            "include_original_description": include_original_description,
+        }
+
+    request = TransactionsSyncRequest(
+        access_token=access_token,
+        cursor=cursor,
+        options=options,
+    )
+
+    try:
+        response = client.transactions_sync(request)
+    except ApiException as exc:
+        error_data = _parse_plaid_error(exc)
+        if error_data.get("error_code") == "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION":
+            raise PlaidSyncMutationDuringPagination(
+                "Plaid requested restarting sync due to mid-pagination mutation."
+            ) from exc
+        raise _wrap_plaid_error("transactions_sync", exc) from exc
+
+    added: list[dict[str, object]] = []
+    for txn in getattr(response, "added", []) or []:
+        txn_date = _parse_plaid_date(getattr(txn, "date", None))
+        currency = _pick_currency(
+            getattr(txn, "iso_currency_code", None),
+            getattr(txn, "unofficial_currency_code", None),
+        )
+        added.append(
+            {
+                "transaction_id": getattr(txn, "transaction_id", None),
+                "account_id": getattr(txn, "account_id", None),
+                "name": getattr(txn, "name", None),
+                "merchant_name": getattr(txn, "merchant_name", None),
+                "amount": Decimal(str(getattr(txn, "amount", "0"))),
+                "date": txn_date,
+                "category": list(getattr(txn, "category", []) or []),
+                "currency": currency,
+                "pending": bool(getattr(txn, "pending", False)),
+                "raw": txn.to_dict() if hasattr(txn, "to_dict") else {},
+            }
+        )
+
+    modified: list[dict[str, object]] = []
+    for txn in getattr(response, "modified", []) or []:
+        txn_date = _parse_plaid_date(getattr(txn, "date", None))
+        currency = _pick_currency(
+            getattr(txn, "iso_currency_code", None),
+            getattr(txn, "unofficial_currency_code", None),
+        )
+        modified.append(
+            {
+                "transaction_id": getattr(txn, "transaction_id", None),
+                "account_id": getattr(txn, "account_id", None),
+                "name": getattr(txn, "name", None),
+                "merchant_name": getattr(txn, "merchant_name", None),
+                "amount": Decimal(str(getattr(txn, "amount", "0"))),
+                "date": txn_date,
+                "category": list(getattr(txn, "category", []) or []),
+                "currency": currency,
+                "pending": bool(getattr(txn, "pending", False)),
+                "raw": txn.to_dict() if hasattr(txn, "to_dict") else {},
+            }
+        )
+
+    removed: list[dict[str, object]] = []
+    for txn in getattr(response, "removed", []) or []:
+        removed.append(
+            {
+                "transaction_id": getattr(txn, "transaction_id", None),
+                "account_id": getattr(txn, "account_id", None),
+            }
+        )
+
+    return {
+        "added": added,
+        "modified": modified,
+        "removed": removed,
+        "has_more": bool(getattr(response, "has_more", False)),
+        "next_cursor": getattr(response, "next_cursor", cursor),
+    }
+
+
 def fetch_investments(
     access_token: str,
     *,
@@ -435,5 +587,8 @@ __all__ = [
     "remove_item",
     "fetch_accounts",
     "fetch_transactions",
+    "fetch_transactions_sync_page",
     "fetch_investments",
+    "PlaidItemLoginRequired",
+    "PlaidSyncMutationDuringPagination",
 ]
