@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, Minus, Zap, Shield, Globe, Database, Activity, Users, Star } from 'lucide-react'
+import { Check, Minus, Zap, Shield, Globe, Database, Users, Star } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { createCheckoutSession, getPlans, SubscriptionTier } from '../services/billing'
 import { selectFreePlan } from '../services/auth'
@@ -16,8 +16,7 @@ const fallbackPlans: SubscriptionTier[] = [
     currency: 'USD',
     interval: 'month',
     features: [
-      '2 Traditional Accounts',
-      '1 Investment Account',
+      '3 Traditional Accounts (via Plaid)',
       '1 Web3 Wallet',
       '1 CEX Account',
       '10 AI Queries/Day',
@@ -33,8 +32,7 @@ const fallbackPlans: SubscriptionTier[] = [
     currency: 'USD',
     interval: 'month',
     features: [
-      '3 Traditional Accounts',
-      '2 Investment Accounts',
+      '5 Traditional Accounts (via Plaid)',
       '1 Web3 Wallet',
       '1 CEX Account',
       '30 AI Queries/Day',
@@ -50,8 +48,7 @@ const fallbackPlans: SubscriptionTier[] = [
     currency: 'USD',
     interval: 'month',
     features: [
-      '5 Traditional Accounts',
-      '5 Investment Accounts',
+      '10 Traditional Accounts (via Plaid)',
       '2 Web3 Wallets',
       '3 CEX Accounts',
       '40 AI Queries/Day',
@@ -82,8 +79,7 @@ const fallbackPlans: SubscriptionTier[] = [
     currency: 'USD',
     interval: 'month',
     features: [
-      '20 Traditional Accounts',
-      '20 Investment Accounts',
+      '40 Traditional Accounts (via Plaid)',
       '8 Web3 Wallets',
       '5 CEX Accounts',
       '80 AI Queries/Day',
@@ -107,6 +103,50 @@ const fallbackPlans: SubscriptionTier[] = [
     ],
   },
 ]
+
+const PLAN_FEATURE_OVERRIDES: Record<string, string[]> = {
+  free: [
+    '3 Traditional Accounts (via Plaid)',
+    '1 Web3 Wallet',
+    '1 CEX Account',
+    '10 AI Queries/Day',
+    'Transaction History: Last 45 Days',
+  ],
+  essential_monthly: [
+    '5 Traditional Accounts (via Plaid)',
+    '1 Web3 Wallet',
+    '1 CEX Account',
+    '30 AI Queries/Day',
+    'Transaction History: Rolling 365 Days',
+  ],
+  pro_monthly: [
+    '10 Traditional Accounts (via Plaid)',
+    '2 Web3 Wallets',
+    '3 CEX Accounts',
+    '40 AI Queries/Day',
+    'Marketplace Access',
+    '14-Day Free Trial',
+  ],
+  pro_annual: [
+    'Everything in Pro Monthly',
+    'Save $50/year',
+    '14-Day Free Trial',
+  ],
+  ultimate_monthly: [
+    '40 Traditional Accounts (via Plaid)',
+    '8 Web3 Wallets',
+    '5 CEX Accounts',
+    '80 AI Queries/Day',
+    'Family Features (4 members total)',
+    '14-Day Free Trial',
+  ],
+  ultimate_annual: [
+    'Everything in Ultimate Monthly',
+    'Save $120/year',
+    'Family Features (4 members total)',
+    '14-Day Free Trial',
+  ],
+}
 
 const safeReturnUrl = (value: string | null): string => {
   if (!value) return '/dashboard'
@@ -199,6 +239,10 @@ export const PlanSelection = () => {
     if (plan.code === 'free') return 'btn btn-secondary w-full mt-auto'
     if (plan.code.includes('essential')) return 'btn btn-secondary w-full mt-auto'
     return 'btn w-full mt-auto'
+  }
+
+  const getDisplayFeatures = (plan: SubscriptionTier) => {
+    return PLAN_FEATURE_OVERRIDES[plan.code] ?? plan.features
   }
 
   const formatPrice = (amountCents: number, interval: string) => {
@@ -350,7 +394,7 @@ export const PlanSelection = () => {
                   )}
 
                   <ul className="space-y-3 mb-8 text-left w-full pl-8 flex-grow">
-                    {plan.features.map((feature, idx) => (
+                    {getDisplayFeatures(plan).map((feature, idx) => (
                       <li key={idx}>✓ {feature}</li>
                     ))}
                   </ul>
@@ -405,8 +449,7 @@ export const PlanSelection = () => {
 	                  </thead>
                   <tbody className="text-text-secondary">
                     {[
-                      { label: 'Traditional Accounts', free: '2', essential: '3', pro: '5', ultimate: '20', icon: Globe },
-                      { label: 'Investment Accounts', free: '1', essential: '2', pro: '5', ultimate: '20', icon: Activity },
+                      { label: 'Traditional Accounts (via Plaid)', free: '3', essential: '5', pro: '10', ultimate: '40', icon: Globe },
                       { label: 'Web3 Wallets', free: '1', essential: '1', pro: '2', ultimate: '8', icon: Database },
                       { label: 'CEX Accounts', free: '1', essential: '1', pro: '3', ultimate: '5', icon: Shield },
                       { label: 'AI Queries/Day', free: '10', essential: '30', pro: '40', ultimate: '80', icon: Zap },

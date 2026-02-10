@@ -4,9 +4,11 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from backend.core.dependencies import enforce_account_limit
+from backend.core.constants import SubscriptionPlans, TierLimits
+from backend.core.dependencies import get_current_active_subscription
 from backend.middleware.auth import get_current_user
 from backend.models import Account, AuditLog, User
 from backend.services.analytics import invalidate_analytics_cache
@@ -31,6 +33,10 @@ class ExchangeTokenRequest(BaseModel):
     public_token: str = Field(min_length=1, description="Public token from Plaid Link.")
     institution_name: str = Field(
         min_length=1, max_length=128, description="Institution selected in Link."
+    )
+    selected_account_ids: list[str] | None = Field(
+        default=None,
+        description="Optional Plaid account IDs selected in Link.",
     )
 
 
@@ -80,8 +86,12 @@ def exchange_token_endpoint(
     db: Session = Depends(get_db),
 ) -> ExchangeTokenResponse:
     """Exchange a public_token, persist linked accounts, and log the action."""
-    # Enforce limit before exchange (assuming traditional for now as per current logic)
-    enforce_account_limit(current_user, db, "traditional")
+    active_subscription = get_current_active_subscription(current_user)
+    plan_code = active_subscription.plan if active_subscription else SubscriptionPlans.FREE
+    tier = SubscriptionPlans.get_base_tier(plan_code)
+    tier_limits = TierLimits.LIMITS_BY_TIER.get(tier, TierLimits.FREE_LIMITS)
+    tier_display = tier.capitalize()
+
     try:
         access_token, item_id = exchange_public_token(payload.public_token)
     except RuntimeError as exc:
@@ -104,11 +114,92 @@ def exchange_token_endpoint(
         ) from exc
 
     linked_accounts: list[Account] = []
+
+    selected_ids = {
+        account_id.strip()
+        for account_id in (payload.selected_account_ids or [])
+        if isinstance(account_id, str) and account_id.strip()
+    }
+    if selected_ids:
+        selected_accounts = [
+            account_data
+            for account_data in plaid_accounts
+            if str(account_data.get("account_id") or "").strip() in selected_ids
+        ]
+        found_ids = {
+            str(account_data.get("account_id") or "").strip()
+            for account_data in selected_accounts
+        }
+        missing_ids = selected_ids - found_ids
+        if missing_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="One or more selected Plaid accounts were not returned by the institution.",
+            )
+    else:
+        selected_accounts = plaid_accounts
+
+    if not selected_accounts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No accounts were selected to connect.",
+        )
+
+    plaid_limit = tier_limits.get("plaid", 0)
+    existing_plaid_count = (
+        db.query(Account)
+        .filter(
+            and_(
+                Account.uid == current_user.uid,
+                Account.account_type.in_(["traditional", "investment"]),
+                Account.secret_ref.isnot(None),
+            )
+        )
+        .count()
+    )
+
+    new_accounts_to_add = 0
+    seen_new_accounts: set[str] = set()
+    for account_data in selected_accounts:
+        mask = account_data.get("mask")
+        account_id = str(account_data.get("account_id") or "").strip()
+        dedupe_key = account_id or str(mask or "")
+        if not dedupe_key:
+            continue
+
+        existing = (
+            db.query(Account)
+            .filter(
+                Account.uid == current_user.uid,
+                Account.provider == payload.institution_name,
+                Account.account_number_masked == mask,
+            )
+            .first()
+        )
+
+        if existing:
+            continue
+
+        if dedupe_key not in seen_new_accounts:
+            seen_new_accounts.add(dedupe_key)
+            new_accounts_to_add += 1
+
+    projected_total = existing_plaid_count + new_accounts_to_add
+    if projected_total > plaid_limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"You've reached your {tier_display} plan limit of {plaid_limit} "
+                f"Plaid-connected account{'s' if plaid_limit != 1 else ''}. "
+                "Please remove an account or upgrade your plan."
+            ),
+        )
+
     secret_ref = store_secret(
         access_token, uid=current_user.uid, purpose="plaid-access"
     )
 
-    for account_data in plaid_accounts:
+    for account_data in selected_accounts:
         mask = account_data.get("mask")
         balance_raw = account_data.get("balance_current")
         balance = Decimal(str(balance_raw)) if balance_raw is not None else None

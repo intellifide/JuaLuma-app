@@ -13,8 +13,7 @@ class TierLimits:
     PRO_LIMITS = LIMITS_BY_TIER.get("pro", {})
     ULTIMATE_LIMITS = LIMITS_BY_TIER.get("ultimate", {})
 
-    FREE_TRADITIONAL_ACCOUNTS = FREE_LIMITS.get("traditional", 2)
-    FREE_INVESTMENT_ACCOUNTS = FREE_LIMITS.get("investment", 1)
+    FREE_PLAID_ACCOUNTS = FREE_LIMITS.get("plaid", 3)
     FREE_WEB3_WALLETS = FREE_LIMITS.get("web3", 1)
     FREE_CEX_ACCOUNTS = FREE_LIMITS.get("cex", 1)
 

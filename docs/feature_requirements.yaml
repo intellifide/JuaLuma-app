@@ -23,19 +23,12 @@ features:
     description: Investment account aggregation via Plaid Investments API
 
   # Account Limits
-  accounts.traditional:
-    free_limit: 2
-    essential_limit: 3
-    pro_limit: 5
-    ultimate_limit: 20
-    description: Traditional bank account connection limits
-
-  accounts.investment:
-    free_limit: 1
-    essential_limit: 2
-    pro_limit: 5
-    ultimate_limit: 20
-    description: Investment account connection limits
+  accounts.plaid:
+    free_limit: 3
+    essential_limit: 5
+    pro_limit: 10
+    ultimate_limit: 40
+    description: Plaid-connected account limits
 
   accounts.web3:
     free_limit: 1

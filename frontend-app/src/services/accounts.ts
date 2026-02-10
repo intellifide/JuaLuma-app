@@ -6,6 +6,7 @@ type ManualAccountPayload = {
   accountType: 'manual'
   provider?: string
   accountName: string
+  balance?: number
   assignedMemberUid?: string | null
   customLabel?: string | null
   categoryOverride?: string | null
@@ -92,6 +93,7 @@ export const createManualAccount = async (
     account_type: payload.accountType,
     provider: payload.provider,
     account_name: payload.accountName,
+    balance: payload.balance,
     assigned_member_uid: payload.assignedMemberUid,
     custom_label: payload.customLabel,
     category_override: payload.categoryOverride,

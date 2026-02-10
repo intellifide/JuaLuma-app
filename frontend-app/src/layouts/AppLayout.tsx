@@ -162,13 +162,13 @@ export const AppLayout: React.FC = () => {
                                 >
                                     <link.icon className={`w-5 h-5 shrink-0 ${sidebarOpen ? '' : 'mx-auto'}`} />
                                     {sidebarOpen && <span>{link.name}</span>}
-                                    {sidebarOpen && (
-                                        <span className="ml-auto text-[10px] uppercase tracking-wider border border-border/60 text-text-muted px-2 py-0.5 rounded-full">
-                                          Coming soon
-                                        </span>
-                                    )}
-                                </div>
-                            )
+	                                    {sidebarOpen && (
+	                                        <span className="ml-auto inline-flex items-center justify-center whitespace-nowrap text-center w-max h-6 text-[10px] uppercase tracking-wider leading-none border border-border/60 text-text-muted px-3 rounded-full">
+	                                          Coming soon
+	                                        </span>
+	                                    )}
+	                                </div>
+	                            )
                         }
 
                         return (
@@ -275,14 +275,14 @@ export const AppLayout: React.FC = () => {
                                                 aria-disabled="true"
                                                 title="Marketplace coming soon"
                                             >
-                                                <link.icon className="w-6 h-6" />
-                                                {link.name}
-                                                <span className="ml-auto text-[10px] uppercase tracking-wider border border-border/60 text-text-muted px-2 py-0.5 rounded-full">
-                                                  Coming soon
-                                                </span>
-                                            </div>
-                                        )
-                                    }
+	                                                <link.icon className="w-6 h-6" />
+	                                                {link.name}
+	                                                <span className="ml-auto inline-flex items-center justify-center whitespace-nowrap text-center w-max h-6 text-[10px] uppercase tracking-wider leading-none border border-border/60 text-text-muted px-3 rounded-full">
+	                                                  Coming soon
+	                                                </span>
+	                                            </div>
+	                                        )
+	                                    }
 
                                     return (
                                         <NavLink

@@ -349,7 +349,7 @@ const EditAccountModal = ({
 }: {
   account: Account;
   onClose: () => void;
-  onSuccess: (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null; categoryOverride?: string | null; balanceType?: 'asset' | 'liability' | null }) => void;
+  onSuccess: (id: string, payload: { accountName?: string; customLabel?: string | null; assignedMemberUid?: string | null; categoryOverride?: string | null; balanceType?: 'asset' | 'liability' | null; balance?: number }) => void;
 }) => {
   const [name, setName] = useState(account.accountName || '');
   const [assignedUid, setAssignedUid] = useState(account.assignedMemberUid || '');
@@ -366,6 +366,7 @@ const EditAccountModal = ({
   };
   const [categoryOverride, setCategoryOverride] = useState(mapLegacyOverride(account.categoryOverride));
   const [balanceType, setBalanceType] = useState<'asset' | 'liability'>(account.balanceType || 'asset');
+  const [balance, setBalance] = useState(account.balance != null ? String(account.balance) : '0');
   const [household, setHousehold] = useState<Household | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -393,6 +394,11 @@ const EditAccountModal = ({
     };
     if (account.accountType === 'manual') {
       payload.balanceType = balanceType;
+      const normalizedBalance = Number(balance);
+      if (!Number.isFinite(normalizedBalance) || normalizedBalance < 0) {
+        return;
+      }
+      payload.balance = Number(normalizedBalance.toFixed(2));
     }
     onSuccess(account.id, payload);
   };
@@ -457,6 +463,27 @@ const EditAccountModal = ({
           </div>
           {account.accountType === 'manual' && (
             <div>
+              <label className="form-label">Balance</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input pl-8"
+                  value={balance}
+                  onChange={(e) => setBalance(e.target.value)}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              <p className="text-xs text-text-secondary mt-1">
+                Update this anytime to keep manual account totals accurate.
+              </p>
+            </div>
+          )}
+          {account.accountType === 'manual' && (
+            <div>
               <label className="form-label">Balance Type</label>
               <div className="flex gap-2">
                 {BALANCE_TYPE_OPTIONS.map((option) => (
@@ -491,6 +518,7 @@ const EditAccountModal = ({
 
 const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [name, setName] = useState('');
+  const [balance, setBalance] = useState('0');
   const [assignedUid, setAssignedUid] = useState('');
   const [categoryOverride, setCategoryOverride] = useState('checking');
   const [balanceType, setBalanceType] = useState<'asset' | 'liability'>('asset');
@@ -515,11 +543,17 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
       toast.show('Please enter an account name', 'error');
       return;
     }
+    const normalizedBalance = Number(balance);
+    if (!Number.isFinite(normalizedBalance) || normalizedBalance < 0) {
+      toast.show('Please enter a valid balance (0 or greater)', 'error');
+      return;
+    }
     setLoading(true);
     try {
       await create({
         accountType: 'manual',
         accountName: name.trim(),
+        balance: Number(normalizedBalance.toFixed(2)),
         assignedMemberUid: assignedUid || null,
         categoryOverride,
         balanceType,
@@ -569,6 +603,25 @@ const AddManualAccountModal = ({ onClose, onSuccess }: { onClose: () => void; on
             </Select>
             <p className="text-xs text-text-secondary mt-1">
               Helps place this account in assets vs liabilities and dashboards.
+            </p>
+          </div>
+          <div>
+            <label className="form-label text-sm">Starting Balance</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="input pl-8"
+                value={balance}
+                onChange={(e) => setBalance(e.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <p className="text-xs text-text-secondary mt-1">
+              Set the current value for this account. You can edit it anytime later.
             </p>
           </div>
           <div>
@@ -873,7 +926,7 @@ export const ConnectAccounts = () => {
   };
 
   const connectedCounts = useMemo(() => {
-    const bank = accounts.filter(
+    const plaid = accounts.filter(
       (account) =>
         account.provider === 'plaid' ||
         account.accountType === 'traditional' ||
@@ -882,18 +935,17 @@ export const ConnectAccounts = () => {
     const web3 = accounts.filter((account) => account.accountType === 'web3').length;
     const cex = accounts.filter((account) => account.accountType === 'cex').length;
     const manual = accounts.filter((account) => account.accountType === 'manual').length;
-    return { bank, web3, cex, manual };
+    return { plaid, web3, cex, manual };
   }, [accounts]);
 
-  const resolveLimit = (accountType: 'traditional' | 'investment' | 'web3' | 'cex' | 'manual') => {
+  const resolveLimit = (accountType: 'plaid' | 'web3' | 'cex' | 'manual') => {
     if (accountLimits?.limits?.[accountType] !== undefined) {
       return accountLimits.limits[accountType];
     }
     return accountLimitsByTier[plan]?.[accountType] ?? 0;
   };
 
-  const bankLimit = resolveLimit('traditional') + resolveLimit('investment');
-  const bankLimitLabel = formatLimit(bankLimit);
+  const plaidLimitLabel = formatLimit(resolveLimit('plaid'));
   const web3LimitLabel = formatLimit(resolveLimit('web3'));
   const cexLimitLabel = formatLimit(resolveLimit('cex'));
   const manualLimitLabel = formatLimit(resolveLimit('manual'));
@@ -922,7 +974,7 @@ export const ConnectAccounts = () => {
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  const checkAccountLimit = (accountType: 'traditional' | 'web3' | 'cex' | 'manual'): boolean => {
+  const checkAccountLimit = (accountType: 'plaid' | 'web3' | 'cex' | 'manual'): boolean => {
     if (!accountLimits) return true; // Allow if limits not loaded yet
     
     const current = accountLimits.current[accountType] || 0;
@@ -931,9 +983,16 @@ export const ConnectAccounts = () => {
     if (current >= limit) {
       const tierDisplay = accountLimits.tier_display;
       const upgradeLink = accountLimits.upgrade_url;
+      const accountTypeLabelMap: Record<'plaid' | 'web3' | 'cex' | 'manual', string> = {
+        plaid: 'Plaid-connected',
+        web3: 'Web3',
+        cex: 'CEX',
+        manual: 'manual',
+      };
+      const accountTypeLabel = accountTypeLabelMap[accountType];
       
       toast.show(
-        `You've reached your ${tierDisplay} plan limit of ${limit} ${accountType} account${limit !== 1 ? 's' : ''}. ` +
+        `You've reached your ${tierDisplay} plan limit of ${limit} ${accountTypeLabel} account${limit !== 1 ? 's' : ''}. ` +
         `Upgrade to add more connections.`,
         'error'
       );
@@ -970,6 +1029,7 @@ export const ConnectAccounts = () => {
       assignedMemberUid?: string | null;
       categoryOverride?: string | null;
       balanceType?: 'asset' | 'liability' | null;
+      balance?: number;
     },
   ) => {
       try {
@@ -1000,7 +1060,7 @@ export const ConnectAccounts = () => {
   }, [categoryCounts]);
 
   type ConnectSection = {
-    id: 'bank' | 'web3' | 'cex' | 'manual';
+    id: 'plaid' | 'web3' | 'cex' | 'manual';
     title: string;
     description: string;
     connected: number;
@@ -1011,11 +1071,11 @@ export const ConnectAccounts = () => {
 
   const connectSections: ConnectSection[] = [
     {
-      id: 'bank' as const,
-      title: 'Bank & Credit',
-      description: 'Secure read-only sync via Plaid.',
-      connected: connectedCounts.bank,
-      allowed: bankLimitLabel,
+      id: 'plaid' as const,
+      title: 'Plaid Accounts',
+      description: 'Secure read-only sync for bank, credit, and investment accounts.',
+      connected: connectedCounts.plaid,
+      allowed: plaidLimitLabel,
     },
     {
       id: 'web3' as const,
@@ -1181,7 +1241,7 @@ export const ConnectAccounts = () => {
                       <div className="flex items-center gap-3 text-xs">
                         <span className="text-text-muted">Connected: <span className="font-semibold text-text-primary">{section.connected}</span></span>
                         <span className="text-text-muted">Limit: <span className="font-semibold text-text-primary">{section.allowed}</span></span>
-                        {section.connected >= (typeof section.allowed === 'string' ? 999 : parseInt(section.allowed)) && (
+                        {section.allowed !== 'Unlimited' && section.connected >= Number(section.allowed) && (
                           <span className="badge badge-warning text-[10px]">At Limit</span>
                         )}
                       </div>
@@ -1191,11 +1251,11 @@ export const ConnectAccounts = () => {
                         </span>
                       )}
                       <div>
-                        {section.id === 'bank' && (
+                        {section.id === 'plaid' && (
                           <PlaidLinkButton 
                             onSuccess={handlePlaidSuccess} 
                             onError={handlePlaidError}
-                            onBeforeOpen={() => checkAccountLimit('traditional')}
+                            onBeforeOpen={() => checkAccountLimit('plaid')}
                           />
                         )}
                           {section.id === 'web3' && (
@@ -1600,8 +1660,15 @@ export const ConnectAccounts = () => {
                               <span>{account.accountType === 'manual' ? 'Manual' : 'Auto-synced'}</span>
                               <span>{account.updatedAt ? `${formatDate(account.updatedAt, timeZone)}` : 'Recent'}</span>
                             </div>
-                            {account.accountType !== 'manual' && (
-                              <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setEditingAccount(account)}
+                                className="text-xs bg-white/10 text-text-secondary px-3 py-2 rounded-lg hover:bg-white/15 transition-colors"
+                                title="Edit account details"
+                              >
+                                Edit Details
+                              </button>
+                              {account.accountType !== 'manual' && (
                                 <button
                                   onClick={(e) => handleSync(account, e)}
                                   disabled={syncingAccounts.has(account.id)}
@@ -1611,8 +1678,8 @@ export const ConnectAccounts = () => {
                                   <span className={syncingAccounts.has(account.id) ? 'animate-spin' : ''}>↻</span>
                                   {syncingAccounts.has(account.id) ? 'Syncing...' : 'Sync'}
                                 </button>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                         );
                       })

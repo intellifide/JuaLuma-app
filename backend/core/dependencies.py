@@ -123,7 +123,12 @@ def enforce_account_limit(user: User, db: Session, account_type: str):
     base_tier = SubscriptionPlans.get_base_tier(plan_code)
 
     tier_limits = TierLimits.LIMITS_BY_TIER.get(base_tier, TierLimits.FREE_LIMITS)
-    limit = tier_limits.get(account_type, 3)
+    limit = tier_limits.get(account_type)
+    if limit is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported account limit type: {account_type}",
+        )
 
     count = (
         db.query(func.count(Account.id))

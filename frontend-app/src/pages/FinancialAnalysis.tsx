@@ -16,7 +16,7 @@ import { FeaturePreview } from '../components/ui/FeaturePreview';
 import { ExpandableChartModal } from '../components/ExpandableChartModal';
 import Switch from '../components/ui/Switch';
 import { Select } from '../components/ui/Select';
-import { TRANSACTION_CATEGORIES } from '../constants/transactionCategories';
+import { TRANSACTION_CATEGORIES, getCategoryEmoji } from '../constants/transactionCategories';
 import { loadTransactionPreferences, getTransactionPreferencesStorageKey, ACCOUNT_TYPES } from '../utils/transactionPreferences';
 import { getManualNetWorthAtDate } from '../utils/manualAssets';
 
@@ -142,6 +142,9 @@ const formatCurrency = (value: number) =>
 const formatCompactCurrency = (value: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: "compact", maximumFractionDigits: 1 }).format(value);
 
+const formatSignedCurrency = (value: number) =>
+  `${value >= 0 ? '+' : '-'}${formatCurrency(Math.abs(value))}`;
+
 // SVG Generators
 const generateLinePath = (
   data: DataPoint[],
@@ -160,9 +163,12 @@ const generateLinePath = (
   const min = Math.min(...values) * 0.95;
   const max = Math.max(...values) * 1.08;
   const range = max - min || 1;
+  const denominator = Math.max(data.length - 1, 1);
 
   const points = data.map((d, i) => {
-    const x = padding.left + (i / (data.length - 1)) * drawWidth;
+    const x = data.length === 1
+      ? padding.left + drawWidth / 2
+      : padding.left + (i / denominator) * drawWidth;
     const y = padding.top + drawHeight - ((d.value - min) / range) * drawHeight;
     return { x, y, value: d.value, date: d.date };
   });
@@ -187,7 +193,9 @@ const generateLinePath = (
       : value.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone });
     return {
       label,
-      x: padding.left + (i / (data.length - 1)) * drawWidth
+      x: data.length === 1
+        ? padding.left + drawWidth / 2
+        : padding.left + (i / denominator) * drawWidth
     };
   });
 
@@ -827,6 +835,41 @@ export default function FinancialAnalysis() {
     [cashFlowIncomeSeries, cashFlowExpenseSeries, cashFlowChartWidth, cfInterval, timeZone],
   );
 
+  const hasNetWorthData = useMemo(
+    () => netWorthSeries.some((point) => Math.abs(point.value) > 0.005),
+    [netWorthSeries],
+  );
+
+  const hasCashFlowData = useMemo(
+    () => (
+      cashFlowIncomeSeries.some((point) => Math.abs(point.value) > 0.005)
+      || cashFlowExpenseSeries.some((point) => Math.abs(point.value) > 0.005)
+    ),
+    [cashFlowIncomeSeries, cashFlowExpenseSeries],
+  );
+
+  const netWorthSummary = useMemo(() => {
+    const latest = netWorthSeries[0];
+    const previous = netWorthSeries[1];
+    if (!latest) {
+      return { current: null, delta: null };
+    }
+    return {
+      current: latest.value,
+      delta: previous ? latest.value - previous.value : null,
+    };
+  }, [netWorthSeries]);
+
+  const cashFlowSummary = useMemo(() => {
+    const inflowTotal = cashFlowIncomeSeries.reduce((sum, point) => sum + point.value, 0);
+    const outflowTotal = cashFlowExpenseSeries.reduce((sum, point) => sum + Math.abs(point.value), 0);
+    return {
+      inflowTotal,
+      outflowTotal,
+      net: inflowTotal - outflowTotal,
+    };
+  }, [cashFlowIncomeSeries, cashFlowExpenseSeries]);
+
   const [netWorthHover, setNetWorthHover] = useState<{
     x: number;
     y: number;
@@ -848,6 +891,18 @@ export default function FinancialAnalysis() {
   } | null>(null);
   const netWorthSvgSize = { width: netWorthChartWidth, height: 140 };
   const cashFlowSvgSize = { width: cashFlowChartWidth, height: 160 };
+
+  useEffect(() => {
+    if (!hasNetWorthData) {
+      setNetWorthHover(null);
+    }
+  }, [hasNetWorthData]);
+
+  useEffect(() => {
+    if (!hasCashFlowData) {
+      setCashFlowHover(null);
+    }
+  }, [hasCashFlowData]);
 
   const handleNetWorthMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
     if (!netWorthChart.points.length) return;
@@ -979,9 +1034,18 @@ export default function FinancialAnalysis() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
           </div>
-          <div className="chart-subtitle">Historical Balance</div>
+          <div className="chart-subtitle">
+            {!hasNetWorthData || netWorthSummary.current === null
+              ? 'Awaiting account history'
+              : `Current: ${formatCurrency(netWorthSummary.current)}`}
+          </div>
 
-          {nwLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
+          {nwLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : !hasNetWorthData ? (
+            <div className="h-[220px] mt-4 flex flex-col items-center justify-center text-center text-text-muted">
+              <div className="text-sm font-medium text-text-secondary">No net worth data yet</div>
+              <div className="text-xs mt-1">Connect an account or add transactions to see your trend.</div>
+            </div>
+          ) : (
             <div className="mt-4 grid grid-cols-[64px_1fr] gap-3">
               <div className="relative h-[140px] text-[10px] text-text-muted">
                 <div className="absolute right-0 top-0 h-full w-px bg-white/10" />
@@ -1107,6 +1171,11 @@ export default function FinancialAnalysis() {
               </div>
             </div>
           )}
+          {!nwLoading && hasNetWorthData && netWorthSummary.delta !== null && (
+            <div className={`mt-2 text-xs ${netWorthSummary.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {formatSignedCurrency(netWorthSummary.delta)} vs previous period
+            </div>
+          )}
         </div>
 
         {/* Cash Flow Chart */}
@@ -1117,9 +1186,18 @@ export default function FinancialAnalysis() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
           </div>
-          <div className="chart-subtitle">&nbsp;</div>
+          <div className="chart-subtitle">
+            {!hasCashFlowData
+              ? 'Awaiting cash flow activity'
+              : `Net: ${formatSignedCurrency(cashFlowSummary.net)}`}
+          </div>
 
-          {cfLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
+          {cfLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : !hasCashFlowData ? (
+            <div className="h-[220px] mt-4 flex flex-col items-center justify-center text-center text-text-muted">
+              <div className="text-sm font-medium text-text-secondary">No cash flow data yet</div>
+              <div className="text-xs mt-1">Once income or spending posts, this chart will populate.</div>
+            </div>
+          ) : (
             <div className="mt-4 grid grid-cols-[64px_1fr] gap-3">
               <div className="relative h-[160px] text-[10px] text-text-muted">
                 <div className="absolute right-0 top-0 h-full w-px bg-white/10" />
@@ -1238,10 +1316,18 @@ export default function FinancialAnalysis() {
               </div>
             </div>
           )}
-          <div className="chart-legend mt-2 flex justify-center gap-4 text-xs">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-cyan-400 rounded-sm"></span>Inflow</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-600 rounded-sm"></span>Outflow</span>
-          </div>
+          {!cfLoading && hasCashFlowData && (
+            <>
+              <div className="mt-2 flex justify-center gap-4 text-xs text-text-secondary">
+                <span>Inflow {formatCompactCurrency(cashFlowSummary.inflowTotal)}</span>
+                <span>Outflow {formatCompactCurrency(cashFlowSummary.outflowTotal)}</span>
+              </div>
+              <div className="chart-legend mt-2 flex justify-center gap-4 text-xs">
+                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-cyan-400 rounded-sm"></span>Inflow</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-600 rounded-sm"></span>Outflow</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Spending By Category */}
@@ -1251,27 +1337,31 @@ export default function FinancialAnalysis() {
 
           {spendLoading ? <div className="h-40 flex items-center justify-center text-text-muted">Loading...</div> : (
             <div className="space-y-3 mt-4">
-              {topCategories.length === 0 ? (
-                <div className="text-center text-text-muted py-4">No spending data</div>
-              ) : (
-                topCategories.map(cat => {
-                  const percent = totalExpense > 0 ? (cat.amount / totalExpense) * 100 : 0;
-                  return (
-                    <div key={cat.category}>
-                      <div className="flex justify-between text-xs text-text-secondary mb-1">
-                        <span className="font-medium text-text-primary">{cat.category}</span>
-                        <span>{formatCompactCurrency(cat.amount)} ({percent.toFixed(0)}%)</span>
-                      </div>
-                      <div className="w-full bg-white/10 rounded-full h-1.5">
-                        <div className="h-1.5 rounded-full bg-primary" style={{ width: `${percent}%` }} />
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          )}
-        </div>
+	              {topCategories.length === 0 ? (
+	                <div className="text-center text-text-muted py-4">No spending data</div>
+	              ) : (
+	                topCategories.map(cat => {
+	                  const percent = totalExpense > 0 ? (cat.amount / totalExpense) * 100 : 0;
+	                  const categoryEmoji = getCategoryEmoji(cat.category)
+	                  return (
+	                    <div key={cat.category}>
+	                      <div className="flex justify-between text-xs text-text-secondary mb-1">
+	                        <span className="font-medium text-text-primary">
+	                          {categoryEmoji ? `${categoryEmoji} ` : ''}
+	                          {cat.category}
+	                        </span>
+	                        <span>{formatCompactCurrency(cat.amount)} ({percent.toFixed(0)}%)</span>
+	                      </div>
+	                      <div className="w-full bg-white/10 rounded-full h-1.5">
+	                        <div className="h-1.5 rounded-full bg-primary" style={{ width: `${percent}%` }} />
+	                      </div>
+	                    </div>
+	                  )
+	                })
+	              )}
+	            </div>
+	          )}
+	        </div>
       </div>
 
       {/* Expandable Chart Modals */}

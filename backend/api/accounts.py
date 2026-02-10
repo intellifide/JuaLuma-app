@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import desc, func, or_
+from sqlalchemy import desc, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from backend.core.config import settings
@@ -149,6 +149,7 @@ class AccountCreate(BaseModel):
     custom_label: str | None = Field(default=None, max_length=128)
     category_override: str | None = Field(default=None, max_length=32)
     balance_type: str | None = Field(default=None, max_length=16)
+    balance: Decimal | None = Field(default=None, ge=0)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -466,10 +467,10 @@ class AccountLimitsResponse(BaseModel):
                 {
                     "tier": "free",
                     "tier_display": "Free",
-                    "limits": {"traditional": 2, "web3": 1, "cex": 1, "manual": 5},
-                    "current": {"traditional": 1, "web3": 0, "cex": 0, "manual": 0},
+                    "limits": {"plaid": 3, "web3": 1, "cex": 1, "manual": 5},
+                    "current": {"plaid": 1, "web3": 0, "cex": 0, "manual": 0},
                     "total_connected": 1,
-                    "total_limit": 9,
+                    "total_limit": 10,
                     "upgrade_url": "/settings/billing"
                 }
             ]
@@ -544,19 +545,19 @@ def get_account_limits(
     
     tier_limits = TierLimits.LIMITS_BY_TIER.get(base_tier, TierLimits.FREE_LIMITS)
     
-    # Get current counts for each account type
-    current_counts = {}
-    total_connected = 0
-    
-    for account_type in ["traditional", "investment", "web3", "cex", "manual"]:
-        count = (
-            db.query(func.count(Account.id))
-            .filter(Account.uid == current_user.uid, Account.account_type == account_type)
-            .scalar() or 0
-        )
-        current_counts[account_type] = count
-        total_connected += count
-    
+    current_counts = {
+        "plaid": 0,
+        "web3": 0,
+        "cex": 0,
+        "manual": 0,
+    }
+    user_accounts = db.query(Account).filter(Account.uid == current_user.uid).all()
+    for account in user_accounts:
+        if account.account_type in {"traditional", "investment"} and account.secret_ref:
+            current_counts["plaid"] += 1
+        elif account.account_type in current_counts:
+            current_counts[account.account_type] += 1
+
     tier_display = {
         "free": "Free",
         "essential": "Essential", 
@@ -565,6 +566,7 @@ def get_account_limits(
     }.get(base_tier, base_tier.capitalize())
     
     total_limit = sum(tier_limits.values())
+    total_connected = len(user_accounts)
     
     return AccountLimitsResponse(
         tier=base_tier,
@@ -1673,6 +1675,7 @@ def create_manual_account(
         custom_label=payload.custom_label,
         category_override=payload.category_override,
         balance_type=payload.balance_type or "asset",
+        balance=payload.balance if payload.balance is not None else Decimal("0"),
         currency=current_user.currency_pref or "USD",
     )
 

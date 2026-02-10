@@ -43,16 +43,23 @@ def test_list_accounts(test_client: TestClient, test_db, mock_auth):
 
 
 def test_create_manual_account(test_client: TestClient, test_db, mock_auth):
-    payload = {"account_type": "manual", "provider": "Safe", "account_name": "My Safe"}
+    payload = {
+        "account_type": "manual",
+        "provider": "Safe",
+        "account_name": "My Safe",
+        "balance": 2450.75,
+    }
     response = test_client.post("/api/accounts/manual", json=payload)
     assert response.status_code == 201
     data = response.json()
     assert data["account_name"] == "My Safe"
     assert data["account_type"] == "manual"
+    assert float(data["balance"]) == 2450.75
 
     # Verify DB
     acct = test_db.query(Account).filter(Account.id == data["id"]).first()
     assert acct is not None
+    assert acct.balance == Decimal("2450.75")
 
 
 def test_update_account(test_client: TestClient, test_db, mock_auth):

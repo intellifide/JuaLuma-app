@@ -32,7 +32,12 @@ describe('PlaidLinkButton', () => {
 
     usePlaidLinkMock.mockImplementation((config: { onSuccess?: (token: string, metadata: unknown) => void }) => {
       return {
-        open: vi.fn(() => config?.onSuccess?.('public-token', { institution: { name: 'Bank' } })),
+        open: vi.fn(() =>
+          config?.onSuccess?.('public-token', {
+            institution: { name: 'Bank' },
+            accounts: [{ id: 'plaid-1' }, { id: 'plaid-2' }],
+          }),
+        ),
         ready: true,
       }
     })
@@ -56,6 +61,7 @@ describe('PlaidLinkButton', () => {
       expect(postMock).toHaveBeenCalledWith('/plaid/exchange-token', {
         public_token: 'public-token',
         institution_name: 'Bank',
+        selected_account_ids: ['plaid-1', 'plaid-2'],
       })
       expect(syncAccountMock).toHaveBeenCalledWith('acc-1', true)
       expect(syncAccountMock).toHaveBeenCalledWith('acc-2', true)

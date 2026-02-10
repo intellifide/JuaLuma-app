@@ -4,9 +4,8 @@
 
 export const featureKeys = [
   'accounts.cex',
-  'accounts.investment',
   'accounts.manual',
-  'accounts.traditional',
+  'accounts.plaid',
   'accounts.web3',
   'ai.cloud',
   'assets.manual',
@@ -21,9 +20,8 @@ export type FeatureKey = (typeof featureKeys)[number]
 
 export const accountTypes = [
   'cex',
-  'investment',
   'manual',
-  'traditional',
+  'plaid',
   'web3',
 ] as const
 export type AccountType = (typeof accountTypes)[number]
@@ -45,9 +43,8 @@ export const tierOrder: Record<TierSlug, number> = {
 
 export const featureRequirements: Record<FeatureKey, { tier: Tier; previewEnabled: boolean; description: string }> = {
   'accounts.cex': { tier: Tier.FREE, previewEnabled: false, description: "CEX account connection limits" },
-  'accounts.investment': { tier: Tier.FREE, previewEnabled: false, description: "Investment account connection limits" },
   'accounts.manual': { tier: Tier.FREE, previewEnabled: false, description: "Manual account tracking limits" },
-  'accounts.traditional': { tier: Tier.FREE, previewEnabled: false, description: "Traditional bank account connection limits" },
+  'accounts.plaid': { tier: Tier.FREE, previewEnabled: false, description: "Plaid-connected account limits" },
   'accounts.web3': { tier: Tier.FREE, previewEnabled: false, description: "Web3 wallet connection limits" },
   'ai.cloud': { tier: Tier.FREE, previewEnabled: true, description: "Cloud AI chat interface with RAG context (Tiered limits: Free 10/day, Essential 30/day, Pro 40/day)" },
   'assets.manual': { tier: Tier.FREE, previewEnabled: false, description: "Manual asset tracking for non-API assets" },
@@ -61,17 +58,16 @@ export const featureRequirements: Record<FeatureKey, { tier: Tier; previewEnable
 
 export const accountLimits: Record<AccountType, Record<TierSlug, number>> = {
   'cex': { free: 1, essential: 1, pro: 3, ultimate: 5 },
-  'investment': { free: 1, essential: 2, pro: 5, ultimate: 20 },
   'manual': { free: 5, essential: 10, pro: 20, ultimate: 50 },
-  'traditional': { free: 2, essential: 3, pro: 5, ultimate: 20 },
+  'plaid': { free: 3, essential: 5, pro: 10, ultimate: 40 },
   'web3': { free: 1, essential: 1, pro: 2, ultimate: 8 },
 }
 
 export const accountLimitsByTier: Record<TierSlug, Record<AccountType, number>> = {
-  free: { 'cex': 1, 'investment': 1, 'manual': 5, 'traditional': 2, 'web3': 1 },
-  essential: { 'cex': 1, 'investment': 2, 'manual': 10, 'traditional': 3, 'web3': 1 },
-  pro: { 'cex': 3, 'investment': 5, 'manual': 20, 'traditional': 5, 'web3': 2 },
-  ultimate: { 'cex': 5, 'investment': 20, 'manual': 50, 'traditional': 20, 'web3': 8 },
+  free: { 'cex': 1, 'manual': 5, 'plaid': 3, 'web3': 1 },
+  essential: { 'cex': 1, 'manual': 10, 'plaid': 5, 'web3': 1 },
+  pro: { 'cex': 3, 'manual': 20, 'plaid': 10, 'web3': 2 },
+  ultimate: { 'cex': 5, 'manual': 50, 'plaid': 40, 'web3': 8 },
 }
 
 export const normalizeTierSlug = (value?: string | null): TierSlug | null => {

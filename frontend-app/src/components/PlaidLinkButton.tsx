@@ -65,9 +65,15 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
       token: linkToken,
       onSuccess: async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
         try {
+          const selectedAccountIds =
+            metadata.accounts
+              ?.map((account) => account.id)
+              .filter((accountId): accountId is string => Boolean(accountId)) ?? []
+
           const response = await api.post('/plaid/exchange-token', {
             public_token: publicToken,
             institution_name: metadata.institution?.name ?? 'plaid',
+            selected_account_ids: selectedAccountIds,
           })
 
           // Try to hydrate transactions right after linking so the dashboard shows data immediately.

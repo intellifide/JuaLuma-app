@@ -17,8 +17,7 @@ def seed_plans():
             "interval": "month",
             "price_id": None,
             "features": [
-                "2 Traditional Accounts",
-                "1 Investment Account",
+                "3 Traditional Accounts (via Plaid)",
                 "1 Web3 Wallet",
                 "1 CEX Account",
                 "10 AI Queries/Day",
@@ -35,8 +34,7 @@ def seed_plans():
             "interval": "month",
             "price_id": "price_1SftXDRQfRSwy2AaP2V5zy32",
             "features": [
-                "3 Traditional Accounts",
-                "2 Investment Accounts",
+                "5 Traditional Accounts (via Plaid)",
                 "1 Web3 Wallet",
                 "1 CEX Account",
                 "30 AI Queries/Day",
@@ -53,8 +51,7 @@ def seed_plans():
             "interval": "month",
             "price_id": "price_1SftXERQfRSwy2AaoWXBD9Q7",
             "features": [
-                "5 Traditional Accounts",
-                "5 Investment Accounts",
+                "10 Traditional Accounts (via Plaid)",
                 "2 Web3 Wallets",
                 "3 CEX Accounts",
                 "40 AI Queries/Day",
@@ -85,8 +82,7 @@ def seed_plans():
             "interval": "month",
             "price_id": "price_1SftXFRQfRSwy2Aas3bHnACi",
             "features": [
-                "20 Traditional Accounts",
-                "20 Investment Accounts",
+                "40 Traditional Accounts (via Plaid)",
                 "8 Web3 Wallets",
                 "5 CEX Accounts",
                 "80 AI Queries/Day",
