@@ -17,21 +17,25 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
-from webauthn import (
-    generate_authentication_options,
-    generate_registration_options,
-    verify_authentication_response,
-    verify_registration_response,
-)
-from webauthn.helpers import options_to_json
-from webauthn.helpers.base64url_to_bytes import base64url_to_bytes
-from webauthn.helpers.bytes_to_base64url import bytes_to_base64url
-from webauthn.helpers.structs import (
-    AuthenticatorSelectionCriteria,
-    PublicKeyCredentialDescriptor,
-    ResidentKeyRequirement,
-    UserVerificationRequirement,
-)
+try:
+    from webauthn import (
+        generate_authentication_options,
+        generate_registration_options,
+        verify_authentication_response,
+        verify_registration_response,
+    )
+    from webauthn.helpers import options_to_json
+    from webauthn.helpers.base64url_to_bytes import base64url_to_bytes
+    from webauthn.helpers.bytes_to_base64url import bytes_to_base64url
+    from webauthn.helpers.structs import (
+        AuthenticatorSelectionCriteria,
+        PublicKeyCredentialDescriptor,
+        ResidentKeyRequirement,
+        UserVerificationRequirement,
+    )
+    WEBAUTHN_AVAILABLE = True
+except ModuleNotFoundError:
+    WEBAUTHN_AVAILABLE = False
 
 from backend.core import settings
 from backend.core.constants import UserStatus
@@ -65,6 +69,14 @@ from backend.utils import get_db
 
 router = APIRouter(tags=["auth"])
 logger = logging.getLogger(__name__)
+
+
+def _require_webauthn() -> None:
+    if not WEBAUTHN_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Passkey authentication is temporarily unavailable. Please use another sign-in method.",
+        )
 
 
 class SignupRequest(BaseModel):
@@ -433,6 +445,7 @@ def _verify_email_otp(user: User, mfa_code: str, db: Session) -> None:
 
 
 def _get_passkey_rp() -> tuple[str, str]:
+    _require_webauthn()
     parsed = urlparse(settings.frontend_url)
     rp_id = parsed.hostname or "localhost"
     origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else settings.frontend_url
@@ -440,6 +453,7 @@ def _get_passkey_rp() -> tuple[str, str]:
 
 
 def _set_passkey_challenge(user: User, challenge: bytes, db: Session) -> None:
+    _require_webauthn()
     user.passkey_challenge = bytes_to_base64url(challenge)
     user.passkey_challenge_expires_at = datetime.now(UTC) + timedelta(minutes=5)
     db.add(user)
@@ -447,6 +461,7 @@ def _set_passkey_challenge(user: User, challenge: bytes, db: Session) -> None:
 
 
 def _verify_passkey_assertion(user: User, passkey_assertion: dict | None, db: Session) -> None:
+    _require_webauthn()
     if not passkey_assertion:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -1704,6 +1719,7 @@ def passkey_auth_options(
     payload: PasskeyAuthOptionsRequest,
     db: Session = Depends(get_db),
 ) -> dict:
+    _require_webauthn()
     try:
         decoded = verify_token(payload.token)
     except Exception as exc:
@@ -1739,6 +1755,7 @@ def passkey_register_options(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    _require_webauthn()
     if current_user.mfa_enabled:
         _verify_any_mfa(
             current_user,
@@ -1777,6 +1794,7 @@ def passkey_register_verify(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    _require_webauthn()
     if current_user.mfa_enabled:
         _verify_any_mfa(current_user, payload.mfa_code, db, payload.passkey_assertion)
     was_mfa_enabled = current_user.mfa_enabled
