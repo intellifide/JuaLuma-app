@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2026 Intellifide, LLC.
+ * Licensed under PolyForm Noncommercial License 1.0.0.
+ * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ *
+ * COMMUNITY RIGHTS:
+ * - You CAN modify this code for personal use.
+ * - You CAN build and share widgets/plugins for the ecosystem.
+ *
+ * RESTRICTIONS:
+ * - You CANNOT resell, repackage, or distribute this application for a fee.
+ * - You CANNOT use this application for commercial enterprise purposes.
+ */
+
 /**
  * CORE PURPOSE: Developer Program landing page.
  * LAST MODIFIED: 2026-01-25 20:47 CST
@@ -12,13 +26,26 @@ export default function DevelopersPage() {
                     Build the <span className="text-primary">Future of Finance</span>
                 </h1>
                 <p className="text-xl text-muted max-w-2xl mx-auto">
-                    Join thousands of developers building powerful widgets on the JuaLuma platform. Access real-time financial data safely and monetize your expertise.
+                    Join thousands of developers building powerful widgets on the JuaLuma platform. Access real-time financial data safely and build tools for personal and community use.
                 </p>
                 <div className="flex gap-4 justify-center mt-10">
                     <a href="http://localhost:5175/signup?role=developer" className="btn btn-primary">Join Developer Program</a>
                     <a href="/developer-sdk" className="btn btn-outline">Read the SDK Docs</a>
                 </div>
             </header>
+
+            <section className="glass-panel p-8 mb-16">
+                <h2 className="text-2xl font-bold mb-4">Community Licensing</h2>
+                <p className="text-muted mb-3">
+                    JuaLuma is <strong>Source Available</strong>. You are free to audit the code, run it locally, and build widgets for the ecosystem. No special license is required to contribute.
+                </p>
+                <p className="text-muted mb-3">
+                    Commercial resale or enterprise deployment is strictly prohibited.
+                </p>
+                <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline">
+                    View PolyForm Noncommercial License 1.0.0
+                </a>
+            </section>
 
             <section className="grid md:grid-cols-3 gap-8 mb-24">
                 <div className="glass-panel p-8">

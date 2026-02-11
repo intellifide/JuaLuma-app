@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2026 Intellifide, LLC.
+ * Licensed under PolyForm Noncommercial License 1.0.0.
+ * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ *
+ * COMMUNITY RIGHTS:
+ * - You CAN modify this code for personal use.
+ * - You CAN build and share widgets/plugins for the ecosystem.
+ *
+ * RESTRICTIONS:
+ * - You CANNOT resell, repackage, or distribute this application for a fee.
+ * - You CANNOT use this application for commercial enterprise purposes.
+ */
+
 'use client'
 
 import { motion } from '@/lib/motion'
@@ -18,6 +32,17 @@ const faqs = [
   {
     q: 'How does Texas tax treatment work?',
     a: 'For qualifying users, tax is applied to 80% of the service fee in line with data-processing treatment.',
+  },
+  {
+    q: 'Is JuaLuma open source?',
+    a: (
+      <>
+        JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited. License:{' '}
+        <a className="text-primary underline" href="/PolyForm-Noncommercial-1.0.0.txt">
+          PolyForm-Noncommercial-1.0.0.txt
+        </a>
+      </>
+    ),
   },
 ]
 

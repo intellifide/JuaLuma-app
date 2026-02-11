@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2026 Intellifide, LLC.
+ * Licensed under PolyForm Noncommercial License 1.0.0.
+ * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ *
+ * COMMUNITY RIGHTS:
+ * - You CAN modify this code for personal use.
+ * - You CAN build and share widgets/plugins for the ecosystem.
+ *
+ * RESTRICTIONS:
+ * - You CANNOT resell, repackage, or distribute this application for a fee.
+ * - You CANNOT use this application for commercial enterprise purposes.
+ */
+
 // Marketing site footer with product/support/developer links and strong CTA band.
 'use client'
 
@@ -40,6 +54,7 @@ export const Footer = () => (
           <ul>
             {comingSoonItem('Developer Home')}
             {comingSoonItem('Developer SDK')}
+            <li><a href="/PolyForm-Noncommercial-1.0.0.txt">Source Available (Personal Use)</a></li>
           </ul>
         </div>
 
@@ -71,6 +86,9 @@ export const Footer = () => (
 
       <div className="footer-bottom">
         <p>&copy; 2026 Intellifide, LLC. All rights reserved.</p>
+        <p style={{ marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-size-xs)' }}>
+          Licensing: <a href="/PolyForm-Noncommercial-1.0.0.txt">Source Available (Personal Use)</a>. Commercial resale or enterprise deployment is prohibited.
+        </p>
         <p style={{ marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-size-xs)' }}>
           JuaLuma is for informational and educational purposes only. It does not provide financial, investment, tax, or legal advice.
         </p>
