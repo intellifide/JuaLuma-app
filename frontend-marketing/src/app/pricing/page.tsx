@@ -151,7 +151,7 @@ const faqs = [
     a: 'You keep access through the end of your billing cycle. Data handling and retention follow legal and privacy policy requirements.',
   },
   {
-    q: 'Is JuaLuma open source?',
+    q: 'Is JuaLuma source available?',
     a: (
       <>
         JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited. License:{' '}

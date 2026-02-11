@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         <div className="container py-24 max-w-4xl">
             <h1 className="text-5xl font-extrabold mb-10">Privacy <span className="text-primary">Policy</span></h1>
             <div className="space-y-8 text-muted leading-relaxed">
-                <p className="italic">Effective Date: [To be determined - after legal review and approval]</p>
+                <p className="italic">Effective Date: February 11, 2026</p>
                 <section>
                     <h2 className="text-2xl font-bold text-white mb-4">Introduction</h2>
                     <p>
@@ -44,6 +44,10 @@ export default function PrivacyPage() {
                     </ul>
                     <h3 className="text-xl font-semibold text-white/90 mt-6 mb-2">1.2 Information We Collect Automatically</h3>
                     <p>We collect technical information including IP addresses, device info, browser type, and usage patterns to ensure security and improve our service.</p>
+                    <h3 className="text-xl font-semibold text-white/90 mt-6 mb-2">1.3 Data From Linked Financial Providers</h3>
+                    <p>
+                        When you connect financial accounts, we receive read-only data from providers such as Plaid and exchange integrations, including account metadata, masked identifiers, balances, and transaction history.
+                    </p>
                 </section>
 
                 <section>
@@ -59,6 +63,9 @@ export default function PrivacyPage() {
                     <h2 className="text-2xl font-bold text-white mb-4">3. Information Sharing and Disclosure</h2>
                     <p><strong>We Do NOT Sell Your Information.</strong> We do not sell, rent, or trade your personal information to third parties for their marketing purposes.</p>
                     <p className="mt-4">We share information with service providers like Plaid (data aggregation), Stripe (payment processing), and Google Cloud Platform (infrastructure) under strict confidentiality agreements.</p>
+                    <p className="mt-4">
+                        We may also disclose data as required by law, legal process, fraud prevention requirements, or to protect users and platform integrity.
+                    </p>
                 </section>
 
                 <section>
@@ -73,13 +80,18 @@ export default function PrivacyPage() {
 
                 <section>
                     <h2 className="text-2xl font-bold text-white mb-4">6. Data Retention and Deletion</h2>
-                    <p>We retain data as long as necessary for service provision or legal compliance. Upon account deletion, we use cryptographic erasure to destroy user Data Encryption Keys (DEKs), making data unreadable instantly.</p>
+                    <p>
+                        We retain data only as long as needed for service operation, security, legal compliance, tax and payment obligations, and dispute resolution.
+                    </p>
+                    <p className="mt-4">
+                        You may request account deletion through account settings or by contacting privacy@jualuma.com. We process verified deletion requests within a commercially reasonable period, subject to legal retention requirements. Backup copies may persist temporarily under standard backup lifecycles.
+                    </p>
                 </section>
 
                 <section className="bg-surface-1 p-8 rounded-xl border border-white/5 shadow-inner">
                     <h2 className="text-2xl font-bold text-white mb-4">Contact Us</h2>
                     <p>
-                        For any privacy inquiries or to exercise your rights, please contact the Data Privacy Officer at <a href="mailto:privacy@jualuma.com" className="text-primary underline">privacy@jualuma.com</a>.
+                        For any privacy inquiries or to exercise your rights, please contact the Data Privacy Officer at <a href="mailto:intellifidellc@gmail.com" className="text-primary underline">intellifidellc@gmail.com</a>.
                     </p>
                     <p className="mt-4 text-sm opacity-70">
                         Intellifide, LLC<br />

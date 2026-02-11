@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from backend.models import Subscription, User, UserSession
 from backend.services.auth import verify_token
@@ -21,12 +21,8 @@ _MFA_EXEMPT_PATH_PREFIXES = (
 _MFA_SESSION_ROLLOVER_SECONDS = 6 * 60 * 60  # keep MFA verified across Firebase token refreshes
 
 
-async def get_current_user(
-    request: Request,
-    authorization: Annotated[str | None, Header(convert_underscores=False)] = None,
-    db: Session = Depends(get_db),
-) -> User:
-    """Validate bearer token and load the current user."""
+async def _verify_authorization_header(authorization: str | None) -> dict:
+    """Helper to verify bearer token and return decoded claims."""
     import logging
 
     logger = logging.getLogger("backend.middleware.auth")
@@ -48,6 +44,21 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Your session has expired. Please log in again.",
         ) from exc
+    
+    return decoded
+
+
+async def get_current_user(
+    request: Request,
+    authorization: Annotated[str | None, Header(convert_underscores=False)] = None,
+    db: Session = Depends(get_db),
+) -> User:
+    """Validate bearer token and load the current user."""
+    import logging
+
+    logger = logging.getLogger("backend.middleware.auth")
+
+    decoded = await _verify_authorization_header(authorization)
 
     uid = decoded.get("uid") or decoded.get("sub")
     if not uid:
@@ -199,11 +210,55 @@ async def get_current_user(
 async def get_current_identity(
     request: Request,
     authorization: Annotated[str | None, Header(convert_underscores=False)] = None,
+) -> dict:
+    """
+    Validate bearer token and return identity claims (uid, email).
+    
+    Does NOT require a User record in the database.
+    Does NOT enforce MFA or Session verification.
+    """
+    decoded = await _verify_authorization_header(authorization)
+    uid = decoded.get("uid") or decoded.get("sub")
+    
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid session data.",
+        )
+
+    return {"uid": uid, "email": decoded.get("email")}
+
+
+async def get_current_identity_with_user_guard(
+    request: Request,
+    authorization: Annotated[str | None, Header(convert_underscores=False)] = None,
     db: Session = Depends(get_db),
 ) -> dict:
-    """Validate bearer token, enforce MFA gating, and return identity claims."""
-    user = await get_current_user(request, authorization, db)
-    return {"uid": user.uid, "email": user.email}
+    """
+    Validate bearer token and return identity claims.
+
+    - For pending signups (no local User), only token validation is required.
+    - For existing users, enforce strict session + MFA checks via get_current_user.
+    """
+    decoded = await _verify_authorization_header(authorization)
+    uid = decoded.get("uid") or decoded.get("sub")
+    email = decoded.get("email")
+    if not uid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid session data.",
+        )
+
+    existing_user = (
+        db.query(User)
+        .filter(or_(User.uid == uid, User.email == email) if email else User.uid == uid)
+        .first()
+    )
+    if not existing_user:
+        return {"uid": uid, "email": email}
+
+    strict_user = await get_current_user(request, authorization, db)
+    return {"uid": strict_user.uid, "email": strict_user.email}
 
 
 def require_role(allowed_roles: list[str]):
@@ -300,6 +355,8 @@ def register_login_attempt(request: Request) -> None:
 
 
 __all__ = [
+    "get_current_identity",
+    "get_current_identity_with_user_guard",
     "get_current_user",
     "require_role",
     "require_user",

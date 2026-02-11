@@ -73,6 +73,7 @@ Intellifide, LLC ("Company," "we," "us," or "our") operates the jualuma financia
 - Transaction data
 - Account balances
 - Through read-only API connections (e.g., Plaid, CEX APIs)
+- Plaid-linked data such as account identifiers, masked account numbers, balances, transaction metadata, and institution information
 
 #### Authentication Services:
 
@@ -307,14 +308,9 @@ You may request deletion of your personal information:
 #### Account Deletion:
 
 - You may delete your account through account settings
-- We will delete your account and personal information
-- Some information may be retained as required by law
-
-#### Cryptographic Erasure:
-
-- User Data Encryption Keys (DEKs) are destroyed upon account deletion
-- Encrypted data becomes unreadable
-- Physical data deletion occurs within 24 hours of key destruction
+- We will process verified deletion requests within a commercially reasonable period
+- Some information may be retained as required by law, tax, fraud prevention, dispute resolution, or security obligations
+- Backup copies may persist temporarily and are deleted according to backup lifecycle schedules
 
 #### Exceptions:
 
@@ -461,14 +457,14 @@ If you have questions about this Privacy Policy or our privacy practices, please
 
 [Business Address - To be determined]
 [Phone - To be determined]
-Email: [Privacy Email - To be determined]
+Email: privacy@jualuma.com
 
 #### 13.2 Privacy Requests
 
 To exercise your privacy rights (access, deletion, opt-out), please:
 
 - Submit requests through your account settings
-- Email us at [Privacy Email - To be determined]
+- Email us at privacy@jualuma.com
 - Include sufficient information to verify your identity
 
 #### 13.3 Response Time

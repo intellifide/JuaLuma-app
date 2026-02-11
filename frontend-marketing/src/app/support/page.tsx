@@ -34,7 +34,7 @@ const faqs = [
     a: 'For qualifying users, tax is applied to 80% of the service fee in line with data-processing treatment.',
   },
   {
-    q: 'Is JuaLuma open source?',
+    q: 'Is JuaLuma source available?',
     a: (
       <>
         JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited. License:{' '}
@@ -79,7 +79,7 @@ export default function SupportPage() {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a href="http://localhost:5175/login" className="btn">Log In to Submit Ticket</a>
-          <a href="mailto:support@jualuma.com" className="btn btn-secondary">Email Support</a>
+          <a href="mailto:intellifidellc@gmail.com" className="btn btn-secondary">Email Support</a>
         </div>
       </section>
     </div>

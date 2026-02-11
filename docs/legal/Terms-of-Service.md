@@ -194,6 +194,16 @@ Your use of the Service is subject to account limits based on your subscription 
 - AI query quotas
 - Feature availability
 
+#### 6.4 API and Developer Use Rules
+
+If you use our developer features, SDKs, or APIs, you agree to:
+
+- Use only documented endpoints and approved scopes
+- Respect rate limits, security controls, and authentication requirements
+- Avoid attempts to bypass access controls or extract other users' data
+- Build widgets/plugins that operate within the platform's sandbox and policy limits
+- Not represent third-party widgets as official Intellifide products
+
 ---
 
 ### 7. Intellectual Property
@@ -209,6 +219,17 @@ You retain ownership of any content you provide to the Service. By providing con
 #### 7.3 Trademarks
 
 "jualuma" and related logos and marks are trademarks of Intellifide, LLC. You may not use our trademarks without our prior written permission.
+
+#### 7.4 Source-Available License Notice
+
+The JuaLuma codebase is licensed under the PolyForm Noncommercial License 1.0.0. See `PolyForm-Noncommercial-1.0.0.txt`.
+
+You may audit, run, and modify the software for personal and noncommercial use, including building widgets/plugins for the ecosystem.
+
+You may not:
+
+- Resell, repackage, sublicense, or distribute the application for a fee
+- Use the application for commercial enterprise deployment without separate written permission from Intellifide, LLC
 
 ---
 

@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
-from backend.middleware.auth import get_current_identity, get_current_user
+from backend.middleware.auth import (
+    get_current_identity_with_user_guard,
+    get_current_user,
+)
 from backend.models import PendingSignup, SubscriptionTier, User
 from backend.services.billing import (
     create_checkout_session,
@@ -59,7 +62,7 @@ async def create_portal(
 @router.post("/checkout/session")
 async def create_checkout(
     request: CheckoutRequest,
-    identity: dict = Depends(get_current_identity),
+    identity: dict = Depends(get_current_identity_with_user_guard),
     db: Session = Depends(get_db),
 ):
     """
@@ -106,7 +109,7 @@ class SessionVerifyRequest(BaseModel):
 @router.post("/checkout/verify")
 async def verify_checkout_session(
     request: SessionVerifyRequest,
-    identity: dict = Depends(get_current_identity),
+    identity: dict = Depends(get_current_identity_with_user_guard),
     db: Session = Depends(get_db),
 ):
     """
@@ -147,7 +150,8 @@ async def get_plans(db: Session = Depends(get_db)):
 
 @router.post("/plans/free")
 async def select_free_plan(
-    identity: dict = Depends(get_current_identity), db: Session = Depends(get_db)
+    identity: dict = Depends(get_current_identity_with_user_guard),
+    db: Session = Depends(get_db),
 ):
     """
     Selects the Free plan and activates the user if they are in the pending plan selection state.

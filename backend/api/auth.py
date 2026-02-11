@@ -40,7 +40,11 @@ except ModuleNotFoundError:
 from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.core.legal import REQUIRED_SIGNUP_AGREEMENTS
-from backend.middleware.auth import get_current_identity, get_current_user
+from backend.middleware.auth import (
+    get_current_identity,
+    get_current_identity_with_user_guard,
+    get_current_user,
+)
 from backend.models import (
     AISettings,
     AuditLog,
@@ -1339,7 +1343,7 @@ def change_password(
 
 @router.get("/profile")
 def get_profile(
-    identity: dict = Depends(get_current_identity),
+    identity: dict = Depends(get_current_identity_with_user_guard),
     db: Session = Depends(get_db),
 ) -> dict:
     """Return the authenticated user's profile with preferences and subscriptions."""
