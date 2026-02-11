@@ -234,10 +234,6 @@ export default function Pricing() {
   return (
     <div className="pb-10 md:pb-14">
       <section className="py-12 md:py-16 text-center">
-        <p className="marketing-chip mx-auto mb-5">
-          <span className="signal-dot" />
-          Flexible growth pricing
-        </p>
         <h1 className="text-4xl md:text-6xl mb-4">Choose the level of financial command you need.</h1>
         <p className="text-lg text-text-secondary max-w-3xl mx-auto">
           Start free. Upgrade when your portfolio, household, or workflow complexity grows.

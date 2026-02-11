@@ -34,23 +34,6 @@ const timeline = [
   },
 ]
 
-const featureRailItems = [
-  'Financial Overview: Net Worth, Cash Flow, Budget Status, Linked Accounts',
-  'Cash Flow Pulse with income vs expense snapshot',
-  'Spending Health scale with risk indicators',
-  'Top Money Drivers by category with totals',
-  'Upcoming Bills (Forecast) from recurring transactions',
-  'Savings Progress Snapshot and net saved trends',
-  'Liquidity & Buffer runway estimation',
-  'Anomaly Watch for unusual spending changes',
-  'Asset Snapshot allocation breakdown',
-  'Debt Snapshot liability distribution',
-  'Goals Tracker with progress bars and targets',
-  'Personal and Family scope toggles',
-  'Multi-asset aggregation: bank, brokerage, wallet, manual',
-  'Transaction-level insights with category context',
-]
-
 export default function Home() {
   return (
     <div className="overflow-x-hidden pb-16">
@@ -59,15 +42,6 @@ export default function Home() {
         <div className="floating-orb top-8 -right-20 bg-primary/35" style={{ animationDelay: '-8s' }} />
 
         <motion.div className="relative z-10" variants={container} initial="hidden" animate="show">
-          <motion.div variants={item} className="mb-6 flex flex-wrap justify-center gap-2">
-            <span className="marketing-chip">
-              <span className="signal-dot" />
-              Unified financial overview
-            </span>
-            <span className="marketing-chip">Multi-asset net worth</span>
-            <span className="marketing-chip">AI-guided decisions</span>
-          </motion.div>
-
           <motion.h1 variants={item} className="text-center text-4xl md:text-6xl xl:text-7xl max-w-5xl mx-auto leading-[1.04]">
             Build a living map of your money.
             <span className="block mt-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -89,8 +63,8 @@ export default function Home() {
           </motion.div>
 
           <motion.div variants={item} className="mt-14 md:mt-16 glass-panel max-w-6xl mx-auto p-4 md:p-6">
-            <div className="rounded-2xl border border-white/10 overflow-hidden bg-slate-950/30 p-4 md:p-5">
-              <div className="px-1 pb-4 border-b border-white/10 flex flex-wrap gap-3 items-center justify-between">
+            <div className="replica-shell rounded-2xl overflow-hidden p-4 md:p-5">
+              <div className="replica-divider px-1 pb-4 border-b flex flex-wrap gap-3 items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-text-primary">Wealth Builder Preview</span>
                   <span className="text-xs text-text-muted">Financial overview demo inspired by live dashboard cards</span>
@@ -118,7 +92,7 @@ export default function Home() {
                   <p className="text-xs text-text-muted mb-0">Based on budget period logic</p>
                   <p className="text-2xl font-bold text-primary mb-0">72%</p>
                   <p className="text-xs text-text-muted mb-0">$5.8k of $8.0k spent</p>
-                  <div className="w-full bg-white/10 rounded-full h-2">
+                  <div className="replica-progress-track w-full rounded-full h-2">
                     <div className="h-2 rounded-full bg-primary" style={{ width: '72%' }} />
                   </div>
                 </div>
@@ -133,18 +107,6 @@ export default function Home() {
             </div>
           </motion.div>
         </motion.div>
-      </section>
-
-      <section className="pb-8">
-        <div className="glass-panel px-5 py-4 md:px-7 md:py-5 overflow-hidden">
-          <div className="chip-marquee-track">
-            {[...featureRailItems, ...featureRailItems].map((chip, idx) => (
-              <span key={`${chip}-${idx}`} className="marketing-chip whitespace-nowrap">
-                {chip}
-              </span>
-            ))}
-          </div>
-        </div>
       </section>
 
       <section className="py-16 md:py-20">
@@ -165,7 +127,6 @@ export default function Home() {
               transition={{ duration: 0.5, delay: index * 0.07 }}
               className="glass-panel relative"
             >
-              <div className="absolute top-4 right-4 text-xs text-text-muted font-semibold">0{index + 1}</div>
               <h3 className="text-xl md:text-2xl">{step.title}</h3>
               <p className="text-text-secondary leading-relaxed">{step.body}</p>
             </motion.article>

@@ -14,7 +14,7 @@ const featureStories = [
     tag: 'Aggregation',
   },
   {
-    title: 'AI Financial Co-Pilot',
+    title: 'AI Financial Assistant',
     subtitle: 'Context-aware analysis over your actual transactions, not generic advice.',
     bullets: [
       'Natural language Q&A tied directly to transaction history',
@@ -44,8 +44,7 @@ const statCards = [
 
 function AggregationReplica() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:p-5 min-h-[280px]">
-      <p className="text-xs text-text-muted mb-3">Feature replica based on app cards</p>
+    <div className="replica-shell rounded-2xl p-4 md:p-5 min-h-[280px]">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="card gap-2">
           <h4 className="text-sm text-text-muted mb-0">Net Worth</h4>
@@ -67,7 +66,7 @@ function AggregationReplica() {
           <p className="text-xs text-text-muted mb-0">Based on budget period logic</p>
           <p className="text-2xl font-bold text-primary mb-0">72%</p>
           <p className="text-xs text-text-muted mb-0">$5.8k of $8.0k spent</p>
-          <div className="w-full bg-white/10 rounded-full h-2">
+          <div className="replica-progress-track w-full rounded-full h-2">
             <div className="h-2 rounded-full bg-primary" style={{ width: '72%' }} />
           </div>
         </div>
@@ -85,8 +84,7 @@ function AggregationReplica() {
 
 function IntelligenceReplica() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:p-5 min-h-[280px]">
-      <p className="text-xs text-text-muted mb-3">Feature replica based on app cards</p>
+    <div className="replica-shell rounded-2xl p-4 md:p-5 min-h-[280px]">
       <div className="grid grid-cols-1 gap-3">
         <div className="card gap-3">
           <div>
@@ -112,9 +110,9 @@ function IntelligenceReplica() {
         <div className="card gap-2">
           <h4 className="text-base font-semibold mb-0">Anomaly Watch</h4>
           <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
-          <div className="rounded-lg px-3 py-2 text-sm bg-rose-500/10 text-rose-200">
+          <div className="alert-soft rounded-lg px-3 py-2 text-sm">
             <p className="font-semibold mb-0">Dining spend elevated</p>
-            <p className="text-xs text-text-muted mb-0">Weekend delivery spend is 18% above baseline.</p>
+            <p className="alert-soft-muted text-xs mb-0">Weekend delivery spend is 18% above baseline.</p>
           </div>
         </div>
       </div>
@@ -124,9 +122,8 @@ function IntelligenceReplica() {
 
 function CollaborationReplica() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4 md:p-5 min-h-[280px]">
-      <p className="text-xs text-text-muted mb-3">Feature replica based on app cards</p>
-      <div className="flex bg-white/5 border border-white/10 rounded-lg p-1 w-fit mb-3">
+    <div className="replica-shell rounded-2xl p-4 md:p-5 min-h-[280px]">
+      <div className="replica-toggle flex border rounded-lg p-1 w-fit mb-3">
         <button className="px-3 py-1 text-sm rounded-md bg-primary text-white shadow font-medium">Personal</button>
         <button className="px-3 py-1 text-sm rounded-md text-text-muted">Family</button>
       </div>
@@ -138,11 +135,11 @@ function CollaborationReplica() {
           <div className="space-y-2 text-sm">
             <div>
               <div className="flex justify-between text-xs text-text-secondary mb-1"><span>Emergency Fund</span><span>$9.2k / $12k</span></div>
-              <div className="w-full bg-white/10 rounded-full h-2"><div className="h-2 rounded-full bg-primary" style={{ width: '77%' }} /></div>
+              <div className="replica-progress-track w-full rounded-full h-2"><div className="h-2 rounded-full bg-primary" style={{ width: '77%' }} /></div>
             </div>
             <div>
               <div className="flex justify-between text-xs text-text-secondary mb-1"><span>Debt Payoff</span><span>$6.1k / $15k</span></div>
-              <div className="w-full bg-white/10 rounded-full h-2"><div className="h-2 rounded-full bg-primary" style={{ width: '41%' }} /></div>
+              <div className="replica-progress-track w-full rounded-full h-2"><div className="h-2 rounded-full bg-primary" style={{ width: '41%' }} /></div>
             </div>
           </div>
         </div>
@@ -169,10 +166,6 @@ export default function Features() {
     <div className="pb-12 md:pb-16">
       <section className="relative py-12 md:py-16">
         <div className="text-center max-w-4xl mx-auto">
-          <p className="marketing-chip mx-auto mb-5">
-            <span className="signal-dot" />
-            Product surface map
-          </p>
           <h1 className="text-4xl md:text-6xl leading-[1.05] mb-5">
             Features built for real-world financial complexity.
           </h1>

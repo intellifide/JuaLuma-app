@@ -23,10 +23,6 @@ export default function AboutPage() {
   return (
     <div className="pb-12">
       <section className="py-12 md:py-16 text-center max-w-4xl mx-auto">
-        <p className="marketing-chip mx-auto mb-5">
-          <span className="signal-dot" />
-          Why JuaLuma exists
-        </p>
         <h1 className="text-4xl md:text-6xl mb-5">A financial operating system for real life.</h1>
         <p className="text-lg md:text-xl text-text-secondary">
           We build for people who manage multiple accounts, multiple asset classes, and multiple priorities.
@@ -74,7 +70,9 @@ export default function AboutPage() {
         <h2 className="text-3xl mb-5">Technology partners</h2>
         <div className="flex flex-wrap justify-center gap-3 md:gap-4">
           {partners.map((partner) => (
-            <span key={partner} className="marketing-chip">{partner}</span>
+            <span key={partner} className="rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] px-3 py-1.5 text-xs font-semibold tracking-[0.12em] text-text-secondary">
+              {partner}
+            </span>
           ))}
         </div>
       </section>

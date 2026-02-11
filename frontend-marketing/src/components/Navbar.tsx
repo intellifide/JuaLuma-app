@@ -19,6 +19,10 @@ const navLinks = [
 export const Navbar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const brandLetters = 'JuaLuma'.split('')
+  const [brandScales, setBrandScales] = useState<number[]>(() => brandLetters.map(() => 1))
+  const brandCharRefs = React.useRef<(HTMLSpanElement | null)[]>([])
+  const rafRef = React.useRef<number | null>(null)
   const pathname = usePathname()
 
   useEffect(() => {
@@ -26,6 +30,40 @@ export const Navbar: React.FC = () => {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [])
+
+  const handleBrandMouseMove = (event: React.MouseEvent<HTMLSpanElement>) => {
+    const pointerX = event.clientX
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => {
+      const influenceRadius = 44
+      const nextScales = brandLetters.map((_, index) => {
+        const node = brandCharRefs.current[index]
+        if (!node) return 1
+        const rect = node.getBoundingClientRect()
+        const centerX = rect.left + rect.width / 2
+        const distance = Math.abs(pointerX - centerX)
+        const strength = Math.max(0, 1 - distance / influenceRadius)
+        return 1 + 0.28 * strength
+      })
+      setBrandScales(nextScales)
+    })
+  }
+
+  const handleBrandMouseLeave = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+    setBrandScales(brandLetters.map(() => 1))
+  }
 
   return (
     <nav
@@ -42,8 +80,29 @@ export const Navbar: React.FC = () => {
             alt="JuaLuma logo"
             className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-secondary/20 transition-transform group-hover:scale-105"
           />
-          <span className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">
-            JuaLuma
+          <span
+            className="text-2xl font-bold tracking-tight text-text-primary select-none"
+            onMouseMove={handleBrandMouseMove}
+            onMouseLeave={handleBrandMouseLeave}
+          >
+            {brandLetters.map((letter, index) => (
+              <span
+                key={`${letter}-${index}`}
+                ref={(el) => {
+                  brandCharRefs.current[index] = el
+                }}
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  color: 'var(--text-primary)',
+                  transform: `scale(${brandScales[index]})`,
+                  transformOrigin: 'center bottom',
+                  transition: 'transform 120ms linear',
+                }}
+              >
+                {letter}
+              </span>
+            ))}
           </span>
         </Link>
 
@@ -63,7 +122,7 @@ export const Navbar: React.FC = () => {
               <Link
                 key={link.path}
                 href={link.path}
-                className={`relative text-sm font-medium transition-colors hover:text-text-primary ${
+                className={`nav-link relative text-sm font-medium ${
                   pathname === link.path ? 'text-text-primary' : 'text-text-secondary'
                 }`}
               >
@@ -83,7 +142,7 @@ export const Navbar: React.FC = () => {
           <ThemeToggle />
           <a
             href="http://localhost:5175/login"
-            className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            className="nav-link text-sm font-medium text-text-secondary"
           >
             Log In
           </a>
@@ -143,7 +202,7 @@ export const Navbar: React.FC = () => {
                     key={link.path}
                     href={link.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`text-lg font-medium ${pathname === link.path ? 'text-text-primary' : 'text-text-secondary'}`}
+                    className={`nav-link text-lg font-medium ${pathname === link.path ? 'text-text-primary' : 'text-text-secondary'}`}
                   >
                     {link.name}
                   </Link>
@@ -153,7 +212,7 @@ export const Navbar: React.FC = () => {
               <a
                 href="http://localhost:5175/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-lg font-medium text-text-primary"
+                className="nav-link text-lg font-medium text-text-primary"
               >
                 Log In
               </a>

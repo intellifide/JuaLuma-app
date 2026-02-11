@@ -25,10 +25,6 @@ export default function SupportPage() {
   return (
     <div className="pb-12">
       <section className="py-12 md:py-16 text-center max-w-4xl mx-auto">
-        <p className="marketing-chip mx-auto mb-5">
-          <span className="signal-dot" />
-          Support center
-        </p>
         <h1 className="text-4xl md:text-6xl mb-5">Need help getting the most from your financial data?</h1>
         <p className="text-lg text-text-secondary">
           Find answers quickly, then escalate to support when you need account-specific help.

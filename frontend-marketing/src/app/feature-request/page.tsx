@@ -13,10 +13,6 @@ export default function FeatureRequestPage() {
   return (
     <div className="pb-12">
       <section className="py-12 md:py-16 text-center max-w-4xl mx-auto">
-        <p className="marketing-chip mx-auto mb-5">
-          <span className="signal-dot" />
-          Product feedback loop
-        </p>
         <h1 className="text-4xl md:text-6xl mb-5">Help shape what JuaLuma builds next.</h1>
         <p className="text-lg text-text-secondary">
           We prioritize requests that improve clarity, control, and trust in financial decision-making.
