@@ -9,4 +9,4 @@ ENV NODE_ENV=development
 EXPOSE 3000
 ENV INSTALL_CMD="npm install"
 ENTRYPOINT ["ensure-node-modules"]
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npm run dev -- -p ${PORT:-3000}"]

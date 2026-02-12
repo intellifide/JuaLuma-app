@@ -401,6 +401,7 @@ const EditAccountModal = ({
       assignedMemberUid?: string | null;
       categoryOverride?: string | null;
       balanceType?: 'asset' | 'liability';
+      balance?: number;
     } = {
       accountName: name,
       assignedMemberUid: assignedUid || null,

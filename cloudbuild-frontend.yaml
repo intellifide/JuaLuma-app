@@ -1,0 +1,13 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-central1-docker.pkg.dev/jualuma-dev/jualuma-repo/frontend-app:latest",
+        "-f",
+        "frontend-app/Dockerfile",
+        ".",
+      ]
+images:
+  - "us-central1-docker.pkg.dev/jualuma-dev/jualuma-repo/frontend-app:latest"

@@ -20,6 +20,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from '@/lib/motion'
 import { Check, Minus, Zap, Shield, Globe, Database, Users, Star } from 'lucide-react'
+import { APP_URL } from '@/lib/constants'
 
 interface SubscriptionPlan {
   code: string
@@ -323,7 +324,7 @@ export default function Pricing() {
                     ))}
                   </ul>
 
-                  <a href={`http://localhost:5175/signup?plan=${planCode}${plan.interval === 'year' ? '_annual' : ''}`} className={isFeatured ? 'btn w-full' : 'btn btn-secondary w-full'}>
+                  <a href={`${APP_URL}/signup?plan=${planCode}${plan.interval === 'year' ? '_annual' : ''}`} className={isFeatured ? 'btn w-full' : 'btn btn-secondary w-full'}>
                     {getButtonText(plan)}
                   </a>
                 </motion.article>
@@ -386,7 +387,7 @@ export default function Pricing() {
           <section className="text-center glass-panel">
             <h2 className="text-3xl md:text-4xl mb-4">Start with Free. Scale when ready.</h2>
             <p className="text-text-secondary mb-7">No credit card required to begin your financial command center.</p>
-            <a href="http://localhost:5175/signup" className="btn btn-lg">Create Your Free Account</a>
+            <a href={`${APP_URL}/signup`} className="btn btn-lg">Create Your Free Account</a>
           </section>
         </>
       )}

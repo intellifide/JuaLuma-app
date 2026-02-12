@@ -17,4 +17,4 @@ ENV HOST=0.0.0.0 \
 EXPOSE 5175
 
 ENTRYPOINT ["ensure-node-modules"]
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5175"]
+CMD ["sh", "-c", "npm run build && npm run preview -- --host 0.0.0.0 --port 8080"]

@@ -16,6 +16,7 @@
 
 import Link from 'next/link'
 import { motion, type Variants } from '@/lib/motion'
+import { APP_URL } from '@/lib/constants'
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -68,7 +69,7 @@ export default function Home() {
           </motion.p>
 
           <motion.div variants={item} className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="http://localhost:5175/signup" className="btn btn-lg">
+            <a href={`${APP_URL}/signup`} className="btn btn-lg">
               Start Free Trial
             </a>
             <Link href="/features" className="btn btn-lg btn-secondary">
@@ -154,7 +155,7 @@ export default function Home() {
           <p className="max-w-2xl mx-auto text-lg mb-8">
             Start with your current accounts and grow into forecasting, household collaboration, and AI-powered optimization.
           </p>
-          <a href="http://localhost:5175/signup" className="btn btn-lg">
+          <a href={`${APP_URL}/signup`} className="btn btn-lg">
             Create Free Account
           </a>
         </div>

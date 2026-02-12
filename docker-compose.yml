@@ -28,8 +28,12 @@ services:
       BACKEND_CORS_ORIGINS: "http://localhost:5175,http://localhost:5176,http://localhost:5177"
 
     depends_on:
-      - postgres
-      - firebase-emulator
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      firebase-emulator:
+        condition: service_started
     ports:
       - "8001:8001"
     volumes:
@@ -114,6 +118,33 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+
+  db-init:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: jualuma-db-init
+    env_file: .env
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
+      FIREBASE_EMULATOR_ENABLED: "true"
+      FIRESTORE_EMULATOR_HOST: jualuma-firebase-emulator:8080
+      FIREBASE_AUTH_EMULATOR_HOST: jualuma-firebase-emulator:9099
+      FIREBASE_PROJECT_ID: jualuma-local
+      PUBSUB_EMULATOR_ENABLED: "true"
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      GCP_PROJECT_ID: jualuma-local
+      ENABLE_AI_GATEWAY: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "python backend/scripts/create_all_from_models.py &&
+             python backend/scripts/seed_initial_data.py"
+    networks:
+      - jualuma-network
 
   # Firebase Emulator Suite
   firebase-emulator:

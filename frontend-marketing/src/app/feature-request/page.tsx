@@ -15,6 +15,7 @@
 'use client'
 
 import { motion } from '@/lib/motion'
+import { APP_URL } from '@/lib/constants'
 
 const roadmap = [
   'AI-driven budget forecasting enhancements',
@@ -40,7 +41,7 @@ export default function FeatureRequestPage() {
             Share your workflow gap, desired outcome, and who benefits. Product and engineering review requests continuously.
           </p>
           <div className="space-y-3">
-            <a href="http://localhost:5175/support/tickets/new" target="_blank" rel="noreferrer" className="btn w-full text-center">Submit via Support Portal</a>
+            <a href={`${APP_URL}/support/tickets/new`} target="_blank" rel="noreferrer" className="btn w-full text-center">Submit via Support Portal</a>
             <a href="mailto:intellifidellc@gmail.com" className="btn btn-secondary w-full text-center">Email Feature Team</a>
           </div>
         </div>

@@ -20,6 +20,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from '@/lib/motion'
 import { ThemeToggle } from './ThemeToggle'
+import { APP_URL } from '@/lib/constants'
 
 const navLinks = [
   { name: 'Features', path: '/features' },
@@ -155,12 +156,12 @@ export const Navbar: React.FC = () => {
         <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
           <a
-            href="http://localhost:5175/login"
+            href={`${APP_URL}/login`}
             className="nav-link text-sm font-medium text-text-secondary"
           >
             Log In
           </a>
-          <a href="http://localhost:5175/signup" className="btn btn-sm">
+          <a href={`${APP_URL}/signup`} className="btn btn-sm">
             Get Started
           </a>
         </div>
@@ -224,14 +225,14 @@ export const Navbar: React.FC = () => {
               )}
               <div className="h-px bg-white/10 my-1" />
               <a
-                href="http://localhost:5175/login"
+                href={`${APP_URL}/login`}
                 onClick={() => setMobileMenuOpen(false)}
                 className="nav-link text-lg font-medium text-text-primary"
               >
                 Log In
               </a>
               <a
-                href="http://localhost:5175/signup"
+                href={`${APP_URL}/signup`}
                 onClick={() => setMobileMenuOpen(false)}
                 className="btn btn-sm w-full"
               >

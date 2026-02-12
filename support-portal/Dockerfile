@@ -19,4 +19,4 @@ ENV HOST=0.0.0.0 \
 EXPOSE 5176
 
 ENTRYPOINT ["ensure-node-modules"]
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5176"]
+CMD ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port ${PORT:-5176}"]

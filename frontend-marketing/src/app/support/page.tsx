@@ -15,6 +15,7 @@
 'use client'
 
 import { motion } from '@/lib/motion'
+import { APP_URL } from '@/lib/constants'
 
 const faqs = [
   {
@@ -78,7 +79,7 @@ export default function SupportPage() {
           Log in for ticket support or contact us directly for onboarding and product issues.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <a href="http://localhost:5175/login" className="btn">Log In to Submit Ticket</a>
+          <a href={`${APP_URL}/login`} className="btn">Log In to Submit Ticket</a>
           <a href="mailto:intellifidellc@gmail.com" className="btn btn-secondary">Email Support</a>
         </div>
       </section>

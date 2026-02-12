@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.VITE_API_TARGET || 'http://127.0.0.1:8001'
+  const apiTarget = env.VITE_API_TARGET || env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
   return {
     plugins: [react()],
@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5175,
       host: true,
+      allowedHosts: true, // Allow Cloud Run domain
       proxy: {
         '/api': {
           target: apiTarget,

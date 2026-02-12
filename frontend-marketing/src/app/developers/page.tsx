@@ -17,6 +17,7 @@
  * LAST MODIFIED: 2026-01-25 20:47 CST
  */
 import React from 'react';
+import { APP_URL } from '@/lib/constants';
 
 export default function DevelopersPage() {
     return (
@@ -29,7 +30,7 @@ export default function DevelopersPage() {
                     Join thousands of developers building powerful widgets on the JuaLuma platform. Access real-time financial data safely and build tools for personal and community use.
                 </p>
                 <div className="flex gap-4 justify-center mt-10">
-                    <a href="http://localhost:5175/signup?role=developer" className="btn btn-primary">Join Developer Program</a>
+                    <a href={`${APP_URL}/signup?role=developer`} className="btn btn-primary">Join Developer Program</a>
                     <a href="/developer-sdk" className="btn btn-outline">Read the SDK Docs</a>
                 </div>
             </header>

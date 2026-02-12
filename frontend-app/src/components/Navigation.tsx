@@ -18,6 +18,8 @@ import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationDrawer } from './notifications/NotificationDrawer'
 
+const MARKETING_URL = import.meta.env.VITE_MARKETING_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5177' : 'https://jualuma-marketing-298159098975.us-central1.run.app');
+
 const linkClass = 'nav-link'
 const activeClass = 'nav-link active'
 
@@ -82,16 +84,16 @@ export const Navigation = () => {
 
   const GuestLinks = () => (
     <>
-      <a href="http://localhost:5177/features" className={linkClass}>
+      <a href={`${MARKETING_URL}/features`} className={linkClass}>
         Features
       </a>
-      <a href="http://localhost:5177/pricing" className={linkClass}>
+      <a href={`${MARKETING_URL}/pricing`} className={linkClass}>
         Pricing
       </a>
-      <a href="http://localhost:5177/about" className={linkClass}>
+      <a href={`${MARKETING_URL}/about`} className={linkClass}>
         About
       </a>
-      <a href="http://localhost:5177/developers" className={linkClass}>
+      <a href={`${MARKETING_URL}/developers`} className={linkClass}>
          Developers
       </a>
       <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)}>
@@ -107,13 +109,13 @@ export const Navigation = () => {
     <>
       <header className="header">
         <div className="header-container">
-          <a href="http://localhost:5177" className="logo" aria-label="JuaLuma home">
+          <a href={`${MARKETING_URL}`} className="logo" aria-label="JuaLuma home">
             <img src="/assets/logo.png" alt="JuaLuma logo" className="logo-img" />
             <span className="sr-only">JuaLuma</span>
           </a>
 
           <nav className="nav" aria-label="Main navigation">
-            <a href="http://localhost:5177" className={linkClass}>
+            <a href={`${MARKETING_URL}`} className={linkClass}>
               Home
             </a>
             {user ? <AuthLinks /> : <GuestLinks />}
@@ -134,7 +136,7 @@ export const Navigation = () => {
 
         <nav className={`nav-mobile ${open ? 'open' : ''}`} aria-label="Mobile navigation">
           {/* Mobile nav items... reusing AuthLinks components logic lightly or duplicating */}
-          <a href="http://localhost:5177" className={linkClass} onClick={toggleMenu}>
+          <a href={`${MARKETING_URL}`} className={linkClass} onClick={toggleMenu}>
             Home
           </a>
           {user ? (
@@ -183,15 +185,15 @@ export const Navigation = () => {
             </>
           ) : (
             <>
-              <NavLink to="/features" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              <a href={`${MARKETING_URL}/features`} className={linkClass} onClick={toggleMenu}>
                 Features
-              </NavLink>
-              <NavLink to="/pricing" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              </a>
+              <a href={`${MARKETING_URL}/pricing`} className={linkClass} onClick={toggleMenu}>
                 Pricing
-              </NavLink>
-              <NavLink to="/about" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
+              </a>
+              <a href={`${MARKETING_URL}/about`} className={linkClass} onClick={toggleMenu}>
                 About
-              </NavLink>
+              </a>
               <NavLink to="/login" className={({ isActive }) => (isActive ? activeClass : linkClass)} onClick={toggleMenu}>
                 Login
               </NavLink>

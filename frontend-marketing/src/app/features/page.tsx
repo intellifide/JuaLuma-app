@@ -15,6 +15,7 @@
 'use client'
 
 import { motion } from '@/lib/motion'
+import { APP_URL } from '@/lib/constants'
 
 const featureStories = [
   {
@@ -243,7 +244,7 @@ export default function Features() {
           <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-8">
             Start free, connect what you already use, and evaluate how quickly JuaLuma turns disconnected records into a coherent strategy.
           </p>
-          <a href="http://localhost:5175/signup" className="btn btn-lg">
+          <a href={`${APP_URL}/signup`} className="btn btn-lg">
             Start Exploring Features
           </a>
         </div>
