@@ -9,6 +9,7 @@ on:
 jobs:
   backend-quality:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'backend/') || contains(github.event.head_commit.added, 'backend/')
     defaults:
       run:
         working-directory: ./backend
@@ -21,40 +22,24 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r ../requirements.txt
-      - name: Lint with Ruff (Enforcing v0.8.4 & Complexity)
+          if [ -f ../requirements.txt ]; then pip install -r ../requirements.txt; fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install ruff mypy pytest httpx
+      - name: Lint with Ruff
         run: ruff check .
       - name: Type check with mypy
         run: mypy .
-
-  backend-test:
-    needs: backend-quality
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-    env:
-      DATABASE_URL: "sqlite:///./test.db"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r ../requirements.txt
-          pip install pytest httpx
       - name: Run tests
-        # Assuming .env.test or similar isn't strictly needed for unit tests if mocks are used
+        env:
+          DATABASE_URL: "sqlite:///./test.db"
         run: pytest
 
-  frontend-quality:
+  frontend-app:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'frontend-app/') || contains(github.event.head_commit.added, 'frontend-app/')
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./frontend-app
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -62,20 +47,22 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend-app/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Lint with ESLint
+      - name: Lint
         run: npm run lint
       - name: Type check
         run: npx tsc --noEmit
+      - name: Test
+        run: npm run test
 
-  frontend-test:
-    needs: frontend-quality
+  frontend-marketing:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'frontend-marketing/') || contains(github.event.head_commit.added, 'frontend-marketing/')
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./frontend-marketing
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -83,8 +70,33 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend-marketing/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Run tests
+      - name: Lint
+        run: npm run lint
+      - name: Build check
+        run: npm run build
+
+  support-portal:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'support-portal/') || contains(github.event.head_commit.added, 'support-portal/')
+    defaults:
+      run:
+        working-directory: ./support-portal
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: support-portal/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npx tsc -b
+      - name: Test
         run: npm run test

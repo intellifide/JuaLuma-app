@@ -9,5 +9,15 @@ steps:
         "support-portal/Dockerfile",
         ".",
       ]
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "jualuma-support"
+      - "--image"
+      - "us-central1-docker.pkg.dev/jualuma-dev/jualuma-repo/support-portal:latest"
+      - "--region"
+      - "us-central1"
 images:
   - "us-central1-docker.pkg.dev/jualuma-dev/jualuma-repo/support-portal:latest"
