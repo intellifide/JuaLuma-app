@@ -1,15 +1,17 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, func
+from sqlalchemy.orm import Session
 
 from backend.models import Transaction, get_session
 from backend.services.ai import get_ai_client
+from backend.utils.rls import set_db_user_context
 
 logger = logging.getLogger(__name__)
 
 
-async def get_rag_context(user_id: str, query: str) -> str:
+async def get_rag_context(user_id: str, query: str, db: Session | None = None) -> str:
     """
     Retrieves relevant transactions for RAG context injection.
     """
@@ -17,17 +19,22 @@ async def get_rag_context(user_id: str, query: str) -> str:
         return ""
 
     try:
-        # 1. Embed query
-        client = get_ai_client()
-        query_embedding = await client.embed_text(query)
-
-        if not query_embedding:
-            logger.warning("Failed to generate embedding for query.")
-            return ""
+        # 1. Embed query (Delegated to Cloud SQL)
+        # client = get_ai_client()
+        # query_embedding = await client.embed_text(query)
+        # if not query_embedding:
+        #     logger.warning("Failed to generate embedding for query.")
+        #     return ""
 
         # 2. Search DB
-        session_gen = get_session()
-        db = next(session_gen)
+        local_session = False
+        if db is None:
+            session_gen = get_session()
+            db = next(session_gen)
+            local_session = True
+        
+        # Ensure RLS context is set
+        set_db_user_context(db, user_id)
 
         try:
             thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
@@ -41,7 +48,9 @@ async def get_rag_context(user_id: str, query: str) -> str:
                     Transaction.ts >= thirty_days_ago,
                     Transaction.embedding.is_not(None),
                 )
-                .order_by(Transaction.embedding.cosine_distance(query_embedding))
+                .order_by(Transaction.embedding.cosine_distance(
+                    func.embedding('text-embedding-004', query)
+                ))
                 .limit(5)
             )
 
@@ -61,7 +70,8 @@ async def get_rag_context(user_id: str, query: str) -> str:
             return "\n".join(context_lines)
 
         finally:
-            db.close()
+            if local_session:
+                db.close()
 
     except Exception as e:
         logger.error(f"Error retrieving RAG context: {e}")

@@ -10,6 +10,7 @@ from sqlalchemy import func, or_
 from backend.models import Subscription, User, UserSession
 from backend.services.auth import verify_token
 from backend.utils import get_db
+from backend.utils.rls import set_db_user_context
 
 _plan_rank = {"free": 0, "essential": 1, "pro": 2, "ultimate": 3}
 _MFA_EXEMPT_PATH_PREFIXES = (
@@ -67,6 +68,9 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid session data.",
         )
+
+    # Set RLS context for the session
+    set_db_user_context(db, uid)
 
     user = db.query(User).filter(User.uid == uid).first()
     if not user:

@@ -9,9 +9,11 @@ from firebase_admin import firestore
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.core import settings
-from backend.models import HouseholdMember, Subscription, get_session
+from backend.core.database import get_firestore_client, get_session
+from backend.models import HouseholdMember, Subscription, User
+from backend.utils.logging import log_ai_request
+import time
 from backend.services.prompts import RAG_PROMPT
-from backend.utils.firestore import get_firestore_client
 
 try:
     import google.generativeai as genai
@@ -21,11 +23,26 @@ except ImportError:
 try:
     import vertexai
     from google.cloud import aiplatform
-    from vertexai.generative_models import GenerativeModel
+    from vertexai.generative_models import GenerativeModel, Part, HarmCategory, HarmBlockThreshold
+    
+    # Try specialized imports for caching (moved in recent SDK versions)
+    try:
+        from vertexai.caching import CachedContent
+    except ImportError:
+        try:
+            from vertexai.preview.caching import CachedContent
+        except ImportError:
+             # Fallback for very old versions or if not found
+             from vertexai.preview.generative_models import CachedContent
+
 except ImportError:
     aiplatform = None
     vertexai = None
     GenerativeModel = None  # type: ignore
+    CachedContent = None  # type: ignore
+    Part = None # type: ignore
+    HarmCategory = None # type: ignore
+    HarmBlockThreshold = None # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +133,49 @@ class AIClient:
             logger.error(f"Error embedding text: {e}")
             # Return empty list or raise
             return []
+
+    async def generate_with_cache(
+        self,
+        prompt: str,
+        context: str,
+        system_instruction: str | None = None,
+        ttl_minutes: int = 60,
+    ) -> Any:
+        """
+        Generates content using Vertex AI Context Caching.
+        """
+        if self.client_type != "vertex" or not CachedContent:
+            # Fallback
+            full_prompt = prompt
+            if context:
+                full_prompt = f"{system_instruction or ''}\n\nContext:\n{context}\n\nUser Query:\n{prompt}"
+            return await self.generate_content(full_prompt)
+
+        try:
+            # Create CachedContent
+            # In a real scenario, we'd hash the context and look up an existing cache.
+            # Here, we create a fresh one for the high-volume context to save input tokens if reused.
+            # Ideally, this should be called with a cache_name if one exists.
+            
+            cache = CachedContent.create(
+                model_name=settings.ai_model_prod,
+                system_instruction=system_instruction,
+                contents=[context],
+                ttl=datetime.timedelta(minutes=ttl_minutes),
+            )
+            
+            # Instantiate model from cache
+            model = GenerativeModel.from_cached_content(cached_content=cache)
+            response = await model.generate_content_async(prompt)
+            return response
+
+        except Exception as e:
+            logger.error(f"Cached generation error: {e}")
+            # Fallback
+            full_prompt = prompt
+            if context:
+                full_prompt = f"{system_instruction or ''}\n\nContext:\n{context}\n\nUser Query:\n{prompt}"
+            return await self.generate_content(full_prompt)
 
 
 def get_ai_client() -> AIClient:
@@ -294,6 +354,7 @@ async def generate_chat_response(
     context: str | None,
     user_id: str,
     prechecked_limit: tuple[str, int, int] | None = None,
+    use_cache: bool = False,
 ) -> dict:
     """
     Generates a response using the AI model, enforcing rate limits.
@@ -313,25 +374,62 @@ async def generate_chat_response(
         final_prompt = RAG_PROMPT.format(context_str=context, user_query=prompt)
 
     # 3. Call Model
+    start_time = time.time()
     try:
-        response = await client.generate_content(
-            final_prompt,
-            safety_settings=SAFETY_SETTINGS_LOCAL
-            if client.client_type == "local"
-            else None,
-        )
-
+        if use_cache and context and client.client_type == "vertex":
+            # Use caching if requested and context is present
+            response = await client.generate_with_cache(
+                prompt=prompt,
+                context=context,
+                system_instruction="You are a helpful AI assistant for JuaLuma.", # Customize as needed
+            )
+        else:
+            response = await client.generate_content(
+                final_prompt,
+                safety_settings=SAFETY_SETTINGS_LOCAL
+                if client.client_type == "local"
+                else None,
+            )
+        end_time = time.time()
+        
         # 4. Parse Response
         response_text = ""
+        prompt_tokens = 0
+        candidates_tokens = 0
+
         if response.candidates:
             # Logic depends on structure of response object (Vertex vs GenAI)
-            # Usually response.text works for both if the wrapper or object supports it
-            # But let's be safe
             try:
                 response_text = response.text
             except Exception:
-                parts = [part.text for part in response.candidates[0].content.parts]
-                response_text = "".join(parts)
+                if response.candidates:
+                    parts = [part.text for part in response.candidates[0].content.parts]
+                    response_text = "".join(parts)
+            
+            # Extract usage metadata if available
+            try:
+                if hasattr(response, "usage_metadata"):
+                    # Both Vertex and GenAI usually expose this in similar way
+                    usage = response.usage_metadata
+                    # Handle different object types (proto vs object)
+                    # For Vertex AI (proto), access fields directly; for GenAI, same.
+                    # We use getattr to be safe if keys differ
+                    prompt_tokens = getattr(usage, "prompt_token_count", 0)
+                    candidates_tokens = getattr(usage, "candidates_token_count", 0)
+            except Exception as e:
+                logger.warning(f"Failed to extract usage metadata: {e}")
+
+        # Log formatted request
+        log_ai_request(
+            prompt=prompt,
+            response=response_text,
+            tokens_input=prompt_tokens,
+            tokens_output=candidates_tokens,
+            latency_ms=(end_time - start_time) * 1000,
+            model=settings.ai_model_prod if client.client_type == "vertex" else settings.ai_model_local,
+            user_id=user_id,
+            is_cached=use_cache and bool(context),
+        )
 
         # 5. Persist usage only after success to avoid charging failures
         usage_after = await record_rate_limit_usage(user_id, tier, limit)

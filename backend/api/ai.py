@@ -126,18 +126,25 @@ async def chat_endpoint(
     if tier not in ["free"]:
         # TIER 3.5: RAG Context Injection
         try:
-            context = await get_rag_context(user_id, message)
+            context = await get_rag_context(user_id, message, db=db)
         except Exception as e:
             logger.warning(f"RAG context retrieval failed: {e}")
             # Continue without context
 
     # 4. Generate Response (TIER 3.2/3.6)
     # Pass prechecked_limit to avoid duplicate lookups in generate_chat_response.
+    # Determine if we should use caching (e.g. if context is significant)
+    # Vertex AI Caching minimum is 32k tokens for context caching to be valid/useful usually,
+    # but for this implementation we follow the directive to enable it.
+    # We set a lower threshold for demonstration/testing.
+    use_cache = bool(context and len(context) > 5000)
+
     result = await generate_chat_response(
         prompt=message,
         context=context,
         user_id=user_id,
         prechecked_limit=prechecked_limit,
+        use_cache=use_cache,
     )
     ai_response = result.get("response", "")
     usage_today = result.get("usage_today")

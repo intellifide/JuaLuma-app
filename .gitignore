@@ -145,3 +145,4 @@ firebase_data/
 .tmp.driveupload/
 
 .gcp-key.json
+cloud-sql-proxy
