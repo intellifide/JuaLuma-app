@@ -151,10 +151,9 @@ This document outlines the complete technology stack for the jualuma financial a
 
 ### API Testing
 
-- **Postman**: API collection management and testing
-  - Newman CLI: Headless collection execution for CI/CD
-  - API Key: Configured in `.env`
-  - Collections: Exported to repository for version control
+- **pytest + httpx**: Backend API integration tests
+  - CI/CD: Automated test execution in GitHub Actions
+  - Coverage: Codecov reporting
 
 ---
 
@@ -221,9 +220,9 @@ This document outlines the complete technology stack for the jualuma financial a
 
 ### API Testing
 
-- **Postman + Newman**: Collection-based API testing
-  - Local: Manual collection runs
-  - CI/CD: Newman CLI execution
+- **pytest + httpx**: Integration and E2E API testing
+  - Local: `pytest backend/` for local test runs
+  - CI/CD: Automated via GitHub Actions
 
 ### Email Testing
 
@@ -276,8 +275,8 @@ This document outlines the complete technology stack for the jualuma financial a
 
 ### Testing
 
-1. **Postman**: API endpoint testing with collections
-2. **Newman**: Automated collection runs in CI/CD
+1. **pytest + httpx**: API endpoint and integration testing
+2. **Cloud Monitoring**: Production uptime checks and alerting
 3. **Testmail**: Email flow validation
 
 ### CI/CD
@@ -293,7 +292,7 @@ This document outlines the complete technology stack for the jualuma financial a
 ### CLI/API-Driven Tools (No GUI Required)
 
 - ✅ **GitHub Actions**: CI/CD via workflows
-- ✅ **Postman/Newman**: CLI execution
+- ✅ **Cloud Monitoring**: Uptime checks and alerting
 - ✅ **Stripe CLI/MCP**: Terminal commands and MCP server
 - ✅ **Testmail**: API-based email testing
 - ✅ **Codecov**: CI integration (status checks only)

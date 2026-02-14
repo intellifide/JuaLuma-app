@@ -1396,7 +1396,7 @@ def dev_bootstrap_user(
     """
     LOCAL/TEST ONLY: Ensure a User row exists for the authenticated identity.
 
-    This exists to support deterministic API smoke tests (e.g., Postman collections)
+    This exists to support deterministic API smoke tests (e.g., automated CI collections)
     without requiring OTP + browser flows.
     """
     if settings.app_env.lower() not in {"local", "test"}:
