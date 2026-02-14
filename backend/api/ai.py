@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from backend.middleware.auth import get_current_user
 from backend.models import LLMLog, Subscription, User
 from backend.services.ai import TIER_LIMITS, check_rate_limit, generate_chat_response
-from backend.services.rag import get_rag_context
+from backend.services.financial_context import get_financial_context
 from backend.utils import get_db
 
 # Import encryption utils (TIER 3.4)
@@ -126,7 +126,7 @@ async def chat_endpoint(
     if tier not in ["free"]:
         # TIER 3.5: RAG Context Injection
         try:
-            context = await get_rag_context(user_id, message, db=db)
+            context = await get_financial_context(user_id, message, db=db)
         except Exception as e:
             logger.warning(f"RAG context retrieval failed: {e}")
             # Continue without context

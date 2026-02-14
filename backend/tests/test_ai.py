@@ -17,7 +17,7 @@ def mock_ai_services():
         patch(
             "backend.api.ai.generate_chat_response", new_callable=AsyncMock
         ) as mock_gen,
-        patch("backend.api.ai.get_rag_context", new_callable=AsyncMock) as mock_rag,
+        patch("backend.api.ai.get_financial_context", new_callable=AsyncMock) as mock_rag,
         patch("backend.api.ai.encrypt_prompt") as mock_encrypt,
         patch("backend.api.ai.decrypt_prompt") as mock_decrypt,
     ):
@@ -51,9 +51,11 @@ def test_chat_success(test_client: TestClient, test_db, mock_auth, mock_ai_servi
 
     # Verify calls
     mock_ai_services["check_rate_limit"].assert_called_once_with(mock_auth.uid)
-    mock_ai_services["get_rag_context"].assert_called_once_with(
-        mock_auth.uid, "Hello AI"
-    )
+    mock_ai_services["get_rag_context"].assert_called_once()
+    actual_args = mock_ai_services["get_rag_context"].call_args
+    assert actual_args.args[0] == mock_auth.uid
+    assert actual_args.args[1] == "Hello AI"
+
     mock_ai_services["generate_chat_response"].assert_called_once()
     mock_ai_services[
         "encrypt_prompt"
