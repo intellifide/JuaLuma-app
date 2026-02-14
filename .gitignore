@@ -42,6 +42,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.next/
+out/
 lerna-debug.log*
 
 # Environment variables
@@ -81,6 +83,10 @@ override.tf.json
 *~
 .cursor/
 .cursorrules
+.agent/
+.claude/
+.gemini/
+.github/workflows/
 
 # Docker
 docker-compose.override.yml
@@ -137,9 +143,12 @@ notes.md
 # Agent artifacts
 .codex/
 .antigravity/
+.aider/
 
 # Debug scripts
 scripts/debug_*.py
+data/
+firebase_data/
 
 firebase_data/
 .tmp.driveupload/
