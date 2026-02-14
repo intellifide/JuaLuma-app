@@ -9,8 +9,8 @@ from firebase_admin import firestore
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.core import settings
-from backend.core.database import get_firestore_client, get_session
-from backend.models import HouseholdMember, Subscription, User
+from backend.models import HouseholdMember, Subscription, User, get_session
+from backend.utils.firestore import get_firestore_client
 from backend.utils.logging import log_ai_request
 import time
 from backend.services.prompts import RAG_PROMPT
