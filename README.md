@@ -39,15 +39,16 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
    - Create `.env` at the repo root with values for `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, and any API keys (see `docker-compose.yml` for expected variables).
    - Web3 indexer keys and base URLs are documented in `docs/Web3-History-Providers.md`.
 3. **Start stack**
+
    ```bash
    docker compose up -d --build
    ```
+
    Services:
    - Backend API: http://localhost:8001
    - Frontend: http://localhost:5175
    - Postgres: localhost:5433
-   - Firebase emulators: Firestore 8080, Auth 9099, UI 4000
-   - Pub/Sub emulator: 8085
+
 4. **Agent Setup (MCP)**
    - Configure the IDE to connect to the **Postgres MCP** (`localhost:5433`) and other MCP servers (see details in `docs/Master App Dev Guide.md`).
 

@@ -1,4 +1,5 @@
-# Updated 2025-12-07 21:02 CST by ChatGPT
+# Updated 2026-02-14 06:00 CST by Agent
+# Local Docker services are deprecated but kept for reference logic without emulators.
 
 services:
   backend:
@@ -11,19 +12,15 @@ services:
       APP_ENV: local
       API_PORT: 8001
       DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
-      FIREBASE_EMULATOR_ENABLED: "true"
-      FIRESTORE_EMULATOR_HOST: jualuma-firebase-emulator:8080
-      FIREBASE_AUTH_EMULATOR_HOST: jualuma-firebase-emulator:9099
-      FIREBASE_PROJECT_ID: jualuma-local
-      PUBSUB_EMULATOR_ENABLED: "true"
-      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      FIREBASE_EMULATOR_ENABLED: "false"
+      PUBSUB_EMULATOR_ENABLED: "false"
       ENCRYPTION_PROVIDER: ${ENCRYPTION_PROVIDER:-local}
       LOCAL_ENCRYPTION_KEY: ${LOCAL_ENCRYPTION_KEY:-local-dev-key-change-me}
       SECRET_PROVIDER: ${SECRET_PROVIDER:-file}
       LOCAL_SECRET_STORE_PATH: ${LOCAL_SECRET_STORE_PATH:-/app/data/local_secret_store.json}
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-jualuma-local}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-jualuma-dev}
       GCP_KMS_KEY_NAME: ${GCP_KMS_KEY_NAME:-}
-      GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT_ID:-jualuma-local}
+      GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT_ID:-jualuma-dev}
       ENABLE_AI_GATEWAY: "false"
       BACKEND_CORS_ORIGINS: "http://localhost:5175,http://localhost:5176,http://localhost:5177"
 
@@ -32,8 +29,6 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
-      firebase-emulator:
-        condition: service_started
     ports:
       - "8001:8001"
     volumes:
@@ -56,7 +51,6 @@ services:
       VITE_API_TARGET: http://backend:8001
     depends_on:
       - backend
-      - firebase-emulator
     ports:
       - "5175:5175"
     volumes:
@@ -129,13 +123,9 @@ services:
     environment:
       APP_ENV: local
       DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
-      FIREBASE_EMULATOR_ENABLED: "true"
-      FIRESTORE_EMULATOR_HOST: jualuma-firebase-emulator:8080
-      FIREBASE_AUTH_EMULATOR_HOST: jualuma-firebase-emulator:9099
-      FIREBASE_PROJECT_ID: jualuma-local
-      PUBSUB_EMULATOR_ENABLED: "true"
-      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
-      GCP_PROJECT_ID: jualuma-local
+      FIREBASE_EMULATOR_ENABLED: "false"
+      PUBSUB_EMULATOR_ENABLED: "false"
+      GCP_PROJECT_ID: jualuma-dev
       ENABLE_AI_GATEWAY: "false"
     depends_on:
       postgres:
@@ -146,51 +136,8 @@ services:
     networks:
       - jualuma-network
 
-  # Firebase Emulator Suite
-  firebase-emulator:
-    image: node:20-bullseye
-    container_name: jualuma-firebase-emulator
-    working_dir: /workspace
-    restart: unless-stopped
-
-    stop_grace_period: 30s
-    ports:
-      - "8080:8080" # Firestore
-      - "9099:9099" # Auth
-      - "4000:4000" # Emulator UI
-    volumes:
-      - ./firebase.json:/workspace/firebase.json
-      - ./firestore.rules:/workspace/firestore.rules
-      - ./firestore.indexes.json:/workspace/firestore.indexes.json
-      - ./firebase_data:/workspace/.firebase
-    networks:
-      - jualuma-network
-    environment:
-      - FIRESTORE_EMULATOR_HOST=0.0.0.0:8080
-      - FIREBASE_AUTH_EMULATOR_HOST=0.0.0.0:9099
-    stop_signal: SIGINT
-    command: >
-      bash -c "
-        apt-get update && apt-get install -y openjdk-17-jre-headless &&
-        npm install -g firebase-tools@13 &&
-        exec firebase emulators:start --only firestore,auth --project jualuma-local --import=/workspace/.firebase/data --export-on-exit --config=/workspace/firebase.json
-      "
-  # Pub/Sub Emulator
-  pubsub-emulator:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
-    container_name: jualuma-pubsub-emulator
-    command: >
-      gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
-    ports:
-      - "8085:8085"
-    networks:
-      - jualuma-network
-    environment:
-      - PUBSUB_EMULATOR_HOST=0.0.0.0:8085
-
 volumes:
   postgres_data:
-  firebase_data:
 
 networks:
   jualuma-network:

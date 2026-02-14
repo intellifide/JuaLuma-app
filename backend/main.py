@@ -19,7 +19,10 @@ from backend.api.auth import router as auth_router
 from backend.api.billing import router as billing_router
 from backend.api.budgets import router as budgets_router
 from backend.api.developers import router as developers_router
+from backend.api.digests import router as digests_router
+from backend.api.documents import router as documents_router
 from backend.api.household import router as household_router
+from backend.api.jobs import router as jobs_router
 from backend.api.legal import router as legal_router
 from backend.api.manual_assets import router as manual_assets_router
 from backend.api.notifications import router as notifications_router
@@ -32,13 +35,8 @@ from backend.api.transactions import router as transactions_router
 from backend.api.users import router as users_router
 from backend.api.webhooks import router as webhooks_router
 from backend.api.widgets import router as widgets_router
-from backend.api.documents import router as documents_router
-from backend.api.digests import router as digests_router
-from backend.api.jobs import router as jobs_router
 from backend.core import configure_logging, settings
 from backend.core.events import initialize_events
-from backend.models import SessionLocal
-from backend.services.pending_signup_cleanup import cleanup_stale_pending_signups
 
 # MCP Imports
 from backend.mcp_server import mcp
@@ -47,7 +45,9 @@ from backend.middleware import (
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
 )
+from backend.models import SessionLocal
 from backend.models.base import engine
+from backend.services.pending_signup_cleanup import cleanup_stale_pending_signups
 from backend.utils import get_db  # noqa: F401 - imported for dependency wiring
 
 configure_logging(service_name=settings.service_name)
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
         return
 
     try:
-        # Initialize Pub/Sub topics if running with emulator
+        # Initialize Pub/Sub events (Idempotent)
         await asyncio.to_thread(initialize_events)
     except Exception as e:
         logger.error(f"Failed to initialize event bus: {e}")
@@ -264,7 +264,7 @@ async def validation_exception_handler(
         elif "string_too_long" in err.get("type", ""):
             max_len = err.get("ctx", {}).get("max_length", "?")
             msg = f"must be at most {max_len} characters long"
-        
+
         friendly_message = f"Invalid {field}: {msg}" if field else f"Invalid input: {msg}"
     else:
         friendly_message = "Invalid request data."
@@ -307,6 +307,122 @@ async def root():
     }
 
 
+async def _probe_db_health(checks: dict):
+    def _do_probe():
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+
+    try:
+        await asyncio.to_thread(_do_probe)
+        checks["database"] = "connected"
+    except Exception as exc:
+        checks["database"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Database health check failed: {exc}")
+        return False
+    return True
+
+
+async def _probe_firestore_health(checks: dict):
+    if not settings.firestore_healthcheck_enabled:
+        return True
+    try:
+        from backend.utils.firestore import get_firestore_client
+
+        client = await asyncio.to_thread(get_firestore_client)
+
+        def _do_probe():
+            it = iter(client.collections())
+            try:
+                next(it)
+            except StopIteration:
+                pass
+
+        await asyncio.to_thread(_do_probe)
+        checks["firestore"] = "connected"
+    except Exception as exc:
+        checks["firestore"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Firestore health check failed: {exc}")
+        return False
+    return True
+
+
+async def _probe_plaid_health(checks: dict):
+    try:
+        from backend.services.plaid import get_plaid_client
+
+        pc = get_plaid_client()
+        await asyncio.to_thread(pc.categories_get, {})
+        checks["plaid"] = "connected"
+    except Exception as exc:
+        checks["plaid"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Plaid health check failed: {exc}")
+        return False
+    return True
+
+
+async def _probe_ai_health(checks: dict):
+    try:
+        from backend.services.ai import get_ai_client
+
+        ac = get_ai_client()
+        if ac and ac.model:
+            checks["ai_assistant"] = "connected"
+        else:
+            checks["ai_assistant"] = "initialization_failed"
+            return False
+    except Exception as exc:
+        checks["ai_assistant"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"AI Assistant health check failed: {exc}")
+        return False
+    return True
+
+
+async def _probe_web3_health(checks: dict):
+    try:
+        from web3 import HTTPProvider, Web3
+
+        w3 = Web3(HTTPProvider(settings.eth_rpc_url))
+        if await asyncio.to_thread(w3.is_connected):
+            checks["web3"] = "connected"
+        else:
+            checks["web3"] = "disconnected"
+            return False
+    except Exception as exc:
+        checks["web3"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Web3 health check failed: {exc}")
+        return False
+    return True
+
+
+async def _probe_cex_health(checks: dict):
+    try:
+        import ccxt
+
+        binance = ccxt.binance()
+        await asyncio.to_thread(binance.fetch_time)
+        checks["cex"] = "connected"
+    except Exception as exc:
+        checks["cex"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"CEX health check failed: {exc}")
+        return False
+    return True
+
+
+async def _probe_marketplace_health(checks: dict):
+    def _do_probe():
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1 FROM widgets LIMIT 1"))
+
+    try:
+        await asyncio.to_thread(_do_probe)
+        checks["marketplace"] = "connected"
+    except Exception as exc:
+        checks["marketplace"] = f"error:{exc.__class__.__name__}"
+        logger.error(f"Marketplace health check failed: {exc}")
+        return False
+    return True
+
+
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
@@ -314,109 +430,20 @@ async def health_check():
     Active health probe for orchestrators and local dev tooling.
     """
     checks: dict[str, str] = {}
-    overall_healthy = True
 
-    # Database connectivity
-    def _probe_db() -> None:
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
+    results = await asyncio.gather(
+        _probe_db_health(checks),
+        _probe_firestore_health(checks),
+        _probe_plaid_health(checks),
+        _probe_ai_health(checks),
+        _probe_web3_health(checks),
+        _probe_cex_health(checks),
+        _probe_marketplace_health(checks),
+    )
 
-    try:
-        await asyncio.to_thread(_probe_db)
-        checks["database"] = "connected"
-    except Exception as exc:  # pragma: no cover - defensive logging
-        overall_healthy = False
-        checks["database"] = f"error:{exc.__class__.__name__}"
-        logger.exception("Database health check failed.")
-
-    # Firestore connectivity (emulator or production)
-    if settings.firestore_healthcheck_enabled:
-        try:
-            from backend.utils.firestore import get_firestore_client
-            client = await asyncio.to_thread(get_firestore_client)
-            def _probe_firestore() -> None:
-                iterator = iter(client.collections())
-                try:
-                    next(iterator)
-                except StopIteration:
-                    pass
-            await asyncio.to_thread(_probe_firestore)
-            checks["firestore"] = "connected"
-        except Exception as exc:
-            overall_healthy = False
-            checks["firestore"] = f"error:{exc.__class__.__name__}"
-            logger.exception("Firestore health check failed.")
-
-    # Plaid Connectivity
-    try:
-        from backend.services.plaid import get_plaid_client
-        plaid_client = get_plaid_client()
-        # categories_get is a free, unauthenticated endpoint to verify API reachability
-        await asyncio.to_thread(plaid_client.categories_get, {})
-        checks["plaid"] = "connected"
-    except Exception as exc:
-        overall_healthy = False
-        checks["plaid"] = f"error:{exc.__class__.__name__}"
-        logger.error(f"Plaid health check failed: {exc}")
-
-    # AI Assistant (Gemini) Connectivity
-    try:
-        from backend.services.ai import get_ai_client
-        ai_client = get_ai_client()
-        # Verify model object exists and client initialized
-        if ai_client and ai_client.model:
-            checks["ai_assistant"] = "connected"
-        else:
-            overall_healthy = False
-            checks["ai_assistant"] = "initialization_failed"
-    except Exception as exc:
-        overall_healthy = False
-        checks["ai_assistant"] = f"error:{exc.__class__.__name__}"
-        logger.error(f"AI Assistant health check failed: {exc}")
-
-    # Web3 Connectivity (ETH RPC)
-    try:
-        from web3 import Web3, HTTPProvider
-        w3 = Web3(HTTPProvider(settings.eth_rpc_url))
-        if await asyncio.to_thread(w3.is_connected):
-            checks["web3"] = "connected"
-        else:
-            overall_healthy = False
-            checks["web3"] = "disconnected"
-    except Exception as exc:
-        overall_healthy = False
-        checks["web3"] = f"error:{exc.__class__.__name__}"
-        logger.error(f"Web3 health check failed: {exc}")
-
-    # CEX Connectivity (CCXT)
-    try:
-        import ccxt
-        # Minimal check: ensure ccxt can hit a public endpoint (e.g. Binance time)
-        binance = ccxt.binance()
-        await asyncio.to_thread(binance.fetch_time)
-        checks["cex"] = "connected"
-    except Exception as exc:
-        overall_healthy = False
-        checks["cex"] = f"error:{exc.__class__.__name__}"
-        logger.error(f"CEX health check failed: {exc}")
-
-    # Marketplace Connectivity
-    try:
-        # Marketplace relies on DB and API, but we check for Widget existence as a probe
-        def _probe_marketplace() -> None:
-            with engine.connect() as connection:
-                connection.execute(text("SELECT 1 FROM widgets LIMIT 1"))
-        
-        await asyncio.to_thread(_probe_marketplace)
-        checks["marketplace"] = "connected"
-    except Exception as exc:
-        overall_healthy = False
-        checks["marketplace"] = f"error:{exc.__class__.__name__}"
-        logger.error(f"Marketplace health check failed: {exc}")
-
-    overall_status = "healthy" if overall_healthy else "degraded"
-    payload = {"status": overall_status, **checks}
-    return JSONResponse(content=payload, status_code=status.HTTP_200_OK)
+    overall_healthy = all(results)
+    status_str = "healthy" if overall_healthy else "degraded"
+    return JSONResponse(content={"status": status_str, **checks}, status_code=200)
 
 
 if __name__ == "__main__":

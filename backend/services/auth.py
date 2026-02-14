@@ -1,6 +1,5 @@
 # Updated 2025-12-19 12:20 CST by Antigravity
 import logging
-import os
 from typing import Any
 
 import firebase_admin
@@ -34,31 +33,8 @@ def _get_firebase_app() -> firebase_admin.App:
     if _firebase_app:
         return _firebase_app
 
-    if settings.is_local:
-        if settings.resolved_auth_emulator_host:
-            os.environ.setdefault(
-                "FIREBASE_AUTH_EMULATOR_HOST", settings.resolved_auth_emulator_host
-            )
-        if settings.resolved_firestore_host:
-            os.environ.setdefault(
-                "FIRESTORE_EMULATOR_HOST", settings.resolved_firestore_host
-            )
-        os.environ.setdefault("FIREBASE_PROJECT_ID", settings.firebase_project_id)
-
-    if os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
-        logger.info(
-            "Initializing Firebase Auth with Emulator",
-            extra={
-                "auth_host": settings.resolved_auth_emulator_host,
-                "project": settings.firebase_project_id,
-            },
-        )
-        _firebase_app = firebase_admin.initialize_app(
-            options={"projectId": settings.firebase_project_id}
-        )
-    else:
-        logger.info("Initializing Firebase Auth with Production/ADC Credentials")
-        _firebase_app = firebase_admin.initialize_app()
+    logger.info("Initializing Firebase Auth with Production/ADC Credentials")
+    _firebase_app = firebase_admin.initialize_app()
 
     return _firebase_app
 
@@ -81,9 +57,9 @@ def verify_token(token: str) -> dict[str, Any]:
 
 
 def create_user_record(
-    db: Session, 
-    *, 
-    uid: str, 
+    db: Session,
+    *,
+    uid: str,
     email: str,
     first_name: str | None = None,
     last_name: str | None = None,
@@ -167,11 +143,6 @@ def _get_auth_url(action: str) -> str:
     """Return the Firebase Auth REST API URL."""
     api_key = settings.firebase_api_key or "fake-key"
     base = "https://identitytoolkit.googleapis.com/v1"
-
-    if settings.is_local and settings.resolved_auth_emulator_host:
-        # Emulator override
-        host = settings.resolved_auth_emulator_host
-        return f"http://{host}/identitytoolkit.googleapis.com/v1/accounts:{action}?key={api_key}"
 
     return f"{base}/accounts:{action}?key={api_key}"
 

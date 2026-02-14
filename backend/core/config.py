@@ -54,21 +54,8 @@ class AppSettings(BaseSettings):
         default=None, alias="GOOGLE_CLOUD_PROJECT"
     )
     firebase_api_key: str | None = Field(default=None, alias="VITE_FIREBASE_API_KEY")
-    firebase_emulator_enabled: bool | None = Field(
-        default=None, alias="FIREBASE_EMULATOR_ENABLED"
-    )
-    firebase_auth_emulator_host: str | None = Field(
-        default=None, alias="FIREBASE_AUTH_EMULATOR_HOST"
-    )
-    firestore_emulator_host: str | None = Field(
-        default=None, alias="FIRESTORE_EMULATOR_HOST"
-    )
     firestore_healthcheck_enabled: bool = Field(
         default=False, alias="FIRESTORE_HEALTHCHECK_ENABLED"
-    )
-    pubsub_emulator_host: str | None = Field(default=None, alias="PUBSUB_EMULATOR_HOST")
-    pubsub_emulator_enabled: bool | None = Field(
-        default=None, alias="PUBSUB_EMULATOR_ENABLED"
     )
 
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
@@ -229,47 +216,7 @@ class AppSettings(BaseSettings):
 
         return [self.frontend_url]
 
-    @property
-    def resolved_auth_emulator_host(self) -> str | None:
-        if not self.firebase_emulator_enabled_effective:
-            return None
-        if self.firebase_auth_emulator_host:
-            return self.firebase_auth_emulator_host
-        if self.is_local:
-            return "localhost:9099"
-        return None
 
-    @property
-    def resolved_firestore_host(self) -> str | None:
-        if not self.firebase_emulator_enabled_effective:
-            return None
-        if self.firestore_emulator_host:
-            return self.firestore_emulator_host
-        if self.is_local:
-            return "localhost:8080"
-        return None
-
-    @property
-    def firebase_emulator_enabled_effective(self) -> bool:
-        if self.firebase_emulator_enabled is not None:
-            return self.firebase_emulator_enabled
-        return self.is_local
-
-    @property
-    def pubsub_emulator_enabled_effective(self) -> bool:
-        if self.pubsub_emulator_enabled is not None:
-            return self.pubsub_emulator_enabled
-        return self.is_local
-
-    @property
-    def resolved_pubsub_emulator_host(self) -> str | None:
-        if not self.pubsub_emulator_enabled_effective:
-            return None
-        if self.pubsub_emulator_host:
-            return self.pubsub_emulator_host
-        if self.is_local:
-            return "localhost:8085"
-        return None
 
 
 settings = AppSettings()

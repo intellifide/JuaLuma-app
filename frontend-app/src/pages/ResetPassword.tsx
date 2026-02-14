@@ -17,14 +17,12 @@ import { FormEvent, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { confirmResetPassword, requestEmailCode, verifyResetPasswordCode } from '../services/auth'
-import { authEmulatorUrl } from '../services/firebase'
 
 export const ResetPassword = () => {
   const { resetPassword } = useAuth()
   const [searchParams] = useSearchParams()
   const oobCode = searchParams.get('oobCode') || ''
   const hasResetCode = Boolean(oobCode)
-  const showAuthEmulatorNotice = Boolean(authEmulatorUrl)
   const [email, setEmail] = useState('')
   const [mfaCode, setMfaCode] = useState('')
   const [showMfa, setShowMfa] = useState(false)
@@ -159,11 +157,7 @@ export const ResetPassword = () => {
                 <p className="mb-4">
                   Enter the email tied to your jualuma account. We&apos;ll send a password reset link to help you get back in.
                 </p>
-                {showAuthEmulatorNotice && (
-                  <p className="text-sm text-slate-700">
-                    Make sure the Firebase Auth emulator is running locally so the reset flow works in development.
-                  </p>
-                )}
+
               </>
             )}
           </div>
