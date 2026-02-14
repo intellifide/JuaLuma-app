@@ -86,7 +86,7 @@ override.tf.json
 .agent/
 .claude/
 .gemini/
-.github/workflows/
+
 
 # Docker
 docker-compose.override.yml
