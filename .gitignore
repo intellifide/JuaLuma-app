@@ -155,3 +155,5 @@ firebase_data/
 
 .gcp-key.json
 cloud-sql-proxy
+scripts/test_ai_e2e.py
+scripts/test_coinbase_connection.py
