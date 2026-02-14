@@ -13,7 +13,7 @@ from backend.models import HouseholdMember, Subscription, User, get_session
 from backend.utils.firestore import get_firestore_client
 from backend.utils.logging import log_ai_request
 import time
-from backend.services.prompts import RAG_PROMPT
+from backend.services.prompts import prompt_manager
 
 try:
     import google.generativeai as genai
@@ -32,7 +32,7 @@ try:
         try:
             from vertexai.preview.caching import CachedContent
         except ImportError:
-             # Fallback for very old versions or if not found
+            # Fallback for very old versions or if not found
              from vertexai.preview.generative_models import CachedContent
 
 except ImportError:
@@ -77,21 +77,33 @@ class AIClient:
         self.model = model
 
     async def generate_content(
-        self, prompt: str, safety_settings: Any | None = None
+        self, prompt: str, safety_settings: Any | None = None, system_instruction: str | None = None
     ) -> Any:
         try:
+            # For Vertex AI, system_instruction is usually passed at Model initialization, 
+            # but for single generation, we might need to prepend it or use the chat interface.
+            # However, for simplicity and compatibility with existing 'generate_content' flow:
+            final_prompt = prompt
+            if system_instruction and self.client_type == "local":
+                 # Local GenAI often supports system_instruction in model init or config.
+                 # If not re-initializing, prepending is a safe fallback.
+                 final_prompt = f"{system_instruction}\n\n{prompt}"
+            elif system_instruction and self.client_type == "vertex":
+                 # Similar for Vertex if using basic GenerativeModel without ChatSession
+                 final_prompt = f"{system_instruction}\n\n{prompt}"
+
             if self.client_type == "local":
                 # google.generativeai
                 # Note: async generation might need to be awaited or run differently depending on version
                 # genai.GenerativeModel.generate_content_async is available in newer versions
                 response = await self.model.generate_content_async(
-                    prompt, safety_settings=safety_settings
+                    final_prompt, safety_settings=safety_settings
                 )
                 return response
             elif self.client_type == "vertex":
                 # vertexai
                 response = await self.model.generate_content_async(
-                    prompt, safety_settings=safety_settings
+                    final_prompt, safety_settings=safety_settings
                 )
                 return response
         except ResourceExhausted as e:
@@ -367,11 +379,13 @@ async def generate_chat_response(
 
     client = get_ai_client()
 
-    # 2. Prepare Prompt
-    # If context is provided, inject it.
+    # 2. Prepare Prompt & System Instructions using PromptManager
+    # Fetch dynamically from Vertex AI if available
     final_prompt = prompt
     if context:
-        final_prompt = RAG_PROMPT.format(context_str=context, user_query=prompt)
+        final_prompt = await prompt_manager.get_rag_prompt(context_str=context, user_query=prompt)
+    
+    system_instruction = await prompt_manager.get_system_instruction()
 
     # 3. Call Model
     start_time = time.time()
@@ -381,7 +395,7 @@ async def generate_chat_response(
             response = await client.generate_with_cache(
                 prompt=prompt,
                 context=context,
-                system_instruction="You are a helpful AI assistant for JuaLuma.", # Customize as needed
+                system_instruction=system_instruction,
             )
         else:
             response = await client.generate_content(
@@ -389,9 +403,10 @@ async def generate_chat_response(
                 safety_settings=SAFETY_SETTINGS_LOCAL
                 if client.client_type == "local"
                 else None,
+                system_instruction=system_instruction
             )
         end_time = time.time()
-        
+                
         # 4. Parse Response
         response_text = ""
         prompt_tokens = 0
