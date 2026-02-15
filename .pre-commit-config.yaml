@@ -21,16 +21,16 @@ repos:
         files: ^backend/.*
         pass_filenames: false
 
-      - id: frontend-lint
-        name: frontend-lint
-        entry: bash -c 'cd frontend && npm run lint'
+      - id: frontend-app-lint
+        name: frontend-app-lint
+        entry: bash -c 'cd frontend-app && npm run lint'
         language: system
-        files: ^frontend/.*\.tsx?$
+        files: ^frontend-app/.*\.tsx?$
         pass_filenames: false
 
-      - id: frontend-typecheck
-        name: frontend-typecheck
-        entry: bash -c 'cd frontend && npx tsc --noEmit'
+      - id: frontend-app-typecheck
+        name: frontend-app-typecheck
+        entry: bash -c 'cd frontend-app && npx tsc --noEmit'
         language: system
-        files: ^frontend/.*\.tsx?$
+        files: ^frontend-app/.*\.tsx?$
         pass_filenames: false

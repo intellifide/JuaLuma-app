@@ -71,4 +71,4 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
 
 ## License
 
-MIT licensed — see [LICENSE](LICENSE) for details.
+PolyForm Noncommercial 1.0.0 — see [LICENSE](LICENSE) and [PolyForm-Noncommercial-1.0.0.txt](PolyForm-Noncommercial-1.0.0.txt) for details.

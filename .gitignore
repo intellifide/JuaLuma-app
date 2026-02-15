@@ -101,6 +101,8 @@ htmlcov/
 # Logs
 logs/
 *.log
+frontend_logs.txt
+run_logs.txt
 
 # Temporary files
 tmp/

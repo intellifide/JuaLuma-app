@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -68,17 +68,19 @@ async def test_net_worth_endpoint(
     acc1 = Account(uid="test_user_123", balance=Decimal("5000.00"))
     acc2 = Account(uid="test_user_123", balance=Decimal("1000.00"))
 
+    # Use UTC-based dates so the test is deterministic regardless of host timezone.
+    utc_today = datetime.now(UTC).date()
+
     # Transactions (newest first)
-    # Today is effectively "End Date" for the query usually
     t1 = Transaction(
         uid="test_user_123",
         amount=Decimal("-100.00"),
-        ts=datetime.now(UTC) - timedelta(days=1),
+        ts=datetime.combine(utc_today - timedelta(days=1), datetime.min.time(), tzinfo=UTC) + timedelta(hours=12),
     )
     t2 = Transaction(
         uid="test_user_123",
         amount=Decimal("2000.00"),
-        ts=datetime.now(UTC) - timedelta(days=5),
+        ts=datetime.combine(utc_today - timedelta(days=5), datetime.min.time(), tzinfo=UTC) + timedelta(hours=12),
     )
 
     def query_side_effect(model):
@@ -96,8 +98,8 @@ async def test_net_worth_endpoint(
     response = await client.get(
         "/api/analytics/net-worth",
         params={
-            "start_date": (date.today() - timedelta(days=7)).isoformat(),
-            "end_date": date.today().isoformat(),
+            "start_date": (utc_today - timedelta(days=7)).isoformat(),
+            "end_date": utc_today.isoformat(),
             "interval": "daily",
         },
     )
@@ -183,6 +185,9 @@ async def test_net_worth_flat_line_repro(mock_fs, client, mock_db_session, overr
     mock_col.document.return_value.get.return_value = mock_doc
     mock_fs.return_value.collection.return_value = mock_col
 
+    # Use UTC-based dates so the test is deterministic regardless of host timezone.
+    utc_today = datetime.now(UTC).date()
+
     # Scenario: Account has 1000 balance. No transactions in last 30 days.
     acc = Account(uid="test_user_123", balance=Decimal("1000.00"))
 
@@ -200,8 +205,8 @@ async def test_net_worth_flat_line_repro(mock_fs, client, mock_db_session, overr
 
     mock_db_session.query.side_effect = query_side_effect
 
-    start_date = date.today() - timedelta(days=30)
-    end_date = date.today()
+    start_date = utc_today - timedelta(days=30)
+    end_date = utc_today
 
     response = await client.get(
         "/api/analytics/net-worth",
@@ -231,12 +236,16 @@ async def test_net_worth_one_transaction(mock_fs, client, mock_db_session, overr
     mock_col.document.return_value.get.return_value = mock_doc
     mock_fs.return_value.collection.return_value = mock_col
 
+    # Use UTC-based "today" so the test is deterministic regardless of host timezone.
+    utc_today = datetime.now(UTC).date()
+
     # Scenario: Account has 1000 balance currently.
-    # One transaction of -100 yesterday (so balance was 1100 before that).
+    # One transaction of -100 yesterday at noon UTC (so balance was 1100 before that).
     acc = Account(uid="test_user_123", balance=Decimal("1000.00"))
 
-    yesterday = datetime.now(UTC) - timedelta(days=1)
-    t1 = Transaction(uid="test_user_123", amount=Decimal("-100.00"), ts=yesterday)
+    yesterday_date = utc_today - timedelta(days=1)
+    yesterday_noon = datetime.combine(yesterday_date, datetime.min.time(), tzinfo=UTC) + timedelta(hours=12)
+    t1 = Transaction(uid="test_user_123", amount=Decimal("-100.00"), ts=yesterday_noon)
 
     # Mock DB Queries
     def query_side_effect_smart(model):
@@ -263,8 +272,8 @@ async def test_net_worth_one_transaction(mock_fs, client, mock_db_session, overr
 
     mock_db_session.query.side_effect = query_side_effect_smart
 
-    start_date = date.today() - timedelta(days=30)
-    end_date = date.today()
+    start_date = utc_today - timedelta(days=30)
+    end_date = utc_today
 
     response = await client.get(
         "/api/analytics/net-worth",
@@ -279,13 +288,20 @@ async def test_net_worth_one_transaction(mock_fs, client, mock_db_session, overr
     data = response.json()
     points = data["data"]
 
-    # Mapping dates:
-    today_str = date.today().isoformat()
-    yst_str = (date.today() - timedelta(days=1)).isoformat()
-    day_before_str = (date.today() - timedelta(days=2)).isoformat()
+    # Mapping dates (all UTC-based):
+    today_str = utc_today.isoformat()
+    yst_str = yesterday_date.isoformat()
+    day_before_str = (utc_today - timedelta(days=2)).isoformat()
 
-    val_map = {d['date']: d['value'] for d in points}
+    val_map = {d["date"]: d["value"] for d in points}
 
+    # The analytics algorithm walks backward from end_date.
+    # balance_at_end = 1000 (current account balance, no future txns).
+    # Today (end_date): 1000.
+    # Yesterday: the -100 txn has ts=yesterday noon, which is <= yesterday 23:59:59,
+    #   so it is NOT in the today→yesterday gap. Yesterday = 1000.
+    # Day before: the -100 txn ts (yesterday noon) > day_before 23:59:59,
+    #   so period_delta = -100, running_balance = 1000 - (-100) = 1100.
     assert val_map[today_str] == 1000.0
-    assert val_map[yst_str] == 1100.0
+    assert val_map[yst_str] == 1000.0
     assert val_map[day_before_str] == 1100.0
