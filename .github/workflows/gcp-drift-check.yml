@@ -185,49 +185,7 @@ jobs:
                 for addition in "${ADDITIONS[@]}"; do
                   key="${addition%%=*}"
                   val="${addition#*=}"
-                  # Find the last env_var line in the service's env_vars block and append after it
-                  # Use python for reliable YAML-aware patching
-                  python3 -c "
-          import re, sys
-
-          with open('$DEPLOY_YML', 'r') as f:
-              content = f.read()
-
-          # Find the env_vars block for $SERVICE
-          # Pattern: after service: \"$SERVICE\", find env_vars: |, then add after last indented KEY=VALUE
-          lines = content.split('\n')
-          in_service = False
-          in_env_vars = False
-          last_env_line_idx = -1
-
-          for i, line in enumerate(lines):
-              if '\"$SERVICE\"' in line:
-                  in_service = True
-                  continue
-              if in_service:
-                  if 'env_vars: |' in line:
-                      in_env_vars = True
-                      continue
-                  if in_env_vars:
-                      stripped = line.strip()
-                      if re.match(r'^[A-Z_]+=', stripped):
-                          last_env_line_idx = i
-                      elif stripped and not re.match(r'^[A-Z_]', stripped):
-                          break
-                      elif not stripped:
-                          continue
-
-          if last_env_line_idx >= 0:
-              # Get indentation from the last env var line
-              indent = len(lines[last_env_line_idx]) - len(lines[last_env_line_idx].lstrip())
-              new_line = ' ' * indent + '$key=$val'
-              lines.insert(last_env_line_idx + 1, new_line)
-              with open('$DEPLOY_YML', 'w') as f:
-                  f.write('\n'.join(lines))
-              print(f'Patched: added $key=$val')
-          else:
-              print(f'Warning: could not find insertion point for $key', file=sys.stderr)
-          "
+                  python3 scripts/patch_deploy_yml.py "$DEPLOY_YML" "$SERVICE" "$key" "$val"
                 done
               fi
             fi
