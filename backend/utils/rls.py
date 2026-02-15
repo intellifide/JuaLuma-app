@@ -6,7 +6,7 @@ def set_db_user_context(db: Session, user_id: str):
     """
     Sets the app.current_user_id setting in the PostgreSQL session.
     This is used by Row Level Security (RLS) policies to isolate data access.
-    
+
     Args:
         db: The SQLAlchemy database session.
         user_id: The unique identifier of the user (e.g., Firebase UID).

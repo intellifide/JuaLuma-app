@@ -1,6 +1,6 @@
 # Updated 2026-01-31 00:00 CST
-from types import SimpleNamespace
 import time
+from types import SimpleNamespace
 
 import pytest
 

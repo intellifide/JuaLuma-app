@@ -4,8 +4,8 @@ from threading import Lock
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
-from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
+from sqlalchemy.orm import Session
 
 from backend.models import Subscription, User, UserSession
 from backend.services.auth import verify_token
@@ -45,7 +45,7 @@ async def _verify_authorization_header(authorization: str | None) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Your session has expired. Please log in again.",
         ) from exc
-    
+
     return decoded
 
 
@@ -114,14 +114,14 @@ async def get_current_user(
         session_rec = db.query(UserSession).filter(
             UserSession.uid == uid, UserSession.iat == iat
         ).first()
-        
+
         if session_rec and not session_rec.is_active:
             logger.warning(f"Auth Middleware: Killed session attempt for user {uid}, iat {iat}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Your session has been terminated. Please log in again.",
             )
-        
+
         # Upsert session record (optional: only update if last_active is old to save writes)
         # For simplicity, we'll just update every time for now or use a strategy later.
         if not session_rec:
@@ -136,7 +136,7 @@ async def get_current_user(
                 device_type = "Tablet"
             elif ua.is_bot:
                 device_type = "Bot"
-                
+
             session_rec = UserSession(
                 uid=uid,
                 iat=iat,
@@ -201,7 +201,7 @@ async def get_current_user(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="MFA_REQUIRED",
                     )
-        
+
         try:
             db.commit()
         except Exception as e:
@@ -217,13 +217,13 @@ async def get_current_identity(
 ) -> dict:
     """
     Validate bearer token and return identity claims (uid, email).
-    
+
     Does NOT require a User record in the database.
     Does NOT enforce MFA or Session verification.
     """
     decoded = await _verify_authorization_header(authorization)
     uid = decoded.get("uid") or decoded.get("sub")
-    
+
     if not uid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

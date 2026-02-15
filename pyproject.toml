@@ -24,7 +24,9 @@ select = [
 ]
 ignore = [
     "E501", # line too long, handled by ruff format
+    "E402", # module level import not at top (scripts need sys.path first)
     "B008", # do not perform function calls in argument defaults (common in FastAPI)
+    "C901", # McCabe complexity (refactor separately)
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

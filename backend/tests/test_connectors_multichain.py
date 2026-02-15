@@ -1,15 +1,13 @@
-import pytest
-from unittest.mock import MagicMock, patch
 from decimal import Decimal
-from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
 from backend.services.connectors import (
     BitcoinConnector,
-    SolanaConnector,
+    EVMConnector,
     RippleConnector,
-    CardanoConnector,
+    SolanaConnector,
     TronConnector,
     build_connector,
-    EVMConnector
 )
 
 # --- Mock Response Helpers ---
@@ -27,7 +25,7 @@ def test_bitcoin_connector_fetch(mock_import):
     # Mock requests module
     mock_requests = MagicMock()
     mock_import.return_value = mock_requests
-    
+
     # Mock API response
     tx_data = [{
         "txid": "btc_tx_1",
@@ -39,7 +37,7 @@ def test_bitcoin_connector_fetch(mock_import):
 
     connector = BitcoinConnector()
     txs = connector.fetch_transactions("my_btc_addr")
-    
+
     assert len(txs) == 1
     assert txs[0].tx_id == "btc_tx_1"
     assert txs[0].currency_code == "BTC"
@@ -53,7 +51,7 @@ def test_bitcoin_connector_fetch(mock_import):
 def test_solana_connector_fetch(mock_import):
     mock_requests = MagicMock()
     mock_import.return_value = mock_requests
-    
+
     # 1. getSignaturesForAddress response
     mock_requests.post.side_effect = [
         mock_response({"result": [{"signature": "sol_sig_1"}]}),
@@ -62,7 +60,7 @@ def test_solana_connector_fetch(mock_import):
 
     connector = SolanaConnector()
     txs = connector.fetch_transactions("my_sol_addr")
-    
+
     assert len(txs) == 1
     assert txs[0].tx_id == "sol_sig_1"
     assert txs[0].currency_code == "SOL"
@@ -74,11 +72,11 @@ def test_solana_connector_fetch(mock_import):
 def test_ripple_connector_fetch(mock_import):
     mock_requests = MagicMock()
     mock_import.return_value = mock_requests
-    
+
     # Mock Ripple Epoch time handling if needed, or just standard import
     # The connector imports datetime inside the method, so we mock the entire module return
     # But for simplicity, we mock requests.
-    
+
     xrp_data = {
         "result": {
             "transactions": [{
@@ -96,7 +94,7 @@ def test_ripple_connector_fetch(mock_import):
 
     connector = RippleConnector()
     txs = connector.fetch_transactions("my_xrp_addr")
-    
+
     assert len(txs) == 1
     assert txs[0].tx_id == "xrp_tx_1"
     assert txs[0].amount == Decimal("1.0")
@@ -108,12 +106,12 @@ def test_ripple_connector_fetch(mock_import):
 def test_build_connector_factory():
     c1 = build_connector("web3", provider="bitcoin", app_env="production")
     assert isinstance(c1, BitcoinConnector)
-    
+
     c2 = build_connector("web3", provider="solana", app_env="production")
     assert isinstance(c2, SolanaConnector)
-    
+
     c3 = build_connector("web3", provider="tron", app_env="production")
     assert isinstance(c3, TronConnector)
-    
+
     c4 = build_connector("web3", app_env="production") # Defaults to EVM
     assert isinstance(c4, EVMConnector)

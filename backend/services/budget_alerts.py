@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-import logging
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session

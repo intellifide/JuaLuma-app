@@ -146,7 +146,7 @@ def verify_plaid_webhook_signature(
         )
 
     issued_at = claims.get("iat")
-    if isinstance(issued_at, (int, float)):
+    if isinstance(issued_at, int | float):
         if abs(int(time.time()) - int(issued_at)) > settings.plaid_webhook_tolerance_seconds:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

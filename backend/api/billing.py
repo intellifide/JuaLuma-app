@@ -1,23 +1,22 @@
+import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
+from backend.core import settings
 from backend.middleware.auth import (
     get_current_identity_with_user_guard,
     get_current_user,
 )
 from backend.models import PendingSignup, SubscriptionTier, User
 from backend.services.billing import (
+    _ensure_user_from_pending,
     create_checkout_session,
     create_checkout_session_for_pending,
-    _ensure_user_from_pending,
     create_portal_session,
     update_user_tier,
 )
 from backend.utils import get_db
-
-from backend.core import settings
-import stripe
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -211,7 +210,7 @@ async def get_invoices(
                 }
             )
         return data
-    except stripe.error.StripeError as e:
+    except stripe.error.StripeError:
         # Don't break the settings page if Stripe is down or errors
         # In a real app we might want to log this deeper or return partial error
         return []

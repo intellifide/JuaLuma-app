@@ -538,9 +538,9 @@ def reset_budgets(
     stmt = select(Budget).where(Budget.uid == budget_owner_uid)
     result = db.execute(stmt)
     budgets_to_delete = result.scalars().all()
-    
+
     for b in budgets_to_delete:
         db.delete(b)
-    
+
     db.commit()
     return {"status": "all budgets reset"}

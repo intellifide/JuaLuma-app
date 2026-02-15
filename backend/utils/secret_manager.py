@@ -120,7 +120,7 @@ def store_secret(value: str, *, uid: str, purpose: str) -> str:
 
 
 def get_secret(ref: str, *, uid: str | None = None) -> str:
-    provider = _resolve_provider()
+    _resolve_provider()
     if ref.startswith(_LOCAL_SECRET_PREFIX):
         secret_id = ref[len(_LOCAL_SECRET_PREFIX) :]
         if secret_id not in _LOCAL_SECRETS:

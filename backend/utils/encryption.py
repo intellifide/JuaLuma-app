@@ -73,7 +73,7 @@ def _get_local_key(user_dek_ref: str) -> bytes:
         salt=salt,
         iterations=100000,
     )
-    key_material = f"{master_key}:{user_dek_ref}".encode("utf-8")
+    key_material = f"{master_key}:{user_dek_ref}".encode()
     return base64.urlsafe_b64encode(kdf.derive(key_material))
 
 

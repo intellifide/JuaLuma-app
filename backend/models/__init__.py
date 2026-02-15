@@ -17,10 +17,11 @@ from .manual_asset import ManualAsset
 from .notification import LocalNotification, NotificationDedupe, NotificationPreference
 from .notification_device import NotificationDevice
 from .notification_settings import NotificationSettings
-from .pending_signup import PendingSignup
 from .payment import Payment
-from .plaid import PlaidItem, PlaidItemAccount, PlaidWebhookEvent
 from .payout import DeveloperPayout
+from .pending_signup import PendingSignup
+from .plaid import PlaidItem, PlaidItemAccount, PlaidWebhookEvent
+from .session import UserSession
 from .subscription import Subscription
 from .subscription_tier import SubscriptionTier
 from .support import (
@@ -31,7 +32,6 @@ from .support import (
 )
 from .transaction import Transaction
 from .user import User
-from .session import UserSession
 from .user_document import UserDocument
 from .widget import Widget
 from .widget_rating import WidgetRating

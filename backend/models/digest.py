@@ -12,8 +12,9 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Time, func
 from sqlalchemy.dialects.postgresql import BYTEA, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base
 from backend.utils.encryption import decrypt_prompt
+
+from .base import Base
 
 if TYPE_CHECKING:
     from .user import User
@@ -74,7 +75,7 @@ class DigestSettings(Base):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", lazy="selectin")
+    user: Mapped[User] = relationship("User", lazy="selectin")
 
     def to_dict(self) -> dict[str, object | None]:
         return {
@@ -120,7 +121,7 @@ class DigestMessage(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    user: Mapped["User"] = relationship("User", lazy="selectin")
+    user: Mapped[User] = relationship("User", lazy="selectin")
 
     def to_chat_messages(self) -> list[dict[str, str]]:
         # Store ciphertext as bytes; decrypt expects str.

@@ -4,15 +4,21 @@ import hashlib
 import hmac
 import importlib.util
 import json
-from pathlib import Path
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from backend.core.config import settings
-from backend.models import Account, PlaidItem, PlaidItemAccount, PlaidWebhookEvent, Transaction
+from backend.models import (
+    Account,
+    PlaidItem,
+    PlaidItemAccount,
+    PlaidWebhookEvent,
+    Transaction,
+)
 from backend.services.plaid_sync import PLAID_SYNC_STATUS_SYNC_NEEDED, sync_plaid_item
 
 

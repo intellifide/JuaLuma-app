@@ -144,16 +144,16 @@ def enforce_account_limit(user: User, db: Session, account_type: str):
             "pro": "Pro",
             "ultimate": "Ultimate"
         }.get(base_tier, base_tier.capitalize())
-        
+
         # Get next tier recommendation
         next_tier_info = _get_next_tier_recommendation(base_tier, account_type)
-        
+
         # Build upgrade message
         upgrade_msg = (
             f"You've reached your {tier_display} plan limit of {limit} {account_type} "
             f"account{'s' if limit != 1 else ''}. {next_tier_info}"
         )
-        
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=upgrade_msg,

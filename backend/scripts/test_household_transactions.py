@@ -4,9 +4,8 @@ import sys
 import uuid
 from datetime import date
 
-import pytest
-
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 # Skip in pytest runs unless explicitly enabled.

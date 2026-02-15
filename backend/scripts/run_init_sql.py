@@ -1,13 +1,13 @@
 import os
+
 import sqlalchemy
-from sqlalchemy import text
 
 db_url = os.getenv("DATABASE_URL")
 engine = sqlalchemy.create_engine(db_url)
 
 sql_file = "backend/scripts/init-db.sql"
 
-with open(sql_file, "r") as f:
+with open(sql_file) as f:
     sql_script = f.read()
 
 # Split by semicolon (naive split, but might work for this file)

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, String, func, Integer, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,10 +21,10 @@ class UserSession(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     uid: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    # iat is the "Issued At" timestamp from the Firebase token. 
+    # iat is the "Issued At" timestamp from the Firebase token.
     # This helps us identify the specific session instance.
     iat: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    
+
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     device_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -33,9 +33,9 @@ class UserSession(Base):
         DateTime(timezone=True), nullable=True
     )
     mfa_method_verified: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

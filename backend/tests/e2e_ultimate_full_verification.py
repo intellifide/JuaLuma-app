@@ -5,20 +5,18 @@ import json
 import logging
 import os
 import re
-import time
-import requests
 import sys
+import time
+
+import requests
 
 # Add project root to path for DB imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from datetime import datetime
 
 # Import Models for direct DB seeding
-from backend.models import Account, Transaction, SessionLocal
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -81,7 +79,7 @@ def poll_for_email(tag, match_subject=None):
         logger.error("TESTMAIL_API_KEY is missing.")
         return None
     url = f"https://api.testmail.app/api/json?apikey={TESTMAIL_KEY}&namespace={TESTMAIL_NS}&tag={tag}&livequery=true"
-    
+
     for _ in range(12): # 60s timeout
         try:
             res = requests.get(url, timeout=10)
@@ -184,22 +182,25 @@ def main():
         logger.info("--- 1. Admin Setup ---")
         email_admin, tag_admin = get_test_email()
         logger.info(f"Admin Email: {email_admin}")
-        
+
         # Signup
         uid_admin, _ = signup_user(email_admin, password)
-        if not uid_admin: raise Exception("Admin signup failed")
-        
+        if not uid_admin:
+            raise Exception("Admin signup failed")
+
         # OTP
         otp_email = poll_for_email(tag_admin)
-        if not otp_email: raise Exception("Admin OTP email missing")
+        if not otp_email:
+            raise Exception("Admin OTP email missing")
         otp_code = extract_otp(otp_email["text"])
-        
+
         # Login & Verify
         token_admin = firebase_login(email_admin, password)
         enable_mfa(token_admin, otp_code)
-        
+
         # Upgrade
-        if not simulate_stripe_upgrade(uid_admin): raise Exception("Stripe upgrade failed")
+        if not simulate_stripe_upgrade(uid_admin):
+            raise Exception("Stripe upgrade failed")
         logger.info("Admin upgraded to Ultimate.")
 
         # --- Data Seeding ---
@@ -223,7 +224,7 @@ def main():
                 pt_res = requests.post(pt_url, json=pt_payload)
                 if pt_res.status_code == 200:
                     public_token = pt_res.json().get("public_token")
-                    
+
                     # B. Exchange Token
                     exch_url = f"{API_BASE}/plaid/exchange-token"
                     exch_payload = {
@@ -231,16 +232,16 @@ def main():
                         "institution_name": "Admin Chase Checking"
                     }
                     exch_res = requests.post(
-                        exch_url, 
-                        json=exch_payload, 
+                        exch_url,
+                        json=exch_payload,
                         headers={"Authorization": f"Bearer {token_admin}"}
                     )
                     if exch_res.status_code == 201:
                         logger.info("PASS: Plaid account linked for Admin.")
-                        
+
                         # Get Account ID
                         accounts_res = requests.get(
-                            f"{API_BASE}/accounts", 
+                            f"{API_BASE}/accounts",
                             headers={"Authorization": f"Bearer {token_admin}"}
                         )
                         plaid_acc = next((a for a in accounts_res.json() if a["provider"] == "Admin Chase Checking"), None)
@@ -280,7 +281,7 @@ def main():
              admin_web3_acc_id = w3_res.json()["id"]
              # Sync
              sync_w3 = requests.post(
-                 f"{API_BASE}/accounts/{admin_web3_acc_id}/sync?initial_sync=true", 
+                 f"{API_BASE}/accounts/{admin_web3_acc_id}/sync?initial_sync=true",
                  headers={"Authorization": f"Bearer {token_admin}"}
              )
              if sync_w3.status_code == 200:
@@ -305,7 +306,7 @@ def main():
              admin_cex_acc_id = cex_res.json()["id"]
              # Sync
              sync_cex = requests.post(
-                 f"{API_BASE}/accounts/{admin_cex_acc_id}/sync?initial_sync=true", 
+                 f"{API_BASE}/accounts/{admin_cex_acc_id}/sync?initial_sync=true",
                  headers={"Authorization": f"Bearer {token_admin}"}
              )
              if sync_cex.status_code == 200:
@@ -316,72 +317,80 @@ def main():
 
         # Create Household
         hh_id = create_household(token_admin)
-        if not hh_id: raise Exception("Household creation failed")
+        if not hh_id:
+            raise Exception("Household creation failed")
         logger.info(f"Household Created: {hh_id}")
 
         logger.info("\n--- 2. Spouse (Adult) Setup ---")
         email_spouse, tag_spouse = get_test_email()
         uid_spouse, _ = signup_user(email_spouse, password)
-        
+
         # Spouse OTP
         otp_email_spouse = poll_for_email(tag_spouse)
         otp_code_spouse = extract_otp(otp_email_spouse["text"])
         token_spouse = firebase_login(email_spouse, password)
         enable_mfa(token_spouse, otp_code_spouse)
-        
+
         # Invite Spouse
-        if not send_invite(token_admin, email_spouse): raise Exception("Invite spouse failed")
-        
+        if not send_invite(token_admin, email_spouse):
+            raise Exception("Invite spouse failed")
+
         # Spouse Accept
         invite_email_spouse = poll_for_email(tag_spouse, match_subject="Invite")
         invite_token_spouse = extract_invite_token(invite_email_spouse["text"])
-        if not accept_invite(token_spouse, invite_token_spouse): raise Exception("Spouse accept failed")
+        if not accept_invite(token_spouse, invite_token_spouse):
+            raise Exception("Spouse accept failed")
         logger.info("Spouse joined household.")
 
         logger.info("\n--- 3. Child (Minor) Setup ---")
         email_child, tag_child = get_test_email()
         uid_child, _ = signup_user(email_child, password)
-        
+
         # Child OTP
         otp_email_child = poll_for_email(tag_child)
         otp_code_child = extract_otp(otp_email_child["text"])
         token_child = firebase_login(email_child, password)
         enable_mfa(token_child, otp_code_child)
-        
+
         # Invite Child (is_minor=True)
-        if not send_invite(token_admin, email_child, is_minor=True): raise Exception("Invite child failed")
-        
+        if not send_invite(token_admin, email_child, is_minor=True):
+            raise Exception("Invite child failed")
+
         # Child Accept
         invite_email_child = poll_for_email(tag_child, match_subject="Invite")
         invite_token_child = extract_invite_token(invite_email_child["text"])
-        if not accept_invite(token_child, invite_token_child): raise Exception("Child accept failed")
+        if not accept_invite(token_child, invite_token_child):
+            raise Exception("Child accept failed")
         logger.info("Child joined household as Minor.")
 
         logger.info("\n--- 4. Verification Steps ---")
 
         # A. Spouse Checking Household Transactions
         # Should see Admin's transactions (Plaid OR Web3 OR CEX)
-        
+
         target_accounts = []
-        if admin_plaid_acc_id: target_accounts.append(str(admin_plaid_acc_id))
-        if admin_web3_acc_id: target_accounts.append(str(admin_web3_acc_id))
-        if admin_cex_acc_id: target_accounts.append(str(admin_cex_acc_id))
-        
+        if admin_plaid_acc_id:
+            target_accounts.append(str(admin_plaid_acc_id))
+        if admin_web3_acc_id:
+            target_accounts.append(str(admin_web3_acc_id))
+        if admin_cex_acc_id:
+            target_accounts.append(str(admin_cex_acc_id))
+
         if not target_accounts:
             logger.warning("SKIP: No Admin accounts linked. Skipping visibility test.")
         else:
             res_spouse = requests.get(
-                f"{API_BASE}/transactions", 
-                params={"scope": "household"}, 
+                f"{API_BASE}/transactions",
+                params={"scope": "household"},
                 headers={"Authorization": f"Bearer {token_spouse}"}
             )
             if res_spouse.status_code != 200:
                 logger.error(f"Spouse failed to fetch household txns: {res_spouse.text}")
             else:
                 txns = res_spouse.json().get("transactions", [])
-                
+
                 found_admin_txn = any(t["account_id"] in target_accounts for t in txns)
-                
+
                 if found_admin_txn:
                     logger.info(f"PASS: Spouse can see Admin's transactions. (Found match in {target_accounts})")
                     logger.info(f"Total Visible: {len(txns)}")
@@ -390,8 +399,8 @@ def main():
 
         # B. Minor Checking Household Transactions
         res_child = requests.get(
-            f"{API_BASE}/transactions", 
-            params={"scope": "household"}, 
+            f"{API_BASE}/transactions",
+            params={"scope": "household"},
             headers={"Authorization": f"Bearer {token_child}"}
         )
         if res_child.status_code in [403, 401]:

@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ def log_ai_request(
         "prompt_length": len(prompt),
         "response_length": len(response) if response else 0,
     }
-    
+
     if error:
         payload["error"] = error
         logger.error("AI Request Failed", extra=payload)

@@ -1,27 +1,28 @@
 
 import json
-from unittest.mock import MagicMock
+
 from backend.services import web3_history
-from backend.services.web3_history import _fetch_bitcoin_history, ProviderError
+from backend.services.web3_history import ProviderError, _fetch_bitcoin_history
+
 
 def test_bitcoin_fallback_when_bitquery_fails(monkeypatch):
     # Enable Bitquery key
     monkeypatch.setattr(web3_history.settings, "bitquery_api_key", "valid-key")
-    
+
     # Mock Bitquery to raise ProviderError
     def mock_fetch_bitquery(*args):
         raise ProviderError("Bitquery down")
     monkeypatch.setattr(web3_history, "_fetch_bitquery_history", mock_fetch_bitquery)
-    
+
     # Mock fallback service (blockchain.com)
     def mock_fetch_blockchain(*args):
         return web3_history.Web3HistoryResult(
             transactions=[], next_cursor=None, update_cursor=True
         )
     monkeypatch.setattr(web3_history, "_fetch_blockchain_com_history", mock_fetch_blockchain)
-    
+
     result = _fetch_bitcoin_history("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", None)
-    
+
     # Needs to match the behavior of the fallback return
     assert result.update_cursor is True
     assert result.transactions == []

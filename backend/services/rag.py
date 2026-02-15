@@ -1,11 +1,10 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.models import Transaction, get_session
-from backend.services.ai import get_ai_client
 from backend.utils.rls import set_db_user_context
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ async def get_rag_context(user_id: str, query: str, db: Session | None = None) -
             session_gen = get_session()
             db = next(session_gen)
             local_session = True
-        
+
         # Ensure RLS context is set
         set_db_user_context(db, user_id)
 

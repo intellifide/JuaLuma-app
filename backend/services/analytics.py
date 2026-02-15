@@ -9,11 +9,10 @@ from pydantic import BaseModel
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from backend.models import Account, Transaction, User
-from backend.services.household_service import get_household_member_uids
 from backend.core import settings
+from backend.models import Account, Transaction
+from backend.services.household_service import get_household_member_uids
 from backend.utils.firestore import get_firestore_client
-from sqlalchemy import or_
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +277,7 @@ def get_net_worth(
             Transaction.archived.is_(False),
         )
     )
-    
+
     # Apply transaction filters
     query = _apply_transaction_filters(
         query,
@@ -287,7 +286,7 @@ def get_net_worth(
         category=category,
         is_manual=is_manual,
     )
-    
+
     all_txns_in_range = query.order_by(Transaction.ts.desc()).all()
 
     series = _generate_net_worth_series(dates, balance_at_end, all_txns_in_range)
@@ -326,7 +325,7 @@ def get_cash_flow(
         Transaction.ts <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
         Transaction.archived.is_(False),
     ]
-    
+
     # Apply account type filters if needed
     if account_type or exclude_account_types:
         base_filters.append(Transaction.account_id.in_(
@@ -335,7 +334,7 @@ def get_cash_flow(
                 *([~Account.account_type.in_(exclude_account_types)] if exclude_account_types else [])
             )
         ))
-    
+
     if category:
         base_filters.append(Transaction.category == category)
     if is_manual is not None:
@@ -421,7 +420,7 @@ def get_spending_by_category(
         Transaction.category.not_in(exclude_cats),
         Transaction.archived.is_(False),
     ]
-    
+
     # Apply account type filters if needed
     if account_type or exclude_account_types:
         base_filters.append(Transaction.account_id.in_(
@@ -430,7 +429,7 @@ def get_spending_by_category(
                 *([~Account.account_type.in_(exclude_account_types)] if exclude_account_types else [])
             )
         ))
-    
+
     if category:
         base_filters.append(Transaction.category == category)
     if is_manual is not None:

@@ -3,9 +3,11 @@
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+
 from backend.models.notification import NotificationPreference
-from backend.services.notifications import NOTIFICATION_EVENTS
 from backend.models.user import User
+from backend.services.notifications import NOTIFICATION_EVENTS
+
 
 def test_get_notification_preferences_empty(test_client: TestClient, mock_auth: User):
     """

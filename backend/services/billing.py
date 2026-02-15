@@ -14,8 +14,8 @@ from backend.core.constants import UserStatus
 from backend.models import AISettings, Payment, PendingSignup, Subscription, User
 from backend.schemas.legal import AgreementAcceptancePayload
 from backend.services.email import get_email_client
-from backend.services.notifications import NotificationService
 from backend.services.legal import record_agreement_acceptances
+from backend.services.notifications import NotificationService
 
 logger = logging.getLogger(__name__)
 

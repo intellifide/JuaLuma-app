@@ -24,9 +24,10 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
 from sqlalchemy import create_engine, text
+
+import backend.models  # noqa: E402,F401
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-import backend.models  # noqa: E402,F401
 from backend.models import Base  # noqa: E402
 
 db_url = os.getenv("DATABASE_URL")
@@ -57,16 +58,16 @@ try:
     alembic_cfg = Config(alembic_ini_path)
     # Force script location to absolute path to avoid relative path issues
     alembic_cfg.set_main_option("script_location", os.path.join(APP_DIR, "alembic"))
-    
+
     script = ScriptDirectory.from_config(alembic_cfg)
     heads = script.get_heads()
-    
+
     if not heads:
         print("⚠️  No Alembic heads found!")
         sys.exit(1)
-        
+
     HEAD_REVISION = heads[0]
-    
+
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS alembic_version (

@@ -35,7 +35,7 @@ def get_net_worth(
     exclude_types_list = None
     if exclude_account_types:
         exclude_types_list = [t.strip() for t in exclude_account_types.split(",") if t.strip()]
-    
+
     return analytics_service.get_net_worth(
         db, current_user.uid, start_date, end_date, interval, scope,
         account_type=account_type,
@@ -61,7 +61,7 @@ def get_cash_flow(
     exclude_types_list = None
     if exclude_account_types:
         exclude_types_list = [t.strip() for t in exclude_account_types.split(",") if t.strip()]
-    
+
     return analytics_service.get_cash_flow(
         db, current_user.uid, start_date, end_date, interval, scope,
         account_type=account_type,
@@ -86,7 +86,7 @@ def get_spending_by_category(
     exclude_types_list = None
     if exclude_account_types:
         exclude_types_list = [t.strip() for t in exclude_account_types.split(",") if t.strip()]
-    
+
     return analytics_service.get_spending_by_category(
         db, current_user.uid, start_date, end_date, scope,
         account_type=account_type,

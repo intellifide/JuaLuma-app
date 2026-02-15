@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-import logging
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session

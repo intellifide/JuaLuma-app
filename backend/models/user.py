@@ -52,8 +52,8 @@ class User(Base):
     last_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     username: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     display_name_pref: Mapped[str | None] = mapped_column(
-        String(16), 
-        nullable=True, 
+        String(16),
+        nullable=True,
         default="name",
         comment="name|username - preference for displaying user name in transactions"
     )

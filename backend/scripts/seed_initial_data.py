@@ -14,10 +14,10 @@ if APP_DIR not in sys.path:
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-from backend.models import (
-    User, Subscription, Developer, SupportAgent
-)
+
 from backend.core.config import settings
+from backend.models import Developer, Subscription, SupportAgent, User
+
 
 def seed_data():
     if not settings.database_url:
@@ -94,7 +94,7 @@ def seed_data():
             {"company_id": "INT-AGENT-2025-003", "name": "Agent Support 1", "email": "agent_support_1@example.com", "role": "support_agent"},
             {"company_id": "INT-AGENT-2025-004", "name": "Manager Support", "email": "manager_support@example.com", "role": "support_manager"},
         ]
-        
+
         for a_data in agents_data:
              existing = session.scalar(select(SupportAgent).where(SupportAgent.company_id == a_data["company_id"]))
              if not existing:

@@ -1,9 +1,8 @@
 """Cleanup stale pending signup records older than 24 hours."""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
-from backend.models import PendingSignup
-from backend.models import SessionLocal
+from backend.models import PendingSignup, SessionLocal
 
 
 def cleanup(hours: int = 24) -> int:

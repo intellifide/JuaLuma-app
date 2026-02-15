@@ -7,7 +7,6 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from backend.core.constants import SubscriptionPlans, TierLimits

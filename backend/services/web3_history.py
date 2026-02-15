@@ -12,7 +12,6 @@ from backend.core.config import settings
 from backend.integrations.bitquery.client import bitquery_query
 from backend.integrations.bitquery.queries import (
     BITCOIN_TRANSFERS_QUERY,
-    EVM_TRANSFERS_QUERY,
 )
 from backend.services.connectors import NormalizedTransaction, normalize_transaction
 

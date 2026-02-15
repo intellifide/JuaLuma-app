@@ -3,10 +3,9 @@ import logging
 import os
 import shutil
 import uuid
-from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -41,19 +40,19 @@ async def upload_document(
 ):
     """Upload a new document."""
     # Validate file type/size if necessary
-    
+
     # Generate secure filename
     file_ext = file.filename.split(".")[-1].lower() if "." in file.filename else "txt"
     file_id = uuid.uuid4()
     secure_filename = f"{file_id}.{file_ext}"
     file_path = UPLOAD_DIR / secure_filename
-    
+
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            
+
         file_size = os.path.getsize(file_path)
-        
+
         doc = UserDocument(
             id=file_id,
             uid=current_user.uid,
@@ -66,12 +65,12 @@ async def upload_document(
         db.add(doc)
         db.commit()
         db.refresh(doc)
-        
+
         return doc.to_dict()
-        
+
     except Exception as e:
         logger.error(f"Upload failed: {e}")
-        raise HTTPException(status_code=500, detail="We encountered an issue uploading your file. Please try again.")
+        raise HTTPException(status_code=500, detail="We encountered an issue uploading your file. Please try again.") from e
 
 
 @router.get("/{doc_id}/download")
@@ -84,11 +83,11 @@ def download_document(
     doc = db.query(UserDocument).filter(UserDocument.id == doc_id, UserDocument.uid == current_user.uid).first()
     if not doc:
         raise HTTPException(status_code=404, detail="The requested document could not be found.")
-        
+
     path = Path(doc.file_path)
     if not path.exists():
          raise HTTPException(status_code=404, detail="The file appears to be missing. Please contact support.")
-         
+
     return FileResponse(path, filename=doc.name, media_type="application/octet-stream")
 
 @router.get("/{doc_id}/preview")
@@ -98,12 +97,12 @@ def preview_document(
     db: Session = Depends(get_db),
 ):
     """Get preview URL or content for a document."""
-    # For now, just re-use download logic but with inline disposition if possible, 
+    # For now, just re-use download logic but with inline disposition if possible,
     # or return file content for text.
     doc = db.query(UserDocument).filter(UserDocument.id == doc_id, UserDocument.uid == current_user.uid).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     path = Path(doc.file_path)
     if not path.exists():
          raise HTTPException(status_code=404, detail="File not found on server")
@@ -116,5 +115,5 @@ def preview_document(
         media_type = "application/pdf"
     elif doc.file_type in ['txt', 'csv', 'json']:
         media_type = "text/plain"
-        
+
     return FileResponse(path, filename=doc.name, media_type=media_type)

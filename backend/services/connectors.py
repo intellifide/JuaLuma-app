@@ -48,7 +48,7 @@ class ConnectorClient(Protocol):
     """Minimal connector contract to fetch normalized transactions."""
 
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
@@ -164,14 +164,14 @@ class CcxtConnectorClient:
         if not hasattr(ccxt, self.exchange_id):
             raise RuntimeError(f"The crypto exchange '{self.exchange_id}' is not currently supported.")
         klass = getattr(ccxt, self.exchange_id)
-        
+
         # For Coinbase Advanced, ensure secret has proper newlines
         secret = self.api_secret
         if self.exchange_id == "coinbaseadvanced" and secret:
             # Ensure newlines are actual newlines, not escape sequences
             if "\\n" in secret and "\n" not in secret.replace("\\n", ""):
                 secret = secret.replace("\\n", "\n")
-        
+
         exchange = klass(
             {
                 "apiKey": self.api_key,
@@ -182,14 +182,14 @@ class CcxtConnectorClient:
         return exchange
 
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
     ) -> Iterable[NormalizedTransaction]:
         """
         Fetch CEX transactions with optional date range filtering.
-        
+
         Args:
             account_id: Account identifier
             since: Optional start datetime (UTC) to fetch trades from
@@ -214,7 +214,7 @@ class CcxtConnectorClient:
             since_ms = None
             if since:
                 since_ms = int(since.timestamp() * 1000)
-            
+
             # Fetch trades with expanded limit and optional date range
             # Note: Some exchanges may not support 'since' parameter reliably
             try:
@@ -253,7 +253,7 @@ class CcxtConnectorClient:
             # Parse currency code from symbol (e.g., "BTC/USD" -> "USD")
             symbol = _extract_trade_symbol(trade)
             currency_code = _extract_quote_currency(symbol) or "USD"  # Default fallback
-            
+
             # Safely handle timestamp - might be in different formats
             timestamp = trade.get("timestamp")
             if timestamp:
@@ -268,11 +268,11 @@ class CcxtConnectorClient:
                     trade_timestamp = datetime.now(UTC)
             else:
                 trade_timestamp = datetime.now(UTC)
-            
+
             # Filter by date range if since was provided and exchange didn't support it
             if since and trade_timestamp < since:
                 continue
-            
+
             # Build standardized merchant_name from trade details
             side = str(trade.get("side") or "").upper()
             amount, price = _extract_trade_amount_price(trade)
@@ -329,7 +329,7 @@ class EVMConnector:
         )
 
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
@@ -397,13 +397,13 @@ class EVMConnector:
 
 class BitcoinConnector:
     """Read-only Bitcoin connector using Blockstream/Mempool.space API."""
-    
+
     def __init__(self, converter: Callable[[Decimal, str], tuple[Decimal, str]] | None = None):
         self.api_base = settings.bitcoin_api_url
         self.converter = converter
 
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
@@ -413,18 +413,18 @@ class BitcoinConnector:
         resp = requests.get(f"{self.api_base}/address/{account_id}/txs")
         if not resp.ok:
             return []
-            
+
         payloads = []
         txs = resp.json()
         for tx in txs:
             # Simple heuristic: sum inputs/outputs to determine flow
             total_in = sum(i["value"] for i in tx["vin"] if i.get("prevout", {}).get("scriptpubkey_address") == account_id)
             total_out = sum(o["value"] for o in tx["vout"] if o.get("scriptpubkey_address") == account_id)
-            
+
             amount_sats = total_out - total_in
             amount_btc = Decimal(abs(amount_sats)) / Decimal("100000000")
             direction = "inflow" if amount_sats > 0 else "outflow"
-            
+
             payloads.append({
                 "tx_id": tx["txid"],
                 "account_id": account_id,
@@ -435,19 +435,19 @@ class BitcoinConnector:
                 "direction": direction,
                 "raw": tx
             })
-            
+
         return [normalize_transaction(p, converter=self.converter) for p in payloads]
 
 
 class SolanaConnector:
     """Read-only Solana connector using JSON-RPC."""
-    
+
     def __init__(self, converter: Callable[[Decimal, str], tuple[Decimal, str]] | None = None):
         self.rpc_url = settings.solana_rpc_url
         self.converter = converter
 
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
@@ -532,10 +532,10 @@ class SolanaConnector:
                     continue
                 if not tx_resp.ok:
                     continue # Skip individual failed tx lookups
-                    
+
                 tx_data = tx_resp.json()
                 result = tx_data.get("result")
-                
+
                 if not result:
                     continue
 
@@ -554,7 +554,7 @@ class SolanaConnector:
                 })
             except Exception:
                 continue # Skip bad txs
-            
+
         return [normalize_transaction(p, converter=self.converter) for p in payloads]
 
     def _parse_solana_amount(self, result: dict, account_id: str) -> tuple[Decimal, Direction]:
@@ -563,25 +563,25 @@ class SolanaConnector:
             meta = result.get("meta")
             if not meta:
                 return Decimal("0"), "outflow"
-                
+
             # Account keys are in transaction.message.accountKeys
             # In newer versions, it might be nested differently or statically keyed
             msg = result.get("transaction", {}).get("message", {})
             keys = msg.get("accountKeys", [])
-            
+
             # Simple case: keys is a list of strings
             if keys and isinstance(keys[0], dict):
                 # Versioned tx structure sometimes has {'pubkey': '...', 'signer': ...}
                 keys = [k.get("pubkey") for k in keys]
-            
+
             try:
                 idx = keys.index(account_id)
             except ValueError:
                 return Decimal("0"), "outflow"
-                
+
             pre = meta["preBalances"][idx]
             post = meta["postBalances"][idx]
-            
+
             # Amount changed in lamports (1e9)
             diff = post - pre
             amount = Decimal(abs(diff)) / Decimal("1000000000")
@@ -680,13 +680,13 @@ def _format_trade_display(
 
 class RippleConnector:
     """Read-only XRP Ledger connector."""
-    
+
     def __init__(self, converter: Callable[[Decimal, str], tuple[Decimal, str]] | None = None):
         self.rpc_url = settings.ripple_rpc_url
         self.converter = converter
 
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
@@ -702,24 +702,24 @@ class RippleConnector:
         }
         resp = requests.post(self.rpc_url, json=payload, timeout=10)
         data = resp.json()
-        
+
         txs = data.get("result", {}).get("transactions", [])
         payloads = []
-        
+
         for item in txs:
             tx = item["tx"]
-            meta = item["meta"]
-            
+            item["meta"]
+
             # Drops to XRP
             # Check logic for delivered_amount if available
             amount_drops = tx.get("Amount", "0")
             if isinstance(amount_drops, dict):
                  # Issued currency, skip for now or handle later
                  continue
-                 
+
             amount = Decimal(amount_drops) / Decimal("1000000")
             direction = "outflow" if tx["Account"] == account_id else "inflow"
-            
+
             payloads.append({
                 "tx_id": tx["hash"],
                 "account_id": account_id,
@@ -730,19 +730,19 @@ class RippleConnector:
                 "direction": direction,
                 "raw": tx
             })
-            
+
         return [normalize_transaction(p, converter=self.converter) for p in payloads]
 
 
 class CardanoConnector:
     """Read-only Cardano connector using Koios API."""
-    
+
     def __init__(self, converter: Callable[[Decimal, str], tuple[Decimal, str]] | None = None):
         self.api_url = settings.cardano_api_url
         self.converter = converter
 
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
@@ -756,10 +756,10 @@ class CardanoConnector:
         )
         if not resp.ok:
             return []
-            
+
         txs = resp.json()
         payloads = []
-        
+
         for tx in txs:
             # Need tx_info for amounts, usually requires another call or enable details
             # If basic call returns list of hashes, we'd iterate. Koios address_txs returns minimal info.
@@ -767,7 +767,7 @@ class CardanoConnector:
              payloads.append({
                 "tx_id": tx["tx_hash"],
                 "account_id": account_id,
-                "amount": Decimal("0"), 
+                "amount": Decimal("0"),
                 "currency_code": "ADA",
                 "timestamp": datetime.fromtimestamp(tx["block_time"], tz=UTC),
                 "type": "transfer",
@@ -780,13 +780,13 @@ class CardanoConnector:
 
 class TronConnector:
     """Read-only Tron connector using TronGrid."""
-    
+
     def __init__(self, converter: Callable[[Decimal, str], tuple[Decimal, str]] | None = None):
         self.api_url = settings.tron_api_url
         self.converter = converter
-        
+
     def fetch_transactions(
-        self, 
+        self,
         account_id: str,
         since: datetime | None = None,
         limit: int = 500,
@@ -796,21 +796,21 @@ class TronConnector:
         resp = requests.get(f"{self.api_url}/v1/accounts/{account_id}/transactions")
         if not resp.ok:
             return []
-            
+
         data = resp.json()
         txs = data.get("data", [])
         payloads = []
-        
+
         for tx in txs:
             # Parse contract data
             raw_contract = tx["raw_data"]["contract"][0]
             val = raw_contract["parameter"]["value"]
             amount_sun = val.get("amount", 0)
             amount = Decimal(amount_sun) / Decimal("1000000")
-            
-            owner = val.get("owner_address") # Hex format needs decode if raw
+
+            val.get("owner_address") # Hex format needs decode if raw
             # TronGrid returns easily readable addresses usually in API responses or we compare
-            
+
             payloads.append({
                 "tx_id": tx["txID"],
                 "account_id": account_id,
@@ -821,7 +821,7 @@ class TronConnector:
                 "direction": "outflow", # Simplified
                 "raw": tx
             })
-            
+
         return [normalize_transaction(p, converter=self.converter) for p in payloads]
 
 

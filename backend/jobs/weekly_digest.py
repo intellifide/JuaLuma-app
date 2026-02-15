@@ -6,8 +6,8 @@ It now runs the generalized digest scheduler (cadence + time configured per user
 
 # Last Updated: 2026-02-03 00:00 CST
 
-from datetime import UTC, datetime
 import logging
+from datetime import UTC, datetime
 
 from backend.models import SessionLocal
 from backend.services.digests import run_due_digests

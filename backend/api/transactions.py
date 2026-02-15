@@ -2,16 +2,17 @@
 
 # Updated 2026-01-25 12:00 CST
 
+import logging
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import func, or_, desc, asc
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import asc, desc, func, or_
+from sqlalchemy.orm import Session
 
+from backend.core.constants import SubscriptionPlans
 from backend.middleware.auth import get_current_user
 from backend.models import (
     Account,
@@ -22,7 +23,6 @@ from backend.models import (
     Transaction,
     User,
 )
-from backend.core.constants import SubscriptionPlans
 from backend.services.analytics import invalidate_analytics_cache
 from backend.utils import get_db
 from backend.utils.normalization import normalize_category, normalize_merchant_name
@@ -189,7 +189,7 @@ def _should_include_user_names(
     if scope == "household":
         # Household scope already verified Ultimate subscription
         return True
-    
+
     # Check if current user has Ultimate tier
     user_sub = (
         db.query(Subscription)
@@ -198,7 +198,7 @@ def _should_include_user_names(
     )
     if user_sub and "ultimate" in user_sub.plan.lower():
         return True
-    
+
     # Check if user is a household member with view permission
     if current_user.household_member and current_user.household_member.can_view_household:
         # Verify household owner has Ultimate
@@ -215,7 +215,7 @@ def _should_include_user_names(
             )
             if owner_sub and "ultimate" in owner_sub.plan.lower():
                 return True
-    
+
     return False
 
 
@@ -242,11 +242,11 @@ def _build_transaction_responses(
             )
             for txn in items
         ]
-    
+
     # Load users for all transaction UIDs
-    transaction_uids = list(set(t.uid for t in items))
+    transaction_uids = list({t.uid for t in items})
     users = {u.uid: u for u in db.query(User).filter(User.uid.in_(transaction_uids)).all()}
-    
+
     return [
         TransactionResponse(
             id=txn.id,
@@ -403,7 +403,7 @@ def list_transactions(
 
     # 2. Query
     logger.info(f"Listing transactions. Scope={scope}, CurrentUser={current_user.uid}, TargetUIDs={target_uids}")
-    
+
     query = db.query(Transaction).filter(
         Transaction.uid.in_(target_uids),
         Transaction.archived.is_(False),
@@ -461,13 +461,13 @@ def list_transactions(
         query = query.order_by(desc(Transaction.ts))
 
     total, items = _paginate(query, page, page_size)
-    
+
     # Check if we should include user display names
     should_include_user_names = _should_include_user_names(db, current_user, scope)
-    
+
     # Build transaction responses with optional user display names
     transaction_responses = _build_transaction_responses(db, items, should_include_user_names)
-    
+
     return TransactionListResponse(
         transactions=transaction_responses,
         total=total,
@@ -510,7 +510,7 @@ def search_transactions(
     retention_cutoff = _essential_retention_cutoff(db, current_user.uid)
     if retention_cutoff is not None:
         query = query.filter(Transaction.ts >= retention_cutoff)
-    
+
     # Parse exclude_account_types if provided
     exclude_types_list = None
     if exclude_account_types:
@@ -560,13 +560,13 @@ def search_transactions(
         query = query.order_by(desc(Transaction.ts))
 
     total, items = _paginate(query, page, page_size)
-    
+
     # Check if we should include user display names (personal scope, but Ultimate tier)
     should_include_user_names = _should_include_user_names(db, current_user, "personal")
-    
+
     # Build transaction responses with optional user display names
     transaction_responses = _build_transaction_responses(db, items, should_include_user_names)
-    
+
     return TransactionListResponse(
         transactions=transaction_responses,
         total=total,
@@ -583,7 +583,7 @@ def create_manual_transaction(
 ) -> TransactionResponse:
     """
     Create a manual transaction entry.
-    
+
     Restricted to Pro and Ultimate tier subscribers.
 
     - **account_id**: UUID of the account to associate this transaction with.
@@ -604,10 +604,10 @@ def create_manual_transaction(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Manual transaction entry is only available for Pro and Ultimate tier subscribers.",
         )
-    
+
     # Verify account belongs to user and is a manual account
     from backend.models import Account
-    
+
     account = (
         db.query(Account)
         .filter(
@@ -621,7 +621,7 @@ def create_manual_transaction(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="The specified account could not be found.",
         )
-    
+
     if account.account_type != "manual":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -645,16 +645,16 @@ def create_manual_transaction(
         archived=False,
         raw_json={"source": "manual", "created_by": current_user.uid},
     )
-    
+
     db.add(txn)
-    
+
     # Update the account balance to reflect the manual transaction
     # Inflows (positive amounts) increase balance, outflows (negative amounts) decrease balance
     from decimal import Decimal as Dec
     current_balance = account.balance or Dec(0)
     account.balance = current_balance + payload.amount
     logger.info(f"Updated account {account.id} balance: {current_balance} -> {account.balance} (delta: {payload.amount})")
-    
+
     # Create audit log
     audit = AuditLog(
         actor_uid=current_user.uid,
@@ -789,7 +789,7 @@ def update_transaction(
 ) -> TransactionResponse:
     """
     Update transaction fields.
-    
+
     For manual transactions, all fields (amount, merchant_name, ts, category, description) can be updated.
     For automated transactions, only category and description can be updated.
     """
@@ -835,7 +835,7 @@ def update_transaction(
             )
 
     db.add(txn)
-    
+
     # Build audit metadata
     new_values = {
         "category": txn.category,
@@ -847,7 +847,7 @@ def update_transaction(
             "merchant_name": txn.merchant_name,
             "ts": txn.ts.isoformat(),
         })
-    
+
     audit = AuditLog(
         actor_uid=current_user.uid,
         target_uid=current_user.uid,
@@ -882,9 +882,10 @@ def delete_transaction(
     db: Session = Depends(get_db),
 ) -> dict:
     """Soft delete a manual transaction."""
-    from backend.models import Account
     from decimal import Decimal as Dec
-    
+
+    from backend.models import Account
+
     txn = (
         db.query(Transaction)
         .filter(Transaction.id == transaction_id, Transaction.uid == current_user.uid)

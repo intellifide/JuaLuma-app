@@ -3,7 +3,7 @@
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +34,12 @@ Tone: Professional, encouraging, and data-driven.
 
 class PromptManager:
     _instance = None
-    _cache: Dict[str, Any] = {}
+    _cache: dict[str, Any] = {}
     _cache_ttl: int = 300  # 5 minutes in seconds
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(PromptManager, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self):

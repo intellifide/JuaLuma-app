@@ -55,7 +55,7 @@ class LegalAgreementAcceptance(Base):
     metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    user: Mapped["User"] = relationship(
+    user: Mapped[User] = relationship(
         "User", back_populates="legal_acceptances", lazy="selectin"
     )
 

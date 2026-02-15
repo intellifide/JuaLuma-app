@@ -30,7 +30,6 @@ import { useUserTimeZone } from '../../hooks/useUserTimeZone'
 import { formatDate } from '../../utils/datetime'
 
 // Simple Input component if not exists, or use HTML input with styling
-// eslint-disable-next-line react/prop-types
 const SimpleInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label?: string }> = ({ label, className, ...props }) => (
   <div className="flex flex-col gap-1 mb-4">
     {label && <label className="text-sm font-medium text-text-secondary">{label}</label>}
@@ -48,14 +47,14 @@ export const HouseholdPage: React.FC = () => {
   const [household, setHousehold] = useState<Household | null>(null)
   const [loading, setLoading] = useState(true)
   // const [error, setError] = useState<string | null>(null) // Unused
-  
+
   // Forms State
   const [createName, setCreateName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [isMinor, setIsMinor] = useState(false)
   const [canViewHousehold, setCanViewHousehold] = useState(true)
   const [inviteToken, setInviteToken] = useState('')
-  
+
   // Modals
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
@@ -103,10 +102,10 @@ export const HouseholdPage: React.FC = () => {
     if (!inviteEmail.trim()) return
     setActionLoading(true)
     try {
-      await householdService.inviteMember({ 
-        email: inviteEmail, 
+      await householdService.inviteMember({
+        email: inviteEmail,
         is_minor: isMinor,
-        can_view_household: canViewHousehold 
+        can_view_household: canViewHousehold
       })
       setShowInviteModal(false)
       setInviteEmail('')
@@ -161,10 +160,10 @@ export const HouseholdPage: React.FC = () => {
           <h2 className="text-xl font-semibold">Create a Household</h2>
           <p className="text-sm text-text-muted">Start a new household and become the admin.</p>
           <div className="flex gap-4 items-end">
-            <SimpleInput 
-              label="Household Name" 
-              value={createName} 
-              onChange={(e) => setCreateName(e.target.value)} 
+            <SimpleInput
+              label="Household Name"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
               placeholder="e.g. Smith Family"
               className="w-full"
             />
@@ -184,10 +183,10 @@ export const HouseholdPage: React.FC = () => {
           <h2 className="text-xl font-semibold">Join a Household</h2>
           <p className="text-sm text-text-muted">Enter the invite code sent to your email.</p>
           <div className="flex gap-4 items-end">
-            <SimpleInput 
-              label="Invite Token" 
-              value={inviteToken} 
-              onChange={(e) => setInviteToken(e.target.value)} 
+            <SimpleInput
+              label="Invite Token"
+              value={inviteToken}
+              onChange={(e) => setInviteToken(e.target.value)}
               placeholder="Paste token here"
               className="w-full"
             />
@@ -252,7 +251,7 @@ export const HouseholdPage: React.FC = () => {
                         <div className="flex items-center gap-2">
                             {member.role === 'admin' && <Badge variant="primary">Admin</Badge>}
                             {member.can_view_household ? (
-                                <Badge variant="success" className="bg-green-100 text-green-800">View Finances</Badge> 
+                                <Badge variant="success" className="bg-green-100 text-green-800">View Finances</Badge>
                             ) : (
                                 <Badge variant="secondary">No View</Badge>
                             )}
@@ -264,7 +263,7 @@ export const HouseholdPage: React.FC = () => {
                         </div>
                     </div>
                 ))}
-                
+
                 {/* Pending Invites */}
                 {household.invites?.filter(i => i.status === 'pending').map((invite) => (
                     <div key={invite.email} className="p-4 flex justify-between items-center bg-gray-50/50 hover:bg-gray-50 transition-colors border-l-4 border-yellow-400">
@@ -327,14 +326,14 @@ export const HouseholdPage: React.FC = () => {
          </div>
       }
     >
-        <SimpleInput 
+        <SimpleInput
             label="Email Address"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="friend@example.com"
             type="email"
         />
-        
+
         <div className="space-y-4 mb-2">
             <Switch
                 checked={isMinor}
@@ -342,7 +341,7 @@ export const HouseholdPage: React.FC = () => {
                 label="Is this member a minor?"
                 description="Minors have restricted access to AI features."
             />
-            
+
             <Switch
                 checked={canViewHousehold}
                 onChange={setCanViewHousehold}

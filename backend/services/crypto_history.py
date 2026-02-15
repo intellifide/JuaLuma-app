@@ -5,16 +5,17 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 
 from backend.core.config import settings
 from backend.integrations.bitquery.adapters import (
     fetch_bitcoin_history,
-    fetch_cardano_history as fetch_cardano_history_bitquery,
     fetch_evm_history,
     fetch_solana_history,
     fetch_tron_history,
     fetch_xrp_history,
+)
+from backend.integrations.bitquery.adapters import (
+    fetch_cardano_history as fetch_cardano_history_bitquery,
 )
 from backend.integrations.blockfrost.cardano import (
     fetch_cardano_history_blockfrost,

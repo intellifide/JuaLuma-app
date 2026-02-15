@@ -82,8 +82,8 @@ class PlaidItem(Base):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", lazy="selectin")
-    account_links: Mapped[list["PlaidItemAccount"]] = relationship(
+    user: Mapped[User] = relationship("User", lazy="selectin")
+    account_links: Mapped[list[PlaidItemAccount]] = relationship(
         "PlaidItemAccount",
         back_populates="plaid_item",
         cascade="all, delete-orphan",
@@ -149,10 +149,10 @@ class PlaidItemAccount(Base):
         nullable=False,
     )
 
-    plaid_item: Mapped["PlaidItem"] = relationship(
+    plaid_item: Mapped[PlaidItem] = relationship(
         "PlaidItem", back_populates="account_links", lazy="selectin"
     )
-    account: Mapped["Account"] = relationship(
+    account: Mapped[Account] = relationship(
         "Account", back_populates="plaid_item_accounts", lazy="selectin"
     )
 

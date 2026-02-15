@@ -4,11 +4,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
 import hashlib
 import logging
 import re
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
 from statistics import median
 
 from sqlalchemy.orm import Session

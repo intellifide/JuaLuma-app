@@ -21,13 +21,13 @@ query ($network: evm_network, $address: String!, $limit: Int!, $offset: Int!) {
         # The error said "Cannot query field Transaction on type EVM_Transfer_Fields_Transfer"
         # Checking schema: it is usually 'Transaction { Hash }' but maybe just 'TransactionHash'?
         # Let's try Transaction { Hash } again, maybe it was just a side effect of the other errors?
-        # No, 'Cannot query field' is specific. 
-        # Let's use 'Transaction { Hash }' is standard but maybe it's `TransactionHash`? 
+        # No, 'Cannot query field' is specific.
+        # Let's use 'Transaction { Hash }' is standard but maybe it's `TransactionHash`?
         # Actually, let's look at docs again. It IS Transaction { Hash }.
-        # Wait, the previous query had `Transaction { Hash }`. 
+        # Wait, the previous query had `Transaction { Hash }`.
         # Ah, maybe the previous query error was misleading?
         # Let's try `Transaction { Hash }` but if that fails, `TransactionHash`.
-        # Actually, let's strictly follow the error "Cannot query field Transaction". 
+        # Actually, let's strictly follow the error "Cannot query field Transaction".
         # That means it's NOT there.
         # But wait, we need the hash.
         # Let's try `TransactionHash` if validation fails.

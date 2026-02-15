@@ -2,9 +2,9 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.models import PendingSignup, Subscription, User
-from backend.middleware.auth import get_current_identity
 from backend.main import app
+from backend.middleware.auth import get_current_identity
+from backend.models import PendingSignup, Subscription, User
 
 # Tests for backend/api/auth.py
 

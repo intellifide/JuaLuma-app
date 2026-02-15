@@ -271,10 +271,10 @@ def main():
     # Testing Protocol: Primary + 3 Members = 4 Users Total
     for i in range(1, 4):
         logger.info(f"\n--- Adding Family Member #{i} ---")
-        
+
         email_fam, tag_fam = get_test_email() # New unique tag each time
         logger.info(f"Member #{i} Email: {email_fam}")
-        
+
         uid_fam, _ = signup_user(email_fam, password)
         if not uid_fam:
             logger.error(f"Failed to signup member #{i}.")
@@ -283,7 +283,7 @@ def main():
         # 9. Verify Secondary User (OTP)
         logger.info(f"Verifying family member #{i} ({email_fam})...")
         otp_email_fam = poll_for_email(tag_fam, match_subject=None)
-        
+
         id_token_fam = None
         if otp_email_fam:
             otp_code_fam = extract_otp(otp_email_fam.get("text", "") or otp_email_fam.get("html", ""))
@@ -313,7 +313,7 @@ def main():
         if not invite_email:
             logger.error(f"Did not receive invite email for member #{i}.")
             continue
-        
+
         # Extract invite token
         token = extract_invite_token(invite_email.get("text", "") or invite_email.get("html", ""))
         if not token:
@@ -372,7 +372,7 @@ def main():
     if not invite_email_minor:
         logger.error("Did not receive minor invite email.")
         return
-    
+
     token_minor = extract_invite_token(invite_email_minor.get("text", "") or invite_email_minor.get("html", ""))
     if accept_invite(id_token_minor, token_minor):
         logger.info("SUCCESS: Minor joined household!")
@@ -385,11 +385,11 @@ def main():
     if hh_details:
         members = hh_details.get("members", [])
         logger.info(f"Total Members: {len(members)}")
-        
+
         # Verify Count (Admin + 3 Members + 1 Minor = 5)
         if len(members) != 5:
             logger.error(f"FAILURE: Expected 5 members, found {len(members)}")
-        
+
         # Verify Minor Role
         minor_record = next((m for m in members if m["email"] == email_minor), None)
         if minor_record:

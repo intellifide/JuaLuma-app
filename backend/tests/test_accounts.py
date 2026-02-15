@@ -7,7 +7,14 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.models import Account, Household, HouseholdMember, Subscription, Transaction, User
+from backend.models import (
+    Account,
+    Household,
+    HouseholdMember,
+    Subscription,
+    Transaction,
+    User,
+)
 
 # Tests for backend/api/accounts.py
 

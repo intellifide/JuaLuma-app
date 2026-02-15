@@ -12,9 +12,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from sqlalchemy import desc, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
+
 from backend.core.config import settings
 from backend.core.constants import SubscriptionPlans, TierLimits
-from backend.core.dependencies import enforce_account_limit, get_current_active_subscription
+from backend.core.dependencies import (
+    enforce_account_limit,
+    get_current_active_subscription,
+)
 from backend.middleware.auth import get_current_user
 from backend.models import (
     Account,
@@ -27,10 +31,11 @@ from backend.models import (
 )
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
-from backend.utils.normalization import normalize_category, normalize_merchant_name
 from backend.services.connectors import build_connector
-from backend.services.crypto_history import BitqueryUnavailableError, fetch_crypto_history
-from backend.services.web3_history import ProviderError, ProviderOverloaded, fetch_web3_history
+from backend.services.crypto_history import (
+    BitqueryUnavailableError,
+    fetch_crypto_history,
+)
 from backend.services.household_service import get_household_member_uids
 from backend.services.plaid import (
     remove_item,
@@ -39,7 +44,13 @@ from backend.services.plaid_sync import (
     PLAID_SYNC_STATUS_ACTIVE,
     PLAID_SYNC_STATUS_NEEDS_REAUTH,
 )
+from backend.services.web3_history import (
+    ProviderError,
+    ProviderOverloaded,
+    fetch_web3_history,
+)
 from backend.utils import get_db
+from backend.utils.normalization import normalize_category, normalize_merchant_name
 from backend.utils.secret_manager import get_secret, store_secret
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -610,15 +621,15 @@ def get_account_limits(
 ) -> AccountLimitsResponse:
     """
     Get current account limits for the authenticated user's subscription tier.
-    
+
     Returns the limits for each account type, current usage, and upgrade information.
     """
     sub = get_current_active_subscription(current_user)
     plan_code = sub.plan if sub else SubscriptionPlans.FREE
     base_tier = SubscriptionPlans.get_base_tier(plan_code)
-    
+
     tier_limits = TierLimits.LIMITS_BY_TIER.get(base_tier, TierLimits.FREE_LIMITS)
-    
+
     current_counts = {
         "plaid": 0,
         "web3": 0,
@@ -657,14 +668,14 @@ def get_account_limits(
 
     tier_display = {
         "free": "Free",
-        "essential": "Essential", 
+        "essential": "Essential",
         "pro": "Pro",
         "ultimate": "Ultimate"
     }.get(base_tier, base_tier.capitalize())
-    
+
     total_limit = sum(tier_limits.values())
     total_connected = len(user_accounts)
-    
+
     return AccountLimitsResponse(
         tier=base_tier,
         tier_display=tier_display,
@@ -859,21 +870,21 @@ def link_cex_account(
         if normalized_secret:
             # Log what we received for debugging
             logger.debug(f"Received secret for {payload.exchange_id}: length={len(normalized_secret)}, starts with: {repr(normalized_secret[:50])}")
-            
+
             # Always replace literal backslash-n with actual newlines (handles both cases)
             if "\\n" in normalized_secret:
                 normalized_secret = normalized_secret.replace("\\n", "\n")
                 logger.debug(f"Converted literal \\n to actual newlines for {payload.exchange_id}")
-            
+
             # Ensure the secret has proper PEM format
             if "-----BEGIN" not in normalized_secret:
                 logger.warning(f"Secret for {payload.exchange_id} doesn't appear to be in PEM format. First 100 chars: {repr(normalized_secret[:100])}")
             else:
                 logger.debug(f"Secret for {payload.exchange_id} has proper PEM format")
-        
+
         logger.debug(f"Validating CEX connection for {payload.exchange_id} with key: {payload.api_key[:50]}...")
         logger.debug(f"Normalized secret length: {len(normalized_secret) if normalized_secret else 0}, starts with: {repr(normalized_secret[:50]) if normalized_secret else 'None'}...")
-        
+
         # build_connector handles the logic of choosing mock vs real based on ENV
         connector = build_connector(
             kind="cex",
@@ -891,12 +902,12 @@ def link_cex_account(
         error_trace = traceback.format_exc()
         logger.warning(f"CEX validation failed for {payload.exchange_id}: {error_details}")
         logger.debug(f"CEX validation traceback: {error_trace}")
-        
+
         # Extract more specific error information
         error_message = error_details
         if hasattr(e, '__cause__') and e.__cause__:
             error_message = f"{error_details} (Caused by: {str(e.__cause__)})"
-        
+
         # In production, we'd want to block invalid keys. In dev/mock, it might pass.
         # If it's a specific credential error, raise 400.
         raise HTTPException(
@@ -1009,8 +1020,6 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
                     "raw": t.raw,
                     "on_chain_units": t.on_chain_units,
                     "on_chain_symbol": t.on_chain_symbol,
-                    "direction": t.direction,  # Pass direction for sign application
-                    "transaction_type": t.type,  # Pass type for better categorization
                 }
                 for t in normalized_txns
             ],
@@ -1039,7 +1048,7 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
 def _sync_cex(account: Account, uid: str, start_date: date | None = None, end_date: date | None = None) -> list[dict]:
     """
     Sync CEX account transactions with optional date range filtering.
-    
+
     Args:
         account: The CEX account to sync
         uid: User ID for secret retrieval
@@ -1056,24 +1065,24 @@ def _sync_cex(account: Account, uid: str, start_date: date | None = None, end_da
             api_key=creds.get("apiKey"),
             api_secret=creds.get("secret"),
         )
-        
+
         # Convert date range to datetime for connector
         since_datetime = None
         if start_date:
             since_datetime = datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
-        
+
         # Fetch transactions with expanded window (500 limit, up from 50)
         normalized_txns = connector.fetch_transactions(
             account_id=str(account.id),
             since=since_datetime,
             limit=500,
         )
-        
+
         # Filter by end_date if provided (client-side filtering)
         if end_date:
             end_datetime = datetime.combine(end_date, datetime.max.time(), tzinfo=UTC)
             normalized_txns = [
-                t for t in normalized_txns 
+                t for t in normalized_txns
                 if t.timestamp <= end_datetime
             ]
 
@@ -1107,7 +1116,7 @@ def _clean_raw_value(value: Any) -> Any:
         return value.isoformat()
     if isinstance(value, dict):
         return {str(k): _clean_raw_value(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, list | tuple | set):
         return [_clean_raw_value(v) for v in value]
     return value
 
@@ -1167,7 +1176,7 @@ def _process_single_transaction(
 ) -> Transaction | None:
     """
     Returns the new Transaction if created, otherwise None.
-    
+
     Applies sign to amount based on direction:
     - CEX: buy = negative (money out), sell = positive (money in)
     - Web3: outflow = negative, inflow = positive
@@ -1228,7 +1237,7 @@ def _process_single_transaction(
     amount = amount_raw if isinstance(amount_raw, Decimal) else Decimal(str(amount_raw))
     direction = txn.get("direction")
     transaction_type = txn.get("transaction_type")
-    
+
     # For CEX and Web3, apply sign based on direction
     if direction:
         if direction == "outflow":
@@ -1253,7 +1262,7 @@ def _process_single_transaction(
 
     predicted_category = predict_category(db, uid, merchant_name or "")
     final_category = predicted_category
-    
+
     # If no predicted category, use smarter defaults
     if not final_category:
         cats = txn.get("category")
@@ -1300,13 +1309,13 @@ def _process_single_transaction(
 
 
 def _resolve_sync_dates(
-    start_date: date | None, 
+    start_date: date | None,
     end_date: date | None,
     account_type: str | None = None,
 ) -> tuple[date, date]:
     """
     Resolve sync date window with account-type-specific defaults.
-    
+
     Args:
         start_date: Optional start date (if None, uses default based on account type)
         end_date: Optional end date (if None, defaults to today)
@@ -1594,11 +1603,11 @@ def sync_account_transactions(
 
     try:
         from backend.services.budget_alerts import evaluate_budget_thresholds
-        from backend.services.recurring import send_recurring_notifications
         from backend.services.notification_triggers import (
             evaluate_low_balance,
             evaluate_transaction_triggers,
         )
+        from backend.services.recurring import send_recurring_notifications
 
         if new_ids:
             new_txns = (
