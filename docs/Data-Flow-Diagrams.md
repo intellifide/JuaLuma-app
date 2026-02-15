@@ -30,7 +30,7 @@ User → jualuma Platform → Data Aggregation → Storage → Processing → Di
 
 1. **User Input:** Account linking, preferences, queries
 2. **Data Aggregation:** Plaid, CEX APIs, Web3 wallets
-3. **Storage:** Cloud SQL (ledger + log ledger), Firestore, Cloud Storage (Coldline archive)
+3. **Storage**: Cloud SQL (ledger + log ledger), Google Cloud Firestore, Cloud Storage (Coldline archive)
 4. **Processing:** Categorization, AI analysis, calculations
 5. **Display:** Dashboard, reports, insights
 6. **User Output:** Visualizations, notifications, responses
@@ -85,7 +85,7 @@ User
 
 **Checkpoint 1: Authentication**
 
-- User must be authenticated (Firebase Auth)
+- User must be authenticated (GCP Identity Platform)
 - Session validated
 - User permissions checked
 
@@ -400,7 +400,7 @@ User → POST /chat
   │     ├─→ Free Tier: Check cloud quota (5/day) for Vertex AI Gemini 2.5 Flash
   │     └─→ Pro Tier: Check cloud quota (50/month)
   │
-  ├─→ Feature Flag Check (Firebase Remote Config)
+  ├─→ Feature Flag Check (GCP Runtime Config)
   │     │
   │     └─→ ENABLE_AI_GATEWAY must be True
   │
@@ -532,21 +532,25 @@ Data Type → Storage Decision → Storage Location
 ### 6.2 Data Flow to Storage
 
 **Transaction Data:**
+
 ```
 Plaid/CEX/Web3 → Normalization → Pub/Sub → CategorizationService → Cloud SQL
 ```
 
 **User Data:**
+
 ```
 User Input → FastAPI → Validation → Cloud SQL
 ```
 
 **Usage Metrics:**
+
 ```
 API Calls → FastAPI → Firestore (api_usage)
 ```
 
 **Logs:**
+
 ```
 All Services → LogLedgerService → Cloud SQL (audit.llm_logs, audit.audit_log) → Coldline export
 ```
@@ -623,7 +627,7 @@ User → GET /transactions
 
 **Every Request:**
 
-- User authenticated (Firebase Auth token)
+- User authenticated (GCP Identity Platform token)
 - Token validated
 - User permissions checked
 - Session active
@@ -674,7 +678,7 @@ User → GET /transactions
 ```
 New User
   │
-  ├─→ Register Account (Firebase Auth)
+  ├─→ Register Account (GCP Identity Platform)
   │     │
   │     └─→ User Created in Cloud SQL
   │

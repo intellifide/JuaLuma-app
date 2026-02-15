@@ -148,7 +148,7 @@ const refreshAuthToken = async () => {
 
 // --- API Functions mimicking Firebase Auth ---
 
-export class FirebaseError extends Error {
+export class IdentityError extends Error {
     code: string
     constructor(code: string, message: string) {
         super(message)
@@ -159,13 +159,13 @@ export class FirebaseError extends Error {
 
 const handleGcpError = (error: any) => {
     const msg = error.error?.message || "Unknown error"
-    // Map GCP error messages to Firebase error codes for compatibility with existing app logic
-    if (msg.includes("EMAIL_EXISTS")) return new FirebaseError('auth/email-already-in-use', "Email already in use")
-    if (msg.includes("INVALID_PASSWORD")) return new FirebaseError('auth/wrong-password', "Invalid password")
-    if (msg.includes("EMAIL_NOT_FOUND")) return new FirebaseError('auth/user-not-found', "User not found")
-    if (msg.includes("USER_DISABLED")) return new FirebaseError('auth/user-disabled', "User disabled")
+    // Map GCP error messages to standard error codes for compatibility with existing app logic
+    if (msg.includes("EMAIL_EXISTS")) return new IdentityError('auth/email-already-in-use', "Email already in use")
+    if (msg.includes("INVALID_PASSWORD")) return new IdentityError('auth/wrong-password', "Invalid password")
+    if (msg.includes("EMAIL_NOT_FOUND")) return new IdentityError('auth/user-not-found', "User not found")
+    if (msg.includes("USER_DISABLED")) return new IdentityError('auth/user-disabled', "User disabled")
     // Add more mappings as discovered
-    return new FirebaseError('auth/unknown', msg)
+    return new IdentityError('auth/unknown', msg)
 }
 
 export const createUserWithEmailAndPassword = async (auth: any, email: string, password: string) => {

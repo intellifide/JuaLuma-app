@@ -12,18 +12,18 @@ This document outlines the application security implementation strategy for the 
 
 ## Authentication Architecture
 
-### Firebase Authentication
+### GCP Identity Platform (Native Identity)
 
 **Primary Authentication Provider:**
 
-- Firebase Auth for user authentication
+- GCP Identity Platform for user authentication
 - Supports Email/Password and Google Sign-In
-- Handles user session management
+- Handles user session management via native Google Identity toolkit
 
 **Implementation:**
 
-- Frontend: Firebase Auth SDK
-- Backend: Firebase Admin SDK for token verification
+- Frontend: Google Identity Platform SDK
+- Backend: Google Identity toolkit (Auth Service) for token verification
 - Token validation on every API request
 
 **Security Features:**
@@ -36,18 +36,18 @@ This document outlines the application security implementation strategy for the 
 ### Authentication Flow
 
 1. **User Login:**
-   - User authenticates via Firebase Auth
-   - Firebase returns ID token
+   - User authenticates via GCP Identity Platform
+   - Service returns ID token
    - Frontend stores token securely
 
 2. **API Request:**
    - Frontend includes ID token in Authorization header
-   - Backend verifies token with Firebase Admin SDK
+   - Backend verifies token with GCP Identity Public Keys
    - Backend extracts user ID from token
    - Request proceeds if token is valid
 
 3. **Token Refresh:**
-   - Firebase SDK automatically refreshes tokens
+   - Identity Platform SDK automatically refreshes tokens
    - Seamless user experience
    - No manual token management required
 
@@ -123,7 +123,7 @@ This document outlines the application security implementation strategy for the 
 
 - Cloud Run rate limiting
 - Application-level rate limiting
-- Firestore for rate limit tracking
+- GCP Cloud Storage for rate limit tracking (if applicable) or Redis
 
 ---
 
@@ -424,7 +424,7 @@ This Application Security Implementation Guide relates to the following planning
 
 **App Development Guides:**
 
-- `Master App Dev Guide.md` - Technical specification (Section 8.0: Security, Privacy & Encryption)
+- `tech-stack.md` - Technology stack and infrastructure specification
 - `CI-CD-Strategy.md` - CI/CD strategy (security scanning requirements)
 
 **Legal Documents:**

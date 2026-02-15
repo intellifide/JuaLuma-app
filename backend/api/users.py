@@ -178,12 +178,12 @@ def delete_account(
     uid = current_user.uid
     email = current_user.email
 
-    # 1. Revoke Firebase Tokens & Delete from Firebase
+    # 1. Revoke Identity Platform Tokens & Delete from Auth Provider
     try:
         auth.revoke_refresh_tokens(uid)
         auth.delete_user(uid)
     except Exception as e:
-        logger.error(f"Error deleting user from Firebase: {e}")
+        logger.error(f"Error deleting user from Identity Platform: {e}")
         # Continue to delete local data anyway to ensure cleanup
 
     # 2. Delete Local Data

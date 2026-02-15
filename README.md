@@ -20,8 +20,8 @@ jualuma is a modern financial management app that syncs bank data, tracks manual
 
 - **Frontend**: React, Vite, TypeScript, Tailwind CSS, Storybook
 - **Backend**: FastAPI, Python 3.11, SQLAlchemy, Pydantic
-- **Data**: PostgreSQL (Cloud SQL) plus Firestore
-- **Auth**: Firebase Authentication
+- **Data**: PostgreSQL (Cloud SQL) and Google Cloud Firestore
+- **Auth**: GCP Identity Platform (Native REST Implementation)
 - **Infra**: Terraform on Google Cloud Platform
 
 ## Local Runtime (Docker-only)
@@ -50,7 +50,7 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
    - Postgres: localhost:5433
 
 4. **Agent Setup (MCP)**
-   - Configure the IDE to connect to the **Postgres MCP** (`localhost:5433`) and other MCP servers (see details in `docs/Master App Dev Guide.md`).
+   - Configure the IDE to connect to the **Postgres MCP** (`localhost:5433`) and other MCP servers (see details in `docs/tech-stack.md`).
 
 ## Developer Tools
 

@@ -31,11 +31,11 @@ import {
   completeBackendLogin,
   getIdToken,
   getPasskeyAuthOptions,
-  login as loginWithFirebase,
-  logout as logoutWithFirebase,
-  resetPassword as resetPasswordWithFirebase,
+  login as loginWithAuth,
+  logout as logoutWithAuth,
+  resetPassword as resetPasswordWithAuth,
   ResetPasswordStatus,
-  signup as signupWithFirebase,
+  signup as signupWithAuth,
 } from '../services/auth'
 import { getPasskeyAssertion } from '../services/passkey'
 import { AgreementAcceptanceInput } from '../types/legal'
@@ -213,7 +213,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null)
       setLoading(true)
       try {
-        await signupWithFirebase(email, password, agreements, first_name, last_name, username)
+        await signupWithAuth(email, password, agreements, first_name, last_name, username)
         await refetchProfile()
       } catch (err) {
         const message =
@@ -232,7 +232,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null)
       setLoading(true)
     try {
-      await loginWithFirebase(email, password)
+      await loginWithAuth(email, password)
       const token = await getIdToken(true)
       if (!token) {
         throw new Error('Unable to establish a secure session token.')
@@ -312,7 +312,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null)
     setLoading(true)
     try {
-      await logoutWithFirebase()
+      await logoutWithAuth()
       setProfile(null)
     } finally {
       setLoading(false)
@@ -323,7 +323,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async (email: string, mfa_code?: string, passkey_assertion?: Record<string, unknown>) => {
     setError(null)
     try {
-      return await resetPasswordWithFirebase(email, mfa_code, passkey_assertion)
+      return await resetPasswordWithAuth(email, mfa_code, passkey_assertion)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to reset password.'

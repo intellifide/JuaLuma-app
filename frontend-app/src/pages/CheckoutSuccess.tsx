@@ -31,7 +31,7 @@ export const CheckoutSuccess = () => {
     }
 
     useEffect(() => {
-        // Wait for Firebase auth to initialize
+        // Wait for Identity auth to initialize
         if (loading) {
             return
         }

@@ -31,7 +31,7 @@ const pillars = [
   },
 ]
 
-const partners = ['PLAID', 'STRIPE', 'FIREBASE', 'VERTEX AI']
+const partners = ['PLAID', 'STRIPE', 'GOOGLE CLOUD', 'VERTEX AI']
 
 export default function AboutPage() {
   return (

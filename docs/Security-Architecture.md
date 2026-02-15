@@ -241,7 +241,7 @@ This document expands on Section 5 of the business plan and provides detailed se
 
 **User Authentication:**
 
-- Firebase Authentication
+- GCP Identity Platform (Native Identity)
 - Supported methods:
   - Email/Password
   - Google OAuth
@@ -377,7 +377,7 @@ Roles are separated into four categories: App Users, Marketplace Developers, Int
 - **Runtime Enforcement:** FastAPI dependencies (`require_feature(feature_key)`) validate the caller's subscription tier before executing business logic. Blocks respond with `403` and emit `feature_preview.backend_blocked` events to Cloud SQL (`audit.feature_preview`).
 - **Preview Endpoints:** `/preview/<feature_key>` routes read immutable JSON artifacts stored in a dedicated Cloud Storage bucket (`gs://jualuma-preview-content`). Buckets contain only synthetic data, inherit CMEK, and expose read-only signed URLs. No NPPI or user identifiers may be stored alongside preview data.
 - **Audit Logging:** All accesses (allowed, blocked, preview fetch) record `{uid, feature_key, tier, source_ip, user_agent}`. Logs feed the Security Operations dashboards and trigger anomaly alerts if unusually high preview traffic appears.
-- **Remote Config Kill Switch:** Firebase Remote Config exposes `feature_preview.kill_switch` and per-feature toggles. Support can disable previews or premium enforcement in emergencies without redeploying; changes are logged via Config Change Notifications.
+- **GCP Runtime Config Kill Switch:** GCP Application Configuration exposes `feature_preview.kill_switch` and per-feature toggles. Support can disable previews or premium enforcement in emergencies without redeploying; changes are logged via Config Change Notifications.
 - **Data Minimization:** Preview telemetry only stores hashed `uid` + tier, satisfying GDPR data minimization while still supporting conversion analytics.
 
 ---
@@ -768,7 +768,7 @@ Data → Encryption (AES-256) → Encrypted Data → Storage
 ### 12.3 Authentication Flow
 
 ```
-User → Firebase Auth → JWT Token → FastAPI → Verify Token → Authorize → Access Data
+User → GCP Identity Platform → JWT Token → FastAPI → Verify Token → Authorize → Access Data
 ```
 
 ---

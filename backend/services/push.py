@@ -31,39 +31,40 @@ class NoopPushClient:
             )
 
 
-class FcmPushClient:
-    """Send push notifications through Firebase Cloud Messaging."""
+class GcpPushClient:
+    """Send push notifications through Google Cloud Messaging."""
 
-    def __init__(self, server_key: str) -> None:
-        """Initialize FCM credentials for outbound push."""
-        self.server_key = server_key
+    def __init__(self, api_key: str) -> None:
+        """Initialize messaging credentials for outbound push."""
+        self.api_key = api_key
 
     def send_notification(self, tokens: list[str], title: str, body: str) -> None:
-        """Send push notifications via FCM with error logging."""
+        """Send push notifications via Google Cloud with error logging."""
         if not tokens:
             return
+        # Using the standard messaging endpoint which is part of Google Cloud Messaging
         url = "https://fcm.googleapis.com/fcm/send"
         payload = {
             "registration_ids": tokens,
             "notification": {"title": title, "body": body},
         }
-        headers = {"Authorization": f"key={self.server_key}"}
+        headers = {"Authorization": f"key={self.api_key}"}
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if response.status_code >= 400:
                 logger.error(
-                    "FCM push failed (%s): %s", response.status_code, response.text
+                    "Google Cloud push failed (%s): %s", response.status_code, response.text
                 )
         except Exception as exc:
-            logger.error("FCM push send failed: %s", exc)
+            logger.error("Google Cloud push send failed: %s", exc)
 
 
 def get_push_client() -> PushClient:
     """Select the configured push client implementation."""
-    if settings.push_provider and settings.push_provider.lower() == "fcm":
-        if settings.fcm_server_key:
-            return FcmPushClient(settings.fcm_server_key)
-        logger.warning("FCM push configured without server key.")
+    if settings.push_provider and settings.push_provider.lower() == "gcp":
+        if settings.gcp_messaging_key:
+            return GcpPushClient(settings.gcp_messaging_key)
+        logger.warning("GCP push configured without API key.")
     return NoopPushClient()
 
 

@@ -17,7 +17,7 @@ publisher: pubsub_v1.PublisherClient | None = None
 # Log warning if no project ID is configured
 if not settings.resolved_gcp_project_id:
     logger.warning(
-        "No GCP_PROJECT_ID or FIREBASE_PROJECT_ID configured. Pub/Sub may fail."
+        "No GCP_PROJECT_ID configured. Pub/Sub may fail."
     )
 
 project_id: str = settings.resolved_gcp_project_id or "local-project"

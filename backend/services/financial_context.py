@@ -8,10 +8,9 @@ enforces RLS for user-data isolation, and formats structured context for prompts
 
 import logging
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.models import Transaction, get_session
@@ -32,7 +31,7 @@ async def get_financial_context(
     Combines vector similarity search with spending summary for richer context.
 
     Args:
-        user_id: Firebase UID for RLS enforcement.
+        user_id: Unified User ID for RLS enforcement.
         query: User's natural language query.
         db: Optional SQLAlchemy session (creates one if None).
         top_k: Number of similar transactions to retrieve.

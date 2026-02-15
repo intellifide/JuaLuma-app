@@ -12,7 +12,7 @@ services:
       APP_ENV: local
       API_PORT: 8001
       DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
-      FIREBASE_EMULATOR_ENABLED: "false"
+      AUTH_EMULATOR_ENABLED: "false"
       PUBSUB_EMULATOR_ENABLED: "false"
       ENCRYPTION_PROVIDER: ${ENCRYPTION_PROVIDER:-local}
       LOCAL_ENCRYPTION_KEY: ${LOCAL_ENCRYPTION_KEY:-local-dev-key-change-me}
@@ -123,7 +123,7 @@ services:
     environment:
       APP_ENV: local
       DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
-      FIREBASE_EMULATOR_ENABLED: "false"
+      AUTH_EMULATOR_ENABLED: "false"
       PUBSUB_EMULATOR_ENABLED: "false"
       GCP_PROJECT_ID: jualuma-dev
       ENABLE_AI_GATEWAY: "false"

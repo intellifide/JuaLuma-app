@@ -77,7 +77,7 @@ Intellifide, LLC ("Company," "we," "us," or "our") operates the jualuma financia
 
 #### Authentication Services:
 
-- Information from authentication providers (e.g., Google, Firebase)
+- Information from authentication providers (e.g., Google, Identity Platform)
 
 ### 2. How We Use Your Information
 
@@ -551,6 +551,6 @@ This Privacy Policy relates to the following planning documents:
 
 - `Security-Architecture.md` - Security architecture (data protection)
 - `Data-Flow-Diagrams.md` - Data flow architecture (data collection and use)
-- `Master App Dev Guide.md` - Technical specification (privacy by design)
+- `tech-stack.md` - Technology stack and infrastructure (privacy by design)
 
 **Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

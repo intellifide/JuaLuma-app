@@ -24,7 +24,7 @@ import {
   signOut,
   confirmPasswordReset as gcpConfirmPasswordReset,
   verifyPasswordResetCode as gcpVerifyPasswordResetCode,
-  FirebaseError,
+  IdentityError,
   User,
 } from './gcp_auth_driver'
 import { AgreementAcceptanceInput } from '../types/legal'
@@ -63,7 +63,7 @@ let cachedToken: string | null = null
 let lastTokenAt = 0
 
 const mapGcpError = (error: unknown): string => {
-  if (error instanceof FirebaseError) {
+  if (error instanceof IdentityError) {
     switch (error.code) {
       case 'auth/invalid-email':
         return 'Please use a valid email address.'
@@ -135,7 +135,7 @@ export const signup = async (
       }
     }
 
-    if (error instanceof Error && !(error instanceof FirebaseError)) {
+    if (error instanceof Error && !(error instanceof IdentityError)) {
       throw error // Re-throw backend errors as-is
     }
     throw new Error(mapGcpError(error))

@@ -47,8 +47,8 @@ class AppSettings(BaseSettings):
     )
     plaid_cleanup_grace_days: int = Field(default=7, alias="PLAID_CLEANUP_GRACE_DAYS")
 
-    firebase_project_id: str = Field(
-        default="jualuma-local", alias="FIREBASE_PROJECT_ID"
+    gcp_project_id: str = Field(
+        default="jualuma-local", alias="GCP_PROJECT_ID"
     )
     google_cloud_project: str | None = Field(
         default=None, alias="GOOGLE_CLOUD_PROJECT"
@@ -70,7 +70,7 @@ class AppSettings(BaseSettings):
     ai_model_local: str = Field(default="gemini-2.5-flash", alias="AI_MODEL_LOCAL")
     ai_model_prod: str = Field(default="gemini-2.5-flash", alias="AI_MODEL_PROD")
 
-    gcp_project_id: str | None = Field(default=None, alias="GCP_PROJECT_ID")
+
     gcp_location: str = Field(default="us-central1", alias="GCP_LOCATION")
     service_name: str = Field(default="jualuma-backend", alias="SERVICE_NAME")
     secret_provider: str | None = Field(default=None, alias="SECRET_PROVIDER")
@@ -157,7 +157,7 @@ class AppSettings(BaseSettings):
 
     # Push Config
     push_provider: str | None = Field(default=None, alias="PUSH_PROVIDER")
-    fcm_server_key: str | None = Field(default=None, alias="FCM_SERVER_KEY")
+    gcp_messaging_key: str | None = Field(default=None, alias="GCP_MESSAGING_KEY")
 
     @field_validator("database_url", "plaid_client_id", "plaid_secret", "frontend_url")
     @classmethod
@@ -179,14 +179,12 @@ class AppSettings(BaseSettings):
 
     @model_validator(mode="after")
     def _normalize_project_ids(self) -> "AppSettings":
-        resolved = self.gcp_project_id or self.google_cloud_project or self.firebase_project_id
+        resolved = self.gcp_project_id or self.google_cloud_project
         if resolved:
             if not self.gcp_project_id:
                 self.gcp_project_id = resolved
             if not self.google_cloud_project:
                 self.google_cloud_project = resolved
-            if not self.firebase_project_id:
-                self.firebase_project_id = resolved
         return self
 
     @property
@@ -195,7 +193,7 @@ class AppSettings(BaseSettings):
 
     @property
     def resolved_gcp_project_id(self) -> str | None:
-        return self.gcp_project_id or self.google_cloud_project or self.firebase_project_id
+        return self.gcp_project_id or self.google_cloud_project
 
     @property
     def cors_origins(self) -> list[str]:

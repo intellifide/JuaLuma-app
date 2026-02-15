@@ -471,6 +471,6 @@ This Terms of Service relates to the following planning documents:
 
 #### App Development Guides:
 
-- `Master App Dev Guide.md` - Technical specification (legal-first lifecycle, click-wrap implementation)
+- `tech-stack.md` - Technology stack and infrastructure (legal-first lifecycle, click-wrap implementation)
 
 **Last Updated:** December 19, 2025 at 01:50 PM CT (Modified 12/19/2025 13:50 Central Time per rules)

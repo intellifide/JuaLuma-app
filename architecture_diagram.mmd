@@ -11,7 +11,7 @@ flowchart TD
         EXT_Stripe(Stripe API)
         EXT_Plaid(Plaid API)
         EXT_OpenAI(OpenAI API)
-        EXT_Firebase(Firebase Auth)
+        EXT_GCP(GCP Identity Platform)
         EXT_PubSub(Google Pub/Sub)
     end
 
@@ -32,7 +32,7 @@ flowchart TD
     %% --- Backend Layer ---
     subgraph Backend_Layer [Backend Microservices]
         API_Gateway[FastAPI Main App]
-        
+
         subgraph Core_Services [Domain Services]
             Svc_Auth[Auth Service]
             Svc_Accounts[Accounts Service]
@@ -51,7 +51,7 @@ flowchart TD
     %% --- Data Layer ---
     subgraph Data_Layer [Data Persistence]
         DB_Postgres[(PostgreSQL + pgvector)]
-        
+
         subgraph Tables [Core Tables]
             TBL_Users[users]
             TBL_Accts[accounts]
@@ -82,7 +82,7 @@ flowchart TD
     API_Gateway --> Svc_Support
 
     %% Services -> External
-    Svc_Auth -- Verify Token --> EXT_Firebase
+    Svc_Auth -- Verify Token --> EXT_GCP
     Svc_Billing -- Checkout/Webhooks --> EXT_Stripe
     Svc_Accounts -- Link Token/Sync --> EXT_Plaid
     Svc_AI -- Completion/Embedding --> EXT_OpenAI
@@ -103,7 +103,7 @@ flowchart TD
     TBL_Users -. 1:N .-> TBL_House
 
     %% Class Assignments
-    class EXT_Stripe,EXT_Plaid,EXT_OpenAI,EXT_Firebase,EXT_PubSub ext
+    class EXT_Stripe,EXT_Plaid,EXT_OpenAI,EXT_GCP,EXT_PubSub ext
     class UI_User,Store_Auth,Store_Data,Service_FE_API,UI_Support client
     class API_Gateway api
     class Svc_Auth,Svc_Accounts,Svc_Transactions,Svc_AI,Svc_Billing,Svc_Household,Svc_Notification,Svc_Support service

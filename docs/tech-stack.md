@@ -91,8 +91,8 @@ This document outlines the complete technology stack for the jualuma financial a
 ### NoSQL / Cache
 
 - **Firestore (Datastore Mode)**: High-velocity metering, caching
-  - Local: Firebase Emulator Suite (port 8080)
-  - Production: Firestore Datastore Mode (GCP)
+  - Local: Docker-based storage/mocks
+  - Production: Google Cloud Firestore (GCP)
 
 ### Messaging
 
@@ -199,7 +199,7 @@ This document outlines the complete technology stack for the jualuma financial a
 ### Emulators & Mocks
 
 - **PostgreSQL**: Docker container (port 5433)
-- **Firebase Emulator Suite**: Firestore (8080), Auth (9099)
+- **Local Emulators**: Identity Platform (9099), Firestore (8080)
 - **Pub/Sub Emulator**: Port 8085
 - **FastAPI**: Local server (port 8001)
 - **Vite**: Dev server (port 5175)

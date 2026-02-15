@@ -658,7 +658,7 @@ def _mark_session_mfa_verified(uid: str, iat: int | None, method: str | None, db
 
 
 def _build_frontend_reset_link(reset_link: str) -> str:
-    """Rewrite Firebase reset links to the frontend reset page when possible."""
+    """Rewrite Identity Platform reset links to the frontend reset page when possible."""
     parsed = urlparse(reset_link)
     params = parse_qs(parsed.query)
     oob_code = params.get("oobCode", [None])[0]
@@ -669,7 +669,7 @@ def _build_frontend_reset_link(reset_link: str) -> str:
     return f"{base}/reset-password?oobCode={oob_code}"
 
 
-def _rollback_firebase_user(uid: str, *, email: str | None, reason: str) -> None:
+def _rollback_identity_user(uid: str, *, email: str | None, reason: str) -> None:
     try:
         delete_user(uid)
         logger.warning(
@@ -761,7 +761,7 @@ def _handle_existing_db_user(
     )
 
 
-def _handle_existing_firebase_user(email: str, db: Session):
+def _handle_existing_identity_user(email: str, db: Session):
     """
     Handle logic when a user already exists in Identity Platform.
     Returns (record, is_synced_user_obj).
@@ -822,7 +822,7 @@ def _handle_existing_firebase_user(email: str, db: Session):
 def _create_db_user_safe(
     db: Session,
     record,
-    is_fresh_firebase_user: bool,
+    is_fresh_identity_user: bool,
     first_name: str | None = None,
     last_name: str | None = None,
     username: str | None = None,
@@ -873,9 +873,9 @@ def _create_db_user_safe(
             extra={"email": record['email'], "uid": record['localId']},
             exc_info=exc,
         )
-        # Rollback Firebase if we just created it
-        if is_fresh_firebase_user:
-            _rollback_firebase_user(
+        # Rollback Identity user if we just created it
+        if is_fresh_identity_user:
+            _rollback_identity_user(
                 record['localId'],
                 email=record['email'],
                 reason="db_creation_failed",
@@ -964,9 +964,9 @@ def signup_pending(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    Store temporary signup data after Firebase user creation.
+    Store temporary signup data after Identity Platform user creation.
 
-    Requires a valid Firebase ID token.
+    Requires a valid Identity ID token.
     """
     uid = identity.get("uid")
     email = identity.get("email")
@@ -1042,7 +1042,7 @@ def signup(
 
     Returns the new user's UID and email.
     """
-    is_fresh_firebase_user = False
+    is_fresh_identity_user = False
     record = None
 
     existing_user = db.query(User).filter(User.email == payload.email).first()
@@ -1055,11 +1055,11 @@ def signup(
     # Check if user already exists in Identity Platform
     existing_identity = get_user_by_email(payload.email)
     if existing_identity:
-         record, _ = _handle_existing_firebase_user(payload.email, db)
+         record, _ = _handle_existing_identity_user(payload.email, db)
     else:
         try:
             record = create_identity_user(email=payload.email, password=payload.password)
-            is_fresh_firebase_user = True
+            is_fresh_identity_user = True
         except RuntimeError as exc:
             logger.error(
                 "Identity create_user failed.",
@@ -1083,8 +1083,8 @@ def signup(
             .first()
         )
         if existing_username or pending_username:
-            if is_fresh_firebase_user and record:
-                _rollback_firebase_user(
+            if is_fresh_identity_user and record:
+                _rollback_identity_user(
                     uid,
                     email=email_addr,
                     reason="username_conflict",
@@ -1102,8 +1102,8 @@ def signup(
             "Signup missing required legal agreements.",
             extra={"email": payload.email, "missing": sorted(missing)},
         )
-        if is_fresh_firebase_user and record:
-            _rollback_firebase_user(
+        if is_fresh_identity_user and record:
+            _rollback_identity_user(
                 uid,
                 email=email_addr,
                 reason="missing_required_agreements",
@@ -1137,7 +1137,7 @@ def login(  # noqa: C901
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    Exchange a valid Firebase ID token for a user session profile.
+    Exchange a valid Identity ID token for a user session profile.
 
     - **token**: The JWT ID token from the client SDK.
 
@@ -2071,7 +2071,7 @@ def end_session(
     session_rec.is_active = False
     db.commit()
 
-    # Optionally: If we want to force logout on Firebase side, we might need more effort,
+    # Optionally: If we want to force logout on Identity side, we might need more effort,
     # but since our middleware checks is_active, this is sufficient for blocking access.
 
     return {"message": "Session terminated successfully."}
