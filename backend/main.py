@@ -174,6 +174,19 @@ if settings.app_env.lower() == "local":
 
 
 # Structured error handlers ----------------------------------------------------
+def _sanitize_for_json(obj: _t.Any) -> _t.Any:
+    """Ensure value is JSON-serializable (e.g. Pydantic errors can contain Exception in ctx)."""
+    if obj is None or isinstance(obj, bool | int | float | str):
+        return obj
+    if isinstance(obj, Exception):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list | tuple):
+        return [_sanitize_for_json(v) for v in obj]
+    return str(obj)
+
+
 def _build_error_response(
     *,
     status_code: int,
@@ -191,6 +204,7 @@ def _build_error_response(
     }
     if extra:
         payload.update(extra)
+    payload = _sanitize_for_json(payload)
     return JSONResponse(status_code=status_code, content=payload)
 
 

@@ -1,6 +1,8 @@
+import os
 from unittest.mock import MagicMock, patch
 
 import pyotp
+import pytest
 
 from backend.core.constants import UserStatus
 from backend.models import User
@@ -11,6 +13,10 @@ from backend.models import User
 @patch("backend.middleware.auth.verify_token")
 @patch("backend.api.auth.verify_token")
 @patch("backend.api.auth.get_email_client")
+@pytest.mark.skipif(
+    "sqlite" in os.environ.get("DATABASE_URL", ""),
+    reason="RLS SET LOCAL is Postgres-only; test uses SQLite in CI",
+)
 def test_mfa_complete_flow(
     mock_get_email_client,
     mock_verify_token_api,

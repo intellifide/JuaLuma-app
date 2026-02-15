@@ -7,5 +7,9 @@ engine = create_engine(db_url)
 
 with engine.connect() as conn:
     res = conn.execute(text("SELECT current_user, current_database();"))
-    user, db = res.fetchone()
-    print(f"User: {user}, Database: {db}")
+    row = res.fetchone()
+    if row is None:
+        print("No row returned")
+    else:
+        user, db = row
+        print(f"User: {user}, Database: {db}")

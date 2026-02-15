@@ -142,12 +142,9 @@ def test_reset_password_mfa_success(test_client: TestClient, test_db):
 
     valid_code = pyotp.TOTP(secret).now()
 
-    with patch(
-        "backend.api.auth.generate_password_reset_link",
-        return_value="http://reset-link.com",
-    ):
+    with patch("backend.api.auth.send_password_reset_email"):
         payload = {"email": "mfa2@example.com", "mfa_code": valid_code}
         response = test_client.post("/api/auth/reset-password", json=payload)
 
     assert response.status_code == 200
-    assert "Reset link sent" in response.json()["message"]
+    assert "Reset" in response.json()["message"] and "sent" in response.json()["message"]

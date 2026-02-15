@@ -7,8 +7,12 @@ engine = create_engine(db_url)
 
 with engine.connect() as conn:
     res = conn.execute(text("SHOW search_path;"))
-    path = res.fetchone()[0]
-    print(f"Search path: {path}")
+    row = res.fetchone()
+    if row is None:
+        print("No row returned")
+    else:
+        path = row[0]
+        print(f"Search path: {path}")
 
     # Try creating a temporary table in audit
     try:
