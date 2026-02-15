@@ -9,9 +9,11 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = env.VITE_API_TARGET || env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
+  // In Docker/build, envDir is '.' so .env created from build-args is used. Local dev uses repo root.
+  const envDir = process.env.VITE_ENV_DIR || '../'
   return {
     plugins: [react()],
-    envDir: '../',
+    envDir,
     server: {
       port: 5175,
       host: true,

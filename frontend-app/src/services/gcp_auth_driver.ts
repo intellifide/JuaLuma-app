@@ -8,6 +8,11 @@
 // Documentation: https://cloud.google.com/identity-platform/docs/use-rest-api
 
 const API_KEY = import.meta.env.VITE_GCP_API_KEY
+if (!API_KEY || API_KEY === 'undefined') {
+  throw new Error(
+    'VITE_GCP_API_KEY is not set. Set it in frontend-app/.env or root .env (local), or pass as build-arg when building the Docker image (Cloud Run).'
+  )
+}
 const IDENTITY_TOOLKIT_BASE = 'https://identitytoolkit.googleapis.com/v1'
 const SECURE_TOKEN_BASE = 'https://securetoken.googleapis.com/v1'
 

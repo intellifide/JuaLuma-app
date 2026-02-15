@@ -43,10 +43,14 @@ jobs:
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
 
-      # 2. Frontend App
+      # 2. Frontend App (VITE_GCP_API_KEY required for Identity Platform sign-up/sign-in)
       - name: Build and Push Frontend App
         run: |
-          docker build -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest -f frontend-app/Dockerfile .
+          docker build \
+            --build-arg VITE_GCP_API_KEY="${{ vars.VITE_GCP_API_KEY }}" \
+            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL }}" \
+            -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest \
+            -f frontend-app/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest
       - name: Deploy Frontend App
         uses: "google-github-actions/deploy-cloudrun@v2"
