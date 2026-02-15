@@ -81,6 +81,7 @@ override.tf.json
 *.swp
 *.swo
 *~
+.cursor/
 .gemini/
 
 

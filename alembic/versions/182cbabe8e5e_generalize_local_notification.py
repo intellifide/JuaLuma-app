@@ -54,7 +54,5 @@ def downgrade() -> None:
     )
     op.drop_column("local_notifications", "is_read")
     op.drop_column("local_notifications", "title")
-    op.drop_column("local_notifications", "is_read")
-    op.drop_column("local_notifications", "title")
     # op.drop_table('audit_log', schema='audit') # Skipped
     # ### end Alembic commands ###

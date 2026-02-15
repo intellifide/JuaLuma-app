@@ -14,16 +14,37 @@ repos:
 
   - repo: local
     hooks:
-      - id: frontend-lint
-        name: frontend-lint
-        entry: bash -c 'cd frontend && npm run lint'
+      - id: frontend-app-lint
+        name: frontend-app-lint
+        entry: bash -c 'cd frontend-app && npm run lint'
         language: system
-        files: ^frontend/.*\.tsx?$
+        files: ^frontend-app/.*\.(ts|tsx)$
         pass_filenames: false
 
-      - id: frontend-typecheck
-        name: frontend-typecheck
-        entry: bash -c 'cd frontend && npx tsc --noEmit'
+      - id: frontend-app-typecheck
+        name: frontend-app-typecheck
+        entry: bash -c 'cd frontend-app && npx tsc --noEmit'
         language: system
-        files: ^frontend/.*\.tsx?$
+        files: ^frontend-app/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: frontend-marketing-lint
+        name: frontend-marketing-lint
+        entry: bash -c 'cd frontend-marketing && npm run lint'
+        language: system
+        files: ^frontend-marketing/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: support-portal-lint
+        name: support-portal-lint
+        entry: bash -c 'cd support-portal && npm run lint'
+        language: system
+        files: ^support-portal/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: support-portal-typecheck
+        name: support-portal-typecheck
+        entry: bash -c 'cd support-portal && npx tsc -b'
+        language: system
+        files: ^support-portal/.*\.(ts|tsx)$
         pass_filenames: false

@@ -60,11 +60,6 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        from sqlalchemy import text
-        connection.execute(text("CREATE SCHEMA IF NOT EXISTS audit;"))
-        connection.commit()
-        print("Ensured 'audit' schema exists in env.py")
-        
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -74,6 +69,8 @@ def run_migrations_online() -> None:
         )
 
         with context.begin_transaction():
+            from sqlalchemy import text
+            connection.execute(text("CREATE SCHEMA IF NOT EXISTS audit;"))
             context.run_migrations()
 
 
