@@ -42,6 +42,13 @@ jobs:
           service: "jualuma-backend"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
+          env_vars: |
+            GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}
+            SMTP_HOST=smtp.gmail.com
+            SMTP_PORT=587
+            SMTP_USERNAME=intellifidellc@gmail.com
+            SMTP_FROM_EMAIL=intellifidellc@gmail.com
+            BACKEND_CORS_ORIGINS=${{ vars.BACKEND_CORS_ORIGINS }}
 
       # 2. Frontend App (VITE_GCP_API_KEY required for Identity Platform sign-up/sign-in)
       - name: Build and Push Frontend App

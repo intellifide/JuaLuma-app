@@ -48,7 +48,7 @@ class AppSettings(BaseSettings):
     plaid_cleanup_grace_days: int = Field(default=7, alias="PLAID_CLEANUP_GRACE_DAYS")
 
     gcp_project_id: str = Field(
-        default="jualuma-local", alias="GCP_PROJECT_ID"
+        default="", alias="GCP_PROJECT_ID"
     )
     google_cloud_project: str | None = Field(
         default=None, alias="GOOGLE_CLOUD_PROJECT"

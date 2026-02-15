@@ -34,3 +34,10 @@ repos:
         language: system
         files: ^frontend-app/.*\.tsx?$
         pass_filenames: false
+
+      - id: gcp-drift-check
+        name: gcp-drift-check
+        entry: bash scripts/check_gcp_drift.sh
+        language: system
+        files: (^\.github/workflows/deploy\.yml$|^backend/core/config\.py$)
+        pass_filenames: false
