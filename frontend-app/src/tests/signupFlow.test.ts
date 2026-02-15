@@ -18,7 +18,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { User } from 'firebase/auth'
+import { User } from '../services/gcp_auth_driver'
 
 // Mock the services
 vi.mock('../services/auth', () => ({

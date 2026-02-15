@@ -14,8 +14,8 @@
 
 import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '../firebase';
+
+import { onAuthStateChanged, type User, auth } from '../services/gcp_auth_driver';
 
 export default function ProtectedRoute() {
     const [user, setUser] = useState<User | null>(null);

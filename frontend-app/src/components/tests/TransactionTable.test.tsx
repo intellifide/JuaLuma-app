@@ -13,9 +13,14 @@
  */
 
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { TransactionTable } from '../TransactionTable'
 import { Transaction } from '../../types'
+import { useAuth } from '../../hooks/useAuth'
+
+vi.mock('../../hooks/useAuth', () => ({
+    useAuth: vi.fn(),
+}))
 
 const mockTransactions: Transaction[] = [
     {
@@ -47,6 +52,12 @@ const mockTransactions: Transaction[] = [
 ]
 
 describe('TransactionTable', () => {
+    beforeEach(() => {
+        vi.mocked(useAuth).mockReturnValue({
+            profile: { time_zone: 'UTC' },
+        } as any)
+    })
+
     it('renders transactions correctly', () => {
         render(<TransactionTable transactions={mockTransactions} />)
 

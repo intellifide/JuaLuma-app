@@ -18,7 +18,8 @@ import { BrowserRouter } from 'react-router-dom'
 import AIAssistant from '../../pages/AIAssistant'
 import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { aiService } from '../../services/aiService'
-import { User } from 'firebase/auth'
+import { User } from '../../services/gcp_auth_driver'
+import { ToastProvider } from '../../components/ui/Toast'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('../../services/aiService', () => ({
@@ -35,9 +36,9 @@ vi.mock('../../services/legal', () => ({
     },
 }))
 
-// Mock ChatMessage and ChatInput to avoid testing their internals again? 
+// Mock ChatMessage and ChatInput to avoid testing their internals again?
 // No, component integration test should use real child components if possible, but mocking complex children is also valid.
-// I'll use real child components since they are simple enough. 
+// I'll use real child components since they are simple enough.
 
 // Mock scrollIntoView
 window.HTMLElement.prototype.scrollIntoView = vi.fn()
@@ -72,7 +73,9 @@ describe('AI Assistant Integration', () => {
     it('loads and displays initial state', async () => {
         render(
             <BrowserRouter>
-                <AIAssistant />
+                <ToastProvider>
+                    <AIAssistant />
+                </ToastProvider>
             </BrowserRouter>
         )
 
@@ -82,7 +85,7 @@ describe('AI Assistant Integration', () => {
         })
         expect(screen.getByText(/5 \/ 20/)).toBeInTheDocument() // Quota display
         // Expect default welcome message if history is empty
-        expect(screen.getByText(/Hello! I am Gemini 2.5 Flash/i)).toBeInTheDocument()
+        expect(screen.getByText(/Hello! I'm your AI Assistant/i)).toBeInTheDocument()
     })
 
     it('sends a message and displays response', async () => {
@@ -94,13 +97,15 @@ describe('AI Assistant Integration', () => {
 
         render(
             <BrowserRouter>
-                <AIAssistant />
+                <ToastProvider>
+                    <AIAssistant />
+                </ToastProvider>
             </BrowserRouter>
         )
 
         // Wait for initial load
         await waitFor(() => {
-            expect(screen.getByText(/Hello! I am Gemini 2.5 Flash/i)).toBeInTheDocument()
+            expect(screen.getByText(/Hello! I'm your AI Assistant/i)).toBeInTheDocument()
         })
 
         const input = screen.getByRole('textbox', { name: /Chat input/i })
@@ -130,7 +135,9 @@ describe('AI Assistant Integration', () => {
 
         render(
             <BrowserRouter>
-                <AIAssistant />
+                <ToastProvider>
+                    <AIAssistant />
+                </ToastProvider>
             </BrowserRouter>
         )
 
@@ -156,7 +163,11 @@ describe('AI Assistant Integration', () => {
         expect(acceptButton).not.toBeDisabled()
         fireEvent.click(acceptButton)
 
-        expect(localStorage.getItem('jualuma_privacy_accepted')).toBe('true')
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        await waitFor(() => {
+            expect(localStorage.getItem('jualuma_privacy_accepted')).toBe('true')
+        })
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        })
     })
 })

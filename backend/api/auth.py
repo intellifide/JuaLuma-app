@@ -1,13 +1,13 @@
 # CORE PURPOSE: Authentication and identity endpoints for user access control.
 # LAST MODIFIED: 2026-01-23 22:39 CST
-import logging
 import json
+import logging
 import random
 import re
 import string
+import uuid
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
-import uuid
 from threading import Lock
 from urllib.parse import parse_qs, urlparse
 
@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
+
 try:
     from webauthn import (
         generate_authentication_options,
@@ -57,17 +58,18 @@ from backend.models import (
     UserSession,
 )
 from backend.schemas.legal import AgreementAcceptancePayload
-from backend.services.legal import record_agreement_acceptances
+from backend.services import household_service
 from backend.services.auth import (
-    _get_firebase_app,
+    create_identity_user,
     create_user_record,
-    generate_password_reset_link,
+    delete_user,
+    get_user_by_email,
     revoke_refresh_tokens,
+    send_password_reset_email,
     update_user_password,
     verify_password,
     verify_token,
 )
-from backend.services import household_service
 from backend.services.email import get_email_client
 from backend.utils import get_db
 
@@ -90,7 +92,7 @@ class SignupRequest(BaseModel):
     last_name: str = Field(min_length=1, max_length=128, example="Doe")
     username: str | None = Field(default=None, max_length=64, example="johndoe")
     agreements: list[AgreementAcceptancePayload] = Field(default_factory=list)
-    
+
     @model_validator(mode="before")
     @classmethod
     def normalize_username(cls, data: any) -> any:
@@ -101,7 +103,7 @@ class SignupRequest(BaseModel):
             elif isinstance(data["username"], str):
                 data["username"] = data["username"].strip()
         return data
-    
+
     @model_validator(mode="after")
     def validate_username(self) -> "SignupRequest":
         """Validate username length if provided."""
@@ -231,7 +233,7 @@ class ProfileUpdateRequest(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def normalize_empty_strings(cls, data: any) -> any:
+    def normalize_empty_strings(cls, data: any) -> any:  # noqa: C901
         """Convert empty strings to None for optional fields."""
         logger.debug(f"ProfileUpdateRequest before validation - raw data: {data}")
         if isinstance(data, dict):
@@ -290,7 +292,7 @@ class ProfileUpdateRequest(BaseModel):
     @model_validator(mode="after")
     def validate_fields(self) -> "ProfileUpdateRequest":
         logger.debug(f"ProfileUpdateRequest after validation - first_name={self.first_name}, last_name={self.last_name}, username={self.username}, display_name_pref={self.display_name_pref}")
-        
+
         # Validate username length if provided (after normalization)
         if self.username is not None and self.username != "":
             if len(self.username) < 3:
@@ -668,18 +670,15 @@ def _build_frontend_reset_link(reset_link: str) -> str:
 
 
 def _rollback_firebase_user(uid: str, *, email: str | None, reason: str) -> None:
-    from firebase_admin import auth
-    from firebase_admin import exceptions as firebase_exceptions
-
     try:
-        auth.delete_user(uid)
+        delete_user(uid)
         logger.warning(
-            "Rolled back Firebase user after signup failure.",
+            "Rolled back Identity user after signup failure.",
             extra={"uid": uid, "email": email, "reason": reason},
         )
-    except firebase_exceptions.FirebaseError as exc:
+    except Exception as exc:
         logger.critical(
-            "CRITICAL: Failed to rollback Firebase user after signup failure.",
+            "CRITICAL: Failed to rollback Identity user after signup failure.",
             extra={"uid": uid, "email": email, "reason": reason},
             exc_info=exc,
         )
@@ -694,84 +693,67 @@ def _handle_existing_db_user(
     Handle logic when a user already exists in the DB.
     Returns (record, synced_user_obj) when a sync is performed.
     """
-    from firebase_admin import auth
-    from firebase_admin import exceptions as firebase_exceptions
-
     db_user = db.query(User).filter(User.email == email).first()
     if not db_user:
         return None, None
 
-    try:
-        existing_record = auth.get_user_by_email(email)
-    except auth.UserNotFoundError:
-        # Firebase missing; heal by creating with the DB UID
+    existing_record = get_user_by_email(email)
+
+    if not existing_record:
+        # Identity Platform missing; heal by creating with the DB UID
         try:
             logger.info(
-                "Healing missing Firebase user from DB record.",
+                "Healing missing Identity user from DB record.",
                 extra={"email": email, "uid": db_user.uid},
             )
-            record = auth.create_user(uid=db_user.uid, email=email, password=password)
+            # Create with specific UID
+            record = create_identity_user(email=email, password=password, uid=db_user.uid)
             return record, db_user
-        except firebase_exceptions.AlreadyExistsError:
-            # Race: retry lookup and fall through to UID sync
-            try:
-                existing_record = auth.get_user_by_email(email)
-            except firebase_exceptions.FirebaseError as exc:
+        except Exception as exc:
+            # Check if raced
+            existing_record = get_user_by_email(email)
+            if existing_record:
+                 # raced, fall through to sync
+                 pass
+            else:
                 logger.error(
-                    "Firebase lookup failed after create_user race.",
+                    "Identity create_user failed for existing DB user.",
                     extra={"email": email, "uid": db_user.uid},
                     exc_info=exc,
                 )
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="We're experiencing an issue connecting to our authentication service. Please try again in a moment.",
+                    detail="Identity service unavailable. Try again shortly.",
                 ) from exc
-        except firebase_exceptions.FirebaseError as exc:
-            logger.error(
-                "Firebase create_user failed for existing DB user.",
-                extra={"email": email, "uid": db_user.uid},
-                exc_info=exc,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Firebase unavailable. Try again shortly.",
-            ) from exc
-    except firebase_exceptions.FirebaseError as exc:
-        logger.error(
-            "Firebase lookup failed for existing DB user.",
-            extra={"email": email, "uid": db_user.uid},
-            exc_info=exc,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Firebase unavailable. Try again shortly.",
-        ) from exc
 
-    if existing_record.uid != db_user.uid:
-        logger.info(
-            "Healing desynced user. Updating DB UID to match Firebase.",
-            extra={
-                "email": email,
-                "old_uid": db_user.uid,
-                "new_uid": existing_record.uid,
-            },
-        )
-        try:
-            db_user.uid = existing_record.uid
-            db.commit()
-            db.refresh(db_user)
-            return existing_record, db_user
-        except Exception as exc:
-            logger.error(
-                "Failed to heal DB user after UID mismatch.",
-                extra={"email": email, "uid": existing_record.uid},
-                exc_info=exc,
+    if existing_record:
+        # Check UID match
+        existing_uid = existing_record['localId']
+        if existing_uid != db_user.uid:
+            logger.info(
+                "Healing desynced user. Updating DB UID to match Identity Platform.",
+                extra={
+                    "email": email,
+                    "old_uid": db_user.uid,
+                    "new_uid": existing_uid,
+                },
             )
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="We encountered an issue synchronizing your account data. Please contact support if the issue persists.",
-            ) from exc
+            try:
+                db_user.uid = existing_uid
+                db.commit()
+                db.refresh(db_user)
+                return existing_record, db_user
+            except Exception as exc:
+                logger.error(
+                    "Failed to heal DB user after UID mismatch.",
+                    extra={"email": email, "uid": existing_uid},
+                    exc_info=exc,
+                )
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="We encountered an issue synchronizing your account data. Please contact support if the issue persists.",
+                ) from exc
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -781,28 +763,26 @@ def _handle_existing_db_user(
 
 def _handle_existing_firebase_user(email: str, db: Session):
     """
-    Handle logic when a user already exists in Firebase.
+    Handle logic when a user already exists in Identity Platform.
     Returns (record, is_synced_user_obj).
-    If is_synced_user_obj is returned, it means we healed a desync and should return early.
     """
-    from firebase_admin import auth
-    from firebase_admin import exceptions as firebase_exceptions
+    existing_user = get_user_by_email(email)
 
-    try:
-        existing_user = auth.get_user_by_email(email)
-    except firebase_exceptions.FirebaseError as exc:
+    if not existing_user:
+        # Should detect this before calling if logic is correct, but safe check
         logger.error(
-            "Firebase lookup failed during signup.",
+            "Identity Platform lookup failed during signup check.",
             extra={"email": email},
-            exc_info=exc,
         )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Firebase unavailable. Try again shortly.",
-        ) from exc
+            detail="Identity Platform unavailable. Try again shortly.",
+        )
+
+    uid = existing_user['localId']
 
     # Check DB by authoritative UID
-    db_user_by_uid = db.query(User).filter(User.uid == existing_user.uid).first()
+    db_user_by_uid = db.query(User).filter(User.uid == uid).first()
     if db_user_by_uid:
         # Truly a duplicate
         raise HTTPException(
@@ -815,17 +795,17 @@ def _handle_existing_firebase_user(email: str, db: Session):
     if db_user_by_email:
         # Heal it
         logger.info(
-            f"Healing desynced user {email}. DB UID {db_user_by_email.uid} -> Auth UID {existing_user.uid}"
+            f"Healing desynced user {email}. DB UID {db_user_by_email.uid} -> Auth UID {uid}"
         )
         try:
-            db_user_by_email.uid = existing_user.uid
+            db_user_by_email.uid = uid
             db.commit()
             db.refresh(db_user_by_email)
             return existing_user, db_user_by_email
         except Exception as exc:
             logger.error(
                 "Failed to heal user during signup.",
-                extra={"email": email, "uid": existing_user.uid},
+                extra={"email": email, "uid": uid},
                 exc_info=exc,
             )
             db.rollback()
@@ -835,13 +815,13 @@ def _handle_existing_firebase_user(email: str, db: Session):
             ) from exc
 
     # Truly Zombie
-    logger.info(f"Healing zombie user account for {email} ({existing_user.uid})")
+    logger.info(f"Healing zombie user account for {email} ({uid})")
     return existing_user, None
 
 
 def _create_db_user_safe(
-    db: Session, 
-    record, 
+    db: Session,
+    record,
     is_fresh_firebase_user: bool,
     first_name: str | None = None,
     last_name: str | None = None,
@@ -849,9 +829,9 @@ def _create_db_user_safe(
 ) -> User:
     try:
         user = create_user_record(
-            db, 
-            uid=record.uid, 
-            email=record.email,
+            db,
+            uid=record['localId'],
+            email=record['email'],
             first_name=first_name,
             last_name=last_name,
             username=username,
@@ -859,45 +839,45 @@ def _create_db_user_safe(
         return user
     except Exception as exc:
         if isinstance(exc, ValueError):
-            existing_user = db.query(User).filter(User.email == record.email).first()
+            existing_user = db.query(User).filter(User.email == record['email']).first()
             if existing_user:
-                if existing_user.uid == record.uid:
+                if existing_user.uid == record['localId']:
                     logger.info(
                         "Signup raced with existing DB user; treating as idempotent.",
-                        extra={"email": record.email, "uid": record.uid},
+                        extra={"email": record['email'], "uid": record['localId']},
                     )
                     return existing_user
                 logger.info(
                     "Healing DB user after signup conflict.",
                     extra={
-                        "email": record.email,
+                        "email": record['email'],
                         "old_uid": existing_user.uid,
-                        "new_uid": record.uid,
+                        "new_uid": record['localId'],
                     },
                 )
                 try:
-                    existing_user.uid = record.uid
+                    existing_user.uid = record['localId']
                     db.commit()
                     db.refresh(existing_user)
                     return existing_user
                 except Exception as sync_exc:
                     logger.error(
                         "Failed to heal DB user after signup conflict.",
-                        extra={"email": record.email, "uid": record.uid},
+                        extra={"email": record['email'], "uid": record['localId']},
                         exc_info=sync_exc,
                     )
                     db.rollback()
 
         logger.error(
             "DB creation failed during signup.",
-            extra={"email": record.email, "uid": record.uid},
+            extra={"email": record['email'], "uid": record['localId']},
             exc_info=exc,
         )
         # Rollback Firebase if we just created it
         if is_fresh_firebase_user:
             _rollback_firebase_user(
-                record.uid,
-                email=record.email,
+                record['localId'],
+                email=record['email'],
                 reason="db_creation_failed",
             )
 
@@ -1055,31 +1035,15 @@ def signup(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    Register a new user in Firebase and the local database.
+    Register a new user in Identity Platform and the local database.
 
     - **email**: Valid email address.
     - **password**: Password (min 8 chars).
 
     Returns the new user's UID and email.
     """
-    from firebase_admin import auth
-    from firebase_admin import exceptions as firebase_exceptions
-
     is_fresh_firebase_user = False
     record = None
-
-    try:
-        _get_firebase_app()
-    except Exception as exc:
-        logger.error(
-            "Firebase app initialization failed during signup.",
-            extra={"email": payload.email},
-            exc_info=exc,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Firebase unavailable. Try again shortly.",
-        ) from exc
 
     existing_user = db.query(User).filter(User.email == payload.email).first()
     if existing_user:
@@ -1088,31 +1052,27 @@ def signup(
             detail="An account with this email address already exists.",
         )
 
-    try:
-        record = auth.create_user(email=payload.email, password=payload.password)
-        is_fresh_firebase_user = True
-    except firebase_exceptions.AlreadyExistsError:
-        record, _ = _handle_existing_firebase_user(payload.email, db)
-    except firebase_exceptions.InvalidArgumentError as exc:
-        logger.error(
-            "Firebase rejected signup parameters.",
-            extra={"email": payload.email},
-            exc_info=exc,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The information provided for signup is invalid. Please check your email and password.",
-        ) from exc
-    except firebase_exceptions.FirebaseError as exc:
-        logger.error(
-            "Firebase create_user failed during signup.",
-            extra={"email": payload.email},
-            exc_info=exc,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Firebase unavailable. Try again shortly.",
-        ) from exc
+    # Check if user already exists in Identity Platform
+    existing_identity = get_user_by_email(payload.email)
+    if existing_identity:
+         record, _ = _handle_existing_firebase_user(payload.email, db)
+    else:
+        try:
+            record = create_identity_user(email=payload.email, password=payload.password)
+            is_fresh_firebase_user = True
+        except RuntimeError as exc:
+            logger.error(
+                "Identity create_user failed.",
+                extra={"email": payload.email},
+                exc_info=exc,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The information provided for signup is invalid.",
+            ) from exc
+
+    uid = record['localId']
+    email_addr = record['email']
 
     # Validate username uniqueness if provided (already validated length in model)
     if payload.username:
@@ -1125,8 +1085,8 @@ def signup(
         if existing_username or pending_username:
             if is_fresh_firebase_user and record:
                 _rollback_firebase_user(
-                    record.uid,
-                    email=record.email,
+                    uid,
+                    email=email_addr,
                     reason="username_conflict",
                 )
             raise HTTPException(
@@ -1144,8 +1104,8 @@ def signup(
         )
         if is_fresh_firebase_user and record:
             _rollback_firebase_user(
-                record.uid,
-                email=record.email,
+                uid,
+                email=email_addr,
                 reason="missing_required_agreements",
             )
             raise HTTPException(
@@ -1158,8 +1118,8 @@ def signup(
 
     pending_signup = _store_pending_signup(
         db,
-        uid=record.uid,
-        email=record.email,
+        uid=uid,
+        email=email_addr,
         payload=payload,
         status=UserStatus.PENDING_VERIFICATION,
     )
@@ -1167,11 +1127,11 @@ def signup(
     # Automatically send verification OTP
     _generate_and_send_otp(pending_signup, db)
 
-    return {"uid": record.uid, "email": record.email, "message": "Signup started."}
+    return {"uid": uid, "email": email_addr, "message": "Signup started."}
 
 
 @router.post("/login")
-def login(
+def login(  # noqa: C901
     payload: TokenRequest,
     request: Request,
     db: Session = Depends(get_db),
@@ -1277,31 +1237,16 @@ def reset_password(
                 return {"message": exc.detail}
             raise
 
+    # Directly trigger the reset email via Identity Platform
     try:
-        reset_link = generate_password_reset_link(payload.email)
-        reset_link = _build_frontend_reset_link(reset_link)
-    except ValueError:
-        # Should not happen as we checked above, but safe fallback
-        return {"message": "Reset link sent"}
+        send_password_reset_email(payload.email)
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="We could not send a reset link at this time. Please try again later.",
         ) from exc
 
-    # Securely dispatch the link via email
-    try:
-        email_client = get_email_client()
-        email_client.send_password_reset(payload.email, reset_link)
-    except Exception as e:
-        logger.error(f"Failed to dispatch password reset email: {e}")
-        # We generally do not want to expose email infrastructure failures to the user,
-        # but we also don't want them waiting for an email that won't come.
-        # Returning success (to prevent enumeration) is standard, but internal alerts are needed.
-
-    return {
-        "message": "Reset link sent",
-    }
+    return {"message": "Reset email sent"}
 
 
 @router.post("/change-password")
@@ -1426,14 +1371,14 @@ def dev_bootstrap_user(
 
 
 @router.patch("/profile")
-def update_profile(
+def update_profile(  # noqa: C901
     payload: ProfileUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Update user profile information including name and username."""
     logger.info(f"Profile update request for user {current_user.uid}: first_name={payload.first_name}, last_name={payload.last_name}, username={payload.username}, display_name_pref={payload.display_name_pref}")
-    
+
     user = (
         db.query(User)
         .options(
@@ -1501,7 +1446,8 @@ def update_profile(
         user.time_zone = payload.time_zone
         # Keep scheduled digests aligned if user changes timezone.
         try:
-            from datetime import UTC as _UTC, datetime as _datetime
+            from datetime import UTC as _UTC
+            from datetime import datetime as _datetime
             from zoneinfo import ZoneInfo
 
             from backend.models import DigestSettings
@@ -1572,7 +1518,7 @@ def request_email_code(
 
 
 @router.post("/mfa/email/enable")
-def enable_email_mfa(
+def enable_email_mfa(  # noqa: C901
     payload: MFAVerifyRequest,
     identity: dict = Depends(get_current_identity),
     db: Session = Depends(get_db),
@@ -2084,15 +2030,15 @@ def list_sessions(
     sessions = db.query(UserSession).filter(
         UserSession.uid == current_user.uid
     ).order_by(UserSession.last_active.desc()).all()
-    
+
     current_iat = getattr(request.state, "iat", None)
-    
+
     result = []
     for s in sessions:
         d = s.to_dict()
         d["is_current"] = (s.iat == current_iat)
         result.append(d)
-        
+
     return result
 
 
@@ -2108,26 +2054,26 @@ def end_session(
         UserSession.id == session_id,
         UserSession.uid == current_user.uid
     ).first()
-    
+
     if not session_rec:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found."
         )
-        
+
     current_iat = getattr(request.state, "iat", None)
     if session_rec.iat == current_iat:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot terminate your current session. Use logout instead."
         )
-        
+
     session_rec.is_active = False
     db.commit()
-    
+
     # Optionally: If we want to force logout on Firebase side, we might need more effort,
     # but since our middleware checks is_active, this is sufficient for blocking access.
-    
+
     return {"message": "Session terminated successfully."}
 
 
@@ -2139,22 +2085,22 @@ def end_other_sessions(
 ) -> dict:
     """Terminate all sessions except the current one."""
     current_iat = getattr(request.state, "iat", None)
-    
+
     if not current_iat:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot identify your current session."
         )
-        
+
     # Mark all other active sessions as inactive
     db.query(UserSession).filter(
         UserSession.uid == current_user.uid,
         UserSession.iat != current_iat,
-        UserSession.is_active == True
+        UserSession.is_active
     ).update({UserSession.is_active: False}, synchronize_session=False)
-    
+
     db.commit()
-    
+
     return {"message": "All other sessions have been terminated."}
 
 

@@ -15,7 +15,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
+import type { User } from '../../services/gcp_auth_driver'
 import { Settings } from '../../pages/Settings'
 import { useAuth } from '../../hooks/useAuth'
 import { apiFetch } from '../../services/auth'

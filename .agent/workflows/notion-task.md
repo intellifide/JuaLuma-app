@@ -1,0 +1,5 @@
+---
+description: notion mcp server task
+---
+
+Using the notion mcp server, your task is to review, execute, and iterate the tasks I outline below. If I mention a task that has already be labeled complete do not move forward and make it know to me. mark the task in progress when you start it. mark it complete when you finish. If the task I reference is not within the database instruct me to check the database and/or check the notion command file.

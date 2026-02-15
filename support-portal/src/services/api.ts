@@ -13,7 +13,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
-import { auth } from '../firebase';
+import { auth } from './gcp_auth_driver';
 
 // Use same base URL pattern as main app if needed, or hardcode relative to proxy
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';

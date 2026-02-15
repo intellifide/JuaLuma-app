@@ -81,10 +81,6 @@ override.tf.json
 *.swp
 *.swo
 *~
-.cursor/
-.cursorrules
-.agent/
-.claude/
 .gemini/
 
 
@@ -157,3 +153,4 @@ firebase_data/
 cloud-sql-proxy
 scripts/test_ai_e2e.py
 scripts/test_coinbase_connection.py
+firebase-mcp-key.json

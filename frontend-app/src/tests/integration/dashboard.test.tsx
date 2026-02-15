@@ -22,7 +22,7 @@ import { useAccounts } from '../../hooks/useAccounts'
 import { useNetWorth, useCashFlow, useSpendingByCategory } from '../../hooks/useAnalytics'
 import { useBudgetStatus } from '../../hooks/useBudgetReporting'
 import { ToastProvider } from '../../components/ui/Toast'
-import { User } from 'firebase/auth'
+import { User } from '../../services/gcp_auth_driver'
 import { Account } from '../../types'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: vi.fn() }))
@@ -192,13 +192,13 @@ describe('Dashboard Integration', () => {
 
         // Updated expectations to match compact currency format and new layout
         // Income 2000 -> $2.0K, Expenses 1000 -> $1.0K
-        const incomeElements = await screen.findAllByText(/\$2K/)
+        const incomeElements = await screen.findAllByText(/\$2(\.0)?K/)
         expect(incomeElements.length).toBeGreaterThan(0)
-        const outElements = await screen.findAllByText(/\$1K/)
+        const outElements = await screen.findAllByText(/\$1(\.0)?K/)
         expect(outElements.length).toBeGreaterThan(0)
         const percentElements = screen.getAllByText(/27%/)
         expect(percentElements.length).toBeGreaterThan(0)
-        expect(screen.getByText(/\$1K of \$3\.8K spent/)).toBeInTheDocument()
+        expect(screen.getByText(/\$1(\.0)?K of \$3\.8K spent/)).toBeInTheDocument()
         expect(screen.getByText(/Top Money Drivers/i)).toBeInTheDocument()
         const rentElements = screen.getAllByText(/Rent/)
         expect(rentElements.length).toBeGreaterThan(0)

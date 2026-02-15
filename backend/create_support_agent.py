@@ -2,61 +2,61 @@ import argparse
 import os
 import sys
 
-from firebase_admin import auth
-
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.models.user import User  # noqa: E402
-from backend.services.auth import _get_firebase_app  # noqa: E402
+from backend.services import auth  # noqa: E402
 from backend.utils import get_db  # noqa: E402
 
 # Default strong password if none provided
 DEFAULT_STRONG_PASSWORD = "SupportAgentSecure!2025"
 
 
-def _ensure_firebase_user(email, password, verbose):
+def _ensure_identity_user(email, password, verbose):
     try:
-        try:
-            user_record = auth.get_user_by_email(email)
+        user_record = auth.get_user_by_email(email)
+        if user_record:
+            uid = user_record["localId"]
             if verbose:
                 print(
-                    f"User {email} found in Firebase (uid: {user_record.uid}). Updating password..."
+                    f"User {email} found in Identity Platform (uid: {uid}). Updating password..."
                 )
-            auth.update_user(user_record.uid, password=password)
+            auth.update_user_password(uid, password)
             return user_record
-        except auth.UserNotFoundError:
+        else:
             if verbose:
-                print(f"User {email} not found in Firebase. Creating...")
-            user_record = auth.create_user(
+                print(f"User {email} not found in Identity Platform. Creating...")
+            user_record = auth.create_identity_user(
                 email=email, password=password, email_verified=True
             )
             if verbose:
-                print(f"Firebase user created: {user_record.uid}")
+                print(f"Identity user created: {user_record['localId']}")
             return user_record
     except Exception as e:
-        print(f"Error managing Firebase user: {e}")
+        print(f"Error managing Identity Platform user: {e}")
         return None
 
 
 def _ensure_db_user(db, email, user_record, verbose):
+    uid = user_record["localId"]
     try:
         user = db.query(User).filter(User.email == email).first()
         if not user:
             if verbose:
                 print("Creating DB user...")
-            # Use the UID from Firebase to ensure sync
-            user = User(uid=user_record.uid, email=email, role="support_agent")
+            # Use the UID from Identity Platform to ensure sync
+            user = User(uid=uid, email=email, role="support_agent")
             db.add(user)
         else:
             if verbose:
                 print(f"Updating existing DB user {user.uid} role to support_agent...")
-            # Update UID if it differs (e.g. if Firebase was reset but DB wasn't)
-            if user.uid != user_record.uid:
+            # Update UID if it differs (e.g. if Identity Platform was reset but DB wasn't)
+            if user.uid != uid:
                 print(
-                    f"WARNING: DB UID {user.uid} does not match Firebase UID {user_record.uid}. Updating DB to match Firebase."
+                    f"WARNING: DB UID {user.uid} does not match Identity UID {uid}. Updating DB to match."
                 )
-                user.uid = user_record.uid
+                user.uid = uid
             user.role = "support_agent"
 
         db.commit()
@@ -74,21 +74,14 @@ def create_support_agent(email, password, verbose=True):
     if verbose:
         print(f"DTO Creating support agent: {email}")
 
-    # 1. Init Firebase (with retry for emulator connection)
-    try:
-        _get_firebase_app()
-    except Exception as e:
-        print(f"Error initializing Firebase app: {e}")
-        return
-
     db = next(get_db())
 
-    # 2. Check/Create in Firebase
-    user_record = _ensure_firebase_user(email, password, verbose)
+    # 1. Check/Create in Identity Platform
+    user_record = _ensure_identity_user(email, password, verbose)
     if not user_record:
         return
 
-    # 3. Create/Update in Postgres
+    # 2. Create/Update in Postgres
     _ensure_db_user(db, email, user_record, verbose)
 
     db.close()

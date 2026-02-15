@@ -2,18 +2,18 @@
 import asyncio
 import datetime
 import logging
+import time
 from typing import Any
 
 from fastapi import HTTPException
-from firebase_admin import firestore
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+from google.cloud import firestore
 
 from backend.core import settings
-from backend.models import HouseholdMember, Subscription, User, get_session
+from backend.models import HouseholdMember, Subscription, get_session
+from backend.services.prompts import prompt_manager
 from backend.utils.firestore import get_firestore_client
 from backend.utils.logging import log_ai_request
-import time
-from backend.services.prompts import prompt_manager
 
 try:
     import google.generativeai as genai
@@ -23,8 +23,13 @@ except ImportError:
 try:
     import vertexai
     from google.cloud import aiplatform
-    from vertexai.generative_models import GenerativeModel, Part, HarmCategory, HarmBlockThreshold
-    
+    from vertexai.generative_models import (
+        GenerativeModel,
+        HarmBlockThreshold,
+        HarmCategory,
+        Part,
+    )
+
     # Try specialized imports for caching (moved in recent SDK versions)
     try:
         from vertexai.caching import CachedContent
@@ -80,7 +85,7 @@ class AIClient:
         self, prompt: str, safety_settings: Any | None = None, system_instruction: str | None = None
     ) -> Any:
         try:
-            # For Vertex AI, system_instruction is usually passed at Model initialization, 
+            # For Vertex AI, system_instruction is usually passed at Model initialization,
             # but for single generation, we might need to prepend it or use the chat interface.
             # However, for simplicity and compatibility with existing 'generate_content' flow:
             final_prompt = prompt
@@ -168,14 +173,14 @@ class AIClient:
             # In a real scenario, we'd hash the context and look up an existing cache.
             # Here, we create a fresh one for the high-volume context to save input tokens if reused.
             # Ideally, this should be called with a cache_name if one exists.
-            
+
             cache = CachedContent.create(
                 model_name=settings.ai_model_prod,
                 system_instruction=system_instruction,
                 contents=[context],
                 ttl=datetime.timedelta(minutes=ttl_minutes),
             )
-            
+
             # Instantiate model from cache
             model = GenerativeModel.from_cached_content(cached_content=cache)
             response = await model.generate_content_async(prompt)
@@ -361,7 +366,7 @@ async def record_rate_limit_usage(user_id: str, tier: str, limit: int) -> int:
     return await asyncio.to_thread(_increment_usage_sync, user_id, tier, limit)
 
 
-async def generate_chat_response(
+async def generate_chat_response(  # noqa: C901
     prompt: str,
     context: str | None,
     user_id: str,
@@ -384,7 +389,7 @@ async def generate_chat_response(
     final_prompt = prompt
     if context:
         final_prompt = await prompt_manager.get_rag_prompt(context_str=context, user_query=prompt)
-    
+
     system_instruction = await prompt_manager.get_system_instruction()
 
     # 3. Call Model
@@ -406,7 +411,7 @@ async def generate_chat_response(
                 system_instruction=system_instruction
             )
         end_time = time.time()
-                
+
         # 4. Parse Response
         response_text = ""
         prompt_tokens = 0
@@ -420,7 +425,7 @@ async def generate_chat_response(
                 if response.candidates:
                     parts = [part.text for part in response.candidates[0].content.parts]
                     response_text = "".join(parts)
-            
+
             # Extract usage metadata if available
             try:
                 if hasattr(response, "usage_metadata"):

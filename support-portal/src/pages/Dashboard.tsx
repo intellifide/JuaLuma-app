@@ -14,8 +14,7 @@
 
 // Support Portal Dashboard. Last modified: 2026-02-02 18:50 CST
 import { useEffect, useState } from 'react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { signOut, auth } from '../services/gcp_auth_driver';
 import {
     supportService,
     type AgentSummary,

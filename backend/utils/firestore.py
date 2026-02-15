@@ -1,12 +1,16 @@
-from typing import Any
+from google.cloud import firestore
 
-from firebase_admin import firestore
+from backend.core import settings
 
-from backend.services.auth import _get_firebase_app
+_firestore_client = None
 
+def get_firestore_client() -> firestore.Client:
+    """Get the Firestore client using google-cloud-firestore."""
+    global _firestore_client
+    if _firestore_client:
+        return _firestore_client
 
-# 2025-12-10 16:46 CST - use AnonymousCredentials with emulator to avoid ADC
-def get_firestore_client() -> Any:
-    """Get the Firestore client, initializing the app if necessary."""
-    _get_firebase_app()
-    return firestore.client()
+    project_id = settings.resolved_gcp_project_id
+    # google-cloud-firestore automatically detects emulator via FIRESTORE_EMULATOR_HOST
+    _firestore_client = firestore.Client(project=project_id)
+    return _firestore_client

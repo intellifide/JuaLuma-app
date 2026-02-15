@@ -4,11 +4,10 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from firebase_admin import auth
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, selectinload
 
@@ -26,21 +25,14 @@ from backend.models import (
 )
 from backend.models.budget import Budget
 from backend.models.category_rule import CategoryRule
-from backend.models.developer import Developer
-from backend.models.household import Household, HouseholdMember
-from backend.models.manual_asset import ManualAsset
-from backend.models.notification import NotificationPreference
-from backend.models.payment import Payment
-from backend.models.payout import DeveloperPayout
-from backend.models.transaction import Transaction
-from backend.models.user_document import UserDocument
-from backend.services.auth import revoke_refresh_tokens
+from backend.models.household import Household
+from backend.services import auth
 from backend.services.notifications import NotificationService
 from backend.utils import get_db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 logger = logging.getLogger(__name__)
-UTC = timezone.utc
+UTC = UTC
 
 
 class SubscriptionUpdate(BaseModel):
@@ -136,7 +128,7 @@ def export_user_data(
         "ai_settings": user.ai_settings.to_dict() if user.ai_settings else None,
         "subscriptions": [s.to_dict() for s in user.subscriptions],
         "notification_preferences": [n.to_dict() for n in user.notification_preferences],
-        
+
         # Financials
         "accounts": [],  # Filled below
         "manual_assets": [m.to_dict() for m in user.manual_assets],
@@ -147,7 +139,7 @@ def export_user_data(
 
         # Support & Legal
         "support_tickets": [t.to_dict() for t in user.support_tickets],
-        "legal_acceptances": [l.to_dict() for l in user.legal_acceptances],
+        "legal_acceptances": [acceptance.to_dict() for acceptance in user.legal_acceptances],
         "documents": [d.to_dict() for d in user.documents],
 
         # Household
@@ -188,7 +180,7 @@ def delete_account(
 
     # 1. Revoke Firebase Tokens & Delete from Firebase
     try:
-        revoke_refresh_tokens(uid)
+        auth.revoke_refresh_tokens(uid)
         auth.delete_user(uid)
     except Exception as e:
         logger.error(f"Error deleting user from Firebase: {e}")

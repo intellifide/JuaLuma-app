@@ -19,7 +19,7 @@ import { HouseholdPage } from '../../pages/Household/HouseholdPage'
 import { householdService } from '../../services/householdService'
 import { useAuth } from '../../hooks/useAuth'
 import { Household } from '../../types/household'
-import type { User } from 'firebase/auth'
+import type { User } from '../../services/gcp_auth_driver'
 import userEvent from '@testing-library/user-event'
 
 type AuthContextType = ReturnType<typeof useAuth>
@@ -84,15 +84,16 @@ describe('HouseholdPage Integration', () => {
 
     it('renders create/join forms when not in a household (404/null)', async () => {
         vi.mocked(householdService.getMyHousehold).mockRejectedValue({ message: "not in a household" })
-        
+
         render(
             <BrowserRouter>
                 <HouseholdPage />
             </BrowserRouter>
         )
 
+        // Wait for loading to finish by checking for one of the headers
         await waitFor(() => {
-            expect(screen.getByText('Household Management')).toBeInTheDocument()
+            expect(screen.getByText('Create a Household')).toBeInTheDocument()
         })
         expect(screen.getByText('Create a Household')).toBeInTheDocument()
         expect(screen.getByText('Join a Household')).toBeInTheDocument()
@@ -112,7 +113,7 @@ describe('HouseholdPage Integration', () => {
         })
         expect(screen.getByText('owner@example.com')).toBeInTheDocument()
         expect(screen.getByText('member@example.com')).toBeInTheDocument()
-        
+
         // Admin buttons
         expect(screen.getByText('Invite Member')).toBeInTheDocument()
         expect(screen.getByText('Leave Household')).toBeInTheDocument()
@@ -121,7 +122,7 @@ describe('HouseholdPage Integration', () => {
     it('allows creating a household', async () => {
         vi.mocked(householdService.getMyHousehold).mockRejectedValue({ message: "not in a household" })
         vi.mocked(householdService.createHousehold).mockResolvedValue(mockHousehold)
-        
+
         const user = userEvent.setup()
 
         render(
@@ -137,7 +138,7 @@ describe('HouseholdPage Integration', () => {
         await user.click(screen.getByText('Create'))
 
         expect(householdService.createHousehold).toHaveBeenCalledWith({ name: 'Test Family' })
-        
+
         await waitFor(() => {
             expect(screen.getByText('Test Family')).toBeInTheDocument()
         })
@@ -158,10 +159,10 @@ describe('HouseholdPage Integration', () => {
 
         // Modal should open
         expect(screen.getByText('Invite Member', { selector: 'h2' })).toBeInTheDocument()
-        
+
         const emailInput = screen.getByPlaceholderText('friend@example.com')
         await user.type(emailInput, 'new@example.com')
-        
+
         const sendBtn = screen.getByText('Send Invite')
         await user.click(sendBtn)
 
@@ -175,7 +176,7 @@ describe('HouseholdPage Integration', () => {
     it('allows leaving the household', async () => {
         vi.mocked(householdService.getMyHousehold).mockResolvedValue(mockHousehold)
         vi.mocked(householdService.leaveHousehold).mockResolvedValue({ status: 'success', detail: 'Left' })
-        
+
         // Check window.confirm mock if needed, but integration test environment usually mocks it or we rely on user clicking ok.
         // Vitest/JSDOM doesn't show alert/confirm by default, need to mock.
         vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -191,7 +192,7 @@ describe('HouseholdPage Integration', () => {
         await user.click(screen.getByText('Leave Household'))
 
         expect(householdService.leaveHousehold).toHaveBeenCalled()
-        
+
         // Should return to "Create/Join" view (setHousehold(null))
         await waitFor(() => {
              expect(screen.getByText('Create a Household')).toBeInTheDocument()

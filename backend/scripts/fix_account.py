@@ -1,29 +1,30 @@
 
-import sys
-import os
 import logging
+import os
+import sys
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 sys.path.append(os.getcwd())
 
-from backend.models import User
-from backend.services.billing import update_user_tier
 from backend.core.config import settings
-from firebase_admin import auth, initialize_app
+from backend.models import User
+from backend.services.auth import create_identity_user, get_user, update_identity_user
+from backend.services.billing import update_user_tier
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def fix_account(email, password="Password1!"):
     print(f"Fixing account for: {email}")
-    
+
     # 1. Connect to DB
     db_url = settings.database_url
     engine = create_engine(db_url)
     SessionLocal = sessionmaker(bind=engine)
     db = SessionLocal()
-    
+
     try:
         user = db.query(User).filter(User.email == email).first()
         if not user:
@@ -32,32 +33,26 @@ def fix_account(email, password="Password1!"):
 
         print(f"✅ Found User in DB: {user.uid}")
 
-        # 2. Restore in Firebase
-        os.environ["FIREBASE_AUTH_EMULATOR_HOST"] = "localhost:9099"
-        os.environ["FIREBASE_PROJECT_ID"] = "jualuma-local"
+        # 2. Restore in Identity Platform
         try:
-             initialize_app(options={"projectId": "jualuma-local"})
-        except ValueError:
-            pass
+            # Check if user exists
+            existing = get_user(user.uid)
+            if not existing:
+                create_identity_user(
+                    email=user.email,
+                    password=password,
+                    uid=user.uid,
+                    email_verified=True
+                )
+                print(f"✅ Re-created user in Identity Platform with password: {password}")
+            else:
+                print("⚠️ User already exists in Identity Platform.")
+                update_identity_user(user.uid, password=password)
+                print("Updated password.")
 
-        try:
-            auth.create_user(
-                uid=user.uid,
-                email=user.email,
-                password=password,
-                email_verified=True # Assume verified since we are fixing
-            )
-            print(f"✅ Re-created user in Firebase with password: {password}")
-        except auth.EmailAlreadyExistsError:
-            print("⚠️ User email already exists in Firebase (unexpected based on diagnosis).")
-            # Update password just in case
-            auth.update_user(user.uid, password=password)
-            print("Updated password.")
-        except auth.UidAlreadyExistsError:
-            print("⚠️ User UID already exists in Firebase.")
-            auth.update_user(user.uid, password=password)
-            print("Updated password.")
-            
+        except Exception as e:
+            print(f"Error restoring user in Identity Platform: {e}")
+
         # 3. Update Subscription to Ultimate (Manual Override since webhook missed)
         print("Updating subscription to Ultimate...")
         update_user_tier(db, user.uid, "ultimate_monthly", status="active")
@@ -69,4 +64,7 @@ def fix_account(email, password="Password1!"):
         db.close()
 
 if __name__ == "__main__":
-    fix_account("l2zpw.famtest@inbox.testmail.app")
+    if len(sys.argv) > 1:
+        fix_account(sys.argv[1])
+    else:
+        fix_account("l2zpw.famtest@inbox.testmail.app")

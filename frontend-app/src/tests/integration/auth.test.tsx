@@ -101,22 +101,31 @@ describe('Auth Integration', () => {
                 </BrowserRouter>
             )
 
+            fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'John' } })
+            fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Doe' } })
             fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } })
             fireEvent.change(screen.getByLabelText(/^Password$/), { target: { value: 'StrongP@ss1' } })
             fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'StrongP@ss1' } })
 
-            // Fix "Found multiple elements" for checkbox using getAllByRole or more specific selector
-            const checkboxes = screen.getAllByRole('checkbox')
+            // Switches use role="switch"
+            const switches = screen.getAllByRole('switch')
             // Assuming first two are Terms and Privacy based on render order (Terms first, Privacy second)
-            fireEvent.click(checkboxes[0]) // Terms
-            fireEvent.click(checkboxes[1]) // Privacy
-            fireEvent.click(checkboxes[2]) // Resident Cert check
+            fireEvent.click(switches[0]) // Terms
+            fireEvent.click(switches[1]) // Privacy
+            fireEvent.click(switches[2]) // Resident Cert check
 
             const submitButton = screen.getByRole('button', { name: /Create account/i })
             fireEvent.click(submitButton)
 
             await waitFor(() => {
-                expect(mockSignup).toHaveBeenCalledWith('new@example.com', 'StrongP@ss1')
+                expect(mockSignup).toHaveBeenCalledWith(
+                    'new@example.com',
+                    'StrongP@ss1',
+                    expect.any(Array), // Agreements
+                    'John',
+                    'Doe',
+                    undefined // username
+                )
             })
         })
     })

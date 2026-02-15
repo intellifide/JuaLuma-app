@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Navigation } from '../Navigation'
 import { BrowserRouter } from 'react-router-dom'
 import { useAuth, UserProfile } from '../../hooks/useAuth'
-import { User } from 'firebase/auth'
+import { User } from '../../services/gcp_auth_driver'
 import { ToastProvider } from '../ui/Toast'
 
 // Mock the useAuth hook

@@ -369,7 +369,7 @@ def download_widget(
 
     # Firestore: Widget Engagement
     try:
-        from firebase_admin import firestore  # type: ignore
+        from google.cloud import firestore
 
         from backend.utils.firestore import get_firestore_client
 

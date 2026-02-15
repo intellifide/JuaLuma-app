@@ -1,59 +1,91 @@
-# Updated 2025-12-19 12:20 CST by Antigravity
+# Updated 2026-02-14 by Antigravity
 import logging
+import time
 from typing import Any
 
-import firebase_admin
+import google.auth
 import requests
-from firebase_admin import auth
-from firebase_admin.auth import (
-    ExpiredIdTokenError,
-    InvalidIdTokenError,
-    RevokedIdTokenError,
-    UserNotFoundError,
-)
-from firebase_admin.exceptions import FirebaseError
+from google.auth.transport.requests import Request as GoogleRequest
+from jose import jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.core import settings
 from backend.core.constants import UserStatus
 from backend.models import AISettings, Subscription, User
-
-# Import from billing service to sync Stripe
 from backend.services.billing import create_stripe_customer
 
-_firebase_app: firebase_admin.App | None = None
 logger = logging.getLogger(__name__)
 
+# Cache for public keys
+_PUBLIC_KEYS = {}
+_PUBLIC_KEYS_EXPIRY = 0
 
-def _get_firebase_app() -> firebase_admin.App:
-    """Initialize (or reuse) the Firebase app, honoring the emulator when present."""
-    global _firebase_app
+def _get_public_keys():
+    global _PUBLIC_KEYS, _PUBLIC_KEYS_EXPIRY
+    if _PUBLIC_KEYS and time.time() < _PUBLIC_KEYS_EXPIRY:
+        return _PUBLIC_KEYS
 
-    if _firebase_app:
-        return _firebase_app
-
-    logger.info("Initializing Firebase Auth with Production/ADC Credentials")
-    _firebase_app = firebase_admin.initialize_app()
-
-    return _firebase_app
-
+    url = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+    try:
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            _PUBLIC_KEYS = resp.json()
+            # Parse cache-control to set expiry, or default to 1 hour
+            cc = resp.headers.get("cache-control", "")
+            max_age = 3600
+            if "max-age=" in cc:
+                try:
+                    parts = cc.split("max-age=")
+                    if len(parts) > 1:
+                        max_age = int(parts[1].split(",")[0])
+                except Exception:
+                    pass
+            _PUBLIC_KEYS_EXPIRY = time.time() + max_age
+            return _PUBLIC_KEYS
+    except Exception as e:
+        logger.error(f"Failed to fetch public keys: {e}")
+    return _PUBLIC_KEYS or {} # Return stale if fetch fails, or empty
 
 def verify_token(token: str) -> dict[str, Any]:
-    """Verify an ID token via Firebase Admin SDK."""
+    """Verify an ID token via direct JWT verification using GCP public keys."""
     if settings.is_local and token.startswith("E2E_MAGIC_TOKEN_"):
         uid = token.replace("E2E_MAGIC_TOKEN_", "")
         return {"uid": uid, "email": f"{uid}@example.com", "sub": uid}
 
-    print(
-        f"DEBUG: verify_token called with token={token}, is_local={settings.is_local}"
-    )
+    project_id = settings.resolved_gcp_project_id
+    if not project_id:
+        logger.error("GCP Project ID not configured for token verification.")
+        raise ValueError("Server configuration error.")
+
     try:
-        return auth.verify_id_token(token, app=_get_firebase_app())
-    except (ExpiredIdTokenError, InvalidIdTokenError, RevokedIdTokenError) as exc:
-        raise ValueError("Token is invalid or expired.") from exc
-    except FirebaseError as exc:
-        raise RuntimeError("Token verification failed.") from exc
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid")
+        if not kid:
+            raise ValueError("Token missing kid")
+
+        keys = _get_public_keys()
+        if kid not in keys:
+             # Refresh keys once
+             _PUBLIC_KEYS_EXPIRY = 0
+             keys = _get_public_keys()
+             if kid not in keys:
+                 raise ValueError("Invalid kid")
+
+        # Verify
+        # jose.jwt.decode verifies signature, audience, issuer, expiry
+        decoded = jwt.decode(
+            token,
+            keys[kid], # The cert string
+            algorithms=["RS256"],
+            audience=project_id,
+            issuer=f"https://securetoken.google.com/{project_id}",
+            options={"verify_at_hash": False} # at_hash not always present/needed
+        )
+        return decoded
+    except Exception as e:
+        logger.error(f"Token verification failed: {e}")
+        raise RuntimeError("Token verification failed.") from e
 
 
 def create_user_record(
@@ -67,14 +99,6 @@ def create_user_record(
 ) -> User:
     """
     Create the user and dependent records in a single transaction.
-
-    Defaults:
-    - role=user
-    - theme_pref=glass
-    - currency_pref=USD
-    - subscription plan=free, status=active
-    - AI settings provider/model defaults from model definitions
-    - Syncs with Stripe to create a customer record.
     """
     user = User(
         uid=uid,
@@ -88,14 +112,6 @@ def create_user_record(
         username=username,
         display_name_pref="name",  # Default to name (first + last)
     )
-    # Subscription starts as free/active but user is gated by status?
-    # Task says "Select Plan -> Redirect to Stripe or Free Tier".
-    # So maybe subscription should be None or 'free' but inactive?
-    # The gates are on User Status. Subscription can be 'free' 'active' technically, but user can't use it until verified.
-    # Let's keep subscription as free/active for now, or maybe 'incomplete'?
-    # Given the task sequence: Signup (Pending Verification) -> Verify (Pending Plan Selection) -> Select Plan (Active).
-    # Setting subscription to "free" immediately might be premature if they might choose "pro".
-    # But for now, let's just focus on User.status.
 
     subscription = Subscription(uid=uid, plan="free", status="active", ai_quota_used=0)
     ai_settings = AISettings(uid=uid)
@@ -121,35 +137,72 @@ def create_user_record(
     return user
 
 
+def _get_admin_token() -> str:
+    """Get an OAuth 2.0 access token for Admin API calls."""
+    try:
+        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        auth_req = GoogleRequest()
+        creds.refresh(auth_req)
+        return creds.token
+    except Exception as e:
+        logger.error(f"Failed to get admin credentials: {e}")
+        raise RuntimeError("Server configuration error: cannot authenticate to GCP.") from e
+
+
 def refresh_custom_claims(uid: str, claims: dict[str, Any]) -> None:
-    """Update Firebase custom claims for a given user."""
+    """Update custom claims via Identity Toolkit Admin API."""
     try:
-        auth.set_custom_user_claims(uid, claims, app=_get_firebase_app())
-    except FirebaseError as exc:
-        raise RuntimeError("Failed to refresh custom claims.") from exc
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts:update"
+
+        # customAttributes must be JSON stringified
+        import json
+        payload = {
+            "localId": uid,
+            "customAttributes": json.dumps(claims)
+        }
+
+        resp = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"})
+        if not resp.ok:
+            raise RuntimeError(f"GCP API Error: {resp.text}")
+
+    except Exception as exc:
+         logger.error(f"Failed to refresh custom claims: {exc}")
+         raise RuntimeError("Failed to refresh custom claims.") from exc
 
 
-def generate_password_reset_link(email: str) -> str:
-    """Return a password reset link for the given email."""
+def send_password_reset_email(email: str) -> None:
+    """
+    Send password reset email via Identity Platform REST API.
+    Note: This sends the email directly via Google, bypassing custom SMTP.
+    """
     try:
-        return auth.generate_password_reset_link(email, app=_get_firebase_app())
-    except UserNotFoundError as exc:
-        raise ValueError("User not found.") from exc
-    except FirebaseError as exc:
-        raise RuntimeError("Failed to generate reset link.") from exc
+        api_key = settings.gcp_api_key
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={api_key}"
+        payload = {"requestType": "PASSWORD_RESET", "email": email}
+        resp = requests.post(url, json=payload, timeout=10)
+
+        if not resp.ok:
+            # Handle EMAIL_NOT_FOUND gracefully if desired, or let caller handle
+            if "EMAIL_NOT_FOUND" in resp.text:
+                return # Silent success
+            raise RuntimeError(f"GCP API Error: {resp.text}")
+    except Exception as exc:
+        logger.error(f"Failed to send password reset email: {exc}")
+        raise RuntimeError("Failed to send reset email.") from exc
 
 
 def _get_auth_url(action: str) -> str:
-    """Return the Firebase Auth REST API URL."""
-    api_key = settings.firebase_api_key or "fake-key"
+    """Return the Identity Toolkit REST API URL."""
+    api_key = settings.gcp_api_key or "fake-key"
     base = "https://identitytoolkit.googleapis.com/v1"
-
     return f"{base}/accounts:{action}?key={api_key}"
 
 
 def verify_password(email: str, password: str) -> bool:
     """
-    Verify email/password credentials via Firebase REST API.
+    Verify email/password credentials via GCP REST API.
     Returns True if valid, False otherwise.
     """
     url = _get_auth_url("signInWithPassword")
@@ -164,28 +217,159 @@ def verify_password(email: str, password: str) -> bool:
 
 
 def update_user_password(uid: str, new_password: str) -> None:
-    """Update a user's password in Firebase via Admin SDK."""
+    """Update a user's password via Admin API."""
     try:
-        auth.update_user(uid, password=new_password, app=_get_firebase_app())
-    except FirebaseError as exc:
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts:update"
+
+        payload = {
+            "localId": uid,
+            "password": new_password
+        }
+
+        resp = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"})
+        if not resp.ok:
+            raise RuntimeError(f"GCP API Error: {resp.text}")
+
+    except Exception as exc:
         logger.error(f"Failed to update password for UID {uid}: {exc}")
         raise RuntimeError("Failed to update password in auth provider.") from exc
 
 
 def revoke_refresh_tokens(uid: str) -> None:
-    """Revoke all refresh tokens for a given user."""
+    """Revoke all refresh tokens for a given user by updating validSince."""
     try:
-        auth.revoke_refresh_tokens(uid, app=_get_firebase_app())
-    except FirebaseError as exc:
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts:update"
+
+        # validSince: The timestamp in seconds. Prohibits tokens issued before this time.
+        import datetime
+        valid_since = int(datetime.datetime.now().timestamp())
+
+        payload = {
+            "localId": uid,
+            "validSince": str(valid_since)
+        }
+
+        resp = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"})
+        if not resp.ok:
+             raise RuntimeError(f"GCP API Error: {resp.text}")
+
+    except Exception as exc:
         raise RuntimeError("Failed to revoke refresh tokens.") from exc
+
+
+def delete_user(uid: str) -> None:
+    """Delete a user from Identity Platform via Admin API."""
+    try:
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts:delete"
+
+        payload = {
+            "localId": uid
+        }
+
+        resp = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"})
+        if not resp.ok:
+             # Ignore if user not found?
+             if "USER_NOT_FOUND" not in resp.text:
+                 raise RuntimeError(f"GCP API Error: {resp.text}")
+
+    except Exception as exc:
+        raise RuntimeError("Failed to delete user.") from exc
+
+
+def get_user_by_email(email: str) -> dict | None:
+    """Lookup user by email via Admin API."""
+    try:
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts:lookup"
+        resp = requests.post(url, json={"email": [email]}, headers={"Authorization": f"Bearer {token}"})
+        if resp.ok:
+            data = resp.json()
+            if "users" in data and len(data["users"]) > 0:
+                return data["users"][0]
+        return None
+    except Exception as e:
+        logger.error(f"Error looking up user {email}: {e}")
+        return None
+
+
+def get_user(uid: str) -> dict | None:
+    """Lookup user by UID via Admin API."""
+    try:
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts:lookup"
+        resp = requests.post(url, json={"localId": [uid]}, headers={"Authorization": f"Bearer {token}"})
+        if resp.ok:
+            data = resp.json()
+            if "users" in data and len(data["users"]) > 0:
+                return data["users"][0]
+        return None
+    except Exception:
+        return None
+
+
+def update_identity_user(uid: str, **kwargs) -> None:
+    """Update user properties."""
+    try:
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts:update"
+
+        payload = {"localId": uid}
+        if "email" in kwargs:
+            payload["email"] = kwargs["email"]
+        if "password" in kwargs:
+            payload["password"] = kwargs["password"]
+        if "emailVerified" in kwargs:
+            payload["emailVerified"] = kwargs["emailVerified"]
+
+        resp = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"})
+        if not resp.ok:
+            raise RuntimeError(f"Failed to update user: {resp.text}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to update user {uid}: {e}") from e
+
+
+def create_identity_user(email: str, password: str, uid: str | None = None, email_verified: bool = False) -> dict:
+    """Create a new user via Admin API."""
+    try:
+        token = _get_admin_token()
+        project_id = settings.resolved_gcp_project_id
+        url = f"https://identitytoolkit.googleapis.com/v1/projects/{project_id}/accounts"
+        payload = {
+            "email": email,
+            "password": password,
+            "emailVerified": email_verified
+        }
+        if uid:
+            payload["localId"] = uid
+
+        resp = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"})
+        if not resp.ok:
+             raise RuntimeError(f"Failed to create user: {resp.text}")
+        return resp.json()
+    except Exception as e:
+        raise RuntimeError(f"Error creating user {email}: {e}") from e
 
 
 __all__ = [
     "verify_token",
     "create_user_record",
     "refresh_custom_claims",
-    "generate_password_reset_link",
+    "send_password_reset_email",
     "revoke_refresh_tokens",
     "verify_password",
     "update_user_password",
+    "delete_user",
+    "get_user_by_email",
+    "create_identity_user",
+    "get_user",
+    "update_identity_user",
 ]

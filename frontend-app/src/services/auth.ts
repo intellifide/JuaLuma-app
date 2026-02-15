@@ -13,20 +13,20 @@
  */
 
 /**
- * CORE PURPOSE: Authentication service using Firebase Client SDK and custom Backend API.
- * LAST MODIFIED: 2025-12-21 17:15 CST
+ * CORE PURPOSE: Authentication service using GCP Identity Platform (REST API) and custom Backend API.
+ * LAST MODIFIED: 2026-02-14
  */
-import { FirebaseError } from 'firebase/app'
 import {
-  User,
+  auth,
   createUserWithEmailAndPassword,
   deleteUser,
-  confirmPasswordReset as firebaseConfirmPasswordReset,
-  verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   signInWithEmailAndPassword,
   signOut,
-} from 'firebase/auth'
-import { auth } from './firebase'
+  confirmPasswordReset as gcpConfirmPasswordReset,
+  verifyPasswordResetCode as gcpVerifyPasswordResetCode,
+  FirebaseError,
+  User,
+} from './gcp_auth_driver'
 import { AgreementAcceptanceInput } from '../types/legal'
 
 export interface UserSessionData {
@@ -58,10 +58,11 @@ export class MfaRequiredError extends Error {
 type ApiRequestInit = RequestInit & { skipAuth?: boolean; throwOnError?: boolean }
 
 const TOKEN_MAX_AGE_MS = 4 * 60 * 1000 // refresh cached token every 4 minutes
+// Note: gcp_auth_driver handles its own caching, but we keep this for consistency if we use getIdToken wrapper below
 let cachedToken: string | null = null
 let lastTokenAt = 0
 
-const mapFirebaseError = (error: unknown): string => {
+const mapGcpError = (error: unknown): string => {
   if (error instanceof FirebaseError) {
     switch (error.code) {
       case 'auth/invalid-email':
@@ -85,6 +86,11 @@ const mapFirebaseError = (error: unknown): string => {
         return 'Something went wrong with authentication. Try again.'
     }
   }
+  // If it's the raw error object from fetch JSON
+  if (typeof error === 'object' && error !== null && 'error' in error) {
+      const msg = (error as any).error?.message || 'Unknown error'
+      return msg
+  }
 
   return 'Unexpected authentication error. Please retry.'
 }
@@ -98,9 +104,11 @@ export const signup = async (
   username?: string,
 ): Promise<User> => {
   try {
-    // 1. Create user in Firebase Client SDK (establishes session)
-    const credential = await createUserWithEmailAndPassword(auth, email, password)
+    // 1. Create user in Identity Platform (establishes session)
+    const { user } = await createUserWithEmailAndPassword(auth, email, password)
     clearCachedToken()
+
+    if (!user) throw new Error('Failed to create user')
 
     // 2. Store pending signup details in backend (no full DB user yet)
     await getIdToken(true)
@@ -114,14 +122,14 @@ export const signup = async (
       }),
     })
 
-    return credential.user
+    return user
   } catch (error) {
-    // Best effort cleanup if backend fails after Firebase user creation
+    // Best effort cleanup if backend fails after user creation
     if (auth.currentUser) {
       try {
         await deleteUser(auth.currentUser)
       } catch (cleanupError) {
-        console.error('Failed to cleanup Firebase user after signup failure:', cleanupError)
+        console.error('Failed to cleanup user after signup failure:', cleanupError)
       } finally {
         clearCachedToken()
       }
@@ -130,17 +138,18 @@ export const signup = async (
     if (error instanceof Error && !(error instanceof FirebaseError)) {
       throw error // Re-throw backend errors as-is
     }
-    throw new Error(mapFirebaseError(error))
+    throw new Error(mapGcpError(error))
   }
 }
 
 export const login = async (email: string, password: string): Promise<User> => {
   try {
-    const credential = await signInWithEmailAndPassword(auth, email, password)
+    const { user } = await signInWithEmailAndPassword(auth, email, password)
     clearCachedToken()
-    return credential.user
+    if (!user) throw new Error('Login failed')
+    return user
   } catch (error) {
-    throw new Error(mapFirebaseError(error))
+    throw new Error(mapGcpError(error))
   }
 }
 
@@ -224,7 +233,7 @@ export const resetPassword = async (
     return 'sent'
   } catch (error) {
     if (error instanceof Error) throw error
-    throw new Error(mapFirebaseError(error))
+    throw new Error(mapGcpError(error))
   }
 }
 
@@ -246,14 +255,20 @@ export const requestEmailCode = async (email: string): Promise<void> => {
     method: 'POST',
     body: JSON.stringify({ email }),
     skipAuth: true,
+    throwOnError: false // Avoid automatic error throwing, handle manually if needed
+  }).then(async res => {
+      if (!res.ok) {
+           const data = await res.json()
+           throw new Error(data.message || 'Failed to request email code')
+      }
   })
 }
 
 export const verifyResetPasswordCode = async (oobCode: string): Promise<string> => {
   try {
-    return await firebaseVerifyPasswordResetCode(auth, oobCode)
+    return await gcpVerifyPasswordResetCode(auth, oobCode)
   } catch (error) {
-    throw new Error(mapFirebaseError(error))
+    throw new Error(mapGcpError(error))
   }
 }
 
@@ -262,9 +277,9 @@ export const confirmResetPassword = async (
   newPassword: string,
 ): Promise<void> => {
   try {
-    await firebaseConfirmPasswordReset(auth, oobCode, newPassword)
+    await gcpConfirmPasswordReset(auth, oobCode, newPassword)
   } catch (error) {
-    throw new Error(mapFirebaseError(error))
+    throw new Error(mapGcpError(error))
   }
 }
 
@@ -383,22 +398,13 @@ export const endOtherSessions = async (): Promise<void> => {
 }
 
 export const getIdToken = async (forceRefresh = false): Promise<string | null> => {
-  const user = auth.currentUser
-  if (!user) {
+  if (!auth.currentUser) {
     clearCachedToken()
     return null
   }
 
-  const shouldRefresh =
-    forceRefresh || !cachedToken || Date.now() - lastTokenAt > TOKEN_MAX_AGE_MS
-
-  if (shouldRefresh) {
-    const token = await user.getIdToken(forceRefresh)
-    cachedToken = token
-    lastTokenAt = Date.now()
-  }
-
-  return cachedToken
+  // gcp_auth_driver handles token refresh internally in getIdToken
+  return auth.currentUser.getIdToken(forceRefresh)
 }
 
 export const refreshToken = async (): Promise<string | null> => {
@@ -442,30 +448,28 @@ export const apiFetch = async (
     headers,
   })
 
+  // Basic error handling for 4xx/5xx - can be expanded
   if (!response.ok && init.throwOnError !== false) {
     const maybeJson = await response.clone().json().catch(() => null)
     let message =
-      (maybeJson && (maybeJson.detail || maybeJson.message || maybeJson.error)) ||
-      `Request failed with status ${response.status}`
+        (maybeJson && (maybeJson.detail || maybeJson.message || maybeJson.error)) ||
+        `Request failed with status ${response.status}`
+
+    // Fallback to text if no JSON
     if (!maybeJson) {
-      const text = await response.text().catch(() => '')
-      if (text) {
-        message = text
-      }
+         const text = await response.text().catch(() => '')
+         if (text) message = text
     }
 
-    // Central MFA gating signal: when the backend requires MFA verification for the
-    // current session, notify the app shell so it can prompt once, then unblock.
     if (response.status === 403 && (message === 'MFA_REQUIRED' || message === 'MFA_PASSKEY_REQUIRED')) {
       clearCachedToken()
-      try {
+       try {
         window.dispatchEvent(
           new CustomEvent('mfa-required', { detail: { reason: message } }),
         )
       } catch {
-        // no-op (SSR/tests)
+        // no-op
       }
-      // Don't rely on generic Error(message) for control flow.
       throw new MfaRequiredError(message === 'MFA_PASSKEY_REQUIRED' ? 'passkey' : 'totp')
     }
     throw new Error(message as string)

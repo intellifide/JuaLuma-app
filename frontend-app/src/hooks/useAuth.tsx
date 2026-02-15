@@ -23,9 +23,8 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { User, onAuthStateChanged } from 'firebase/auth'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { auth } from '../services/firebase'
+import { User, onAuthStateChanged, auth } from '../services/gcp_auth_driver'
 import {
   apiFetch,
   clearCachedToken,
@@ -204,8 +203,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = useCallback(
     async (
-      email: string, 
-      password: string, 
+      email: string,
+      password: string,
       agreements: AgreementAcceptanceInput[] = [],
       first_name?: string,
       last_name?: string,

@@ -53,7 +53,7 @@ class AppSettings(BaseSettings):
     google_cloud_project: str | None = Field(
         default=None, alias="GOOGLE_CLOUD_PROJECT"
     )
-    firebase_api_key: str | None = Field(default=None, alias="VITE_FIREBASE_API_KEY")
+    gcp_api_key: str | None = Field(default=None, alias="VITE_GCP_API_KEY")
     firestore_healthcheck_enabled: bool = Field(
         default=False, alias="FIRESTORE_HEALTHCHECK_ENABLED"
     )

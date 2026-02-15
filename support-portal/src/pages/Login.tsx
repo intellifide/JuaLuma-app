@@ -14,9 +14,8 @@
 
 // Support Portal Login. Last modified: 2026-02-02 18:50 CST
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, auth } from '../services/gcp_auth_driver';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../firebase';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 export default function Login() {
