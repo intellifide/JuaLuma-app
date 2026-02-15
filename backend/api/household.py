@@ -135,7 +135,7 @@ def check_invite_status(
     info = household_service.get_invite_details(db, token)
     if not info["valid"]:
         raise HTTPException(status_code=400, detail=info["detail"])
-    
+
     return info
 
 
