@@ -79,6 +79,8 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
       - name: Test
+        env:
+          VITE_GCP_API_KEY: "dummy-for-ci-tests"
         run: npm run test
 
   frontend-marketing:
