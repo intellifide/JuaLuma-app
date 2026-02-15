@@ -7,9 +7,32 @@ on:
     branches: [main, Dev]
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend_app: ${{ steps.filter.outputs.frontend_app }}
+      frontend_marketing: ${{ steps.filter.outputs.frontend_marketing }}
+      support_portal: ${{ steps.filter.outputs.support_portal }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend_app:
+              - 'frontend-app/**'
+            frontend_marketing:
+              - 'frontend-marketing/**'
+            support_portal:
+              - 'support-portal/**'
+
   backend-quality:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'backend/') || contains(github.event.head_commit.added, 'backend/')
+    needs: changes
+    if: github.event_name == 'pull_request' || needs.changes.outputs.backend == 'true'
     defaults:
       run:
         working-directory: ./backend
@@ -36,7 +59,8 @@ jobs:
 
   frontend-app:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'frontend-app/') || contains(github.event.head_commit.added, 'frontend-app/')
+    needs: changes
+    if: github.event_name == 'pull_request' || needs.changes.outputs.frontend_app == 'true'
     defaults:
       run:
         working-directory: ./frontend-app
@@ -59,7 +83,8 @@ jobs:
 
   frontend-marketing:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'frontend-marketing/') || contains(github.event.head_commit.added, 'frontend-marketing/')
+    needs: changes
+    if: github.event_name == 'pull_request' || needs.changes.outputs.frontend_marketing == 'true'
     defaults:
       run:
         working-directory: ./frontend-marketing
@@ -80,7 +105,8 @@ jobs:
 
   support-portal:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'support-portal/') || contains(github.event.head_commit.added, 'support-portal/')
+    needs: changes
+    if: github.event_name == 'pull_request' || needs.changes.outputs.support_portal == 'true'
     defaults:
       run:
         working-directory: ./support-portal
