@@ -4,7 +4,7 @@ set -e
 # Configuration
 PROJECT_ID="${GCP_PROJECT_ID:-jualuma-dev}"
 # Try to detect instance or set default
-INSTANCE_NAME="${INSTANCE_NAME:-jualuma-db}"
+INSTANCE_NAME="${INSTANCE_NAME:-jualuma-db-10g}"
 
 echo "Using Project: $PROJECT_ID"
 echo "Target Instance: $INSTANCE_NAME"
@@ -33,7 +33,7 @@ else
     # simpler to just add it if strictly needed, but let's warn user to run this manually if unsure
     echo "Run the following command to enable the flag (will restart instance):"
     echo "gcloud sql instances patch $INSTANCE_NAME --project=$PROJECT_ID --database-flags=cloudsql.enable_google_ml_integration=on"
-    
+
     # Uncomment to auto-run if approved
     # gcloud sql instances patch $INSTANCE_NAME --project=$PROJECT_ID --database-flags=cloudsql.enable_google_ml_integration=on
 fi

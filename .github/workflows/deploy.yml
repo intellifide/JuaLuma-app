@@ -2,7 +2,7 @@ name: CD - Deploy to Cloud Run
 
 on:
   push:
-    branches: [Dev, dev]
+    branches: [Dev]
 
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}

@@ -89,14 +89,13 @@ async def create_checkout(
             detail="Signup session not found. Please restart signup.",
         )
 
-    url, customer_id = create_checkout_session_for_pending(
+    url = create_checkout_session_for_pending(
         pending.uid,
         pending.email,
         request.plan_type,
         request.return_url,
         customer_id=pending.stripe_customer_id,
     )
-    pending.stripe_customer_id = customer_id
     db.commit()
     return {"url": url}
 

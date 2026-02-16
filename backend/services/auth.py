@@ -129,7 +129,10 @@ def create_user_record(
 
     # Sync with Stripe (Best effort)
     try:
-        create_stripe_customer(db, uid, email)
+        # Best-effort: set Stripe Customer.name from consumer first/last name.
+        parts = [(first_name or "").strip(), (last_name or "").strip()]
+        full_name = " ".join(p for p in parts if p).strip() or None
+        create_stripe_customer(db, uid, email, customer_name=full_name)
     except Exception as exc:
         # Log but don't fail user creation
         logger.error(f"Failed to sync new user {uid} to Stripe: {exc}")

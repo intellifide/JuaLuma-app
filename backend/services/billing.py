@@ -83,6 +83,40 @@ def _normalize_plan_type(plan_type: str) -> str:
     return normalized
 
 
+def _require_billing_email(email: str | None) -> str:
+    resolved_email = (email or "").strip()
+    if not resolved_email:
+        raise HTTPException(status_code=400, detail="Billing requires an email address.")
+    return resolved_email
+
+
+def _full_name(first_name: str | None, last_name: str | None) -> str | None:
+    parts = [(first_name or "").strip(), (last_name or "").strip()]
+    value = " ".join(p for p in parts if p).strip()
+    return value or None
+
+
+def _checkout_custom_fields_for_consumer_name() -> list[dict[str, Any]]:
+    # Stripe Checkout supports custom_fields on the hosted checkout page.
+    # We use this to require first/last name for the consumer app.
+    return [
+        {
+            "key": "first_name",
+            "label": {"type": "custom", "custom": "First name"},
+            "type": "text",
+            "optional": False,
+            "text": {"minimum_length": 1, "maximum_length": 128},
+        },
+        {
+            "key": "last_name",
+            "label": {"type": "custom", "custom": "Last name"},
+            "type": "text",
+            "optional": False,
+            "text": {"minimum_length": 1, "maximum_length": 128},
+        },
+    ]
+
+
 def _format_date_for_email(value: datetime) -> str:
     return value.strftime("%B %d, %Y")
 
@@ -251,7 +285,7 @@ def create_checkout_session_for_pending(
     return_url: str,
     *,
     customer_id: str | None = None,
-) -> tuple[str, str]:
+) -> str:
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
 
@@ -260,9 +294,15 @@ def create_checkout_session_for_pending(
     if not price_id:
         raise HTTPException(status_code=400, detail="The selected subscription plan is not recognized.")
 
-    if not customer_id:
-        customer = stripe.Customer.create(email=email, metadata={"uid": uid})
-        customer_id = customer.id
+    resolved_email = _require_billing_email(email)
+
+    session_kwargs: dict[str, Any] = {}
+    if customer_id:
+        session_kwargs["customer"] = customer_id
+    else:
+        # Create a new customer in Checkout, but ensure email is collected/prefilled.
+        session_kwargs["customer_creation"] = "always"
+        session_kwargs["customer_email"] = resolved_email
 
     subscription_data = {"metadata": {"uid": uid, "plan": plan_type}}
     trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
@@ -274,7 +314,6 @@ def create_checkout_session_for_pending(
         logger.info(f"Creating checkout session with {trial_days}-day trial for plan {plan_type}")
 
     session = stripe.checkout.Session.create(
-        customer=customer_id,
         payment_method_types=["card"],
         line_items=[{"price": price_id, "quantity": 1}],
         mode="subscription",
@@ -283,12 +322,16 @@ def create_checkout_session_for_pending(
         allow_promotion_codes=True,
         metadata={"uid": uid, "plan": plan_type},
         subscription_data=subscription_data,
+        custom_fields=_checkout_custom_fields_for_consumer_name(),
+        **session_kwargs,
     )
 
-    return session.url, customer_id
+    return session.url
 
 
-def create_stripe_customer(db: Session, uid: str, email: str) -> str:
+def create_stripe_customer(
+    db: Session, uid: str, email: str, *, customer_name: str | None = None
+) -> str:
     """
     Creates a Stripe Customer for the user if one doesn't exist.
     Stores the stripe_customer_id in the Payment model.
@@ -308,8 +351,22 @@ def create_stripe_customer(db: Session, uid: str, email: str) -> str:
         if customers.data:
             customer_id = customers.data[0].id
             logger.info(f"Found existing Stripe customer {customer_id} for {email}")
+            # Best-effort backfill of missing name for existing customers.
+            if customer_name and not getattr(customers.data[0], "name", None):
+                try:
+                    stripe.Customer.modify(customer_id, name=customer_name)
+                except stripe.error.StripeError as exc:
+                    logger.warning(
+                        "Stripe warning updating customer name (non-fatal).",
+                        extra={"uid": uid, "customer_id": customer_id},
+                        exc_info=exc,
+                    )
         else:
-            customer = stripe.Customer.create(email=email, metadata={"uid": uid})
+            customer = stripe.Customer.create(
+                email=email,
+                name=customer_name,
+                metadata={"uid": uid},
+            )
             customer_id = customer.id
             logger.info(f"Created new Stripe customer {customer_id} for user {uid}")
 
@@ -353,7 +410,9 @@ def create_checkout_session(
         if not user:
             raise HTTPException(status_code=404, detail="The authenticated user profile could not be found.")
 
-        customer_id = create_stripe_customer(db, uid, user.email)
+        resolved_email = _require_billing_email(user.email)
+        customer_name = _full_name(user.first_name, user.last_name)
+        customer_id = create_stripe_customer(db, uid, resolved_email, customer_name=customer_name)
 
         # Build subscription_data with trial period if applicable
         subscription_data = {"metadata": {"uid": uid, "plan": plan_type}}
@@ -375,6 +434,7 @@ def create_checkout_session(
             allow_promotion_codes=True,
             metadata={"uid": uid, "plan": plan_type},
             subscription_data=subscription_data,
+            custom_fields=_checkout_custom_fields_for_consumer_name(),
         )
         return session.url
 
@@ -486,6 +546,23 @@ def verify_stripe_session(db: Session, session_id: str) -> bool:
 
         _ensure_user_from_pending(db, uid)
 
+        # Persist Stripe Customer ID mapping for future webhooks.
+        try:
+            customer_id = session.customer.id if hasattr(session.customer, "id") else session.customer
+        except Exception:
+            customer_id = None
+        if customer_id:
+            payment = db.query(Payment).filter(Payment.uid == uid).first()
+            if not payment:
+                payment = Payment(uid=uid, stripe_customer_id=customer_id)
+                db.add(payment)
+            else:
+                payment.stripe_customer_id = customer_id
+            pending = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
+            if pending:
+                pending.stripe_customer_id = customer_id
+            db.commit()
+
         tier = _normalize_tier(plan_type)
 
         # Normalize for DB (ensure it exists)
@@ -514,7 +591,9 @@ def create_portal_session(user_id: str, db: Session, return_url: str) -> str:
         raise HTTPException(status_code=404, detail="The authenticated user profile could not be found.")
 
     try:
-        customer_id = create_stripe_customer(db, user_id, user.email)
+        resolved_email = _require_billing_email(user.email)
+        customer_name = _full_name(user.first_name, user.last_name)
+        customer_id = create_stripe_customer(db, user_id, resolved_email, customer_name=customer_name)
 
         session = stripe.billing_portal.Session.create(
             customer=customer_id,
@@ -908,6 +987,43 @@ async def _handle_checkout_session_completed(session: dict[str, Any], db: Sessio
             return
 
     logger.info(f"Webhook: Checkout session completed for user {uid}, plan {plan_type}")
+
+    # Persist Stripe Customer ID mapping so subsequent invoice/subscription webhooks can resolve UID.
+    if customer_id and uid:
+        payment = db.query(Payment).filter(Payment.uid == uid).first()
+        if not payment:
+            payment = Payment(uid=uid, stripe_customer_id=customer_id)
+            db.add(payment)
+        else:
+            payment.stripe_customer_id = customer_id
+        pending = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
+        if pending:
+            pending.stripe_customer_id = customer_id
+        db.commit()
+
+    # Best-effort: hydrate user profile + Stripe customer name from Checkout custom fields.
+    try:
+        custom_fields = session.get("custom_fields") or []
+        values = {f.get("key"): (f.get("text") or {}).get("value") for f in custom_fields if isinstance(f, dict)}
+        first = (values.get("first_name") or "").strip() or None
+        last = (values.get("last_name") or "").strip() or None
+        full_name = " ".join(p for p in [first, last] if p).strip() or None
+        if full_name and customer_id:
+            stripe.Customer.modify(customer_id, name=full_name)
+        if first or last:
+            user = db.query(User).filter(User.uid == uid).first()
+            if user:
+                if first and not user.first_name:
+                    user.first_name = first
+                if last and not user.last_name:
+                    user.last_name = last
+                db.commit()
+    except Exception as exc:
+        logger.warning(
+            "Webhook: failed to backfill name from checkout custom fields (non-fatal).",
+            extra={"uid": uid, "customer_id": customer_id},
+            exc_info=exc,
+        )
 
     # If we have a subscription ID in the session, we can fetch details,
     # but the subscription.updated webhook will likely follow and handle details (renew_at, etc).

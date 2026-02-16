@@ -5,7 +5,7 @@ set -e
 # Assuming project and instance from context or defaults
 PROJECT_ID="jualuma-dev"
 REGION="us-central1"
-INSTANCE_NAME="jualuma-db"
+INSTANCE_NAME="jualuma-db-10g"
 CONNECTION_NAME="$PROJECT_ID:$REGION:$INSTANCE_NAME"
 PORT=5433
 

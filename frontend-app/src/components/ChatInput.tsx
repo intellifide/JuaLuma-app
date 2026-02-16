@@ -75,7 +75,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     placeholder={quotaExceeded ? "Daily query limit reached." : placeholder}
-                    className="w-full min-h-[52px] max-h-[200px] resize-none py-3.5 pr-28 pl-5 rounded-2xl bg-transparent text-text-primary placeholder:text-text-muted/80 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base"
+                    className="w-full min-h-[56px] max-h-[200px] resize-none py-4 pr-28 pl-5 rounded-2xl bg-transparent text-text-primary placeholder:text-text-muted/80 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base leading-6"
                     disabled={isInputDisabled}
                     rows={1}
                     aria-label="Chat input"
@@ -106,7 +106,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <button
                     disabled={isLoading ? false : (!value.trim() || isInputDisabled)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-0 rounded-xl bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9"
-                    style={{ color: 'var(--text-inverse)' }}
+                    style={{ color: 'var(--text-primary)' }}
                     aria-label={isLoading ? "Stop response" : "Send message"}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}

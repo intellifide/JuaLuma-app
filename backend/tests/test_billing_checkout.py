@@ -32,13 +32,13 @@ def test_create_checkout_session_applies_trial_by_plan(
 ):
     settings.stripe_secret_key = "sk_test"
 
-    user = User(uid="user_123", email="user@example.com")
+    user = User(uid="user_123", email="user@example.com", first_name="Test", last_name="User")
     test_db.add(user)
     test_db.commit()
 
     capture = _CheckoutCapture()
 
-    monkeypatch.setattr(billing, "create_stripe_customer", lambda *_: "cus_test")
+    monkeypatch.setattr(billing, "create_stripe_customer", lambda *_, **__: "cus_test")
     monkeypatch.setattr(billing.stripe.checkout.Session, "create", capture)
 
     url = billing.create_checkout_session(
@@ -74,7 +74,7 @@ def test_create_checkout_session_for_pending_applies_trial_by_plan(
     capture = _CheckoutCapture()
     monkeypatch.setattr(billing.stripe.checkout.Session, "create", capture)
 
-    url, customer_id = billing.create_checkout_session_for_pending(
+    url = billing.create_checkout_session_for_pending(
         "pending_123",
         "pending@example.com",
         plan_input,
@@ -83,7 +83,6 @@ def test_create_checkout_session_for_pending_applies_trial_by_plan(
     )
 
     assert url == "https://checkout.stripe.test/session"
-    assert customer_id == "cus_test"
     assert capture.kwargs is not None
     assert capture.kwargs["line_items"][0]["price"] == billing.STRIPE_PLANS[expected_plan]
 

@@ -3,7 +3,7 @@ set -e
 
 # Configuration
 PROJECT_ID="${GCP_PROJECT_ID:-jualuma-dev}"
-INSTANCE_NAME="${INSTANCE_NAME:-jualuma-db}"
+INSTANCE_NAME="${INSTANCE_NAME:-jualuma-db-10g}"
 # Default SA for the application if known, else ask user
 APP_SA_EMAIL="jualuma-dev-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 
