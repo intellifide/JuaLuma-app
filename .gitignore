@@ -143,6 +143,11 @@ notes.md
 .codex/
 .antigravity/
 .aider/
+.agent/
+
+# Capacitor native platforms (generated)
+frontend-app/ios/
+frontend-app/android/
 
 # Debug scripts
 scripts/debug_*.py
