@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 import stripe
 from fastapi import HTTPException
@@ -55,6 +56,20 @@ TRIAL_PERIOD_DAYS = {
 }
 
 GRACE_PERIOD_DAYS = 3
+
+
+def _append_checkout_session_id_param(return_url: str) -> str:
+    """Append Stripe session placeholder without clobbering existing query params.
+
+    urlencode would percent-encode the curly braces in {CHECKOUT_SESSION_ID},
+    preventing Stripe from performing its server-side substitution.  We build
+    the final query string manually so the template token stays raw.
+    """
+    parsed = urlparse(return_url)
+    existing = parsed.query
+    separator = "&" if existing else ""
+    raw_query = f"{existing}{separator}session_id={{CHECKOUT_SESSION_ID}}"
+    return urlunparse(parsed._replace(query=raw_query))
 
 
 def _normalize_plan_type(plan_type: str) -> str:
@@ -263,7 +278,7 @@ def create_checkout_session_for_pending(
         payment_method_types=["card"],
         line_items=[{"price": price_id, "quantity": 1}],
         mode="subscription",
-        success_url=return_url + "?session_id={CHECKOUT_SESSION_ID}",
+        success_url=_append_checkout_session_id_param(return_url),
         cancel_url=return_url,
         allow_promotion_codes=True,
         metadata={"uid": uid, "plan": plan_type},
@@ -355,7 +370,7 @@ def create_checkout_session(
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
-            success_url=return_url + "?session_id={CHECKOUT_SESSION_ID}",
+            success_url=_append_checkout_session_id_param(return_url),
             cancel_url=return_url,
             allow_promotion_codes=True,
             metadata={"uid": uid, "plan": plan_type},

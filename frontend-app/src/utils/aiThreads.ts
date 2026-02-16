@@ -16,6 +16,8 @@ export interface Message {
   role: 'user' | 'assistant'
   text: string
   time: string
+  citations?: Array<{ title: string; url: string }>
+  webSearchUsed?: boolean
 }
 
 export const AI_STORAGE_UPDATED_EVENT = 'jualuma:ai-storage-updated'

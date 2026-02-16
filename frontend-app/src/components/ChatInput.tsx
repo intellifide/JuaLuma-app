@@ -16,6 +16,7 @@ import React, { useState, useRef, useEffect } from 'react';
 
 interface ChatInputProps {
     onSendMessage: (message: string) => void;
+    onCancel?: () => void;
     onUploadFile?: (file: File) => void;
     isLoading: boolean;
     disabled?: boolean;
@@ -25,6 +26,7 @@ interface ChatInputProps {
 
 export const ChatInput: React.FC<ChatInputProps> = ({
     onSendMessage,
+    onCancel,
     onUploadFile,
     isLoading,
     disabled = false,
@@ -65,15 +67,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const canUpload = Boolean(onUploadFile) && !isInputDisabled;
 
     return (
-        <div className="flex flex-col gap-2 p-4 bg-transparent">
-            <div className="relative w-full">
+        <div className="flex flex-col gap-2 p-2 bg-transparent">
+            <div className="relative w-full rounded-2xl border backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-colors focus-within:border-royal-purple/60" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
                 <textarea
                     ref={textareaRef}
                     value={value}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     placeholder={quotaExceeded ? "Daily query limit reached." : placeholder}
-                    className="w-full min-h-[44px] max-h-[200px] resize-none py-3 pr-24 pl-4 rounded-lg bg-transparent text-text-primary border border-border focus:outline-none focus:border-royal-purple transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base"
+                    className="w-full min-h-[52px] max-h-[200px] resize-none py-3.5 pr-28 pl-5 rounded-2xl bg-transparent text-text-primary placeholder:text-text-muted/80 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base"
                     disabled={isInputDisabled}
                     rows={1}
                     aria-label="Chat input"
@@ -92,7 +94,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={!canUpload}
-                    className="absolute right-12 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-8 w-8"
+                    className="absolute right-[3.1rem] top-1/2 -translate-y-1/2 p-0 rounded-xl text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9 border"
+                    style={{ borderColor: 'var(--border-subtle)' }}
                     aria-label="Upload file"
                     title="Upload file"
                 >
@@ -101,13 +104,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     </svg>
                 </button>
                 <button
-                    onClick={handleSubmit}
-                    disabled={!value.trim() || isInputDisabled}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-white bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-8 w-8"
-                    aria-label="Send message"
+                    disabled={isLoading ? false : (!value.trim() || isInputDisabled)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0 rounded-xl bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9"
+                    style={{ color: 'var(--text-inverse)' }}
+                    aria-label={isLoading ? "Stop response" : "Send message"}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    {...(isLoading ? { onClick: onCancel } : { onClick: handleSubmit })}
                 >
                     {isLoading ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-4 h-4 rounded-sm" style={{ background: 'currentColor' }} />
                     ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="22" y1="2" x2="11" y2="13"></line>

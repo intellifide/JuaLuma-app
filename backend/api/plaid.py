@@ -20,7 +20,7 @@ from backend.services.plaid import (
     exchange_public_token,
     fetch_accounts,
 )
-from backend.services.plaid_sync import PLAID_SYNC_STATUS_SYNC_NEEDED
+from backend.services.plaid_sync import PLAID_SYNC_STATUS_SYNC_NEEDED, sync_plaid_item
 from backend.utils import get_db
 from backend.utils.secret_manager import store_secret
 
@@ -361,6 +361,16 @@ def exchange_token_endpoint(
     db.commit()
 
     invalidate_analytics_cache(current_user.uid)
+
+    try:
+        sync_plaid_item(db, plaid_item, trigger="exchange_token")
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Inline sync after exchange-token failed for item %s; will retry via job.",
+            item_id,
+            exc_info=True,
+        )
 
     return ExchangeTokenResponse(item_id=item_id, accounts=linked_accounts)
 

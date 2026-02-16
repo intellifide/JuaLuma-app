@@ -36,19 +36,18 @@ jobs:
         run: |
           docker build -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest -f backend/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest
+      # NOTE: Secrets (DATABASE_URL, STRIPE_*, PLAID_*, SMTP_PASSWORD,
+      # BITQUERY_API_KEY, BLOCKFROST_API_KEY, LOCAL_ENCRYPTION_KEY,
+      # JOB_RUNNER_SECRET) are bound via Secret Manager directly on
+      # Cloud Run. Do NOT redeclare them here as env_vars — doing so
+      # overwrites the secretKeyRef bindings with plain text and drops
+      # any vars not listed.
       - name: Deploy Backend
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: "jualuma-backend"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
-          env_vars: |
-            GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}
-            SMTP_HOST=smtp.gmail.com
-            SMTP_PORT=587
-            SMTP_USERNAME=intellifidellc@gmail.com
-            SMTP_FROM_EMAIL=intellifidellc@gmail.com
-            BACKEND_CORS_ORIGINS=${{ vars.BACKEND_CORS_ORIGINS }}
 
       # 2. Frontend App (VITE_GCP_API_KEY required for Identity Platform sign-up/sign-in)
       - name: Build and Push Frontend App

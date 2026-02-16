@@ -22,14 +22,15 @@ interface ChatMessageProps {
     role: 'user' | 'assistant';
     text: string;
     time: string;
+    citations?: Array<{ title: string; url: string }>;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time, citations = [] }) => {
     return (
         <div className={`chat-message chat-message-${role} group relative`}>
             <div className="chat-message-content">
                 {role === 'assistant' ? (
-                    <ReactMarkdown 
+                    <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
                             pre: ({ children }) => (
@@ -63,6 +64,25 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time }) =>
                     <p className="whitespace-pre-wrap">{text}</p>
                 )}
             </div>
+            {role === 'assistant' && citations.length > 0 && (
+                <div className="mt-2 rounded-lg border p-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
+                    <div className="text-xs text-text-secondary mb-1">Sources</div>
+                    <ul className="space-y-1">
+                        {citations.map((citation, idx) => (
+                            <li key={`${citation.url}-${idx}`} className="text-xs">
+                                <a
+                                    href={citation.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                >
+                                    {citation.title || citation.url}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
             <div className="flex items-center justify-between mt-1 min-h-[1.25rem]">
                 <div className="chat-message-time">{time}</div>
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">

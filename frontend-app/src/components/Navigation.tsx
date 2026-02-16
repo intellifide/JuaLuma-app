@@ -17,6 +17,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationDrawer } from './notifications/NotificationDrawer'
+import { AnimatedBrandText } from './AnimatedBrandText'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5177' : 'https://jualuma-marketing-298159098975.us-central1.run.app');
 
@@ -109,9 +110,8 @@ export const Navigation = () => {
     <>
       <header className="header">
         <div className="header-container">
-          <a href={`${MARKETING_URL}`} className="logo" aria-label="JuaLuma home">
-            <img src="/assets/logo.png" alt="JuaLuma logo" className="logo-img" />
-            <span className="sr-only">JuaLuma</span>
+          <a href={`${MARKETING_URL}`} aria-label="JuaLuma home" className="group">
+            <AnimatedBrandText className="text-xl" />
           </a>
 
           <nav className="nav" aria-label="Main navigation">

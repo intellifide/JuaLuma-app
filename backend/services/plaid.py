@@ -393,18 +393,17 @@ def fetch_transactions_sync_page(
     options: object | None = None
     if TransactionsSyncRequestOptions is not None:
         options = TransactionsSyncRequestOptions(
-            count=count,
             include_original_description=include_original_description,
         )
     else:
         options = {
-            "count": count,
             "include_original_description": include_original_description,
         }
 
     request = TransactionsSyncRequest(
         access_token=access_token,
-        cursor=cursor,
+        cursor=cursor or "",
+        count=count,
         options=options,
     )
 

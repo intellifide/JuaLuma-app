@@ -15,6 +15,7 @@
 // NotFound Page. Last modified: 2026-02-02 18:50 CST
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
 
 export default function NotFound() {
     const navigate = useNavigate()
@@ -24,11 +25,9 @@ export default function NotFound() {
         <div className={`min-h-screen flex items-center justify-center p-4 ${theme === 'dark' ? 'dark' : ''}`}>
             <div className="max-w-md w-full text-center">
                 <div className="backdrop-blur-glass bg-white/70 dark:bg-gray-900/75 rounded-2xl border border-white/60 dark:border-white/10 shadow-glass p-8 md:p-12">
-                    <img
-                        src="/assets/logo.png"
-                        alt="JuaLuma Logo"
-                        className="h-16 mx-auto mb-8 object-contain"
-                    />
+                    <div className="mb-8">
+                        <AnimatedBrandText className="text-4xl" />
+                    </div>
 
                     <h1 className="text-4xl font-bold mb-4 text-slate-900 dark:text-white">Page Not Found</h1>
 

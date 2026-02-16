@@ -15,7 +15,7 @@
 // Marketing site top nav with animated interactions.
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from '@/lib/motion'
@@ -58,7 +58,7 @@ export const Navbar: React.FC = () => {
     const pointerX = event.clientX
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(() => {
-      const influenceRadius = 44
+      const influenceRadius = 48
       const nextScales = brandLetters.map((_, index) => {
         const node = brandCharRefs.current[index]
         if (!node) return 1
@@ -66,7 +66,7 @@ export const Navbar: React.FC = () => {
         const centerX = rect.left + rect.width / 2
         const distance = Math.abs(pointerX - centerX)
         const strength = Math.max(0, 1 - distance / influenceRadius)
-        return 1 + 0.28 * strength
+        return 1 + 0.4 * strength
       })
       setBrandScales(nextScales)
     })
@@ -90,13 +90,8 @@ export const Navbar: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
-          <img
-            src="/assets/logo.png"
-            alt="JuaLuma logo"
-            className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-secondary/20 transition-transform group-hover:scale-105"
-          />
           <span
-            className="text-2xl font-bold tracking-tight text-text-primary select-none"
+            className="text-2xl font-bold tracking-tight select-none"
             onMouseMove={handleBrandMouseMove}
             onMouseLeave={handleBrandMouseLeave}
           >
@@ -109,10 +104,16 @@ export const Navbar: React.FC = () => {
                 aria-hidden="true"
                 style={{
                   display: 'inline-block',
-                  color: 'var(--text-primary)',
                   transform: `scale(${brandScales[index]})`,
                   transformOrigin: 'center bottom',
-                  transition: 'transform 120ms linear',
+                  transition: 'transform 130ms cubic-bezier(0.22, 1, 0.36, 1)',
+                  backgroundImage: 'linear-gradient(90deg, #8e2de2 0%, #5d4cd8 38%, #4c8cdc 66%, #2bdde6 100%)',
+                  backgroundSize: `${brandLetters.length * 100}% 100%`,
+                  backgroundPosition: `${(index / Math.max(brandLetters.length - 1, 1)) * 100}% 0%`,
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  textShadow: '0 0 11px rgba(109, 129, 224, 0.28)',
                 }}
               >
                 {letter}

@@ -13,6 +13,8 @@
  */
 
 import { api } from './api';
+import { getIdToken } from './auth';
+import type { PageContext } from '../hooks/usePageContext';
 
 export interface AIResponse {
     response: string;
@@ -20,6 +22,8 @@ export interface AIResponse {
     quota_remaining?: number;
     quota_limit?: number;
     quota_used?: number;
+    web_search_used?: boolean;
+    citations?: Array<{ title: string; url: string }>;
 }
 
 export interface HistoryItem {
@@ -39,10 +43,133 @@ export interface QuotaStatus {
     tier: string;
 }
 
+type StreamHandlers = {
+    onChunk: (delta: string) => void;
+    onComplete?: (response: AIResponse) => void;
+    onWebSearchStatus?: (status: 'started' | 'completed', resultsCount?: number) => void;
+    signal?: AbortSignal;
+    chunkDebounceMs?: number;
+};
+
+const envBase = import.meta.env.VITE_API_BASE_URL;
+const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
+
 export const aiService = {
-    sendMessage: async (message: string): Promise<AIResponse> => {
-        const response = await api.post<AIResponse>('/ai/chat', { message });
+    sendMessage: async (message: string, clientContext?: PageContext): Promise<AIResponse> => {
+        const response = await api.post<AIResponse>(
+            '/ai/chat',
+            { message, client_context: clientContext },
+            { timeout: 30000 }
+        );
         return response.data;
+    },
+
+    sendMessageStream: async (
+        message: string,
+        handlers: StreamHandlers,
+        clientContext?: PageContext
+    ): Promise<AIResponse> => {
+        const token = await getIdToken();
+        const flushMs = Math.max(0, handlers.chunkDebounceMs ?? 60);
+        const response = await fetch(`${baseURL}/ai/chat/stream`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ message, client_context: clientContext }),
+            signal: handlers.signal,
+        });
+
+        if (!response.ok || !response.body) {
+            throw new Error(`Streaming failed (${response.status})`);
+        }
+
+        const decoder = new TextDecoder();
+        const reader = response.body.getReader();
+        let buffer = '';
+        let fullText = '';
+        let finalPayload: AIResponse | null = null;
+        let pendingDelta = '';
+        let lastFlush = Date.now();
+
+        const flushPending = () => {
+            if (!pendingDelta) return;
+            handlers.onChunk(pendingDelta);
+            pendingDelta = '';
+            lastFlush = Date.now();
+        };
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split('\n\n');
+            buffer = events.pop() ?? '';
+
+            for (const evt of events) {
+                const dataLine = evt
+                    .split('\n')
+                    .find((line) => line.startsWith('data:'));
+                if (!dataLine) continue;
+
+                const raw = dataLine.slice(5).trim();
+                if (!raw) continue;
+
+                const parsed = JSON.parse(raw) as {
+                    type?: string;
+                    delta?: string;
+                    error?: string;
+                    response?: string;
+                    tokens?: number;
+                    quota_remaining?: number;
+                    quota_limit?: number;
+                    quota_used?: number;
+                    web_search_used?: boolean;
+                    citations?: Array<{ title: string; url: string }>;
+                    status?: 'started' | 'completed';
+                    results_count?: number;
+                };
+
+                if (parsed.type === 'chunk' && parsed.delta) {
+                    fullText += parsed.delta;
+                    pendingDelta += parsed.delta;
+                    if (flushMs === 0 || Date.now() - lastFlush >= flushMs) {
+                        flushPending();
+                    }
+                    continue;
+                }
+
+                if (parsed.type === 'error') {
+                    throw new Error(parsed.error || 'Streaming failed.');
+                }
+
+                if (parsed.type === 'web_search') {
+                    handlers.onWebSearchStatus?.(parsed.status ?? 'completed', parsed.results_count ?? 0);
+                    continue;
+                }
+
+                if (parsed.type === 'complete') {
+                    finalPayload = {
+                        response: parsed.response ?? fullText,
+                        tokens: parsed.tokens ?? 0,
+                        quota_remaining: parsed.quota_remaining,
+                        quota_limit: parsed.quota_limit,
+                        quota_used: parsed.quota_used,
+                        web_search_used: parsed.web_search_used,
+                        citations: parsed.citations ?? [],
+                    };
+                }
+            }
+        }
+
+        flushPending();
+
+        const result = finalPayload ?? { response: fullText, tokens: 0 };
+        handlers.onComplete?.(result);
+        return result;
     },
 
     getHistory: async (): Promise<HistoryItem[]> => {

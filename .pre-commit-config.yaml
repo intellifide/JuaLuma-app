@@ -35,9 +35,9 @@ repos:
         files: ^frontend-app/.*\.tsx?$
         pass_filenames: false
 
-      - id: gcp-drift-check
-        name: gcp-drift-check
+      - id: gcp-deploy-guard
+        name: gcp-deploy-guard
         entry: bash scripts/check_gcp_drift.sh
         language: system
-        files: (^\.github/workflows/deploy\.yml$|^backend/core/config\.py$)
+        files: ^\.github/workflows/deploy\.yml$
         pass_filenames: false

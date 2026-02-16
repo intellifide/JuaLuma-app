@@ -34,6 +34,10 @@
 
     --bg-primary: #F8FAFC;
     --bg-secondary: #EFF6FF;
+
+    --border-subtle: rgba(0, 0, 0, 0.10);
+    --surface-hover: rgba(0, 0, 0, 0.04);
+    --surface-active: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme='dark'] {
@@ -54,6 +58,10 @@
 
     --bg-primary: #0F172A;
     --bg-secondary: #1E293B;
+
+    --border-subtle: rgba(255, 255, 255, 0.10);
+    --surface-hover: rgba(255, 255, 255, 0.05);
+    --surface-active: rgba(255, 255, 255, 0.10);
 }
 
 body {

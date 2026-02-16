@@ -1,8 +1,11 @@
 # Last Modified: 2026-01-18 03:16 CST
 import asyncio
 import datetime
+import inspect
+import json
 import logging
 import time
+from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import HTTPException
@@ -12,13 +15,13 @@ from google.cloud import firestore
 from backend.core import settings
 from backend.models import HouseholdMember, Subscription, get_session
 from backend.services.prompts import prompt_manager
+from backend.services.web_search import (
+    format_web_context,
+    search_web,
+    should_use_web_search,
+)
 from backend.utils.firestore import get_firestore_client
 from backend.utils.logging import log_ai_request
-
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
 
 try:
     import vertexai
@@ -53,27 +56,8 @@ logger = logging.getLogger(__name__)
 
 # Constants
 # AI Models are now loaded from settings
-
-# Safety settings
-SAFETY_SETTINGS_LOCAL = [
-    {
-        "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-]
-
+# Backward-compat shim for services importing this constant.
+SAFETY_SETTINGS_LOCAL = None
 
 # Wrapper class to unify local and vertex clients
 class AIClient:
@@ -89,23 +73,11 @@ class AIClient:
             # but for single generation, we might need to prepend it or use the chat interface.
             # However, for simplicity and compatibility with existing 'generate_content' flow:
             final_prompt = prompt
-            if system_instruction and self.client_type == "local":
-                 # Local GenAI often supports system_instruction in model init or config.
-                 # If not re-initializing, prepending is a safe fallback.
-                 final_prompt = f"{system_instruction}\n\n{prompt}"
-            elif system_instruction and self.client_type == "vertex":
+            if system_instruction and self.client_type == "vertex":
                  # Similar for Vertex if using basic GenerativeModel without ChatSession
                  final_prompt = f"{system_instruction}\n\n{prompt}"
 
-            if self.client_type == "local":
-                # google.generativeai
-                # Note: async generation might need to be awaited or run differently depending on version
-                # genai.GenerativeModel.generate_content_async is available in newer versions
-                response = await self.model.generate_content_async(
-                    final_prompt, safety_settings=safety_settings
-                )
-                return response
-            elif self.client_type == "vertex":
+            if self.client_type == "vertex":
                 # vertexai
                 response = await self.model.generate_content_async(
                     final_prompt, safety_settings=safety_settings
@@ -126,30 +98,59 @@ class AIClient:
             logger.error(f"Error generating content: {e}")
             raise e
 
-    async def embed_text(self, text: str) -> list[float]:
+    async def generate_content_stream(
+        self, prompt: str, safety_settings: Any | None = None, system_instruction: str | None = None
+    ) -> AsyncIterator[str]:
+        """Yield incremental text chunks from model generation."""
         try:
-            if self.client_type == "local":
-                result = genai.embed_content(
-                    model="models/text-embedding-004",
-                    content=text,
-                    task_type="retrieval_query",
-                )
-                return result["embedding"]
-            elif self.client_type == "vertex":
-                # For Vertex, we need a separate embedding model instance, or use the client
-                # Assuming 'text-embedding-004' is available via vertexai logic
-                # For simplicity here, if not initialized, we might fail or re-init.
-                # Ideally, instantiate embedding model in __init__
-                # But for now, let's try to use the vertexai lib directly if possible
-                from vertexai.language_models import TextEmbeddingModel
+            final_prompt = prompt
+            if system_instruction:
+                final_prompt = f"{system_instruction}\n\n{prompt}"
 
-                model = TextEmbeddingModel.from_pretrained("text-embedding-004")
-                embeddings = model.get_embeddings([text])
-                return embeddings[0].values
+            if self.client_type != "vertex":
+                raise RuntimeError(f"Unsupported AI client type: {self.client_type}")
+
+            result = self.model.generate_content_async(
+                final_prompt, safety_settings=safety_settings, stream=True
+            )
+            stream_obj = await result if inspect.isawaitable(result) else result
+
+            if hasattr(stream_obj, "__aiter__"):
+                async for chunk in stream_obj:
+                    chunk_text = getattr(chunk, "text", "") or ""
+                    if not chunk_text:
+                        try:
+                            candidates = getattr(chunk, "candidates", None) or []
+                            if candidates:
+                                parts = candidates[0].content.parts
+                                chunk_text = "".join(
+                                    part.text for part in parts if getattr(part, "text", None)
+                                )
+                        except Exception:
+                            chunk_text = ""
+                    if chunk_text:
+                        yield chunk_text
+                return
+
+            # Fallback if SDK returns a non-stream response object.
+            text = getattr(stream_obj, "text", "") or ""
+            if text:
+                yield text
+        except ResourceExhausted as e:
+            logger.warning(f"AI Provider Quota Exceeded: {e}")
+            raise HTTPException(
+                status_code=429,
+                detail="Our AI service is currently at maximum capacity. Please try again in a few minutes.",
+            ) from e
+        except ServiceUnavailable as e:
+            logger.warning(f"AI Provider Unavailable: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="The AI assistant is temporarily unavailable. We are working to restore service.",
+            ) from e
         except Exception as e:
-            logger.error(f"Error embedding text: {e}")
-            # Return empty list or raise
-            return []
+            logger.error(f"Error generating streamed content: {e}")
+            raise
 
     async def generate_with_cache(
         self,
@@ -197,45 +198,24 @@ class AIClient:
 
 def get_ai_client() -> AIClient:
     """
-    Initializes and returns an AI client based on the environment.
+    Initializes and returns a Vertex AI client.
     """
-    env = settings.app_env.lower()
+    project_id = settings.resolved_gcp_project_id
+    location = settings.gcp_location
 
-    if env == "local":
-        api_key = settings.ai_studio_api_key
-        if not api_key:
-            logger.warning("AI_STUDIO_API_KEY not found for local environment.")
+    if not project_id:
+        logger.warning("GCP_PROJECT_ID not found for Vertex AI initialization.")
 
-        if genai:
-            if api_key:
-                genai.configure(api_key=api_key)
-            model = genai.GenerativeModel(settings.ai_model_local)
-            logger.info(
-                f"Initialized local AI client with model {settings.ai_model_local}"
-            )
-            return AIClient("local", model)
-        else:
-            raise ImportError("google.generativeai package is missing.")
-
-    else:
-        # Production / Cloud
-        project_id = settings.resolved_gcp_project_id
-        location = settings.gcp_location
-
-        if not project_id:
-            logger.warning("GCP_PROJECT_ID not found for production environment.")
-
-        if vertexai:
-            vertexai.init(project=project_id, location=location)
-            # Use appropriate model for Vertex
-            model = GenerativeModel(settings.ai_model_prod)
-            logger.info(
-                f"Initialized Vertex AI client with model {settings.ai_model_prod}"
-            )
-            # Safety settings format might differ for Vertex, handling generally in generation or init
-            return AIClient("vertex", model)
-        else:
-            raise ImportError("google.cloud.aiplatform package is missing.")
+    if vertexai:
+        vertexai.init(project=project_id, location=location)
+        selected_model = settings.ai_model_prod or settings.ai_model
+        model = GenerativeModel(selected_model)
+        logger.info(
+            "Initialized Vertex AI client with model %s",
+            selected_model,
+        )
+        return AIClient("vertex", model)
+    raise ImportError("google.cloud.aiplatform package is missing.")
 
 
 TIER_LIMITS = {
@@ -249,6 +229,40 @@ TIER_LIMITS = {
     "ultimate_monthly": 80,
     "ultimate_annual": 80,
 }
+
+
+def _runtime_context_block() -> str:
+    now_utc = datetime.datetime.now(datetime.UTC)
+    return (
+        "Runtime context:\n"
+        f"- Current UTC date: {now_utc.date().isoformat()}\n"
+        f"- Current UTC timestamp: {now_utc.isoformat()}"
+    )
+
+
+def _client_context_block(client_context: dict[str, Any] | None) -> str:
+    if not client_context:
+        return ""
+    try:
+        compact = json.dumps(client_context, ensure_ascii=True, default=str)
+    except Exception:
+        compact = str(client_context)
+    return f"Client app context:\n{compact}"
+
+
+def _citations_from_web_results(results: list[dict[str, str]]) -> list[dict[str, str]]:
+    citations: list[dict[str, str]] = []
+    for item in results:
+        url = str(item.get("url") or "").strip()
+        if not url:
+            continue
+        citations.append(
+            {
+                "title": str(item.get("title") or "Source").strip(),
+                "url": url,
+            }
+        )
+    return citations
 
 
 # 2025-12-11 14:15 CST - split rate-limit check from usage increment
@@ -372,6 +386,7 @@ async def generate_chat_response(  # noqa: C901
     user_id: str,
     prechecked_limit: tuple[str, int, int] | None = None,
     use_cache: bool = False,
+    client_context: dict[str, Any] | None = None,
 ) -> dict:
     """
     Generates a response using the AI model, enforcing rate limits.
@@ -386,28 +401,55 @@ async def generate_chat_response(  # noqa: C901
 
     # 2. Prepare Prompt & System Instructions using PromptManager
     # Fetch dynamically from Vertex AI if available
+    context_parts = [part for part in [context or "", _client_context_block(client_context)] if part]
+    merged_context = "\n\n".join(context_parts)
+
     final_prompt = prompt
-    if context:
-        final_prompt = await prompt_manager.get_rag_prompt(context_str=context, user_query=prompt)
+    if merged_context:
+        final_prompt = await prompt_manager.get_rag_prompt(
+            context_str=merged_context, user_query=prompt
+        )
+
+    citations: list[dict[str, str]] = []
+    web_search_used = False
+    if settings.ai_web_search_enabled and should_use_web_search(
+        prompt, available_context=merged_context
+    ):
+        try:
+            web_results = await asyncio.to_thread(
+                search_web, prompt, max_results=settings.ai_web_search_max_results
+            )
+            web_context = format_web_context(web_results)
+            if web_context:
+                final_prompt = f"{final_prompt}\n\n{web_context}"
+                citations = _citations_from_web_results(web_results)
+                web_search_used = True
+        except Exception as exc:
+            logger.warning("Web search enrichment failed: %s", exc)
+
+    final_prompt = f"{final_prompt}\n\n{_runtime_context_block()}"
 
     system_instruction = await prompt_manager.get_system_instruction()
+    system_instruction = (
+        f"{system_instruction}\n\n"
+        "When runtime context or web references are provided, treat them as available context "
+        "and do not claim you lack access to current date/internet."
+    )
 
     # 3. Call Model
     start_time = time.time()
     try:
-        if use_cache and context and client.client_type == "vertex":
+        if use_cache and merged_context and client.client_type == "vertex":
             # Use caching if requested and context is present
             response = await client.generate_with_cache(
                 prompt=prompt,
-                context=context,
+                context=merged_context,
                 system_instruction=system_instruction,
             )
         else:
             response = await client.generate_content(
                 final_prompt,
-                safety_settings=SAFETY_SETTINGS_LOCAL
-                if client.client_type == "local"
-                else None,
+                safety_settings=None,
                 system_instruction=system_instruction
             )
         end_time = time.time()
@@ -446,7 +488,7 @@ async def generate_chat_response(  # noqa: C901
             tokens_input=prompt_tokens,
             tokens_output=candidates_tokens,
             latency_ms=(end_time - start_time) * 1000,
-            model=settings.ai_model_prod if client.client_type == "vertex" else settings.ai_model_local,
+            model=settings.ai_model_prod or settings.ai_model,
             user_id=user_id,
             is_cached=use_cache and bool(context),
         )
@@ -458,12 +500,114 @@ async def generate_chat_response(  # noqa: C901
         return {
             "response": response_text,
             "usage_today": usage_after,
+            "citations": citations,
+            "web_search_used": web_search_used,
         }
     except HTTPException:
         # Re-raise HTTPExceptions (like 429/503 from generate_content)
         raise
     except Exception as e:
         logger.error(f"AI Generation failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="We encountered an issue while processing your AI request. Please try again.",
+        ) from e
+
+
+async def generate_chat_response_stream(
+    prompt: str,
+    context: str | None,
+    user_id: str,
+    prechecked_limit: tuple[str, int, int] | None = None,
+    client_context: dict[str, Any] | None = None,
+) -> AsyncIterator[dict[str, Any]]:
+    """
+    Streams model output chunks while preserving existing quota behavior.
+    Emits dict events:
+    - {"type": "chunk", "delta": "<text>"}
+    - {"type": "complete", "response": "<full>", "usage_today": int|None, "tier": str, "limit": int}
+    """
+    if prechecked_limit:
+        tier, limit, _ = prechecked_limit
+    else:
+        tier, limit, _ = await check_rate_limit(user_id)
+
+    client = get_ai_client()
+    context_parts = [part for part in [context or "", _client_context_block(client_context)] if part]
+    merged_context = "\n\n".join(context_parts)
+
+    final_prompt = prompt
+    if merged_context:
+        final_prompt = await prompt_manager.get_rag_prompt(
+            context_str=merged_context, user_query=prompt
+        )
+    citations: list[dict[str, str]] = []
+    web_search_used = False
+    if settings.ai_web_search_enabled and should_use_web_search(
+        prompt, available_context=merged_context
+    ):
+        yield {"type": "web_search", "status": "started"}
+        try:
+            web_results = await asyncio.to_thread(
+                search_web, prompt, max_results=settings.ai_web_search_max_results
+            )
+            web_context = format_web_context(web_results)
+            if web_context:
+                final_prompt = f"{final_prompt}\n\n{web_context}"
+                citations = _citations_from_web_results(web_results)
+                web_search_used = True
+            yield {"type": "web_search", "status": "completed", "results_count": len(citations)}
+        except Exception as exc:
+            logger.warning("Web search enrichment failed for stream: %s", exc)
+            yield {"type": "web_search", "status": "completed", "results_count": 0}
+    final_prompt = f"{final_prompt}\n\n{_runtime_context_block()}"
+    system_instruction = await prompt_manager.get_system_instruction()
+    system_instruction = (
+        f"{system_instruction}\n\n"
+        "When runtime context or web references are provided, treat them as available context "
+        "and do not claim you lack access to current date/internet."
+    )
+
+    start_time = time.time()
+    chunks: list[str] = []
+
+    try:
+        async for delta in client.generate_content_stream(
+            final_prompt,
+            safety_settings=None,
+            system_instruction=system_instruction,
+        ):
+            chunks.append(delta)
+            yield {"type": "chunk", "delta": delta}
+
+        full_response = "".join(chunks)
+        end_time = time.time()
+
+        log_ai_request(
+            prompt=prompt,
+            response=full_response,
+            tokens_input=0,
+            tokens_output=0,
+            latency_ms=(end_time - start_time) * 1000,
+            model=settings.ai_model_prod or settings.ai_model,
+            user_id=user_id,
+            is_cached=False,
+        )
+
+        usage_after = await record_rate_limit_usage(user_id, tier, limit)
+        yield {
+            "type": "complete",
+            "response": full_response,
+            "usage_today": usage_after,
+            "tier": tier,
+            "limit": limit,
+            "citations": citations,
+            "web_search_used": web_search_used,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI stream generation failed: {e}")
         raise HTTPException(
             status_code=500,
             detail="We encountered an issue while processing your AI request. Please try again.",

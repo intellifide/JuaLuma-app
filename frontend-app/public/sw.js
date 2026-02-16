@@ -1,9 +1,10 @@
-const CACHE_NAME = 'jualuma-pwa-v1';
+const CACHE_NAME = 'jualuma-pwa-v4';
 
 const STATIC_ASSETS = [
     '/',
     '/favicon.ico',
-    '/assets/logo.png'
+    '/favicon-32x32.png',
+    '/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {

@@ -2063,11 +2063,11 @@ input[type="number"] {
   flex-direction: column;
   max-width: 72%;
   padding: var(--spacing-md);
-  border-radius: 18px;
+  border-radius: 1rem;
   word-wrap: break-word;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  box-shadow: none;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .chat-message-user {

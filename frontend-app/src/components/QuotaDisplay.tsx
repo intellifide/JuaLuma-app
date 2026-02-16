@@ -27,8 +27,8 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ used, limit, tier, l
     if (loading) {
         return (
             <div className="flex flex-col items-end justify-center animate-pulse">
-                <div className="h-4 w-32 bg-white/10 rounded mb-1"></div>
-                <div className="h-2 w-24 bg-white/10 rounded"></div>
+                <div className="h-4 w-32 rounded mb-1" style={{ background: 'var(--surface-active)' }}></div>
+                <div className="h-2 w-24 rounded" style={{ background: 'var(--surface-active)' }}></div>
             </div>
         );
     }
@@ -48,12 +48,12 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ used, limit, tier, l
                 <span className={`text-sm font-medium ${isExceeded ? 'text-red-400' : 'text-text-primary'}`}>
                     {used} / {limit}
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-text-secondary border border-white/10 capitalize">
+                <span className="text-xs px-2 py-0.5 rounded-full text-text-secondary border capitalize" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
                     {tier.replace('_', ' ')}
                 </span>
             </div>
 
-            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden relative">
+            <div className="w-full h-2 rounded-full overflow-hidden relative" style={{ background: 'var(--border-subtle)' }}>
                 <div
                     className={`h-full ${progressBarColor} transition-all duration-500 ease-out`}
                     style={{ width: `${percentage}%` }}

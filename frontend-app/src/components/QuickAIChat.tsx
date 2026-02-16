@@ -31,6 +31,7 @@ import {
 } from '../utils/aiThreads'
 import { QuickChatLogo } from './ui/QuickChatLogo'
 import { Maximize2, Minimize2, Plus } from 'lucide-react'
+import { usePageContext } from '../hooks/usePageContext'
 
 type QuickChatSize = 'compact' | 'comfortable' | 'expanded'
 
@@ -50,7 +51,10 @@ export const QuickAIChat: React.FC = () => {
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [panelSize, setPanelSize] = useState<QuickChatSize>('comfortable')
+  const [isWebSearching, setIsWebSearching] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const streamAbortRef = useRef<AbortController | null>(null)
+  const pageContext = usePageContext()
 
   const storage = useMemo(() => getAIStorageKeys(user?.uid ?? null), [user?.uid])
 
@@ -122,20 +126,52 @@ export const QuickAIChat: React.FC = () => {
     setInput('')
     setSending(true)
     setMessages((prev) => [...prev, userMessage])
+    const assistantTime = formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' })
+    let streamedText = ''
+    setMessages((prev) => [...prev, { role: 'assistant', text: '', time: assistantTime }])
 
     try {
-      const response = await aiService.sendMessage(text)
-      const assistantMessage: Message = {
-        role: 'assistant',
-        text: response.response,
-        time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' }),
-      }
+      const abortController = new AbortController()
+      streamAbortRef.current = abortController
+      const response = await aiService.sendMessageStream(text, {
+        signal: abortController.signal,
+        chunkDebounceMs: 50,
+        onWebSearchStatus: (status) => {
+          setIsWebSearching(status === 'started')
+        },
+        onChunk: (delta: string) => {
+          streamedText += delta
+          setMessages((prev) => {
+            const next = [...prev]
+            const lastAssistantIndex = [...next].reverse().findIndex((msg) => msg.role === 'assistant')
+            if (lastAssistantIndex >= 0) {
+              const index = next.length - 1 - lastAssistantIndex
+              next[index] = { ...next[index], text: (next[index].text || '') + delta }
+            }
+            return next
+          })
+        },
+      }, pageContext)
+      const finalResponse = response.response || streamedText
       setMessages((prev) => {
-        const nextMessages = [...prev, assistantMessage]
-        appendAndPersist(activeThreadId, nextMessages, text, response.response)
+        const nextMessages = [...prev]
+        const lastAssistantIndex = [...nextMessages].reverse().findIndex((msg) => msg.role === 'assistant')
+        if (lastAssistantIndex >= 0) {
+          const index = nextMessages.length - 1 - lastAssistantIndex
+          nextMessages[index] = {
+            ...nextMessages[index],
+            text: finalResponse,
+            citations: response.citations ?? [],
+            webSearchUsed: response.web_search_used ?? false,
+          }
+        }
+        appendAndPersist(activeThreadId, nextMessages, text, finalResponse)
         return nextMessages
       })
     } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return
+      }
       const errorText = `Error: ${error instanceof Error ? error.message : 'Unable to process request.'}`
       const assistantMessage: Message = {
         role: 'assistant',
@@ -148,8 +184,14 @@ export const QuickAIChat: React.FC = () => {
         return nextMessages
       })
     } finally {
+      setIsWebSearching(false)
+      streamAbortRef.current = null
       setSending(false)
     }
+  }
+
+  const handleCancel = () => {
+    streamAbortRef.current?.abort()
   }
 
   const handleUpload = async (file: File) => {
@@ -256,9 +298,23 @@ export const QuickAIChat: React.FC = () => {
             {messages.length === 0 ? (
               <p className="text-sm text-text-secondary mb-0">Ask a quick question or upload a file. Everything syncs into AI Assistant automatically.</p>
             ) : (
-              messages.map((msg, index) => (
-                <ChatMessage key={`${msg.time}-${index}`} role={msg.role} text={msg.text} time={msg.time} />
-              ))
+              <>
+                {messages.map((msg, index) => (
+                  <ChatMessage
+                    key={`${msg.time}-${index}`}
+                    role={msg.role}
+                    text={msg.text}
+                    time={msg.time}
+                    citations={msg.citations}
+                  />
+                ))}
+                {isWebSearching && (
+                  <div className="text-xs text-text-secondary px-2 py-1 rounded-md bg-white/5 border border-white/10 inline-flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    Searching the web...
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -297,11 +353,11 @@ export const QuickAIChat: React.FC = () => {
               />
               <button
                 type="button"
-                onClick={handleSend}
-                disabled={sending || !input.trim()}
+                onClick={sending ? handleCancel : handleSend}
+                disabled={sending ? false : !input.trim()}
                 className="px-3 py-2 rounded-lg bg-primary text-white text-sm disabled:opacity-50"
               >
-                {sending ? '...' : 'Send'}
+                {sending ? 'Stop' : 'Send'}
               </button>
             </div>
             <Link

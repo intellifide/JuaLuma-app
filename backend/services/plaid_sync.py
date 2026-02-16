@@ -363,7 +363,7 @@ def sync_plaid_item(
         access_token = get_secret(item.secret_ref, uid=item.uid)
         link_by_plaid_account_id = hydrate_plaid_item_account_links(db, item, access_token)
 
-        initial_cursor = item.next_cursor
+        initial_cursor = item.next_cursor or ""
         page_cursor = initial_cursor
         sync_payloads: list[dict[str, Any]] = []
         modified_payloads: list[dict[str, Any]] = []

@@ -22,6 +22,7 @@ import { AgreementAcceptanceInput } from '../types/legal'
 import Switch from '../components/ui/Switch'
 import { Alert } from '../components/ui/Alert'
 import { Check, Circle, AlertCircle } from 'lucide-react'
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -154,7 +155,10 @@ export const Signup = () => {
     <div className="min-h-screen bg-bg-primary flex items-center justify-center">
       <div className="container py-16 w-full">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-8">
-          <div>
+          <div className="text-center md:text-left">
+            <Link to="/" className="mb-6 inline-block group">
+              <AnimatedBrandText className="text-3xl" />
+            </Link>
             <h1 className="text-3xl font-bold mb-4">Create your account</h1>
             <p className="mb-4">
               Build your JuaLuma workspace, access AI assistance, and manage your financial operations from a single, secure dashboard.

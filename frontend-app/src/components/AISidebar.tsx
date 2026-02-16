@@ -153,11 +153,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({
         return (
         <div
             key={thread.id}
-            className={`group relative rounded-xl transition-colors ${
-                currentThreadId === thread.id
-                    ? 'bg-white/10'
-                    : 'hover:bg-white/5'
-            } ${nested ? 'ml-4' : ''}`}
+            className={`group relative rounded-xl transition-colors ${nested ? 'ml-4' : ''}`}
+            style={{ background: currentThreadId === thread.id ? 'var(--surface-active)' : undefined }}
         >
             <button
                 onClick={() => onSelectThread(thread.id)}
@@ -211,7 +208,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     const activeProject = openProjectMenu ? projects.find((project) => project.id === openProjectMenu.id) : null;
 
     return (
-        <div className="h-full flex flex-col bg-bg-secondary/80 border-r border-white/5">
+        <div className="h-full flex flex-col bg-bg-secondary/80 border-r" style={{ borderColor: 'var(--border-subtle)' }}>
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto px-3 py-4">
                 {/* Documents Section */}
@@ -225,17 +222,17 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                             <span className="text-[10px] text-text-secondary bg-white/5 px-1.5 py-0.5 rounded-full">
                                 {documents.length}
                             </span>
-                            <svg 
-                                className={`w-3.5 h-3.5 text-text-secondary transition-transform ${expandedSection === 'documents' ? 'rotate-180' : ''}`} 
-                                fill="none" 
-                                stroke="currentColor" 
+                            <svg
+                                className={`w-3.5 h-3.5 text-text-secondary transition-transform ${expandedSection === 'documents' ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
                     </button>
-                    
+
                     {expandedSection === 'documents' && (
                         <div className="px-1 pb-3">
                             {documents.length === 0 ? (
@@ -373,7 +370,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                                                             </svg>
                                                         </button>
                                                         {chatsExpanded && (
-                                                            <div className="pl-3 border-l border-white/5 space-y-1">
+                                                            <div className="pl-3 border-l space-y-1" style={{ borderColor: 'var(--border-subtle)' }}>
                                                                 {projectThreads.length === 0 ? (
                                                                     <p className="text-[11px] text-text-secondary">No chats yet.</p>
                                                                 ) : (
@@ -399,16 +396,16 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                         className="w-full flex items-center justify-between px-2 py-2 text-left text-text-muted hover:text-text-primary transition-colors"
                     >
                         <span className="text-xs uppercase tracking-widest">Your chats</span>
-                        <svg 
-                            className={`w-3.5 h-3.5 text-text-secondary transition-transform ${expandedSection === 'history' ? 'rotate-180' : ''}`} 
-                            fill="none" 
-                            stroke="currentColor" 
+                        <svg
+                            className={`w-3.5 h-3.5 text-text-secondary transition-transform ${expandedSection === 'history' ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
-                    
+
                     {expandedSection === 'history' && (
                         <div className="px-1 pb-3">
                             {unassignedThreads.length === 0 ? (
@@ -426,7 +423,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                                                 type="button"
                                                 onClick={() => setChatPage((p) => Math.max(1, p - 1))}
                                                 disabled={clampedChatPage === 1}
-                                                className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-white/10 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5"
+                                                className="inline-flex items-center justify-center h-7 w-7 rounded-md border text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors"
+                                                style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}
                                                 aria-label="Previous page"
                                             >
                                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -440,7 +438,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                                                 type="button"
                                                 onClick={() => setChatPage((p) => Math.min(totalChatPages, p + 1))}
                                                 disabled={clampedChatPage === totalChatPages}
-                                                className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-white/10 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5"
+                                                className="inline-flex items-center justify-center h-7 w-7 rounded-md border text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors"
+                                                style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}
                                                 aria-label="Next page"
                                             >
                                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -457,15 +456,15 @@ export const AISidebar: React.FC<AISidebarProps> = ({
             </div>
 
             {/* Hidden file input */}
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
                 onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                         onUploadDoc(e.target.files[0]);
                     }
-                }} 
+                }}
             />
             {openThreadMenu && activeThread && createPortal(
                 <div className="fixed inset-0 z-[1000]">
@@ -476,8 +475,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                         aria-label="Close chat menu"
                     />
                     <div
-                        className="absolute w-48 rounded-lg border border-white/10 p-2 shadow-xl space-y-1"
-                        style={{ left: openThreadMenu.x, top: openThreadMenu.y, backgroundColor: 'var(--bg-secondary)' }}
+                        className="absolute w-48 rounded-lg border p-2 shadow-xl space-y-1"
+                        style={{ left: openThreadMenu.x, top: openThreadMenu.y, backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
@@ -534,8 +533,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                         aria-label="Close project menu"
                     />
                     <div
-                        className="absolute w-44 rounded-lg border border-white/10 p-2 shadow-xl space-y-1"
-                        style={{ left: openProjectMenu.x, top: openProjectMenu.y, backgroundColor: 'var(--bg-secondary)' }}
+                        className="absolute w-44 rounded-lg border p-2 shadow-xl space-y-1"
+                        style={{ left: openProjectMenu.x, top: openProjectMenu.y, backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button

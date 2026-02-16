@@ -20,17 +20,18 @@ import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { NotificationDrawer } from '../components/notifications/NotificationDrawer'
 import { QuickAIChat } from '../components/QuickAIChat'
-import { 
-  LayoutDashboard, 
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
+import {
+  LayoutDashboard,
   LineChart,
-  CreditCard, 
-  Wallet, 
-  Store, 
-  Bot, 
-  Settings, 
-  LogOut, 
-  Bell, 
-  Menu, 
+  CreditCard,
+  Wallet,
+  Store,
+  Bot,
+  Settings,
+  LogOut,
+  Bell,
+  Menu,
   X,
   ChevronLeft,
   LifeBuoy
@@ -57,11 +58,6 @@ export const AppLayout: React.FC = () => {
     const [showWelcome, setShowWelcome] = useState(false)
 
     const welcomeKey = user?.uid ? `jualuma_welcome_back_${user.uid}` : 'jualuma_welcome_back'
-    const marketingSiteUrl = useMemo(() => {
-        const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-        const fallback = isLocalhost ? 'http://localhost:5177' : window.location.origin
-        return (import.meta as any).env?.VITE_MARKETING_SITE_URL || fallback
-    }, [])
     const displayName = useMemo(() => {
         if (!profile) return user?.email ?? 'there'
         if (profile.display_name_pref === 'username' && profile.username) return profile.username
@@ -128,7 +124,7 @@ export const AppLayout: React.FC = () => {
     return (
         <div className="flex h-screen bg-bg-primary text-text-primary overflow-hidden font-sans selection:bg-primary/30">
             {/* Sidebar (Desktop) */}
-            <motion.aside 
+            <motion.aside
                 initial={{ width: 280 }}
                 animate={{ width: sidebarOpen ? 280 : 80 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
@@ -137,26 +133,13 @@ export const AppLayout: React.FC = () => {
                 {/* Header */}
                 <div className="h-24 flex items-center px-6 border-b border-white/5">
                    <Link to="/" className="flex items-center gap-3 group overflow-hidden">
-                        <img 
-                            src="/assets/logo.png" 
-                            alt="JuaLuma logo" 
-                            className="w-10 h-10 min-w-10 rounded-xl object-contain shadow-lg shadow-primary/20 transition-transform group-hover:scale-110 shrink-0" 
+                        <AnimatedBrandText
+                          className={`transition-all ${sidebarOpen ? 'text-2xl' : 'text-lg'}`}
+                          text={sidebarOpen ? 'JuaLuma' : 'JL'}
                         />
-                        <AnimatePresence>
-                            {sidebarOpen && (
-                                <motion.span 
-                                    initial={{ opacity: 0, x: -10 }} 
-                                    animate={{ opacity: 1, x: 0 }} 
-                                    exit={{ opacity: 0, x: -10 }}
-                                    className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight whitespace-nowrap"
-                                >
-                                    JuaLuma
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
                    </Link>
-                   
-                   <button 
+
+                   <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
                     className="absolute -right-3 top-24 w-6 h-6 rounded-full bg-surface-2 border border-white/10 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shadow-sm"
                    >
@@ -192,8 +175,8 @@ export const AppLayout: React.FC = () => {
                                 to={link.path}
                                 className={({ isActive }) => `
                                     flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative overflow-hidden
-                                    ${isActive 
-                                        ? 'bg-primary/10 text-primary font-medium shadow-inner-glow' 
+                                    ${isActive
+                                        ? 'bg-primary/10 text-primary font-medium shadow-inner-glow'
                                         : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
                                     }
                                 `}
@@ -202,7 +185,7 @@ export const AppLayout: React.FC = () => {
                                     <>
                                         <link.icon className={`w-5 h-5 shrink-0 transition-colors ${sidebarOpen ? '' : 'mx-auto'}`} />
                                         {sidebarOpen && <span>{link.name}</span>}
-                                        
+
                                         {/* Active Indicator Bar */}
                                         {isActive && (
                                             <motion.div
@@ -246,9 +229,8 @@ export const AppLayout: React.FC = () => {
 
             {/* Mobile Header */}
             <header className="md:hidden flex items-center justify-between px-6 h-20 bg-surface-1/80 backdrop-blur-md border-b border-white/5 fixed top-0 w-full z-40">
-                <Link to="/" className="flex items-center gap-2">
-                    <img src="/assets/logo.png" alt="logo" className="w-8 h-8 object-contain" />
-                    <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">JuaLuma</span>
+                <Link to="/" className="group">
+                    <AnimatedBrandText className="text-xl" />
                 </Link>
                 <div className="flex items-center gap-4">
                     <button onClick={() => setDrawerOpen(true)} className="p-2 text-text-secondary hover:text-text-primary"><Bell className="w-5 h-5" /></button>
@@ -259,16 +241,16 @@ export const AppLayout: React.FC = () => {
             {/* Mobile Menu Overlay */}
             <AnimatePresence>
                 {mobileMenuOpen && (
-                    <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden"
                         onClick={() => setMobileMenuOpen(false)}
                     >
-                        <motion.div 
-                            initial={{ x: '100%' }} 
-                            animate={{ x: 0 }} 
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             className="absolute right-0 top-0 bottom-0 w-3/4 max-w-sm bg-surface-1 border-l border-white/10 p-6 flex flex-col shadow-2xl"
@@ -279,7 +261,7 @@ export const AppLayout: React.FC = () => {
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
-                            
+
                             <nav className="flex-1 space-y-2">
                                 {sidebarLinks.map((link) => {
                                     if (link.comingSoon) {
@@ -346,11 +328,7 @@ export const AppLayout: React.FC = () => {
                             </p>
                         )}
                    </div>
-                   <div className="flex items-center gap-4">
-                        <a href={marketingSiteUrl} className="text-sm font-medium text-text-muted hover:text-primary transition-colors" rel="noopener noreferrer">
-                            ← Return to Website
-                        </a>
-                   </div>
+                   <div className="flex items-center gap-4" />
                 </div>
 
                 <div

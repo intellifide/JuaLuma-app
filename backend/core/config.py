@@ -66,9 +66,10 @@ class AppSettings(BaseSettings):
         default=None, alias="STRIPE_PUBLISHABLE_KEY"
     )
 
-    ai_studio_api_key: str | None = Field(default=None, alias="AI_STUDIO_API_KEY")
-    ai_model_local: str = Field(default="gemini-2.5-flash", alias="AI_MODEL_LOCAL")
+    ai_model: str = Field(default="gemini-2.5-flash", alias="AI_MODEL")
     ai_model_prod: str = Field(default="gemini-2.5-flash", alias="AI_MODEL_PROD")
+    ai_web_search_enabled: bool = Field(default=True, alias="AI_WEB_SEARCH_ENABLED")
+    ai_web_search_max_results: int = Field(default=4, alias="AI_WEB_SEARCH_MAX_RESULTS")
 
 
     gcp_location: str = Field(default="us-central1", alias="GCP_LOCATION")
@@ -164,7 +165,7 @@ class AppSettings(BaseSettings):
     def _require_non_empty(cls, value: str, info):
         if not value or (isinstance(value, str) and not value.strip()):
             raise ValueError(f"{info.field_name} cannot be empty.")
-        return value
+        return value.strip()
 
     @field_validator("plaid_env")
     @classmethod
@@ -176,6 +177,19 @@ class AppSettings(BaseSettings):
                 "PLAID_ENV must be one of: sandbox, development/dev, production/prod."
             )
         return normalized
+
+    @field_validator(
+        "stripe_secret_key",
+        "stripe_webhook_secret",
+        "stripe_publishable_key",
+        mode="before",
+    )
+    @classmethod
+    def _strip_optional_stripe_values(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
 
     @model_validator(mode="after")
     def _normalize_project_ids(self) -> "AppSettings":

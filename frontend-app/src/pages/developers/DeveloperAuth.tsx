@@ -18,6 +18,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { LEGAL_AGREEMENTS } from '../../constants/legal';
 import { AgreementAcceptanceInput } from '../../types/legal';
 import { developerService } from '../../services/developers';
+import { AnimatedBrandText } from '../../components/AnimatedBrandText';
 
 interface DeveloperAuthProps {
     mode: 'login' | 'signup';
@@ -118,7 +119,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                     },
                 ];
                 await signup(email, password, agreements, firstName.trim(), lastName.trim(), username.trim() || undefined);
-                
+
                 // 2. Register as Developer
                 // Note: signup auto-logs in, so we have a token
                 try {
@@ -142,7 +143,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
             } else {
                 await login(email, password);
             }
-            
+
             // Redirect to Developer Dashboard
             navigate('/developers/dashboard', { replace: true });
         } catch (err) {
@@ -157,14 +158,10 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
         <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
-                     <Link to="/developers" className="flex flex-col items-center gap-3 group">
-                        <img 
-                            src="/assets/logo.png" 
-                            alt="JuaLuma logo" 
-                            className="w-16 h-16 rounded-2xl object-contain shadow-xl shadow-primary/20 transition-transform group-hover:scale-110" 
-                        />
-                        <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight">
-                            JuaLuma Developers
+                     <Link to="/developers" className="flex flex-col items-center gap-2 group">
+                        <AnimatedBrandText className="text-4xl" />
+                        <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight -mt-1 opacity-80 capitalize">
+                            Developers
                         </span>
                     </Link>
                     <h2 className="text-xl font-semibold mt-4 text-white">
@@ -251,7 +248,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                                         placeholder="••••••••"
                                     />
                                 </div>
-                                
+
                                 {/* Password Rules */}
                                 <ul className="space-y-1 text-xs text-text-muted">
                                     {passwordChecks.map((check) => (
@@ -264,8 +261,8 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
 
                                 <div className="pt-2">
                                     <label className="flex items-start gap-2 cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
+                                        <input
+                                            type="checkbox"
                                             className="checkbox checkbox-xs mt-1"
                                             checked={acceptDeveloperAgreement}
                                             onChange={e => setAcceptDeveloperAgreement(e.target.checked)}
@@ -319,8 +316,8 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                             </div>
                         )}
 
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={submitting}
                             className="btn btn-primary w-full py-3"
                         >

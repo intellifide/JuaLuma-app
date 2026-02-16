@@ -1,266 +1,59 @@
-name: GCP Drift Check
+name: GCP Deploy Guard
 
 on:
-  schedule:
-    - cron: "0 8 * * *"  # Daily at 8 AM UTC
   push:
     branches: [Dev]
     paths:
       - ".github/workflows/deploy.yml"
-  workflow_dispatch:  # Manual trigger
-
-env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  REGION: us-central1
-
-# Env var keys to skip during comparison (secrets, auto-injected, etc.)
-# Managed as a single string; the script splits on comma.
-  SKIP_KEYS: "DATABASE_URL,SMTP_PASSWORD,SMTP_APP_PASSWORD,GOOGLE_CLOUD_PROJECT,K_SERVICE,K_REVISION,K_CONFIGURATION,PORT,FORCE_REDEPLOY"
+  pull_request:
+    paths:
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
 
 jobs:
-  drift-check:
+  guard:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: Dev
 
-      - name: Google Auth
-        uses: "google-github-actions/auth@v2"
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
-
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v2"
-
-      - name: Check drift and patch deploy.yml
-        id: drift
+      - name: Check for env_vars clobber
         run: |
-          DEPLOY_YML=".github/workflows/deploy.yml"
-          DRIFT_FOUND=false
-          DRIFT_REPORT=""
+          python3 - ".github/workflows/deploy.yml" <<'PYEOF'
+          import sys, re
 
-          # Services to check
-          SERVICES=("jualuma-backend")
+          deploy_yml_path = sys.argv[1]
 
-          IFS=',' read -ra SKIP_ARR <<< "$SKIP_KEYS"
+          # Services whose env vars are managed entirely on GCP.
+          # deploy.yml must NOT have an env_vars block for these.
+          GCP_MANAGED_SERVICES = ["jualuma-backend"]
 
-          should_skip() {
-            local key="$1"
-            for sk in "${SKIP_ARR[@]}"; do
-              [[ "$key" == "$sk" ]] && return 0
-            done
-            return 1
-          }
+          with open(deploy_yml_path, "r") as f:
+              lines = f.readlines()
 
-          for SERVICE in "${SERVICES[@]}"; do
-            echo "Checking $SERVICE..."
+          violations = []
 
-            # Get live env vars
-            LIVE_JSON=$(gcloud run services describe "$SERVICE" \
-              --region="$REGION" \
-              --project="$PROJECT_ID" \
-              --format="json(spec.template.spec.containers[0].env)" 2>/dev/null || true)
+          for service in GCP_MANAGED_SERVICES:
+              in_service = False
+              for line in lines:
+                  stripped = line.strip()
+                  if f'"{service}"' in line and "service:" in line:
+                      in_service = True
+                      continue
+                  if in_service:
+                      if re.match(r"^\s+env_vars:\s*\|", line):
+                          violations.append(service)
+                          break
+                      if re.match(r"^\s{4}-\s+name:", line) or re.match(r"^\s{4}#", line):
+                          break
 
-            if [[ -z "$LIVE_JSON" || "$LIVE_JSON" == "null" ]]; then
-              echo "Could not fetch config for $SERVICE — skipping"
-              continue
-            fi
+          if not violations:
+              print("✓ deploy.yml is clean — no env_vars blocks for GCP-managed services")
+              sys.exit(0)
 
-            # Parse live env vars into temp file
-            LIVE_FILE=$(mktemp)
-            echo "$LIVE_JSON" | python3 -c "
-          import sys, json
-          data = json.load(sys.stdin)
-          envs = data.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [{}])[0].get('env', [])
-          for e in envs:
-              name = e.get('name', '')
-              value = e.get('value', '')
-              if name and value:
-                  print(f'{name}={value}')
-          " > "$LIVE_FILE" 2>/dev/null
-
-            # Parse deploy.yml env_vars for this service
-            YML_FILE=$(mktemp)
-            VAR_REFS_FILE=$(mktemp)  # Keys using variable references
-            IN_SERVICE=false
-            IN_ENV_VARS=false
-
-            while IFS= read -r line; do
-              if [[ "$line" =~ service:.*\"$SERVICE\" ]]; then
-                IN_SERVICE=true
-                continue
-              fi
-              if $IN_SERVICE; then
-                if [[ "$line" =~ ^[[:space:]]+env_vars:[[:space:]]*\|$ ]]; then
-                  IN_ENV_VARS=true
-                  continue
-                fi
-                if $IN_ENV_VARS; then
-                  trimmed=$(echo "$line" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-                  if [[ "$trimmed" =~ ^[A-Z_]+=.+ ]]; then
-                    key=$(echo "$trimmed" | sed 's/=.*//')
-                    val=$(echo "$trimmed" | sed 's/^[^=]*=//')
-                    if [[ "$val" == *'${'* ]]; then
-                      # GitHub Actions variable ref — track key as present
-                      echo "$key" >> "$VAR_REFS_FILE"
-                    else
-                      echo "$trimmed" >> "$YML_FILE"
-                    fi
-                  elif [[ -n "$trimmed" && ! "$trimmed" =~ ^[A-Z_] ]]; then
-                    break
-                  fi
-                fi
-                # Stop at next deploy step
-                if [[ "$line" =~ ^[[:space:]]{4}-[[:space:]]+name: ]] && $IN_ENV_VARS; then
-                  break
-                fi
-              fi
-            done < "$DEPLOY_YML"
-
-            # Load var ref keys into associative array
-            declare -A VAR_REF_KEYS=()
-            if [[ -f "$VAR_REFS_FILE" ]]; then
-              while IFS= read -r refkey; do
-                [[ -n "$refkey" ]] && VAR_REF_KEYS["$refkey"]=1
-              done < "$VAR_REFS_FILE"
-            fi
-
-            # Compare
-            declare -A LIVE_MAP=()
-            while IFS= read -r entry; do
-              [[ -z "$entry" ]] && continue
-              key="${entry%%=*}"
-              val="${entry#*=}"
-              if ! should_skip "$key"; then
-                LIVE_MAP["$key"]="$val"
-              fi
-            done < "$LIVE_FILE"
-
-            declare -A YML_MAP=()
-            while IFS= read -r entry; do
-              [[ -z "$entry" ]] && continue
-              key="${entry%%=*}"
-              val="${entry#*=}"
-              if ! should_skip "$key"; then
-                YML_MAP["$key"]="$val"
-              fi
-            done < "$YML_FILE"
-
-            ADDITIONS=()
-            CHANGES=()
-
-            for key in "${!LIVE_MAP[@]}"; do
-              # Skip keys present via GitHub Actions variable references
-              [[ -n "${VAR_REF_KEYS[$key]+x}" ]] && continue
-              live_val="${LIVE_MAP[$key]}"
-              if [[ -z "${YML_MAP[$key]+x}" ]]; then
-                ADDITIONS+=("$key=$live_val")
-                DRIFT_FOUND=true
-              elif [[ "${YML_MAP[$key]}" != "$live_val" ]]; then
-                CHANGES+=("$key: yml='${YML_MAP[$key]}' → gcp='$live_val'")
-                DRIFT_FOUND=true
-              fi
-            done
-
-            if [[ ${#ADDITIONS[@]} -gt 0 || ${#CHANGES[@]} -gt 0 ]]; then
-              DRIFT_REPORT+="### $SERVICE\n"
-              for a in "${ADDITIONS[@]}"; do
-                DRIFT_REPORT+="- **Added**: \`$a\`\n"
-              done
-              for c in "${CHANGES[@]}"; do
-                DRIFT_REPORT+="- **Changed**: \`$c\`\n"
-              done
-              DRIFT_REPORT+="\n"
-
-              # Auto-patch: append missing env vars to deploy.yml env_vars block
-              if [[ ${#ADDITIONS[@]} -gt 0 ]]; then
-                for addition in "${ADDITIONS[@]}"; do
-                  key="${addition%%=*}"
-                  val="${addition#*=}"
-                  python3 scripts/patch_deploy_yml.py "$DEPLOY_YML" "$SERVICE" "$key" "$val"
-                done
-              fi
-            fi
-
-            # Cleanup
-            unset LIVE_MAP YML_MAP VAR_REF_KEYS
-            rm -f "$LIVE_FILE" "$YML_FILE" "$VAR_REFS_FILE"
-          done
-
-          echo "drift_found=$DRIFT_FOUND" >> "$GITHUB_OUTPUT"
-
-          # Save report for PR body
-          if $DRIFT_FOUND; then
-            echo "$DRIFT_REPORT" > /tmp/drift_report.md
-            echo "Drift detected — will create/update PR"
-          else
-            echo "No drift detected"
-          fi
-
-      - name: Create or update drift PR
-        if: steps.drift.outputs.drift_found == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH="sync/gcp-drift"
-          BASE="Dev"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Check if branch exists on remote
-          if git ls-remote --exit-code --heads origin "$BRANCH" &>/dev/null; then
-            git fetch origin "$BRANCH"
-            git checkout "$BRANCH"
-            git reset --hard "origin/$BASE"
-          else
-            git checkout -b "$BRANCH"
-          fi
-
-          git add .github/workflows/deploy.yml
-          git commit -m "sync: update deploy.yml to match live GCP config [skip ci]" || {
-            echo "No changes to commit"
-            exit 0
-          }
-          git push -u origin "$BRANCH" --force
-
-          # Check for existing open PR
-          EXISTING_PR=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number -q '.[0].number' 2>/dev/null || true)
-
-          REPORT=$(cat /tmp/drift_report.md 2>/dev/null || echo "GCP drift detected")
-
-          if [[ -n "$EXISTING_PR" ]]; then
-            gh pr edit "$EXISTING_PR" --body "## GCP Drift Detected
-
-          The following Cloud Run env vars are live on GCP but not reflected in \`deploy.yml\`:
-
-          $REPORT
-
-          This PR auto-patches \`deploy.yml\` to match. Review and merge to keep the repo in sync.
-
-          _Auto-generated by GCP Drift Check workflow._"
-            echo "Updated existing PR #$EXISTING_PR"
-          else
-            gh pr create \
-              --title "sync: GCP drift — update deploy.yml env vars" \
-              --body "## GCP Drift Detected
-
-          The following Cloud Run env vars are live on GCP but not reflected in \`deploy.yml\`:
-
-          $REPORT
-
-          This PR auto-patches \`deploy.yml\` to match. Review and merge to keep the repo in sync.
-
-          _Auto-generated by GCP Drift Check workflow._" \
-              --base "$BASE" \
-              --head "$BRANCH"
-            echo "Created new drift PR"
-          fi
+          print("::error::deploy.yml has env_vars blocks for GCP-managed services: " + ", ".join(violations))
+          print("Env vars for these services are managed directly on GCP (Secret Manager).")
+          print("Adding env_vars in deploy.yml will overwrite secretKeyRef bindings and drop unlisted vars.")
+          print("Remove the env_vars block(s) to fix.")
+          sys.exit(1)
+          PYEOF

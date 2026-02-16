@@ -22,8 +22,11 @@ export const metadata: Metadata = {
   title: 'JuaLuma - Master Your Finances',
   description: 'The ultimate financial aggregation and tracking platform.',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/assets/logo.png',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: '/apple-touch-icon.png',
   },
 }
 

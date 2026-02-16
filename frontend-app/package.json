@@ -16,6 +16,11 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0",
+    "@capacitor/splash-screen": "^8.0.1",
     "@headlessui/react": "^2.2.9",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",

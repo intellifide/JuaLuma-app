@@ -18,6 +18,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import Switch from '../components/ui/Switch'
 import { MfaRequiredError } from '../services/auth'
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
 
 export const Login = () => {
   const { login } = useAuth()
@@ -64,9 +65,8 @@ export const Login = () => {
       <div className="container py-16 w-full">
         <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
           <div className="flex flex-col items-center gap-4 mb-2">
-            <Link to="/" className="flex flex-col items-center gap-2 group">
-              <img src="/assets/logo.png" alt="JuaLuma logo" className="w-20 h-20 rounded-2xl object-contain shadow-xl shadow-primary/20 transition-transform group-hover:scale-110" />
-              <span className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary tracking-tight">JuaLuma</span>
+            <Link to="/" className="group">
+              <AnimatedBrandText className="text-4xl" />
             </Link>
           </div>
           <p className="text-xl font-semibold text-text-primary text-center opacity-80">
@@ -125,7 +125,7 @@ export const Login = () => {
 
             <p className="text-center text-sm text-slate-700 mt-4">
               Don&apos;t have an account?{' '}
-              <Link 
+              <Link
                 to={`/signup${returnUrl && returnUrl !== '/dashboard' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`}
                 className="text-royal-purple font-semibold hover:text-deep-indigo"
               >
