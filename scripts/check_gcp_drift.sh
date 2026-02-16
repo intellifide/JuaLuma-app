@@ -44,7 +44,7 @@ for service in GCP_MANAGED_SERVICES:
                 violations.append(service)
                 break
             # Reached the next step or section — safe
-            if re.match(r"^\s{4}-\s+name:", line) or re.match(r"^\s{4}#", line):
+            if re.match(r"^\s+-\s+name:", line) or re.match(r"^\s+#", line):
                 break
 
 if not violations:
