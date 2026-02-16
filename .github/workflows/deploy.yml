@@ -2,14 +2,24 @@ name: CD - Deploy to Cloud Run
 
 on:
   push:
-    branches: [Dev]
+    branches: [Dev, dev]
 
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   REGION: us-central1
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for env_vars clobber
+        run: python3 scripts/guard_env_vars.py ".github/workflows/deploy.yml" --output github
+
   deploy:
+    needs: [guard]
     runs-on: ubuntu-latest
     permissions:
       contents: "read"
