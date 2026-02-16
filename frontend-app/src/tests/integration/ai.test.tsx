@@ -26,7 +26,8 @@ vi.mock('../../services/aiService', () => ({
     aiService: {
         getHistory: vi.fn(),
         getQuota: vi.fn(),
-        sendMessage: vi.fn()
+        sendMessage: vi.fn(),
+        sendMessageStream: vi.fn(),
     },
     QuotaStatus: {}
 }))
@@ -89,7 +90,7 @@ describe('AI Assistant Integration', () => {
     })
 
     it('sends a message and displays response', async () => {
-        vi.mocked(aiService.sendMessage).mockResolvedValue({
+        vi.mocked(aiService.sendMessageStream).mockResolvedValue({
             response: 'This is the AI response',
             tokens: 10,
             quota_remaining: 14
@@ -103,9 +104,10 @@ describe('AI Assistant Integration', () => {
             </BrowserRouter>
         )
 
-        // Wait for initial load
+        // Wait for initial load/quota
         await waitFor(() => {
             expect(screen.getByText(/Hello! I'm your AI Assistant/i)).toBeInTheDocument()
+            expect(aiService.getQuota).toHaveBeenCalled()
         })
 
         const input = screen.getByRole('textbox', { name: /Chat input/i })
@@ -122,7 +124,7 @@ describe('AI Assistant Integration', () => {
 
         // Wait for response
         await waitFor(() => {
-            expect(aiService.sendMessage).toHaveBeenCalledWith('Hello AI')
+            expect(aiService.sendMessageStream).toHaveBeenCalled()
             expect(screen.getByText('This is the AI response')).toBeInTheDocument()
         })
 
