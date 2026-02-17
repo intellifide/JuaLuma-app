@@ -14,6 +14,25 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 
 **Workflow:** GitHub Actions → Google Artifact Registry → Cloud Run
 
+### GCP Authentication (OIDC / Workload Identity Federation)
+
+This repo deploys to GCP using GitHub Actions OIDC (no long-lived service account keys).
+
+- Workflow: `.github/workflows/deploy.yml`
+- Provider (GCP / `jualuma-dev`):
+  - `projects/298159098975/locations/global/workloadIdentityPools/github-pool/providers/github-provider`
+  - issuer: `https://token.actions.githubusercontent.com`
+  - condition: `assertion.repository == 'intellifide/JuaLuma-app'`
+- Service account (GCP / `jualuma-dev`): `github-actions@jualuma-dev.iam.gserviceaccount.com`
+
+GitHub Actions secrets required:
+- `GCP_WIF_PROVIDER`: full provider resource name above
+- `GCP_WIF_SERVICE_ACCOUNT`: service account email above
+
+Binary Authorization:
+- Stage 3 defines the auth + deploy flow.
+- Enforcement is handled as a separate Stage 5 task ("Enforce Binary Authorization") to avoid breaking deploys during iteration.
+
 ### Pipeline Components
 
 1. **Source Control:** GitHub (main repository)
@@ -341,6 +360,7 @@ This document outlines the Continuous Integration and Continuous Deployment (CI/
 - Automated migration execution
 - Rollback capability
 - Migration testing in CI
+- Runbook: `docs/runbooks/Database-Migration-Runbook.md`
 
 **Feature Flags:**
 

@@ -18,6 +18,7 @@ infra/
 ├── README.md                 # This file
 ├── versions.tf              # Terraform and provider version constraints
 ├── backend.tf.example       # Example backend configuration (copy to backend.tf)
+├── bootstrap/               # Create the GCS+KMS backend (run once per project)
 ├── modules/                 # Reusable Terraform modules
 │   ├── network/            # VPC, subnets, firewall rules
 │   ├── nat/                # Cloud NAT configuration
@@ -26,6 +27,7 @@ infra/
 │   ├── cloud-sql/          # Cloud SQL (private IP, HA)
 │   ├── cloud-run/          # Cloud Run service wrapper
 │   ├── serverless-connector/# Serverless VPC Connector
+│   ├── artifact-registry/   # Artifact Registry repositories
 │   ├── lb-https/           # HTTPS Load Balancer + Cloud Armor + CDN
 │   ├── org-policies/       # Organization policies
 │   └── log-export/         # Log export sinks
@@ -56,16 +58,17 @@ infra/
    ```bash
    # Authenticate with GCP
    gcloud auth application-default login
-   
+
    # Set project
    gcloud config set project jualuma-prod  # or jualuma-stage, jualuma-dev
    ```
 
 4. **Bootstrap State Backend:**
-   - Create GCS bucket for Terraform state (e.g., `jualuma-terraform-state`)
-   - Enable versioning on the bucket
-   - Create KMS key for state encryption
-   - Copy `backend.tf.example` to `backend.tf` and configure
+   - Use `infra/bootstrap` to create the CMEK-encrypted GCS bucket (recommended), or create the bucket+KMS manually in GCP
+   - Copy the per-environment backend template to each env root:
+     - `infra/envs/dev/backend.tf.example` → `infra/envs/dev/backend.tf`
+     - `infra/envs/stage/backend.tf.example` → `infra/envs/stage/backend.tf`
+     - `infra/envs/prod/backend.tf.example` → `infra/envs/prod/backend.tf`
 
 ## Module Sources
 
@@ -77,6 +80,7 @@ All modules use Google Cloud Foundation Toolkit (CFT) or Fabric modules:
 - **DNS Policy:** `cloud-foundation-fabric/modules/dns-policy` or `terraform-google-cloud-dns` samples
 - **Cloud SQL:** `terraform-google-sql-db` (CFT)
 - **Cloud Run:** `terraform-google-cloud-run` (CFT)
+- **Artifact Registry:** `google_artifact_registry_repository` (provider resource; wrap for consistency)
 - **Serverless Connector:** `terraform-google-vpc-serverless-connector` (CFT)
 - **LB HTTPS:** `terraform-google-lb-http` (CFT) + `terraform-google-cloud-armor` (CFT)
 - **Org Policies:** `terraform-google-org-policy` (CFT)

@@ -1,7 +1,7 @@
 # Staging Environment Infrastructure
-# 
+#
 # This file composes Terraform modules to create the staging infrastructure.
-# 
+#
 # Deployment Order:
 # 1. Bootstrap: State backend (GCS bucket + KMS)
 # 2. Network Core: VPC, subnets, firewall baseline, NAT
@@ -49,6 +49,12 @@ variable "secondary_region" {
   default     = "us-east1"
 }
 
+variable "artifact_registry_repo_id" {
+  description = "Artifact Registry Docker repository id."
+  type        = string
+  default     = "jualuma-repo"
+}
+
 # TODO: Add module calls here following the deployment order above
 # Example structure:
 #
@@ -65,3 +71,10 @@ variable "secondary_region" {
 # etc.
 
 # See module README files in infra/modules/ for required inputs and outputs
+
+module "artifact_registry" {
+  source        = "../../modules/artifact-registry"
+  project_id    = var.project_id
+  location      = var.region
+  repository_id = var.artifact_registry_repo_id
+}

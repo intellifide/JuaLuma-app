@@ -64,6 +64,7 @@ service-account*.json
 # Terraform
 .terraform/
 .terraform.lock.hcl
+backend.tf
 *.tfstate
 *.tfstate.*
 *.tfvars
