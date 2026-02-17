@@ -1,28 +1,31 @@
-FROM node:20-bullseye
+FROM node:20-bullseye AS build
 
 WORKDIR /app
 
-COPY frontend-app/package*.json /app/
-
+COPY frontend-app/package*.json ./
 RUN npm ci
 
-COPY frontend-app /app
+COPY frontend-app/ ./
 
-# Build-time env for Vite. Required so Identity Platform sign-up/sign-in work. Build fails if key is missing.
+# Build-time env for Vite. Required so Identity Platform sign-up/sign-in work.
 ARG VITE_GCP_API_KEY
 ARG VITE_API_BASE_URL
-RUN if [ -z "${VITE_GCP_API_KEY}" ]; then echo "FATAL: VITE_GCP_API_KEY build-arg is required. Set it in deploy workflow (e.g. vars.VITE_GCP_API_KEY)." >&2; exit 1; fi && \
-    echo "VITE_GCP_API_KEY=$VITE_GCP_API_KEY" > .env && \
-    [ -n "$VITE_API_BASE_URL" ] && echo "VITE_API_BASE_URL=$VITE_API_BASE_URL" >> .env || true
-ENV VITE_ENV_DIR=.
+ARG VITE_MARKETING_URL
+ARG VITE_MAINTENANCE_MODE
 
-COPY scripts/docker/ensure-node-modules.sh /usr/local/bin/ensure-node-modules
-RUN chmod +x /usr/local/bin/ensure-node-modules
+RUN if [ -z "${VITE_GCP_API_KEY}" ]; then echo "FATAL: VITE_GCP_API_KEY build-arg is required." >&2; exit 1; fi
 
-ENV HOST=0.0.0.0 \
-    PORT=5175
+ENV VITE_GCP_API_KEY="${VITE_GCP_API_KEY}"
+ENV VITE_API_BASE_URL="${VITE_API_BASE_URL}"
+ENV VITE_MARKETING_URL="${VITE_MARKETING_URL}"
+ENV VITE_MAINTENANCE_MODE="${VITE_MAINTENANCE_MODE}"
 
-EXPOSE 5175
+RUN npm run build
 
-ENTRYPOINT ["ensure-node-modules"]
-CMD ["sh", "-c", "npm run build && npm run preview -- --host 0.0.0.0 --port 8080"]
+FROM nginx:1.27-alpine
+
+COPY scripts/docker/nginx_spa.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]

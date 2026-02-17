@@ -1,22 +1,26 @@
-FROM node:20-bullseye
+FROM node:20-bullseye AS build
 
 WORKDIR /app
 
-# Copy package files from the support-portal directory
 COPY support-portal/package*.json ./
-
 RUN npm ci
 
-# Copy the rest of the support-portal code
-COPY support-portal .
+COPY support-portal/ ./
 
-COPY scripts/docker/ensure-node-modules.sh /usr/local/bin/ensure-node-modules
-RUN chmod +x /usr/local/bin/ensure-node-modules
+ARG VITE_GCP_API_KEY
+ARG VITE_API_BASE_URL
 
-ENV HOST=0.0.0.0 \
-    PORT=5176
+RUN if [ -z "${VITE_GCP_API_KEY}" ]; then echo "FATAL: VITE_GCP_API_KEY build-arg is required." >&2; exit 1; fi
 
-EXPOSE 5176
+ENV VITE_GCP_API_KEY="${VITE_GCP_API_KEY}"
+ENV VITE_API_BASE_URL="${VITE_API_BASE_URL}"
 
-ENTRYPOINT ["ensure-node-modules"]
-CMD ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port ${PORT:-5176}"]
+RUN npm run build
+
+FROM nginx:1.27-alpine
+
+COPY scripts/docker/nginx_spa.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]
