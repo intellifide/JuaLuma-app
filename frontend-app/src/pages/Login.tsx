@@ -16,9 +16,10 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import Switch from '../components/ui/Switch'
-import { MfaRequiredError } from '../services/auth'
-import { AnimatedBrandText } from '../components/AnimatedBrandText'
+	import Switch from '../components/ui/Switch'
+	import { MfaRequiredError } from '../services/auth'
+	import { AnimatedBrandText } from '../components/AnimatedBrandText'
+	import { ATTRIBUTION_PRIMARY } from '../constants/branding'
 
 export const Login = () => {
   const { login } = useAuth()
@@ -64,11 +65,14 @@ export const Login = () => {
     <div className="min-h-screen bg-bg-primary flex items-center justify-center">
       <div className="container py-16 w-full">
         <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
-          <div className="flex flex-col items-center gap-4 mb-2">
-            <Link to="/" className="group">
-              <AnimatedBrandText className="text-4xl" />
-            </Link>
-          </div>
+	          <div className="flex flex-col items-center gap-4 mb-2">
+	            <Link to="/" className="group">
+	              <AnimatedBrandText className="text-4xl" />
+	            </Link>
+	            <p className="text-xs text-text-muted text-center">
+	              {ATTRIBUTION_PRIMARY}
+	            </p>
+	          </div>
           <p className="text-xl font-semibold text-text-primary text-center opacity-80">
             Welcome Back. Please sign in to continue
           </p>

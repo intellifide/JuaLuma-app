@@ -90,35 +90,40 @@ export const Navbar: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
-          <span
-            className="text-2xl font-bold tracking-tight select-none"
-            onMouseMove={handleBrandMouseMove}
-            onMouseLeave={handleBrandMouseLeave}
-          >
-            {brandLetters.map((letter, index) => (
-              <span
-                key={`${letter}-${index}`}
-                ref={(el) => {
-                  brandCharRefs.current[index] = el
-                }}
-                aria-hidden="true"
-                style={{
-                  display: 'inline-block',
-                  transform: `scale(${brandScales[index]})`,
-                  transformOrigin: 'center bottom',
-                  transition: 'transform 130ms cubic-bezier(0.22, 1, 0.36, 1)',
-                  backgroundImage: 'linear-gradient(90deg, #8e2de2 0%, #5d4cd8 38%, #4c8cdc 66%, #2bdde6 100%)',
-                  backgroundSize: `${brandLetters.length * 100}% 100%`,
-                  backgroundPosition: `${(index / Math.max(brandLetters.length - 1, 1)) * 100}% 0%`,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  textShadow: '0 0 11px rgba(109, 129, 224, 0.28)',
-                }}
-              >
-                {letter}
-              </span>
-            ))}
+          <span className="flex flex-col leading-none">
+            <span
+              className="text-2xl font-bold tracking-tight select-none"
+              onMouseMove={handleBrandMouseMove}
+              onMouseLeave={handleBrandMouseLeave}
+            >
+              {brandLetters.map((letter, index) => (
+                <span
+                  key={`${letter}-${index}`}
+                  ref={(el) => {
+                    brandCharRefs.current[index] = el
+                  }}
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-block',
+                    transform: `scale(${brandScales[index]})`,
+                    transformOrigin: 'center bottom',
+                    transition: 'transform 130ms cubic-bezier(0.22, 1, 0.36, 1)',
+                    backgroundImage: 'linear-gradient(90deg, #8e2de2 0%, #5d4cd8 38%, #4c8cdc 66%, #2bdde6 100%)',
+                    backgroundSize: `${brandLetters.length * 100}% 100%`,
+                    backgroundPosition: `${(index / Math.max(brandLetters.length - 1, 1)) * 100}% 0%`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    textShadow: '0 0 11px rgba(109, 129, 224, 0.28)',
+                  }}
+                >
+                  {letter}
+                </span>
+              ))}
+            </span>
+            <span className="text-[11px] font-semibold tracking-wide text-text-muted mt-1">
+              by Intellifide
+            </span>
           </span>
         </Link>
 

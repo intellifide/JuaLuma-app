@@ -17,6 +17,7 @@
  * LAST MODIFIED: 2026-01-25 20:47 CST
  */
 import React from 'react';
+import { ATTRIBUTION_EXTENDED } from '@/lib/branding';
 
 export default function PrivacyPage() {
     return (
@@ -27,7 +28,13 @@ export default function PrivacyPage() {
                 <section>
                     <h2 className="text-2xl font-bold text-white mb-4">Introduction</h2>
                     <p>
-                        Intellifide, LLC ("Company," "we," "us," or "our") operates the JuaLuma financial aggregation and analysis platform ("Service"). We are committed to protecting your privacy and handling your personal information responsibly.
+                        Intellifide LLC ("Company," "we," "us," or "our") operates the JuaLuma financial aggregation and analysis platform ("Service"). We are committed to protecting your privacy and handling your personal information responsibly.
+                    </p>
+                    <p className="mt-4">
+                        {ATTRIBUTION_EXTENDED}
+                    </p>
+                    <p className="mt-4">
+                        For purposes of this Privacy Policy, Intellifide LLC is the entity responsible for the personal information processed in connection with JuaLuma.
                     </p>
                     <p className="mt-4">
                         <strong>Important:</strong> As a financial data aggregator, we are classified as a "financial institution" under the Gramm-Leach-Bliley Act (GLBA). This Privacy Policy describes how we collect, use, share, and protect your information in compliance with GLBA and other applicable privacy laws.
@@ -94,7 +101,7 @@ export default function PrivacyPage() {
                         For any privacy inquiries or to exercise your rights, please contact the Data Privacy Officer at <a href="mailto:intellifidellc@gmail.com" className="text-primary underline">intellifidellc@gmail.com</a>.
                     </p>
                     <p className="mt-4 text-sm opacity-70">
-                        Intellifide, LLC<br />
+                        Intellifide LLC<br />
                         Texas Compliance Office
                     </p>
                 </section>

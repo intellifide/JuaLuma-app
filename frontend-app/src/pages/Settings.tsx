@@ -49,6 +49,7 @@ import { digestService, DigestSettings } from '../services/digestService';
 import { createPasskeyCredential, getPasskeyAssertion } from '../services/passkey';
 import { CopyIconButton } from '../components/ui/CopyIconButton';
 import QRCode from 'qrcode';
+import { ATTRIBUTION_PRIMARY } from '../constants/branding';
 
 type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref' | 'time_zone'>> & {
   phone_number?: string | null;
@@ -161,11 +162,11 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
         setSaving(false);
         return;
       }
-      
+
       // Prepare payload - ensure we send null for empty strings, not empty strings
       // Only include fields that have values to avoid validation issues
       const payload: ProfileUpdatePayload = {};
-      
+
       if (firstName.trim()) {
         payload.first_name = firstName.trim();
       }
@@ -186,9 +187,9 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
       if (timeZone) {
         payload.time_zone = timeZone;
       }
-      
+
       console.log('Sending profile update payload:', payload);
-      
+
       // Ensure at least one field is being sent
       if (Object.keys(payload).length === 0) {
         toast.show('Please fill in at least one field to update.', 'error');
@@ -217,7 +218,7 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
           console.error('Raw error response:', text);
           errorMessage = text || errorMessage;
         }
-        
+
         // Handle username-specific errors
         const lowerMsg = errorMessage.toLowerCase();
         if (lowerMsg.includes('username') || lowerMsg.includes('taken') || lowerMsg.includes('already')) {
@@ -225,13 +226,13 @@ const ProfileForm = ({ profile }: { profile: UserProfile | null }) => {
           toast.show(errorMessage, 'error');
           return;
         }
-        
+
         // Handle validation errors
         if (lowerMsg.includes('at least one field') || lowerMsg.includes('provide at least')) {
           toast.show('Please fill in at least one field to update.', 'error');
           return;
         }
-        
+
         // Show the actual error message
         toast.show(errorMessage, 'error');
         console.error('Profile update failed with message:', errorMessage);
@@ -417,12 +418,12 @@ export const Settings = () => {
            };
 
            const camelKey = mapKey(p.event_key);
-           
+
            // Handle known email categories
            if (camelKey in newSettings.email) {
              newSettings.email[camelKey as keyof typeof newSettings.email] = p.channel_email;
            }
-           
+
            // Handle known sms categories
            if (camelKey in newSettings.sms) {
              newSettings.sms[camelKey as keyof typeof newSettings.sms] = p.channel_sms;
@@ -1109,7 +1110,15 @@ export const Settings = () => {
     { id: 'notifications', label: 'Notifications' },
     { id: 'privacy', label: 'Privacy' },
     { id: 'security', label: 'Security' },
+    { id: 'about', label: 'About' },
   ];
+
+  // Marketing site base URL for legal docs (env-driven; avoid hardcoded origins).
+  const marketingLegalBase = React.useMemo(() => {
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    const fallback = isLocalhost ? 'http://localhost:5177' : window.location.origin
+    return (import.meta as any).env?.VITE_MARKETING_SITE_URL || fallback
+  }, [])
 
   return (
     <div>
@@ -1151,7 +1160,7 @@ export const Settings = () => {
           <div id="subscription-tab" role="tabpanel">
             <div className="glass-panel">
               <h2 className="mb-6">Subscription</h2>
-              
+
               {isRestrictedMember ? (
                 <div className="card mb-6">
                   <div className="card-body">
@@ -1813,7 +1822,7 @@ export const Settings = () => {
                     label="Allow anonymized data sharing for service improvement"
                     description="Your personal information is never shared. Only aggregated, anonymized data may be used."
                   />
-                  
+
                   <Switch
                     checked={settings.privacy.marketingEmails}
                     onChange={(c) => handlePrivacyToggle('marketingEmails', c)}
@@ -1921,7 +1930,7 @@ export const Settings = () => {
 	                  }}>
 	                    {passwordError && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{passwordError}</div>}
 	                    {passwordSuccess && <div className="mb-4 p-3 bg-emerald-100 text-emerald-700 rounded-lg text-sm">Password updated successfully.</div>}
-	
+
 	                    {/* Chrome/assistive-tech hint: include a username field alongside password fields. */}
 	                    <input
 	                      type="text"
@@ -1933,7 +1942,7 @@ export const Settings = () => {
 	                      aria-hidden="true"
 	                      className="sr-only"
 	                    />
-	
+
 	                    <div className="mb-4">
 	                      <label htmlFor="current-password" className="block text-sm font-medium text-text-secondary mb-1">Current Password</label>
 	                      <input
@@ -2245,7 +2254,7 @@ export const Settings = () => {
               <div className="card">
                 <div className="card-header pb-2 border-b border-border mb-4 flex justify-between items-center">
                   <h3 className="text-xl font-bold">Active Sessions</h3>
-                  <button 
+                  <button
                     onClick={handleEndOtherSessions}
                     className="text-sm text-red-500 hover:text-red-600 font-medium"
                     disabled={sessions.filter(s => s.is_active && !s.is_current).length === 0}
@@ -2290,8 +2299,8 @@ export const Settings = () => {
                             {formatDateTime(session.last_active, timeZone)}
                           </td>
                           <td className="py-3 text-sm">
-                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${session.is_active 
-                              ? 'bg-emerald-100 text-emerald-800' 
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${session.is_active
+                              ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-gray-100 text-gray-800'}`}>
                               {session.is_active ? 'Active' : 'Ended'}
                             </span>
@@ -2312,6 +2321,39 @@ export const Settings = () => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* About Tab */}
+        {activeTab === 'about' && (
+          <div id="about-tab" role="tabpanel">
+            <div className="glass-panel">
+              <h2 className="mb-3">About</h2>
+              <p className="text-text-secondary mb-2">
+                <strong>App name:</strong> JuaLuma
+              </p>
+              <p className="text-text-secondary mb-6">
+                {ATTRIBUTION_PRIMARY}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  className="btn btn-outline"
+                  href={`${marketingLegalBase}/legal/terms`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Terms of Service
+                </a>
+                <a
+                  className="btn btn-outline"
+                  href={`${marketingLegalBase}/legal/privacy`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Privacy Policy
+                </a>
               </div>
             </div>
           </div>

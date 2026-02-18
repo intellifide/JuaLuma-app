@@ -17,6 +17,7 @@
 
 import Link from 'next/link'
 import { APP_URL } from '@/lib/constants'
+import { ATTRIBUTION_PRIMARY } from '@/lib/branding'
 
 const comingSoonItem = (label: string) => (
   <li className="flex items-center gap-2">
@@ -61,6 +62,7 @@ export const Footer = () => (
 
         <div className="footer-section">
           <h3>Company</h3>
+          <p className="text-xs text-text-muted mb-3">{ATTRIBUTION_PRIMARY}</p>
           <ul>
             <li><Link href="/about">About Us</Link></li>
             <li><Link href="/legal/terms">Terms of Service</Link></li>
@@ -89,7 +91,7 @@ export const Footer = () => (
       </div>
 
       <div className="footer-bottom">
-        <p>&copy; 2026 Intellifide, LLC. All rights reserved.</p>
+        <p>&copy; 2026 Intellifide LLC. All rights reserved.</p>
         <p style={{ marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-size-xs)' }}>
           Licensing: <a href="/PolyForm-Noncommercial-1.0.0.txt">Source Available (Personal Use)</a>. Commercial resale or enterprise deployment is prohibited.
         </p>

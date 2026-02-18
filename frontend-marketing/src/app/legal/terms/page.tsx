@@ -17,6 +17,7 @@
  * LAST MODIFIED: 2026-01-25 20:47 CST
  */
 import React from 'react';
+import { ATTRIBUTION_PRIMARY } from '@/lib/branding';
 
 export default function TermsPage() {
     return (
@@ -27,7 +28,10 @@ export default function TermsPage() {
                 <section>
                     <h2 className="text-2xl font-bold text-white mb-4">1. Acceptance of Terms</h2>
                     <p>
-                        By accessing or using JuaLuma (the "Service"), provided by Intellifide, LLC ("Company," "we," "us," or "our"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service.
+                        By accessing or using JuaLuma (the "Service"), provided by Intellifide LLC ("Company," "we," "us," or "our"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not access or use the Service.
+                    </p>
+                    <p className="mt-4">
+                        {ATTRIBUTION_PRIMARY}
                     </p>
                 </section>
 
@@ -69,7 +73,7 @@ export default function TermsPage() {
 
                 <section>
                     <h2 className="text-2xl font-bold text-white mb-4">7. Limitation of Liability</h2>
-                    <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, INTELLIFIDE, LLC SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM YOUR USE OF THE SERVICE.</p>
+                    <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, INTELLIFIDE LLC SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM YOUR USE OF THE SERVICE.</p>
                 </section>
 
                 <section>
@@ -83,7 +87,7 @@ export default function TermsPage() {
                         JuaLuma is source available under the PolyForm Noncommercial License 1.0.0. You may audit the code, run it locally, and build widgets/plugins for personal and noncommercial ecosystem use.
                     </p>
                     <p className="mt-4">
-                        Commercial resale, repackaging, paid redistribution, or enterprise deployment of the application is strictly prohibited without separate written permission from Intellifide, LLC.
+                        Commercial resale, repackaging, paid redistribution, or enterprise deployment of the application is strictly prohibited without separate written permission from Intellifide LLC.
                     </p>
                     <p className="mt-4">
                         License text: <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline">PolyForm-Noncommercial-1.0.0.txt</a>

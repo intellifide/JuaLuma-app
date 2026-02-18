@@ -34,7 +34,7 @@ export default function AIDisclaimerPage() {
                         </p>
                         <section className="space-y-4">
                             <h3 className="text-xl font-bold text-white">1. No Professional Advice</h3>
-                            <p>All insights, projections, and analysis provided by the JuaLuma AI assistant are for informational and educational purposes only. Intellifide, LLC is not a Registered Investment Advisor (RIA) or a licensed broker-dealer. No content provided through the Service should be construed as a recommendation to buy, sell, or hold any security or financial instrument.</p>
+                            <p>All insights, projections, and analysis provided by the JuaLuma AI assistant are for informational and educational purposes only. Intellifide LLC is not a Registered Investment Advisor (RIA) or a licensed broker-dealer. No content provided through the Service should be construed as a recommendation to buy, sell, or hold any security or financial instrument.</p>
                         </section>
                         <section className="space-y-4">
                             <h3 className="text-xl font-bold text-white">2. Accuracy of AI-Generated Content</h3>

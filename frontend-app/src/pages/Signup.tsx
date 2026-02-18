@@ -20,9 +20,10 @@ import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 import { LEGAL_AGREEMENTS } from '../constants/legal'
 import { AgreementAcceptanceInput } from '../types/legal'
 import Switch from '../components/ui/Switch'
-import { Alert } from '../components/ui/Alert'
-import { Check, Circle, AlertCircle } from 'lucide-react'
-import { AnimatedBrandText } from '../components/AnimatedBrandText'
+	import { Alert } from '../components/ui/Alert'
+	import { Check, Circle, AlertCircle } from 'lucide-react'
+	import { AnimatedBrandText } from '../components/AnimatedBrandText'
+	import { ATTRIBUTION_PRIMARY } from '../constants/branding'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -155,14 +156,17 @@ export const Signup = () => {
     <div className="min-h-screen bg-bg-primary flex items-center justify-center">
       <div className="container py-16 w-full">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-8">
-          <div className="text-center md:text-left">
-            <Link to="/" className="mb-6 inline-block group">
-              <AnimatedBrandText className="text-3xl" />
-            </Link>
-            <h1 className="text-3xl font-bold mb-4">Create your account</h1>
-            <p className="mb-4">
-              Build your JuaLuma workspace, access AI assistance, and manage your financial operations from a single, secure dashboard.
-            </p>
+	          <div className="text-center md:text-left">
+	            <Link to="/" className="mb-6 inline-block group">
+	              <AnimatedBrandText className="text-3xl" />
+	            </Link>
+	            <p className="text-xs text-text-muted mb-4">
+	              {ATTRIBUTION_PRIMARY}
+	            </p>
+	            <h1 className="text-3xl font-bold mb-4">Create your account</h1>
+	            <p className="mb-4">
+	              Build your JuaLuma workspace, access AI assistance, and manage your financial operations from a single, secure dashboard.
+	            </p>
             <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
               {passwordChecks.map((check) => (
                 <li key={check.label} className="flex items-center gap-2">

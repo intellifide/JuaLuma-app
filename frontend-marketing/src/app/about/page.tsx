@@ -41,6 +41,9 @@ export default function AboutPage() {
         <p className="text-lg md:text-xl text-text-secondary">
           We build for people who manage multiple accounts, multiple asset classes, and multiple priorities.
         </p>
+        <p className="text-sm text-text-muted mt-4">
+          JuaLuma is a product brand under Intellifide LLC.
+        </p>
       </section>
 
       <section className="grid lg:grid-cols-2 gap-6 mb-8">
