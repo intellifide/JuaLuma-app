@@ -2,6 +2,11 @@ FROM node:20-bullseye AS build
 
 WORKDIR /app
 
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 COPY frontend-marketing/package*.json ./
 RUN npm ci
 
@@ -12,6 +17,11 @@ FROM node:20-slim AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
+
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 COPY frontend-marketing/package*.json ./
 RUN npm ci --omit=dev

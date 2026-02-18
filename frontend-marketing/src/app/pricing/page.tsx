@@ -20,7 +20,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from '@/lib/motion'
 import { Check, Minus, Zap, Shield, Globe, Database, Users, Star } from 'lucide-react'
-import { APP_URL } from '@/lib/constants'
+import { APP_URL, API_URL } from '@/lib/constants'
 
 interface SubscriptionPlan {
   code: string
@@ -177,7 +177,7 @@ export default function Pricing() {
 
     const fetchPlans = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
+        const apiUrl = API_URL
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 2000)
 
