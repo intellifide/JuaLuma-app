@@ -103,6 +103,10 @@ jobs:
       - name: Lint
         run: npm run lint
       - name: Build check
+        env:
+          # Required for Next.js client bundle inlining during `next build`.
+          NEXT_PUBLIC_APP_URL: "https://example.invalid"
+          NEXT_PUBLIC_API_URL: "https://example.invalid"
         run: npm run build
 
   support-portal:
