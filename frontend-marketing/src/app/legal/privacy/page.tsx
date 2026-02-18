@@ -98,7 +98,7 @@ export default function PrivacyPage() {
                 <section className="bg-surface-1 p-8 rounded-xl border border-white/5 shadow-inner">
                     <h2 className="text-2xl font-bold text-white mb-4">Contact Us</h2>
                     <p>
-                        For any privacy inquiries or to exercise your rights, please contact the Data Privacy Officer at <a href="mailto:intellifidellc@gmail.com" className="text-primary underline">intellifidellc@gmail.com</a>.
+                        For any privacy inquiries or to exercise your rights, please contact the Data Privacy Officer at <a href="mailto:support@jualuma.com" className="text-primary underline">support@jualuma.com</a>.
                     </p>
                     <p className="mt-4 text-sm opacity-70">
                         Intellifide LLC<br />

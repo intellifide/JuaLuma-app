@@ -80,7 +80,7 @@ export default function SupportPage() {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a href={`${APP_URL}/login`} className="btn">Log In to Submit Ticket</a>
-          <a href="mailto:intellifidellc@gmail.com" className="btn btn-secondary">Email Support</a>
+          <a href="mailto:support@jualuma.com" className="btn btn-secondary">Email Support</a>
         </div>
       </section>
     </div>

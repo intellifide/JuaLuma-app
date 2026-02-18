@@ -42,7 +42,7 @@ export default function FeatureRequestPage() {
           </p>
           <div className="space-y-3">
             <a href={`${APP_URL}/support/tickets/new`} target="_blank" rel="noreferrer" className="btn w-full text-center">Submit via Support Portal</a>
-            <a href="mailto:intellifidellc@gmail.com" className="btn btn-secondary w-full text-center">Email Feature Team</a>
+            <a href="mailto:hello@jualuma.com" className="btn btn-secondary w-full text-center">Email Feature Team</a>
           </div>
         </div>
 

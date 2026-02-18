@@ -104,7 +104,7 @@ export default function TermsPage() {
                 <section className="bg-surface-1 p-8 rounded-xl border border-white/5 shadow-inner">
                     <h2 className="text-2xl font-bold text-white mb-4">Contact Information</h2>
                     <p>
-                        Questions about the Terms of Service should be sent to us at <a href="mailto:intellifidellc@gmail.com" className="text-primary underline">intellifidellc@gmail.com</a>.
+                        Questions about the Terms of Service should be sent to us at <a href="mailto:hello@jualuma.com" className="text-primary underline">hello@jualuma.com</a>.
                     </p>
                 </section>
             </div>

@@ -1,5 +1,5 @@
+import base64
 import logging
-import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Protocol
@@ -245,258 +245,184 @@ class TestmailEmailClient:
         self._send_via_api(to_email, email_subject, body)
 
 
-class SmtpEmailClient:
-    def __init__(self):
-        self.host = settings.smtp_host or "localhost"
-        self.port = settings.smtp_port or 1025
-        self.username = settings.smtp_username
-        self.password = settings.smtp_password
-        self.from_email = settings.smtp_from_email or "no-reply@jualuma.com"
+class GmailApiEmailClient:
+    """
+    Sends email via Gmail API using DWD service account impersonation of hello@jualuma.com.
+    Visible From address is support@jualuma.com (default sendAs identity on hello@jualuma.com).
+    """
 
-    def _login_if_configured(self, server: smtplib.SMTP) -> None:
-        if self.username and self.password:
-            server.login(self.username, self.password)
-        elif self.username or self.password:
-            logger.warning(
-                "SMTP credentials incomplete; skipping authentication for host %s.",
-                self.host,
+    def __init__(self):
+        self.impersonate_user = settings.gmail_impersonate_user
+        self.from_name = settings.mail_from_name
+        self.from_email = settings.mail_from_email
+        self.reply_to = settings.mail_reply_to
+        self._service = None
+
+    def _get_service(self):
+        if self._service is not None:
+            return self._service
+        import os
+
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+
+        sa_file = settings.google_application_credentials or os.environ.get(
+            "GOOGLE_APPLICATION_CREDENTIALS"
+        )
+        if not sa_file:
+            raise RuntimeError(
+                "GOOGLE_APPLICATION_CREDENTIALS is not set. "
+                "Cannot initialize Gmail API client."
             )
+        scopes = ["https://www.googleapis.com/auth/gmail.send"]
+        creds = service_account.Credentials.from_service_account_file(
+            sa_file,
+            scopes=scopes,
+            subject=self.impersonate_user,
+        )
+        self._service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+        return self._service
+
+    def _build_message(
+        self,
+        to_email: str,
+        subject: str,
+        text_body: str,
+        html_body: str | None = None,
+        from_name: str | None = None,
+        from_email: str | None = None,
+    ) -> dict:
+        from_name = from_name or self.from_name
+        from_email = from_email or self.from_email
+
+        if html_body:
+            msg = MIMEMultipart("alternative")
+        else:
+            msg = MIMEMultipart()
+
+        msg["From"] = f"{from_name} <{from_email}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = self.reply_to
+        msg["Subject"] = subject
+
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+        if html_body:
+            msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+        return {"raw": raw}
+
+    def _send(self, message_body: dict) -> None:
+        try:
+            service = self._get_service()
+            service.users().messages().send(userId="me", body=message_body).execute()
+        except Exception as e:
+            logger.error("Gmail API send failed: %s", e)
+            raise
 
     def send_generic_alert(self, to_email: str, title: str) -> None:
-        """
-        Sends a strict NO-PII alert.
-        GLBA Requirement: Do not include sensitive details in the body.
-        """
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
-        msg["Subject"] = title
-
-        # ID Check: Ensure no PII in the body
         body = (
-            "You have a new notification in your secure jualuma Portal.\n\n"
+            "You have a new notification in your secure JuaLuma Portal.\n\n"
             "Please log in to view the details: https://app.jualuma.com/notifications\n\n"
             "Running a financial platform means we prioritize your privacy. "
             "We do not include sensitive details in emails."
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            # For production, we'd use starttls, credentials, etc.
-            # This is a simplified connector for the prompt context.
-            if self.host == "mock":
-                logger.info(f"[SMTP MOCK] Would send to {to_email}")
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent generic alert to {to_email}")
+            self._send(self._build_message(to_email, title, body))
+            logger.info("Sent generic alert to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send email: {e}")
+            logger.error("Failed to send generic alert: %s", e)
 
     def send_financial_digest(self, to_email: str, subject: str, body: str) -> None:
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
-        msg["Subject"] = subject
-
         footer = (
             "\n\n---\n"
             "This digest was generated for you by JuaLuma.\n"
             f"View more details securely: {settings.frontend_url}/ai\n"
         )
-        msg.attach(MIMEText(f"{body}{footer}", "plain"))
-
         try:
-            if self.host == "mock":
-                logger.info(f"[SMTP-DIGEST] To: {to_email} | Subject: {subject}")
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-            logger.info("Sent financial digest email to %s", to_email)
+            self._send(self._build_message(to_email, subject, f"{body}{footer}"))
+            logger.info("Sent financial digest to %s", to_email)
         except Exception as e:
-            logger.error("Failed to send financial digest email: %s", e)
+            logger.error("Failed to send financial digest: %s", e)
 
     def send_subscription_welcome(self, to_email: str, plan_name: str) -> None:
-        """
-        Sends welcome email for new subscription.
-        """
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
         display_name = plan_name.replace("_", " ").title()
-        msg["Subject"] = f"Welcome to JuaLuma {display_name}!"
-
+        subject = f"Welcome to JuaLuma {display_name}!"
         body = (
             f"Thank you for subscribing to the {display_name} plan.\n\n"
             "We are excited to have you on board! You now have access to all premium features.\n"
             "If you have any questions, please contact support."
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            if self.host == "mock":
-                logger.info(f"[SMTP MOCK WELCOME] To: {to_email} | Plan: {plan_name}")
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent subscription welcome email to {to_email}")
+            self._send(self._build_message(to_email, subject, body))
+            logger.info("Sent subscription welcome to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send welcome email: {e}")
+            logger.error("Failed to send subscription welcome: %s", e)
 
     def send_subscription_payment_failed(
         self, to_email: str, plan_name: str, grace_end_date: str
     ) -> None:
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
         display_name = plan_name.replace("_", " ").title()
-        msg["Subject"] = f"Payment failed for your JuaLuma {display_name} plan"
-
+        subject = f"Payment failed for your JuaLuma {display_name} plan"
         body = (
             f"We couldn't process your payment for the {display_name} plan.\n\n"
             "Your subscription will remain active during a 3-day grace period so you can update your payment method.\n"
             f"If payment isn't completed by {grace_end_date}, your account will be moved to the Free plan.\n\n"
             "Please log in to update your billing details."
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            if self.host == "mock":
-                logger.info(
-                    f"[SMTP MOCK PAYMENT FAILED] To: {to_email} | Plan: {plan_name} | Grace: {grace_end_date}"
-                )
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent payment failed email to {to_email}")
+            self._send(self._build_message(to_email, subject, body))
+            logger.info("Sent payment failed notice to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send payment failed email: {e}")
+            logger.error("Failed to send payment failed notice: %s", e)
 
     def send_subscription_downgraded(self, to_email: str, reason: str) -> None:
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
-        msg["Subject"] = "Your JuaLuma subscription was downgraded"
-
+        subject = "Your JuaLuma subscription was downgraded"
         body = (
             "Your account has been moved to the Free plan.\n\n"
             f"Reason: {reason}\n\n"
             "If you'd like to restore your paid plan, please update your billing details and resubscribe."
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            if self.host == "mock":
-                logger.info(
-                    f"[SMTP MOCK DOWNGRADE] To: {to_email} | Reason: {reason}"
-                )
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent downgrade email to {to_email}")
+            self._send(self._build_message(to_email, subject, body))
+            logger.info("Sent downgrade notice to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send downgrade email: {e}")
+            logger.error("Failed to send downgrade notice: %s", e)
 
     def send_otp(self, to_email: str, code: str) -> None:
-        """
-        Sends the OTP code.
-        """
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
-        msg["Subject"] = "jualuma Verification Code"
-
+        subject = "JuaLuma Verification Code"
         body = (
             f"Your verification code is: {code}\n\n"
             "This code will expire in 10 minutes.\n"
             "If you did not request this code, please contact support."
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            if self.host == "mock":
-                # Fallback to logger in local if no real SMTP
-                logger.info(f"[SMTP-OTP] To: {to_email} | Code: {code}")
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent OTP to {to_email}")
+            self._send(self._build_message(to_email, subject, body))
+            logger.info("Sent OTP to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send OTP: {e}")
+            logger.error("Failed to send OTP: %s", e)
 
     def send_password_reset(self, to_email: str, link: str) -> None:
-        """
-        Sends the password reset email.
-        """
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
-        msg["Subject"] = "jualuma Password Reset"
-
+        subject = "JuaLuma Password Reset"
         body = (
-            "You requested a password reset for your jualuma account.\n\n"
+            "You requested a password reset for your JuaLuma account.\n\n"
             f"Click the link below to reset your password:\n{link}\n\n"
             "If you did not request this change, please ignore this email or contact support."
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            if self.host == "mock":
-                # Fallback to logger in local if no real SMTP
-                logger.info(f"[SMTP-RESET] To: {to_email} | Link: {link}")
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent password reset link to {to_email}")
+            self._send(self._build_message(to_email, subject, body))
+            logger.info("Sent password reset link to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send password reset email: {e}")
+            logger.error("Failed to send password reset: %s", e)
 
     def send_household_invite(self, to_email: str, link: str, inviter_name: str) -> None:
-        """
-        Sends the household invitation email.
-        """
-        # Use simple alternative structure for text+HTML
-        msg = MIMEMultipart("alternative")
-        msg["From"] = self.from_email
-        msg["To"] = to_email
-        msg["Subject"] = "You have been invited to a JuaLuma Household"
-
-        # Plain text version
+        subject = "You have been invited to a JuaLuma Household"
         text_body = (
             f"{inviter_name} has invited you to join their household on JuaLuma.\n\n"
             f"Click the link below to accept the invitation:\n{link}\n\n"
-            f"This link will expire in 24 hours.\n"
-            f"If you did not expect this invitation, please ignore this email."
+            "This link will expire in 24 hours.\n"
+            "If you did not expect this invitation, please ignore this email."
         )
-
-        # HTML version
         html_body = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -518,38 +444,16 @@ class SmtpEmailClient:
     </div>
 </body>
 </html>"""
-
-        # Attach both versions - text first, then HTML (last is preferred)
-        msg.attach(MIMEText(text_body, "plain", "utf-8"))
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
-
         try:
-            if self.host == "mock":
-                logger.info(
-                    f"[SMTP-INVITE] To: {to_email} | Inviter: {inviter_name} | Link: {link}"
-                )
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent household invite to {to_email}")
+            self._send(self._build_message(to_email, subject, text_body, html_body))
+            logger.info("Sent household invite to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send household invite email: {e}")
+            logger.error("Failed to send household invite: %s", e)
 
     def send_household_welcome_member(
         self, to_email: str, household_name: str, owner_name: str
     ) -> None:
-        """
-        Sends the household welcome email.
-        """
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = to_email
-        msg["Subject"] = f"Welcome to the {household_name} Household!"
-
+        subject = f"Welcome to the {household_name} Household!"
         body = (
             f"Welcome to the {household_name} household on JuaLuma!\n\n"
             "You have successfully joined the household and now have access to shared financial insights, "
@@ -558,23 +462,11 @@ class SmtpEmailClient:
             "Log in to your dashboard to get started:\n"
             f"{settings.frontend_url}/dashboard"
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            if self.host == "mock":
-                logger.info(
-                    f"[SMTP-HOUSEHOLD-WELCOME] To: {to_email} | Household: {household_name}"
-                )
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent household welcome email to {to_email}")
+            self._send(self._build_message(to_email, subject, body))
+            logger.info("Sent household welcome to %s", to_email)
         except Exception as e:
-            logger.error(f"Failed to send household welcome email: {e}")
+            logger.error("Failed to send household welcome: %s", e)
 
     def send_support_ticket_notification(
         self,
@@ -585,16 +477,11 @@ class SmtpEmailClient:
         description: str,
         event_type: str = "Ticket Created",
     ) -> None:
-        """Notify support team via SMTP."""
         target_email = to_email or settings.support_email
         if not target_email:
-            logger.error("Support email not configured. Skipping notification send.")
+            logger.error("Support email not configured. Skipping ticket notification.")
             return
-        msg = MIMEMultipart()
-        msg["From"] = self.from_email
-        msg["To"] = target_email
-        msg["Subject"] = f"[SUPPORT] {event_type}: {subject}"
-
+        email_subject = f"[SUPPORT] {event_type}: {subject}"
         body = (
             f"Event: {event_type}\n"
             f"Ticket ID: {ticket_id}\n"
@@ -603,37 +490,30 @@ class SmtpEmailClient:
             f"Description/Message:\n{description}\n\n"
             f"View in Portal: {settings.frontend_url}/support-portal/tickets/{ticket_id}"
         )
-        msg.attach(MIMEText(body, "plain"))
-
         try:
-            if self.host == "mock":
-                logger.info(
-                    f"[SMTP-SUPPORT-NOTIFICATION] To: {target_email} | Ticket: {ticket_id}"
-                )
-                return
-
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                self._login_if_configured(server)
-                server.send_message(msg)
-
-            logger.info(f"Sent support notification email to {target_email}")
+            self._send(self._build_message(target_email, email_subject, body))
+            logger.info("Sent support ticket notification to %s", target_email)
         except Exception as e:
-            logger.error(f"Failed to send support notification email: {e}")
+            logger.error("Failed to send support ticket notification: %s", e)
 
 
 def get_email_client() -> EmailClient:
     """
     Returns the configured email client.
-    We use SmtpEmailClient (configured with Gmail in .env) for sending.
-    Testmail credentials in .env are used by E2E tests for verification only.
+    Production: GmailApiEmailClient (DWD impersonation, visible From = support@jualuma.com).
+    Development fallback (no SA key): TestmailEmailClient.
     """
-    if settings.smtp_host:
-        logger.info("Using SmtpEmailClient with host: %s", settings.smtp_host)
-        return SmtpEmailClient()
+    if settings.google_application_credentials or __import__("os").environ.get(
+        "GOOGLE_APPLICATION_CREDENTIALS"
+    ):
+        logger.info("Using GmailApiEmailClient (DWD via service account).")
+        return GmailApiEmailClient()
     if settings.testmail_api_key and settings.testmail_namespace:
         logger.info("Using TestmailEmailClient for development.")
         return TestmailEmailClient()
 
-    logger.warning("SMTP_HOST not set. Email functionality disabled.")
-    return SmtpEmailClient()  # Will likely fail or log if host is missing
+    logger.warning(
+        "GOOGLE_APPLICATION_CREDENTIALS not set and no Testmail config. "
+        "Email sending will fail. Set GOOGLE_APPLICATION_CREDENTIALS."
+    )
+    return GmailApiEmailClient()  # Will raise on first send attempt with clear error

@@ -88,15 +88,18 @@ class AppSettings(BaseSettings):
     # In production, require a secret header to trigger internal scheduled tasks.
     job_runner_secret: str | None = Field(default=None, alias="JOB_RUNNER_SECRET")
 
-    # Email / SMTP Config
-    smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
-    smtp_port: int | None = Field(default=587, alias="SMTP_PORT")
-    smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
-    smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
-    smtp_from_email: str | None = Field(
-        default="no-reply@jualuma.com", alias="SMTP_FROM_EMAIL"
+    # Email — Gmail API (DWD service account, no SMTP)
+    google_application_credentials: str | None = Field(
+        default=None, alias="GOOGLE_APPLICATION_CREDENTIALS"
     )
-    support_email: str = Field(default="intellifidellc@gmail.com", alias="SUPPORT_EMAIL")
+    gmail_impersonate_user: str = Field(
+        default="hello@jualuma.com", alias="GMAIL_IMPERSONATE_USER"
+    )
+    mail_from_name: str = Field(default="JuaLuma Support", alias="MAIL_FROM_NAME")
+    mail_from_email: str = Field(default="support@jualuma.com", alias="MAIL_FROM_EMAIL")
+    mail_reply_to: str = Field(default="support@jualuma.com", alias="MAIL_REPLY_TO")
+    mail_contact_hello: str = Field(default="hello@jualuma.com", alias="MAIL_CONTACT_HELLO")
+    support_email: str = Field(default="support@jualuma.com", alias="SUPPORT_EMAIL")
     developer_email: str | None = Field(default=None, alias="DEVELOPER_EMAIL")
 
     # Web3 / RPC Configuration

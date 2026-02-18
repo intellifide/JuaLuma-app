@@ -96,7 +96,7 @@ const SystemStatus = ({ onClose }: { onClose: () => void }) => {
                             {Object.entries(serviceMap).map(([key, label]) => {
                                 const value = status?.[key] as string | undefined;
                                 if (!value && key !== 'status') return null; // Skip if service result not in response
-                                
+
                                 return (
                                     <div key={key} className="flex items-center justify-between p-3 bg-surface-2 rounded-lg border border-border/50 hover:border-border transition-colors">
                                         <div className="flex flex-col">
@@ -171,7 +171,7 @@ export const Support = () => {
 
             <div className="glass-panel">
                 <h2 className="text-xl font-bold mb-6">Support Tickets</h2>
-                
+
                 {loading ? (
                     <div className="space-y-4">
                         {[1, 2, 3].map(i => (
@@ -182,10 +182,10 @@ export const Support = () => {
                     <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-xl">
                         <MessageSquare className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-20" />
                         <p className="text-text-secondary">Your tickets will appear after one has been created.</p>
-                        <Button 
-                            variant="primary" 
+                        <Button
+                            variant="primary"
                             className="mt-4"
-                            onClick={() => window.location.href = 'mailto:intellifidellc@gmail.com?subject=Support Request'}
+                            onClick={() => window.location.href = 'mailto:support@jualuma.com?subject=Support Request'}
                         >
                             Contact Support
                         </Button>
@@ -193,7 +193,7 @@ export const Support = () => {
                 ) : (
                     <div className="space-y-3">
                         {tickets.map((ticket) => (
-                            <div 
+                            <div
                                 key={ticket.id}
                                 onClick={() => navigate(`/support/tickets/${ticket.id}`)}
                                 className="flex items-center justify-between p-4 rounded-xl border border-white/5 hover:bg-white/5 transition-all cursor-pointer group"
