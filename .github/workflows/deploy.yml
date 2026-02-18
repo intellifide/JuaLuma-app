@@ -46,13 +46,16 @@ jobs:
         run: |
           docker build -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest -f backend/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest
-      # NOTE: Secrets (DATABASE_URL, STRIPE_*, PLAID_*, BITQUERY_API_KEY,
-      # BLOCKFROST_API_KEY, LOCAL_ENCRYPTION_KEY, JOB_RUNNER_SECRET,
-      # GMAIL_SA_KEY) and plain env vars (GMAIL_IMPERSONATE_USER,
-      # GOOGLE_APPLICATION_CREDENTIALS, APP_ENV, etc.) are bound
-      # directly on Cloud Run via Secret Manager / gcloud. Do NOT
-      # redeclare them here — doing so overwrites secretKeyRef bindings
-      # and drops any vars not listed.
+      # NOTE: All env vars and secrets are managed directly on GCP (GCP-first).
+      # Secrets (via secretKeyRef): DATABASE_URL, STRIPE_SECRET_KEY,
+      #   PLAID_CLIENT_ID, PLAID_SECRET, BITQUERY_API_KEY, BLOCKFROST_API_KEY,
+      #   LOCAL_ENCRYPTION_KEY, JOB_RUNNER_SECRET,
+      #   GMAIL_SA_KEY (→ GOOGLE_APPLICATION_CREDENTIALS)
+      # Plain env vars (set via gcloud directly): APP_ENV, PLAID_ENV,
+      #   GCP_PROJECT_ID, STRIPE_PUBLISHABLE_KEY, FRONTEND_URL,
+      #   BACKEND_CORS_ORIGINS, GMAIL_IMPERSONATE_USER
+      # Do NOT redeclare here — doing so overwrites secretKeyRef bindings
+      # and drops any vars not listed. See scripts/guard_env_vars.py.
       - name: Deploy Backend
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
