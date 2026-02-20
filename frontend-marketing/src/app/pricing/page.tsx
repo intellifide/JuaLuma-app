@@ -144,6 +144,14 @@ const faqs = [
     a: 'All major credit cards are supported via Stripe. Texas residents are taxed on 80% of subscription charges based on data-processing exemption treatment.',
   },
   {
+    q: 'Do you sell my data?',
+    a: 'No. JuaLuma does not sell your personal or financial data. We use your data only to provide the service you signed up for.',
+  },
+  {
+    q: 'Is my data used to train AI models?',
+    a: 'No. Our AI features use Google Vertex AI. Per Google’s policy, your data is not used to train or improve Google’s generative models.',
+  },
+  {
     q: 'Is my financial data secure?',
     a: 'Yes. JuaLuma uses bank-level encryption and read-only access patterns. The platform never initiates money movement on your behalf.',
   },
@@ -155,10 +163,11 @@ const faqs = [
     q: 'Is JuaLuma source available?',
     a: (
       <>
-        JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited. License:{' '}
-        <a className="text-primary underline" href="/PolyForm-Noncommercial-1.0.0.txt">
-          PolyForm-Noncommercial-1.0.0.txt
+        JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited.{' '}
+        <a className="text-primary underline" href="/PolyForm-Noncommercial-1.0.0.txt" title="PolyForm Noncommercial 1.0.0">
+          View the full license
         </a>
+        .
       </>
     ),
   },

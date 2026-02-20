@@ -23,6 +23,14 @@ const faqs = [
     a: 'Yes. JuaLuma never stores bank login credentials. Account linking is handled through secure providers and read-only access patterns.',
   },
   {
+    q: 'Do you sell my data?',
+    a: 'No. We do not sell your personal or financial data. Your data is used only to deliver the product and support you.',
+  },
+  {
+    q: 'Is my data used to train AI?',
+    a: 'No. Our AI runs on Google Vertex AI, which does not use your data to train or improve its models under Google’s policy.',
+  },
+  {
     q: 'How does the AI assistant answer questions?',
     a: 'It analyzes your categorized transaction history and account context to generate specific answers, not generic finance content.',
   },
@@ -38,10 +46,11 @@ const faqs = [
     q: 'Is JuaLuma source available?',
     a: (
       <>
-        JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited. License:{' '}
-        <a className="text-primary underline" href="/PolyForm-Noncommercial-1.0.0.txt">
-          PolyForm-Noncommercial-1.0.0.txt
+        JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited.{' '}
+        <a className="text-primary underline" href="/PolyForm-Noncommercial-1.0.0.txt" title="PolyForm Noncommercial 1.0.0">
+          View the full license
         </a>
+        .
       </>
     ),
   },

@@ -80,16 +80,27 @@ export const Navbar: React.FC = () => {
     setBrandScales(brandLetters.map(() => 1))
   }
 
+  const showBlur = scrolled || mobileMenuOpen
+  const isLandingPage = pathname === '/'
+
+  /* Landing: header text always light (hero has dark bg). Other pages: follow theme (light text in dark mode, dark text in light mode). */
+  const navLinkActive = isLandingPage ? 'text-white' : 'text-text-primary'
+  const navLinkInactive = isLandingPage ? 'text-slate-200 hover:text-white' : 'text-text-secondary hover:text-text-primary'
+  const navSoon = isLandingPage ? 'text-slate-300' : 'text-text-muted'
+  const navSoonBadge = isLandingPage ? 'border-white/30 text-slate-300' : 'border-[var(--text-muted)] text-text-muted'
+  const navLogIn = isLandingPage ? 'text-slate-200 hover:text-white' : 'text-text-secondary hover:text-text-primary'
+  const hamburgerIcon = isLandingPage ? 'text-white' : 'text-text-primary'
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
+        showBlur
           ? 'bg-surface-1/72 backdrop-blur-glass border-b border-white/10 shadow-glass'
           : 'bg-transparent'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
+      <div className="max-w-7xl mx-auto pl-6 pr-8 h-20 flex items-center justify-between gap-6">
+        <Link href="/" className="flex flex-shrink-0 items-center gap-3 group mr-2">
           <span className="flex flex-col leading-none">
             <span
               className="text-2xl font-bold tracking-tight select-none"
@@ -127,15 +138,15 @@ export const Navbar: React.FC = () => {
           </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-7">
+        <div className="hidden lg:flex items-center gap-7 min-w-0 ml-4">
           {navLinks.map((link) =>
             link.comingSoon ? (
               <span
                 key={link.path}
-                className="text-sm font-medium text-text-muted cursor-not-allowed flex items-center gap-2"
+                className={`text-sm font-medium cursor-not-allowed flex items-center gap-2 ${navSoon}`}
               >
                 {link.name}
-                <span className="text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full">
+                <span className={`text-[10px] uppercase tracking-wider border px-2 py-0.5 rounded-full ${navSoonBadge}`}>
                   Soon
                 </span>
               </span>
@@ -143,8 +154,8 @@ export const Navbar: React.FC = () => {
               <Link
                 key={link.path}
                 href={link.path}
-                className={`nav-link relative text-sm font-medium ${
-                  pathname === link.path ? 'text-text-primary' : 'text-text-secondary'
+                className={`nav-link relative text-sm font-medium transition-colors ${
+                  pathname === link.path ? navLinkActive : navLinkInactive
                 }`}
               >
                 {link.name}
@@ -159,11 +170,11 @@ export const Navbar: React.FC = () => {
           )}
         </div>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
           <ThemeToggle />
           <a
             href={`${APP_URL}/login`}
-            className="nav-link text-sm font-medium text-text-secondary"
+            className={`nav-link text-sm font-medium transition-colors ${navLogIn}`}
           >
             Log In
           </a>
@@ -173,7 +184,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         <button
-          className="md:hidden p-2 text-text-primary"
+          className={`lg:hidden p-2 ${hamburgerIcon}`}
           onClick={() => setMobileMenuOpen((prev) => !prev)}
           aria-label="Toggle mobile menu"
         >
@@ -204,17 +215,17 @@ export const Navbar: React.FC = () => {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.22 }}
-            className="md:hidden bg-surface-1/95 border-b border-white/10 overflow-hidden"
+            className="lg:hidden bg-white/98 backdrop-blur-glass border-b border-slate-200 overflow-hidden"
           >
-            <div className="px-6 py-7 flex flex-col gap-4">
+            <div className="px-6 py-7 flex flex-col gap-4 text-slate-800">
               {navLinks.map((link) =>
                 link.comingSoon ? (
                   <span
                     key={link.path}
-                    className="text-lg font-medium text-text-muted cursor-not-allowed flex items-center gap-2"
+                    className="text-lg font-medium text-slate-600 cursor-not-allowed flex items-center gap-2"
                   >
                     {link.name}
-                    <span className="text-[10px] uppercase tracking-wider border border-white/20 text-text-muted px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] uppercase tracking-wider border border-slate-400 text-slate-600 px-2 py-0.5 rounded-full">
                       Soon
                     </span>
                   </span>
@@ -223,17 +234,22 @@ export const Navbar: React.FC = () => {
                     key={link.path}
                     href={link.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`nav-link text-lg font-medium ${pathname === link.path ? 'text-text-primary' : 'text-text-secondary'}`}
+                    className={`text-lg font-medium hover:text-slate-900 transition-colors ${pathname === link.path ? 'text-slate-900 font-semibold' : 'text-slate-700'}`}
                   >
                     {link.name}
                   </Link>
                 ),
               )}
-              <div className="h-px bg-white/10 my-1" />
+              <div className="h-px bg-slate-200 my-1" />
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-medium text-slate-700">Theme</span>
+                <ThemeToggle />
+              </div>
+              <div className="h-px bg-slate-200 my-1" />
               <a
                 href={`${APP_URL}/login`}
                 onClick={() => setMobileMenuOpen(false)}
-                className="nav-link text-lg font-medium text-text-primary"
+                className="text-lg font-medium text-slate-700 hover:text-slate-900 transition-colors"
               >
                 Log In
               </a>

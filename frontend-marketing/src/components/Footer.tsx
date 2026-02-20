@@ -17,7 +17,6 @@
 
 import Link from 'next/link'
 import { APP_URL } from '@/lib/constants'
-import { ATTRIBUTION_PRIMARY } from '@/lib/branding'
 
 const comingSoonItem = (label: string) => (
   <li className="flex items-center gap-2">
@@ -29,7 +28,7 @@ const comingSoonItem = (label: string) => (
 )
 
 export const Footer = () => (
-  <footer className="footer">
+  <footer className="footer relative z-20">
     <div className="footer-container">
       <div className="footer-grid">
         <div className="footer-section">
@@ -62,7 +61,6 @@ export const Footer = () => (
 
         <div className="footer-section">
           <h3>Company</h3>
-          <p className="text-xs text-text-muted mb-3">{ATTRIBUTION_PRIMARY}</p>
           <ul>
             <li><Link href="/about">About Us</Link></li>
             <li><Link href="/legal/terms">Terms of Service</Link></li>

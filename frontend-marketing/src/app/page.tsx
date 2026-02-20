@@ -51,8 +51,18 @@ const timeline = [
 
 export default function Home() {
   return (
-    <div className="overflow-x-hidden pb-16">
-      <section className="relative pt-14 pb-24 md:pt-20 md:pb-28">
+    <div data-theme="dark">
+      {/* Full-page hero background — fixed to viewport; must be outside any overflow ancestor to fill entire page */}
+      <div
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: "url('/assets/hero-bg.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      <div className="relative z-10 overflow-x-hidden pb-16">
+      <section className="relative pt-14 pb-16 md:pt-20 md:pb-20">
         <div className="floating-orb -top-24 -left-20 bg-secondary/30" />
         <div className="floating-orb top-8 -right-20 bg-primary/35" style={{ animationDelay: '-8s' }} />
 
@@ -124,15 +134,15 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <section className="py-16 md:py-20">
-        <div className="text-center mb-10">
+      <section className="py-10 md:py-12">
+        <div className="text-center mb-6">
           <h2 className="text-3xl md:text-5xl">From scattered data to confident decisions</h2>
           <p className="max-w-2xl mx-auto text-lg text-text-secondary">
             The app is built for people managing real complexity: multiple accounts, multiple asset classes, and multiple stakeholders.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-3 gap-4">
           {timeline.map((step, index) => (
             <motion.article
               key={step.title}
@@ -149,7 +159,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="pt-6 md:pt-10 pb-4">
+      <section className="pt-4 md:pt-6 pb-4">
         <div className="glass-panel text-center">
           <h2 className="text-3xl md:text-5xl mb-4">Ready to see your financial system in motion?</h2>
           <p className="max-w-2xl mx-auto text-lg mb-8">
@@ -160,6 +170,7 @@ export default function Home() {
           </a>
         </div>
       </section>
+      </div>
     </div>
   )
 }

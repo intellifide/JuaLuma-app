@@ -43,8 +43,8 @@ export default function DevelopersPage() {
                 <p className="text-muted mb-3">
                     Commercial resale or enterprise deployment is strictly prohibited.
                 </p>
-                <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline">
-                    View PolyForm Noncommercial License 1.0.0
+                <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline" title="PolyForm Noncommercial 1.0.0">
+                    View the full license
                 </a>
             </section>
 

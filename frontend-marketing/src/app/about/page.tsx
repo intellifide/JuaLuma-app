@@ -31,7 +31,11 @@ const pillars = [
   },
 ]
 
-const partners = ['PLAID', 'STRIPE', 'GOOGLE CLOUD', 'VERTEX AI']
+const partners = [
+  { name: 'Plaid' },
+  { name: 'Stripe', logo: '/assets/partners/stripe.svg' },
+  { name: 'Google Cloud', logo: '/assets/partners/google-cloud.svg' },
+]
 
 export default function AboutPage() {
   return (
@@ -85,11 +89,25 @@ export default function AboutPage() {
 
       <section className="glass-panel text-center">
         <h2 className="text-3xl mb-5">Technology partners</h2>
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+        <div className="flex flex-wrap justify-center items-center gap-6 md:gap-8">
           {partners.map((partner) => (
-            <span key={partner} className="rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] px-3 py-1.5 text-xs font-semibold tracking-[0.12em] text-text-secondary">
-              {partner}
-            </span>
+            <div
+              key={partner.name}
+              className="flex items-center justify-center rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] px-5 py-4 min-w-[140px] h-16"
+              title={partner.name}
+            >
+              {partner.logo ? (
+                <img
+                  src={partner.logo}
+                  alt=""
+                  className="max-h-8 w-auto object-contain opacity-90"
+                />
+              ) : (
+                <span className="text-xs font-semibold tracking-[0.12em] text-text-secondary">
+                  {partner.name}
+                </span>
+              )}
+            </div>
           ))}
         </div>
       </section>

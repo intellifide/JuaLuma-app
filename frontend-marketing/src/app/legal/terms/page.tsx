@@ -90,7 +90,7 @@ export default function TermsPage() {
                         Commercial resale, repackaging, paid redistribution, or enterprise deployment of the application is strictly prohibited without separate written permission from Intellifide LLC.
                     </p>
                     <p className="mt-4">
-                        License text: <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline">PolyForm-Noncommercial-1.0.0.txt</a>
+                        <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline" title="PolyForm Noncommercial 1.0.0">View the full license</a>
                     </p>
                 </section>
 
