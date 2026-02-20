@@ -23,10 +23,10 @@ export const metadata: Metadata = {
   description: 'The ultimate financial aggregation and tracking platform.',
   icons: {
     icon: [
-      { url: '/favicon.ico' },
-      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/assets/jualuma-app-icon.png?v=3', type: 'image/png', sizes: '32x32' },
+      { url: '/assets/jualuma-app-icon.png?v=3', type: 'image/png', sizes: '16x16' },
     ],
-    apple: '/apple-touch-icon.png',
+    apple: '/assets/jualuma-logo-main.png?v=3',
   },
 }
 
