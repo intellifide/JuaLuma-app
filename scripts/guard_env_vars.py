@@ -74,7 +74,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "deploy_yml",
         nargs="?",
-        default=".github/workflows/deploy.yml",
+        default=".github/workflows/deploy-dev.yml",
         help="Path to deploy workflow file",
     )
     parser.add_argument(

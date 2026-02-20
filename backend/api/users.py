@@ -17,6 +17,8 @@ from backend.models import (
     AISettings,
     AuditLog,
     LegalAgreementAcceptance,
+    PlaidItem,
+    PlaidItemAccount,
     Subscription,
     SupportTicket,
     User,
@@ -29,6 +31,7 @@ from backend.models.household import Household
 from backend.services import auth
 from backend.services.notifications import NotificationService
 from backend.utils import get_db
+from backend.utils.secret_manager import delete_secret
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 logger = logging.getLogger(__name__)
@@ -99,6 +102,17 @@ def export_user_data(
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    db.add(
+        AuditLog(
+            actor_uid=current_user.uid,
+            target_uid=current_user.uid,
+            action="ccpa_export_requested",
+            source="backend",
+            metadata_json={"endpoint": "/api/users/export"},
+        )
+    )
+    db.commit()
 
     # Fetch data not directly linked via relationship on User model (or just to be safe)
     budgets = db.query(Budget).filter(Budget.uid == user.uid).all()
@@ -178,6 +192,29 @@ def delete_account(
     uid = current_user.uid
     email = current_user.email
 
+    # Collect secret references for cryptographic erasure before deleting records.
+    refs: set[str] = set()
+    refs.update(
+        ref
+        for (ref,) in db.query(PlaidItem.secret_ref)
+        .filter(PlaidItem.uid == uid, PlaidItem.secret_ref.isnot(None))
+        .all()
+        if ref
+    )
+    refs.update(
+        ref
+        for (ref,) in db.query(Account.secret_ref)
+        .filter(Account.uid == uid, Account.secret_ref.isnot(None))
+        .all()
+        if ref
+    )
+
+    for ref in refs:
+        try:
+            delete_secret(ref, uid=uid)
+        except Exception as exc:
+            logger.error("Failed to delete secret ref %s during user deletion: %s", ref, exc)
+
     # 1. Revoke Identity Platform Tokens & Delete from Auth Provider
     try:
         auth.revoke_refresh_tokens(uid)
@@ -198,6 +235,8 @@ def delete_account(
     # We rely on DB cascade for deeper nested items like transactions linked to accounts
 
     # Delete Account records
+    db.query(PlaidItemAccount).filter(PlaidItemAccount.uid == uid).delete()
+    db.query(PlaidItem).filter(PlaidItem.uid == uid).delete()
     db.query(Account).filter(Account.uid == uid).delete()
 
     # Widget Ratings
@@ -225,7 +264,7 @@ def delete_account(
         target_uid=uid,
         action="delete_account",
         source="backend",
-        metadata_json={"email": email, "reason": "user_request"},
+        metadata_json={"email": email, "reason": "user_request", "secrets_erased": len(refs)},
     )
     db.add(log_entry)
 

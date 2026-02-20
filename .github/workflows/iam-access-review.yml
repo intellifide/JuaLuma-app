@@ -1,0 +1,55 @@
+name: IAM Access Review + Auto-Remediation
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'
+  workflow_dispatch:
+
+jobs:
+  enforce-dev:
+    runs-on: ubuntu-latest
+    environment: development
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Google Auth (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Enforce human IAM allowlist (dev)
+        run: |
+          ./scripts/enforce_iam_human_allowlist.sh jualuma-dev docs/compliance/access-allowlist/jualuma-dev.allowlist --apply | tee iam-access-review-dev.txt
+      - name: Upload dev report
+        uses: actions/upload-artifact@v4
+        with:
+          name: iam-access-review-dev
+          path: iam-access-review-dev.txt
+
+  enforce-prod:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Google Auth (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Enforce human IAM allowlist (prod)
+        run: |
+          ./scripts/enforce_iam_human_allowlist.sh jualuma-prod docs/compliance/access-allowlist/jualuma-prod.allowlist --apply | tee iam-access-review-prod.txt
+      - name: Upload prod report
+        uses: actions/upload-artifact@v4
+        with:
+          name: iam-access-review-prod
+          path: iam-access-review-prod.txt

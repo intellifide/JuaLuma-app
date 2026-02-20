@@ -51,7 +51,7 @@ from backend.services.web3_history import (
 )
 from backend.utils import get_db
 from backend.utils.normalization import normalize_category, normalize_merchant_name
-from backend.utils.secret_manager import get_secret, store_secret
+from backend.utils.secret_manager import delete_secret, get_secret, store_secret
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 logger = logging.getLogger(__name__)
@@ -1830,6 +1830,7 @@ def delete_account(
                 plaid_item.item_id,
                 account.id,
             )
+            secret_ref = plaid_item.secret_ref
             try:
                 access_token = get_secret(plaid_item.secret_ref, uid=current_user.uid)
                 remove_item(access_token)
@@ -1839,6 +1840,18 @@ def delete_account(
                 db.add(plaid_item)
             except Exception as e:
                 logger.error("Failed to remove Plaid item %s: %s", plaid_item.item_id, e)
+            finally:
+                # Always purge secret material when the final mapped account is deleted.
+                try:
+                    delete_secret(secret_ref, uid=current_user.uid)
+                    plaid_item.secret_ref = f"deleted:{uuid.uuid4().hex}"
+                    db.add(plaid_item)
+                except Exception as exc:
+                    logger.error(
+                        "Failed to delete Plaid secret ref for item %s: %s",
+                        plaid_item.item_id,
+                        exc,
+                    )
 
     # Invalidate Analytics Cache
     invalidate_analytics_cache(current_user.uid)

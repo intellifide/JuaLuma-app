@@ -39,5 +39,5 @@ repos:
         name: gcp-deploy-guard
         entry: bash scripts/check_gcp_drift.sh
         language: system
-        files: ^\.github/workflows/deploy\.yml$
+        files: ^\.github/workflows/deploy-(dev|prod)\.yml$
         pass_filenames: false

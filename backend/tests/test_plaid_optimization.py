@@ -177,10 +177,13 @@ def test_delete_last_account_unlinks_plaid_item(
     test_db.add(link)
     test_db.commit()
 
-    with patch("backend.api.accounts.remove_item") as remove_item_mock:
+    with patch("backend.api.accounts.remove_item") as remove_item_mock, patch(
+        "backend.api.accounts.delete_secret"
+    ) as delete_secret_mock:
         response = test_client.delete(f"/api/accounts/{account.id}")
         assert response.status_code == 200
         remove_item_mock.assert_called_once()
+        delete_secret_mock.assert_called_once_with("access-token-single", uid=mock_auth.uid)
 
     test_db.refresh(item)
     assert item.is_active is False
