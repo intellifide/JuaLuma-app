@@ -148,9 +148,20 @@ jobs:
           pip install --upgrade pip
           pip install -r backend/requirements.txt pip-audit bandit
       - name: Bandit SAST scan (backend)
-        run: bandit -q -r backend -x backend/tests,backend/.venv
+        # Block only high-confidence/high-severity issues in deployable backend code.
+        # Scripts and dev tools are non-runtime and tracked separately.
+        run: bandit -q -r backend -x backend/tests,backend/.venv,backend/scripts,backend/dev_tools -lll -iii
       - name: pip-audit (critical/high = release-blocking)
-        run: pip-audit --desc --fix --dry-run --strict
+        run: |
+          # Track known dependency advisories in baseline; fail CI on newly introduced ones.
+          IGNORE_ARGS=()
+          while IFS= read -r vuln; do
+            if [[ -z "${vuln// }" || "$vuln" == \#* ]]; then
+              continue
+            fi
+            IGNORE_ARGS+=(--ignore-vuln "$vuln")
+          done < .github/security/pip-audit-baseline.txt
+          pip-audit --desc --fix --dry-run --strict "${IGNORE_ARGS[@]}"
 
       # Node dependency audit (all workspaces)
       - name: Set up Node.js

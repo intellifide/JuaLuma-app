@@ -39,10 +39,6 @@ const faqs = [
     a: 'Yes. You can cancel from account billing settings and keep paid access until the current period ends.',
   },
   {
-    q: 'How does Texas tax treatment work?',
-    a: 'For qualifying users, tax is applied to 80% of the service fee in line with data-processing treatment.',
-  },
-  {
     q: 'Is JuaLuma source available?',
     a: (
       <>

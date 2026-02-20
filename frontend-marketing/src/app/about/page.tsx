@@ -60,14 +60,9 @@ export default function AboutPage() {
 
         <div className="glass-panel">
           <h2 className="text-3xl mb-4">Security and compliance</h2>
-          <p className="text-text-secondary leading-relaxed mb-4">
+          <p className="text-text-secondary leading-relaxed mb-0">
             Data access is read-only where applicable, encrypted in transit and at rest, and designed for strict operational boundaries.
           </p>
-          <div className="rounded-xl border border-white/15 bg-white/5 p-4">
-            <p className="text-sm text-text-secondary mb-0">
-              Texas sales-tax note: subscription tax is applied on 80% of the service value, with 20% treated as exempt data processing under Texas rules.
-            </p>
-          </div>
         </div>
       </section>
 

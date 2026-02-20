@@ -71,7 +71,8 @@ def _dedupe_key(label: str, next_date: date) -> str:
         slug = "recurring"
     if len(slug) > 40:
         slug = slug[:40]
-    digest = hashlib.sha1(label.encode("utf-8")).hexdigest()[:8]
+    # Non-security hash used only for deterministic dedupe key generation.
+    digest = hashlib.sha1(label.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     return f"recurring_bill:{slug}:{digest}:{next_date.isoformat()}"
 
 
