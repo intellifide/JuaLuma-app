@@ -11,7 +11,7 @@ from backend.models import PendingSignup, Subscription, User
 
 def test_signup_pending_success(test_client: TestClient, test_db):
     def override_identity():
-        return {"uid": "pending_user_123", "email": "pending@example.com"}
+        return {"uid": "pending_user_123", "email": "pending@testmail.app"}
 
     app.dependency_overrides[get_current_identity] = override_identity
 
@@ -34,23 +34,23 @@ def test_signup_pending_success(test_client: TestClient, test_db):
     assert response.status_code == 201
     data = response.json()
     assert data["uid"] == "pending_user_123"
-    assert data["email"] == "pending@example.com"
+    assert data["email"] == "pending@testmail.app"
 
     pending = test_db.query(PendingSignup).filter_by(uid="pending_user_123").first()
     assert pending is not None
-    assert pending.email == "pending@example.com"
+    assert pending.email == "pending@testmail.app"
 
-    user = test_db.query(User).filter_by(email="pending@example.com").first()
+    user = test_db.query(User).filter_by(email="pending@testmail.app").first()
     assert user is None
 
 
 def test_signup_pending_duplicate_email(test_client: TestClient, test_db):
     def override_identity():
-        return {"uid": "pending_user_456", "email": "existing@example.com"}
+        return {"uid": "pending_user_456", "email": "existing@testmail.app"}
 
     app.dependency_overrides[get_current_identity] = override_identity
 
-    db_user = User(uid="existing_uid", email="existing@example.com", role="user")
+    db_user = User(uid="existing_uid", email="existing@testmail.app", role="user")
     test_db.add(db_user)
     test_db.commit()
 
@@ -75,7 +75,7 @@ def test_signup_pending_duplicate_email(test_client: TestClient, test_db):
 
 def test_signup_pending_missing_agreements(test_client: TestClient):
     def override_identity():
-        return {"uid": "pending_user_789", "email": "pending2@example.com"}
+        return {"uid": "pending_user_789", "email": "pending2@testmail.app"}
 
     app.dependency_overrides[get_current_identity] = override_identity
 

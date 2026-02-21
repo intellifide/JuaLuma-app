@@ -16,7 +16,7 @@ def verify_serialization():
 
     # Mock User and Subscriptions
     mock_user = MagicMock()
-    mock_user.to_dict.return_value = {"id": "user-123", "email": "test@example.com"}
+    mock_user.to_dict.return_value = {"id": "user-123", "email": "test@testmail.app"}
     mock_user.developer = False
     mock_user.ai_settings = None
 

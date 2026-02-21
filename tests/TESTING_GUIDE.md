@@ -8,6 +8,7 @@ This document provides step-by-step instructions for manually testing the comple
 - Frontend app running on `http://localhost:5175`
 - Email service configured (or using mock email client for local testing)
 - Stripe test mode configured (for paid plan testing)
+- All test user emails must use `@testmail.app` (no `@example.com` or `@gmail.com`)
 
 ## Test Environment Setup
 
@@ -35,7 +36,7 @@ npm run dev
 **Steps:**
 1. Navigate to `http://localhost:5175/signup`
 2. Fill in the signup form:
-   - Email: `test+free@example.com`
+   - Email: `test+free@testmail.app`
    - Password: `SecurePass123!`
    - Confirm Password: `SecurePass123!`
 3. Check all three consent checkboxes
@@ -46,12 +47,12 @@ npm run dev
 - ✅ Form submits successfully
 - ✅ Redirected to `/verify-email`
 - ✅ Console shows analytics event: `[Analytics Event] signup_started`
-- ✅ Console shows analytics event: `[Analytics Event] signup_completed {email: "test+free@example.com"}`
+- ✅ Console shows analytics event: `[Analytics Event] signup_completed {email: "test+free@testmail.app"}`
 
 ### Test 1.2: Email Verification
 **Steps:**
 1. Check backend console for OTP code (if using mock email client):
-   - Look for: `[MOCK EMAIL OTP] To: test+free@example.com | Code: XXXXXX`
+   - Look for: `[MOCK EMAIL OTP] To: test+free@testmail.app | Code: XXXXXX`
 2. Enter the 6-digit OTP code
 3. Click "Validate"
 
@@ -92,7 +93,7 @@ npm run dev
 **Steps:**
 1. Navigate to `http://localhost:5175/signup`
 2. Fill in the signup form:
-   - Email: `test+paid@example.com`
+   - Email: `test+paid@testmail.app`
    - Password: `SecurePass123!`
    - Confirm Password: `SecurePass123!`
 3. Check all three consent checkboxes

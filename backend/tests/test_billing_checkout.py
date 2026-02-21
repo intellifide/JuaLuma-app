@@ -32,7 +32,7 @@ def test_create_checkout_session_applies_trial_by_plan(
 ):
     settings.stripe_secret_key = "sk_test"
 
-    user = User(uid="user_123", email="user@example.com", first_name="Test", last_name="User")
+    user = User(uid="user_123", email="user@testmail.app", first_name="Test", last_name="User")
     test_db.add(user)
     test_db.commit()
 
@@ -79,7 +79,7 @@ def test_create_checkout_session_for_pending_applies_trial_by_plan(
 
     url = billing.create_checkout_session_for_pending(
         "pending_123",
-        "pending@example.com",
+        "pending@testmail.app",
         plan_input,
         "https://app.local/checkout/success",
         customer_id="cus_test",

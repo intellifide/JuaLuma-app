@@ -47,12 +47,19 @@ STRIPE_PLANS = {
 
 # Map Price IDs to the exact database code in SubscriptionTier table
 STRIPE_PRICE_TO_TIER = {
-    "price_1SftXDRQfRSwy2AaP2V5zy32": "essential_monthly",
-    "price_1SftXERQfRSwy2AaoWXBD9Q7": "pro_monthly",
-    "price_1SftXERQfRSwy2Aa84D0XrhT": "pro_annual",
-    "price_1SftXFRQfRSwy2Aas3bHnACi": "ultimate_monthly",
-    "price_1SftXFRQfRSwy2AapSGEb9HA": "ultimate_annual",
+    price_id: plan_code for plan_code, price_id in STRIPE_PLANS.items() if price_id
 }
+
+# Legacy fallback price IDs kept for backward compatibility with older records.
+STRIPE_PRICE_TO_TIER.update(
+    {
+        "price_1SftXDRQfRSwy2AaP2V5zy32": "essential_monthly",
+        "price_1SftXERQfRSwy2AaoWXBD9Q7": "pro_monthly",
+        "price_1SftXERQfRSwy2Aa84D0XrhT": "pro_annual",
+        "price_1SftXFRQfRSwy2Aas3bHnACi": "ultimate_monthly",
+        "price_1SftXFRQfRSwy2AapSGEb9HA": "ultimate_annual",
+    }
+)
 
 # Keeping this for legacy compatibility or reverse lookups if needed, but preferable to use above.
 STRIPE_PRICE_TO_PLAN = STRIPE_PRICE_TO_TIER
@@ -312,8 +319,7 @@ def create_checkout_session_for_pending(
         session_kwargs["customer"] = customer_id
         session_kwargs["customer_update"] = {"address": "auto", "name": "auto"}
     else:
-        # Create a new customer in Checkout, but ensure email is collected/prefilled.
-        session_kwargs["customer_creation"] = "always"
+        # In subscription mode Stripe creates the customer automatically.
         session_kwargs["customer_email"] = resolved_email
 
     subscription_data = {"metadata": {"uid": uid, "plan": plan_type}}
@@ -1004,6 +1010,9 @@ async def _handle_checkout_session_completed(session: dict[str, Any], db: Sessio
             return
 
     logger.info(f"Webhook: Checkout session completed for user {uid}, plan {plan_type}")
+
+    # Ensure FK-safe user row exists before creating payment mappings for pending signups.
+    _ensure_user_from_pending(db, uid)
 
     # Persist Stripe Customer ID mapping so subsequent invoice/subscription webhooks can resolve UID.
     if customer_id and uid:

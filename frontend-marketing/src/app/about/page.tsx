@@ -32,7 +32,7 @@ const pillars = [
 ]
 
 const partners = [
-  { name: 'Plaid' },
+  { name: 'Plaid', logo: '/assets/partners/plaid.svg' },
   { name: 'Stripe', logo: '/assets/partners/stripe.svg' },
   { name: 'Google Cloud', logo: '/assets/partners/google-cloud.svg' },
 ]
@@ -88,14 +88,14 @@ export default function AboutPage() {
           {partners.map((partner) => (
             <div
               key={partner.name}
-              className="flex items-center justify-center rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] px-5 py-4 min-w-[140px] h-16"
+              className="flex items-center justify-center rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] px-6 py-5 min-w-[180px] h-24"
               title={partner.name}
             >
               {partner.logo ? (
                 <img
                   src={partner.logo}
                   alt=""
-                  className="max-h-8 w-auto object-contain opacity-90"
+                  className={`w-auto object-contain opacity-95 ${partner.name === 'Plaid' ? 'max-h-[4.5rem]' : 'max-h-12'}`}
                 />
               ) : (
                 <span className="text-xs font-semibold tracking-[0.12em] text-text-secondary">

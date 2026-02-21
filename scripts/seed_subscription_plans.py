@@ -122,7 +122,7 @@ TIERS = [
 
 TEST_USER = {
     "uid": "test-user-123",
-    "email": "test@example.com",
+    "email": "test@testmail.app",
     "status": UserStatus.ACTIVE,
     "role": "user",
 }

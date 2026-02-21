@@ -117,8 +117,8 @@ describe('Signup Flow - End to End', () => {
             expect(eventTracking.trackSignupFunnel).toHaveBeenCalledWith(SignupFunnelEvent.SIGNUP_STARTED)
 
             // Simulate tracking signup completed
-            eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_COMPLETED, { email: 'test@example.com' })
-            expect(eventTracking.trackSignupFunnel).toHaveBeenCalledWith(SignupFunnelEvent.SIGNUP_COMPLETED, { email: 'test@example.com' })
+            eventTracking.trackSignupFunnel(SignupFunnelEvent.SIGNUP_COMPLETED, { email: 'test@testmail.app' })
+            expect(eventTracking.trackSignupFunnel).toHaveBeenCalledWith(SignupFunnelEvent.SIGNUP_COMPLETED, { email: 'test@testmail.app' })
         })
     })
 
@@ -255,9 +255,9 @@ describe('Signup Flow - End to End', () => {
             const { signup, verifyEmailCode, selectFreePlan } = await import('../services/auth')
 
             // Step 1: Signup
-            vi.mocked(signup).mockResolvedValueOnce({ uid: 'user123', email: 'test@example.com' } as unknown as User)
-            await signup('test@example.com', 'SecurePass123!')
-            expect(signup).toHaveBeenCalledWith('test@example.com', 'SecurePass123!')
+            vi.mocked(signup).mockResolvedValueOnce({ uid: 'user123', email: 'test@testmail.app' } as unknown as User)
+            await signup('test@testmail.app', 'SecurePass123!')
+            expect(signup).toHaveBeenCalledWith('test@testmail.app', 'SecurePass123!')
 
             // Step 2: Verify email
             vi.mocked(verifyEmailCode).mockResolvedValueOnce(undefined)
@@ -280,8 +280,8 @@ describe('Signup Flow - End to End', () => {
             const { createCheckoutSession, verifyCheckoutSession } = await import('../services/billing')
 
             // Step 1: Signup
-            vi.mocked(signup).mockResolvedValueOnce({ uid: 'user123', email: 'test@example.com' } as unknown as User)
-            await signup('test@example.com', 'SecurePass123!')
+            vi.mocked(signup).mockResolvedValueOnce({ uid: 'user123', email: 'test@testmail.app' } as unknown as User)
+            await signup('test@testmail.app', 'SecurePass123!')
 
             // Step 2: Verify email
             vi.mocked(verifyEmailCode).mockResolvedValueOnce(undefined)

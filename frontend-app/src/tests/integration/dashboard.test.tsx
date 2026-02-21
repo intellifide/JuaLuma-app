@@ -36,7 +36,7 @@ vi.mock('../../hooks/useBudgetReporting', () => ({ useBudgetStatus: vi.fn() }))
 
 const mockUser = {
     uid: 'u1',
-    email: 'user@example.com',
+    email: 'user@testmail.app',
     emailVerified: true,
     isAnonymous: false,
     metadata: {},
@@ -55,7 +55,7 @@ const mockUser = {
 
 const mockProfile = {
     uid: 'u1',
-    email: 'user@example.com',
+    email: 'user@testmail.app',
     role: 'user',
 };
 

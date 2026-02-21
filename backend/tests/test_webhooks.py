@@ -112,7 +112,7 @@ def sign_payload(payload_str: str, secret: str) -> str:
 def test_webhook_checkout_completed(test_client, test_db: Session):
     # Setup
     settings.stripe_webhook_secret = "whsec_test"
-    user = User(uid="test_user_123", email="test@example.com")
+    user = User(uid="test_user_123", email="test@testmail.app")
     test_db.add(user)
     test_db.commit()
 
@@ -138,7 +138,7 @@ def test_webhook_checkout_completed(test_client, test_db: Session):
 def test_webhook_subscription_canceled(test_client, test_db: Session):
     settings.stripe_webhook_secret = "whsec_test"
     # Create user with pro sub
-    user = User(uid="test_user_123", email="test@example.com")
+    user = User(uid="test_user_123", email="test@testmail.app")
     sub = Subscription(uid="test_user_123", plan="pro_monthly")
     # Payment record required for webhook handler to find user by customer_id
     payment = Payment(uid="test_user_123", stripe_customer_id="cus_test_123")
@@ -163,7 +163,7 @@ def test_webhook_subscription_canceled(test_client, test_db: Session):
 
 def test_webhook_subscription_upgrade_active(test_client, test_db: Session):
     settings.stripe_webhook_secret = "whsec_test"
-    user = User(uid="test_user_upgrade", email="upgrade@example.com")
+    user = User(uid="test_user_upgrade", email="upgrade@testmail.app")
     sub = Subscription(uid="test_user_upgrade", plan="pro_monthly", status="active")
     payment = Payment(uid="test_user_upgrade", stripe_customer_id="cus_test_456")
 
@@ -190,7 +190,7 @@ def test_webhook_subscription_upgrade_active(test_client, test_db: Session):
 
 def test_webhook_subscription_past_due_downgrade(test_client, test_db: Session):
     settings.stripe_webhook_secret = "whsec_test"
-    user = User(uid="test_user_past_due", email="pastdue@example.com")
+    user = User(uid="test_user_past_due", email="pastdue@testmail.app")
     sub = Subscription(uid="test_user_past_due", plan="pro_monthly", status="active")
     payment = Payment(uid="test_user_past_due", stripe_customer_id="cus_test_789")
 

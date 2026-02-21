@@ -34,13 +34,13 @@ vi.mock('../../services/auth', () => ({
 
 const mockUser = {
     uid: 'user_1',
-    email: 'user@example.com',
+    email: 'user@testmail.app',
     displayName: 'Test User',
 } as unknown as User
 
 const baseProfile = {
     uid: 'user_1',
-    email: 'user@example.com',
+    email: 'user@testmail.app',
     plan: 'pro_monthly',
     subscription_status: 'active',
     subscriptions: [{ renew_at: '2030-01-01T00:00:00Z' }],

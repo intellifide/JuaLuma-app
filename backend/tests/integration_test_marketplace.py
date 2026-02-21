@@ -83,13 +83,13 @@ async def test_marketplace_flow(db):
         pro_uid = str(uuid.uuid4())
 
         # Developer User
-        dev_user = User(uid=dev_uid, email="dev@example.com", role="user")
+        dev_user = User(uid=dev_uid, email="dev@testmail.app", role="user")
         db.add(dev_user)
         # Give dev Pro subscription (required for creating widget and registering)
         db.add(Subscription(uid=dev_uid, plan="pro", status="active"))
 
         # Consumer User (Pro)
-        pro_user = User(uid=pro_uid, email="pro@example.com", role="user")
+        pro_user = User(uid=pro_uid, email="pro@testmail.app", role="user")
         db.add(pro_user)
         db.add(Subscription(uid=pro_uid, plan="pro", status="active"))
 

@@ -1,8 +1,8 @@
 import os
 import sys
 import time
+
 import requests
-import uuid
 from dotenv import load_dotenv
 
 # Load env
@@ -24,11 +24,11 @@ def create_user(email, password="password123", role="user"):
     # Let's use direct signup if possible to be realistic, but seeding is faster for 'ultimate'
     # Actually, seeding 'ultimate' is complex via public API.
     # Let's use the dev-tools seed endpoint if available, otherwise direct signup + dev tool upgrade.
-    
-    # Check if dev-tools seeding is available via MCP or script? 
+
+    # Check if dev-tools seeding is available via MCP or script?
     # For this script running standalone, we'll try API routes.
     # Assuming /api/v1/auth/signup works
-    
+
     # 1. Signup
     print(f"Creating user {email}...")
     try:
@@ -51,7 +51,7 @@ def create_user(email, password="password123", role="user"):
     # 2. Login to get token (Use Firebase Emulator REST API)
     # The /api/auth/login endpoint expects a token, it doesn't ISSUE one from password.
     # We must hit the emulator directly to get the ID Token.
-    
+
     FIREBASE_AUTH_URL = "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key"
     try:
         auth_resp = requests.post(FIREBASE_AUTH_URL, json={
@@ -66,13 +66,13 @@ def create_user(email, password="password123", role="user"):
     if auth_resp.status_code != 200:
         print(f"Firebase Login failed: {auth_resp.text}")
         return None
-    
+
     id_token = auth_resp.json()["idToken"]
     return id_token
 
 def upgrade_user(token, tier="ultimate_monthly"):
     # This requires an admin endpoint or dev hook.
-    # If no public endpoint, we might need to rely on the 'jualuma-dev-tools' MCP 
+    # If no public endpoint, we might need to rely on the 'jualuma-dev-tools' MCP
     # OR we can assume the 'seed' tool was run previously.
     # Let's assume we can hit a dev-only endpoint if it exists, OR we just update DB directly?
     # Since we are "E2E", we should avoid DB hacking.
@@ -90,7 +90,7 @@ def upgrade_user(token, tier="ultimate_monthly"):
 
 def main():
     print("Starting Household Invite E2E Test...")
-    
+
     tag = f"e2e-{int(time.time())}"
     inviter_email = get_test_email(f"{tag}-inviter")
     invitee_email = get_test_email(f"{tag}-invitee")
@@ -136,16 +136,16 @@ def main():
         "email": invitee_email,
         "is_minor": False
     }, headers=headers)
-    
+
     if resp.status_code != 200:
         print(f"Invite failed: {resp.text}")
         sys.exit(1)
-    
+
     print("Invite sent.")
 
     # 5. Retrieve Email (Testmail)
     print("Waiting for email...")
-    time.sleep(5) 
+    time.sleep(5)
     # Poll Testmail
     tm_resp = requests.get("https://api.testmail.app/api/json", params={
         "apikey": TESTMAIL_API_KEY,
@@ -153,7 +153,7 @@ def main():
         "tag": f"{tag}-invitee",
         "live": "true"
     })
-    
+
     if tm_resp.status_code != 200:
         print(f"Testmail API failed: {tm_resp.text}")
         # Fallback: Extract from DB via docker exec as valid fallback
@@ -164,7 +164,7 @@ def main():
     if not data["emails"]:
         print("No email found.")
         sys.exit(1)
-    
+
     email_body = data["emails"][0]["text"] # or html
     # Extract link
     import re
@@ -173,7 +173,7 @@ def main():
         print("Token not found in email.")
         print(email_body)
         sys.exit(1)
-    
+
     token = token_match.group(1)
     print(f"Extracted token: {token}")
 
@@ -187,13 +187,13 @@ def main():
     # 7. Accept Invite (WITH CONSENT)
     print("Accepting invite...")
     inv_headers = {"Authorization": f"Bearer {invitee_token}"}
-    
+
     # Try WITHOUT consent first (Expect failure)
     resp = requests.post(f"{API_BASE}/api/households/invites/accept", json={
         "token": token,
         "consent_agreed": False
     }, headers=inv_headers)
-    
+
     if resp.status_code == 400 and "agree" in resp.text:
         print("Success: Consent enforcement verified (rejected without consent).")
     else:

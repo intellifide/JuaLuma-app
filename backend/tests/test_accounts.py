@@ -195,7 +195,7 @@ def test_update_account_assignments(test_client: TestClient, test_db, mock_auth)
     # Add another member
     other_user = User(
         uid="other_user_456",
-        email="other@example.com",
+        email="other@testmail.app",
         role="user",
         theme_pref="light",
         currency_pref="USD",
@@ -266,7 +266,7 @@ def test_list_accounts_household_scope_includes_member_accounts(
     )
     other_user = User(
         uid="member_user_999",
-        email="member@example.com",
+        email="member@testmail.app",
         role="user",
         theme_pref="light",
         currency_pref="USD",
@@ -318,7 +318,7 @@ def test_list_accounts_requires_household_membership_for_assignments(
 ):
     admin_user = User(
         uid="admin_user_999",
-        email="admin@example.com",
+        email="admin@testmail.app",
         role="user",
         theme_pref="light",
         currency_pref="USD",

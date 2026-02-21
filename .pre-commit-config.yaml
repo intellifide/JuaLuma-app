@@ -41,3 +41,10 @@ repos:
         language: system
         files: ^\.github/workflows/deploy-(dev|prod)\.yml$
         pass_filenames: false
+
+      - id: enforce-test-email-domain
+        name: enforce-test-email-domain
+        entry: bash scripts/enforce_test_email_domain.sh
+        language: system
+        files: ^(backend/tests/|frontend-app/src/tests/|tests/|scripts/).*
+        pass_filenames: false

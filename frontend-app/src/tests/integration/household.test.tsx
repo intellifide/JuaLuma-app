@@ -40,7 +40,7 @@ vi.mock('../../hooks/useAuth', () => ({
 
 const mockUser = {
     uid: 'u1',
-    email: 'owner@example.com',
+    email: 'owner@testmail.app',
 } as unknown as User
 
 const mockHousehold: Household = {
@@ -49,8 +49,8 @@ const mockHousehold: Household = {
     owner_uid: 'u1',
     created_at: '2025-01-01',
     members: [
-        { uid: 'u1', email: 'owner@example.com', role: 'admin', joined_at: '2025-01-01', ai_access_enabled: true },
-        { uid: 'u2', email: 'member@example.com', role: 'member', joined_at: '2025-01-02', ai_access_enabled: true }
+        { uid: 'u1', email: 'owner@testmail.app', role: 'admin', joined_at: '2025-01-01', ai_access_enabled: true },
+        { uid: 'u2', email: 'member@testmail.app', role: 'member', joined_at: '2025-01-02', ai_access_enabled: true }
     ],
     invites: []
 }
@@ -111,8 +111,8 @@ describe('HouseholdPage Integration', () => {
         await waitFor(() => {
             expect(screen.getByText('Test Family')).toBeInTheDocument()
         })
-        expect(screen.getByText('owner@example.com')).toBeInTheDocument()
-        expect(screen.getByText('member@example.com')).toBeInTheDocument()
+        expect(screen.getByText('owner@testmail.app')).toBeInTheDocument()
+        expect(screen.getByText('member@testmail.app')).toBeInTheDocument()
 
         // Admin buttons
         expect(screen.getByText('Invite Member')).toBeInTheDocument()
@@ -160,14 +160,14 @@ describe('HouseholdPage Integration', () => {
         // Modal should open
         expect(screen.getByText('Invite Member', { selector: 'h2' })).toBeInTheDocument()
 
-        const emailInput = screen.getByPlaceholderText('friend@example.com')
-        await user.type(emailInput, 'new@example.com')
+        const emailInput = screen.getByPlaceholderText('friend@testmail.app')
+        await user.type(emailInput, 'new@testmail.app')
 
         const sendBtn = screen.getByText('Send Invite')
         await user.click(sendBtn)
 
         expect(householdService.inviteMember).toHaveBeenCalledWith({
-            email: 'new@example.com',
+            email: 'new@testmail.app',
             is_minor: false,
             can_view_household: true,
         })

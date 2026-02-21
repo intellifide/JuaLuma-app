@@ -6,7 +6,7 @@ from backend.models import Account, Subscription, User
 @pytest.fixture
 def gated_user(test_db):
     uid = "gated_user_123"
-    email = "gated@example.com"
+    email = "gated@testmail.app"
     user = User(uid=uid, email=email, role="user")
     test_db.add(user)
     test_db.commit()

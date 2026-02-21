@@ -145,7 +145,7 @@ def mock_auth(test_db):
     """
     user = User(
         uid="test_user_123",
-        email="test@example.com",
+        email="test@testmail.app",
         role="user",
         # Default empty preferences
         theme_pref="light",

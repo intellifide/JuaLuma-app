@@ -50,7 +50,7 @@ async def test_trial_end_payment_failure_downgrades_immediately(
 ):
     settings.stripe_secret_key = "sk_test"
 
-    user = User(uid="trial_user", email="trial@example.com")
+    user = User(uid="trial_user", email="trial@testmail.app")
     sub = Subscription(uid="trial_user", plan="pro_monthly", status="trialing")
     test_db.add_all([user, sub])
     test_db.commit()
@@ -87,7 +87,7 @@ async def test_paid_plan_payment_failure_starts_grace_period(
 ):
     settings.stripe_secret_key = "sk_test"
 
-    user = User(uid="paid_user", email="paid@example.com")
+    user = User(uid="paid_user", email="paid@testmail.app")
     sub = Subscription(uid="paid_user", plan="pro_monthly", status="active")
     test_db.add_all([user, sub])
     test_db.commit()

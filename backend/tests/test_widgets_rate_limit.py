@@ -26,7 +26,7 @@ async def test_widget_submission_rate_limit(test_db):
 
     # 1. Setup Developer User
     dev_uid = str(uuid.uuid4())
-    dev_user = User(uid=dev_uid, email="rate_limit@example.com", role="user")
+    dev_user = User(uid=dev_uid, email="rate_limit@testmail.app", role="user")
     test_db.add(dev_user)
     # Require Pro for creation
     test_db.add(Subscription(uid=dev_uid, plan="pro", status="active"))

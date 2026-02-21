@@ -1,11 +1,15 @@
 # Updated 2026-02-14 by Antigravity
+import json
 import logging
+import os
 import time
 from typing import Any
 
 import google.auth
 import requests
+from google.auth import impersonated_credentials
 from google.auth.transport.requests import Request as GoogleRequest
+from google.oauth2 import service_account
 from jose import jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -143,7 +147,41 @@ def create_user_record(
 def _get_admin_token() -> str:
     """Get an OAuth 2.0 access token for Admin API calls."""
     try:
-        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+        sa_value = settings.google_application_credentials or os.environ.get(
+            "GOOGLE_APPLICATION_CREDENTIALS"
+        )
+
+        if sa_value:
+            normalized = sa_value.strip()
+            if normalized.startswith("{"):
+                creds = service_account.Credentials.from_service_account_info(
+                    json.loads(normalized),
+                    scopes=scopes,
+                )
+            elif normalized.endswith(".gserviceaccount.com") and "@" in normalized:
+                # Keyless path: use runtime ADC to impersonate the target service account.
+                env_backup = os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
+                try:
+                    source_creds, _ = google.auth.default(scopes=scopes)
+                finally:
+                    if env_backup is not None:
+                        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = env_backup
+
+                creds = impersonated_credentials.Credentials(
+                    source_credentials=source_creds,
+                    target_principal=normalized,
+                    target_scopes=scopes,
+                    lifetime=3600,
+                )
+            else:
+                creds = service_account.Credentials.from_service_account_file(
+                    normalized,
+                    scopes=scopes,
+                )
+        else:
+            creds, _ = google.auth.default(scopes=scopes)
+
         auth_req = GoogleRequest()
         creds.refresh(auth_req)
         return creds.token

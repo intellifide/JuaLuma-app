@@ -59,14 +59,14 @@ export default function Switch({ checked, onChange, label, description, disabled
           disabled={disabled}
           onClick={handleToggle}
           className={`${
-            checked ? 'bg-primary' : 'bg-white/20'
-          } relative inline-flex h-4 w-8 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary focus:ring-offset-1 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            checked ? 'bg-primary border-primary' : 'bg-slate-300 border-slate-400 dark:bg-slate-600 dark:border-slate-500'
+          } relative inline-flex h-4 w-8 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary focus:ring-offset-1 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <span
             aria-hidden="true"
             className={`${
               checked ? 'translate-x-4' : 'translate-x-0'
-            } pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+            } pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white border border-slate-300 dark:border-slate-500 shadow ring-0 transition duration-200 ease-in-out`}
           />
         </button>
       </div>
@@ -98,14 +98,14 @@ export default function Switch({ checked, onChange, label, description, disabled
         disabled={disabled}
         onClick={handleToggle}
         className={`${
-          checked ? 'bg-primary' : 'bg-white/20'
-        } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          checked ? 'bg-primary border-primary' : 'bg-slate-300 border-slate-400 dark:bg-slate-600 dark:border-slate-500'
+        } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <span
           aria-hidden="true"
           className={`${
             checked ? 'translate-x-5' : 'translate-x-0'
-          } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+          } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white border border-slate-300 dark:border-slate-500 shadow ring-0 transition duration-200 ease-in-out`}
         />
       </button>
     </div>

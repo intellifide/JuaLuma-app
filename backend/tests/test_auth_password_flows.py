@@ -108,7 +108,7 @@ def test_reset_password_mfa_required(test_client: TestClient, test_db):
     # Create a user with MFA enabled
     user = User(
         uid="mfa_user",
-        email="mfa@example.com",
+        email="mfa@testmail.app",
         role="user",
         mfa_enabled=True,
         mfa_secret="JBSWY3DPEHPK3PXP",
@@ -117,7 +117,7 @@ def test_reset_password_mfa_required(test_client: TestClient, test_db):
     test_db.commit()
 
     # Request without code
-    payload = {"email": "mfa@example.com"}
+    payload = {"email": "mfa@testmail.app"}
     response = test_client.post("/api/auth/reset-password", json=payload)
 
     assert response.status_code == 200
@@ -131,7 +131,7 @@ def test_reset_password_mfa_success(test_client: TestClient, test_db):
     secret = pyotp.random_base32()
     user = User(
         uid="mfa_user_2",
-        email="mfa2@example.com",
+        email="mfa2@testmail.app",
         role="user",
         mfa_enabled=True,
         mfa_secret=secret,
@@ -143,7 +143,7 @@ def test_reset_password_mfa_success(test_client: TestClient, test_db):
     valid_code = pyotp.TOTP(secret).now()
 
     with patch("backend.api.auth.send_password_reset_email"):
-        payload = {"email": "mfa2@example.com", "mfa_code": valid_code}
+        payload = {"email": "mfa2@testmail.app", "mfa_code": valid_code}
         response = test_client.post("/api/auth/reset-password", json=payload)
 
     assert response.status_code == 200

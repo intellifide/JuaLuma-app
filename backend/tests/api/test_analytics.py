@@ -12,7 +12,7 @@ from backend.models import Account, Transaction, User
 from backend.utils import get_db
 
 # Mock User
-mock_user = User(uid="test_user_123", email="test@example.com", role="user")
+mock_user = User(uid="test_user_123", email="test@testmail.app", role="user")
 
 
 # Mock Dependencies

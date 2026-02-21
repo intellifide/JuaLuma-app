@@ -61,6 +61,11 @@ const TOKEN_MAX_AGE_MS = 4 * 60 * 1000 // refresh cached token every 4 minutes
 // Note: gcp_auth_driver handles its own caching, but we keep this for consistency if we use getIdToken wrapper below
 let cachedToken: string | null = null
 let lastTokenAt = 0
+const envApiBase = import.meta.env.VITE_API_BASE_URL
+const normalizedApiBase =
+  envApiBase && !envApiBase.includes('backend')
+    ? envApiBase.replace(/\/+$/, '')
+    : ''
 
 const mapGcpError = (error: unknown): string => {
   if (error instanceof IdentityError) {
@@ -418,8 +423,9 @@ export const clearCachedToken = (): void => {
 
 const buildUrl = (path: string): string => {
   if (path.startsWith('http')) return path
-  if (!path.startsWith('/')) return `/api/${path}`
-  return `/api${path}`
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const relativePath = `/api${normalizedPath}`
+  return normalizedApiBase ? `${normalizedApiBase}${relativePath}` : relativePath
 }
 
 export const apiFetch = async (

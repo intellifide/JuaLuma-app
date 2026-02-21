@@ -264,6 +264,8 @@ class GmailApiEmailClient:
         import json
         import os
 
+        import google.auth
+        from google.auth import impersonated_credentials
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
 
@@ -285,11 +287,29 @@ class GmailApiEmailClient:
                 subject=self.impersonate_user,
             )
         else:
-            creds = service_account.Credentials.from_service_account_file(
-                normalized,
-                scopes=scopes,
-                subject=self.impersonate_user,
-            )
+            if normalized.endswith(".gserviceaccount.com") and "@" in normalized:
+                # Keyless path: use ADC to impersonate a DWD-enabled service account.
+                env_backup = os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
+                try:
+                    source_creds, _ = google.auth.default(
+                        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                    )
+                finally:
+                    if env_backup is not None:
+                        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = env_backup
+                creds = impersonated_credentials.Credentials(
+                    source_credentials=source_creds,
+                    target_principal=normalized,
+                    target_scopes=scopes,
+                    subject=self.impersonate_user,
+                    lifetime=3600,
+                )
+            else:
+                creds = service_account.Credentials.from_service_account_file(
+                    normalized,
+                    scopes=scopes,
+                    subject=self.impersonate_user,
+                )
         self._service = build("gmail", "v1", credentials=creds, cache_discovery=False)
         return self._service
 

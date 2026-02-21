@@ -13,7 +13,7 @@ from backend.models import Account, Transaction, User
 from backend.utils import get_db
 
 # Mock User
-mock_user = User(uid="cache_test_user", email="cache@example.com", role="user")
+mock_user = User(uid="cache_test_user", email="cache@testmail.app", role="user")
 
 def override_get_current_user():
     return mock_user
@@ -93,5 +93,3 @@ async def test_account_delete_invalidates_cache(mock_invalidate, mock_db_session
 
         assert response.status_code == 200
         mock_invalidate.assert_called_once_with(uid)
-
-

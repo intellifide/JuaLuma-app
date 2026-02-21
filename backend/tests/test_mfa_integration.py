@@ -29,7 +29,7 @@ def test_mfa_complete_flow(
     mock_get_email_client.return_value = mock_mailer
 
     test_uid = "test_uid_mfa"
-    test_email = "mfa_test@example.com"
+    test_email = "mfa_test@testmail.app"
 
     # Mock verify_token response
     token_payload = {"uid": test_uid, "email": test_email, "sub": test_uid}

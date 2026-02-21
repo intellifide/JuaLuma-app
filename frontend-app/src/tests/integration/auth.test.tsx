@@ -62,14 +62,14 @@ describe('Auth Integration', () => {
                 </BrowserRouter>
             )
 
-            fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } })
+            fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@testmail.app' } })
             fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'password123' } })
 
             const submitButton = screen.getByRole('button', { name: /Sign In/i })
             fireEvent.click(submitButton)
 
             await waitFor(() => {
-                expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123')
+                expect(mockLogin).toHaveBeenCalledWith('test@testmail.app', 'password123')
             })
         })
 
@@ -82,7 +82,7 @@ describe('Auth Integration', () => {
                 </BrowserRouter>
             )
 
-            fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } })
+            fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@testmail.app' } })
             fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'wrong' } })
 
             fireEvent.click(screen.getByRole('button', { name: /Sign In/i }))
@@ -103,7 +103,7 @@ describe('Auth Integration', () => {
 
             fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'John' } })
             fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Doe' } })
-            fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } })
+            fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@testmail.app' } })
             fireEvent.change(screen.getByLabelText(/^Password$/), { target: { value: 'StrongP@ss1' } })
             fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'StrongP@ss1' } })
 
@@ -119,7 +119,7 @@ describe('Auth Integration', () => {
 
             await waitFor(() => {
                 expect(mockSignup).toHaveBeenCalledWith(
-                    'new@example.com',
+                    'new@testmail.app',
                     'StrongP@ss1',
                     expect.any(Array), // Agreements
                     'John',

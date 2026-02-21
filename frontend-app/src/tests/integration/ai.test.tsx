@@ -46,7 +46,7 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn()
 
 const mockUser = {
     uid: 'u1',
-    email: 'user@example.com',
+    email: 'user@testmail.app',
     getIdToken: vi.fn().mockResolvedValue('fake-token')
 } as unknown as User
 
