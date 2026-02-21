@@ -261,25 +261,35 @@ class GmailApiEmailClient:
     def _get_service(self):
         if self._service is not None:
             return self._service
+        import json
         import os
 
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
 
-        sa_file = settings.google_application_credentials or os.environ.get(
+        sa_value = settings.google_application_credentials or os.environ.get(
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
-        if not sa_file:
+        if not sa_value:
             raise RuntimeError(
                 "GOOGLE_APPLICATION_CREDENTIALS is not set. "
                 "Cannot initialize Gmail API client."
             )
         scopes = ["https://www.googleapis.com/auth/gmail.send"]
-        creds = service_account.Credentials.from_service_account_file(
-            sa_file,
-            scopes=scopes,
-            subject=self.impersonate_user,
-        )
+        normalized = sa_value.strip()
+        if normalized.startswith("{"):
+            sa_info = json.loads(normalized)
+            creds = service_account.Credentials.from_service_account_info(
+                sa_info,
+                scopes=scopes,
+                subject=self.impersonate_user,
+            )
+        else:
+            creds = service_account.Credentials.from_service_account_file(
+                normalized,
+                scopes=scopes,
+                subject=self.impersonate_user,
+            )
         self._service = build("gmail", "v1", credentials=creds, cache_discovery=False)
         return self._service
 

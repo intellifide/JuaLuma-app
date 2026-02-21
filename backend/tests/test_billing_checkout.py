@@ -48,6 +48,9 @@ def test_create_checkout_session_applies_trial_by_plan(
     assert url == "https://checkout.stripe.test/session"
     assert capture.kwargs is not None
     assert capture.kwargs["line_items"][0]["price"] == billing.STRIPE_PLANS[expected_plan]
+    assert capture.kwargs["automatic_tax"] == {"enabled": True}
+    assert capture.kwargs["billing_address_collection"] == "required"
+    assert capture.kwargs["customer_update"] == {"address": "auto", "name": "auto"}
 
     subscription_data = capture.kwargs["subscription_data"]
     if expect_trial:
@@ -85,6 +88,9 @@ def test_create_checkout_session_for_pending_applies_trial_by_plan(
     assert url == "https://checkout.stripe.test/session"
     assert capture.kwargs is not None
     assert capture.kwargs["line_items"][0]["price"] == billing.STRIPE_PLANS[expected_plan]
+    assert capture.kwargs["automatic_tax"] == {"enabled": True}
+    assert capture.kwargs["billing_address_collection"] == "required"
+    assert capture.kwargs["customer_update"] == {"address": "auto", "name": "auto"}
 
     subscription_data = capture.kwargs["subscription_data"]
     if expect_trial:

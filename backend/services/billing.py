@@ -1,6 +1,7 @@
 # CORE PURPOSE: Service for handling Stripe billing, customer creation, checkout sessions, and webhooks.
 # LAST MODIFIED: 2026-01-25 CST
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -24,14 +25,24 @@ logger = logging.getLogger(__name__)
 if settings.stripe_secret_key:
     stripe.api_key = settings.stripe_secret_key
 
-# Updated 2026-01-25 CST
-# Replace with actual Stripe Price IDs from your Stripe Dashboard
+def _price_env(name: str, default: str) -> str:
+    value = (os.getenv(name) or "").strip()
+    return value or default
+
+
+# Updated for production cutover: allow env overrides while preserving dev defaults.
 STRIPE_PLANS = {
-    "essential_monthly": "price_1SftXDRQfRSwy2AaP2V5zy32",
-    "pro_monthly": "price_1SftXERQfRSwy2AaoWXBD9Q7",
-    "pro_annual": "price_1SftXERQfRSwy2Aa84D0XrhT",
-    "ultimate_monthly": "price_1SftXFRQfRSwy2Aas3bHnACi",
-    "ultimate_annual": "price_1SftXFRQfRSwy2AapSGEb9HA",
+    "essential_monthly": _price_env(
+        "STRIPE_PRICE_ID_ESSENTIAL_MONTHLY", "price_1SftXDRQfRSwy2AaP2V5zy32"
+    ),
+    "pro_monthly": _price_env("STRIPE_PRICE_ID_PRO_MONTHLY", "price_1SftXERQfRSwy2AaoWXBD9Q7"),
+    "pro_annual": _price_env("STRIPE_PRICE_ID_PRO_ANNUAL", "price_1SftXERQfRSwy2Aa84D0XrhT"),
+    "ultimate_monthly": _price_env(
+        "STRIPE_PRICE_ID_ULTIMATE_MONTHLY", "price_1SftXFRQfRSwy2Aas3bHnACi"
+    ),
+    "ultimate_annual": _price_env(
+        "STRIPE_PRICE_ID_ULTIMATE_ANNUAL", "price_1SftXFRQfRSwy2AapSGEb9HA"
+    ),
 }
 
 # Map Price IDs to the exact database code in SubscriptionTier table
@@ -299,6 +310,7 @@ def create_checkout_session_for_pending(
     session_kwargs: dict[str, Any] = {}
     if customer_id:
         session_kwargs["customer"] = customer_id
+        session_kwargs["customer_update"] = {"address": "auto", "name": "auto"}
     else:
         # Create a new customer in Checkout, but ensure email is collected/prefilled.
         session_kwargs["customer_creation"] = "always"
@@ -317,6 +329,8 @@ def create_checkout_session_for_pending(
         payment_method_types=["card"],
         line_items=[{"price": price_id, "quantity": 1}],
         mode="subscription",
+        automatic_tax={"enabled": True},
+        billing_address_collection="required",
         success_url=_append_checkout_session_id_param(return_url),
         cancel_url=return_url,
         allow_promotion_codes=True,
@@ -429,6 +443,9 @@ def create_checkout_session(
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
+            customer_update={"address": "auto", "name": "auto"},
+            automatic_tax={"enabled": True},
+            billing_address_collection="required",
             success_url=_append_checkout_session_id_param(return_url),
             cancel_url=return_url,
             allow_promotion_codes=True,

@@ -80,7 +80,7 @@ jobs:
       - name: Deploy Frontend App
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
-          service: "jualuma-user-app"
+          service: "frontend-app"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest"
           region: ${{ env.REGION }}
 
@@ -96,7 +96,7 @@ jobs:
       - name: Deploy Marketing
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
-          service: "jualuma-marketing"
+          service: "marketing-site"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest"
           region: ${{ env.REGION }}
 
@@ -112,6 +112,6 @@ jobs:
       - name: Deploy Support
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
-          service: "jualuma-support"
+          service: "support-portal"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest"
           region: ${{ env.REGION }}
