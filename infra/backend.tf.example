@@ -1,0 +1,34 @@
+# Example backend configuration (TEMPLATE)
+#
+# This repo uses one root module per environment under:
+# - infra/envs/dev
+# - infra/envs/stage
+# - infra/envs/prod
+#
+# Backend config must live in the *environment root module directory*.
+#
+# Use:
+# - infra/envs/dev/backend.tf.example
+# - infra/envs/stage/backend.tf.example
+# - infra/envs/prod/backend.tf.example
+#
+# If you keep a single shared backend template, copy it into the env root.
+#
+# NOTE: Do NOT commit backend.tf with real credentials to version control.
+
+terraform {
+  backend "gcs" {
+    bucket = "jualuma-terraform-state"  # Replace with your GCS bucket name
+    prefix = "terraform/state"         # Replace with per-env prefix (e.g. envs/dev)
+    # NOTE: The gcs backend `encryption_key` is a base64-encoded customer-supplied AES-256 key (CSEK),
+    # not a KMS key id. For CMEK, set default bucket encryption in GCS/KMS (recommended).
+  }
+}
+
+# To use this backend:
+# 1. Create GCS bucket: gsutil mb -p PROJECT_ID gs://jualuma-terraform-state
+# 2. Enable versioning: gsutil versioning set on gs://jualuma-terraform-state
+# 3. Create KMS key (recommended)
+# 4. Copy this file to backend.tf
+# 5. Update bucket name and encryption key (if using)
+# 6. Run terraform init

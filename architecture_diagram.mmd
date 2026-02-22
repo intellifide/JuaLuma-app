@@ -1,0 +1,110 @@
+flowchart TD
+    %% Global Styles
+    classDef client fill:#e0f7fa,stroke:#006064,stroke-width:2px,color:#000
+    classDef api fill:#e1bee7,stroke:#4a148c,stroke-width:2px,color:#000
+    classDef service fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000
+    classDef db fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#000
+    classDef ext fill:#f5f5f5,stroke:#616161,stroke-width:2px,stroke-dasharray: 5 5,color:#000
+
+    %% --- External Layer ---
+    subgraph External_Ecosystem [External Services]
+        EXT_Stripe(Stripe API)
+        EXT_Plaid(Plaid API)
+        EXT_OpenAI(OpenAI API)
+        EXT_GCP(GCP Identity Platform)
+        EXT_PubSub(Google Pub/Sub)
+    end
+
+    %% --- Client Layer ---
+    subgraph Client_Layer [Frontend Clients]
+        subgraph User_App [User Web App]
+            UI_User[User Interface]
+            Store_Auth[Auth Store]
+            Store_Data[Data Store]
+            Service_FE_API[API Client Service]
+        end
+
+        subgraph Support_Portal [Support Portal]
+            UI_Support[Support Dashboard]
+        end
+    end
+
+    %% --- Backend Layer ---
+    subgraph Backend_Layer [Backend Microservices]
+        API_Gateway[FastAPI Main App]
+
+        subgraph Core_Services [Domain Services]
+            Svc_Auth[Auth Service]
+            Svc_Accounts[Accounts Service]
+            Svc_Transactions[Transactions Service]
+            Svc_AI[AI Analysis Service]
+            Svc_Billing[Billing Service]
+            Svc_Household[Household Service]
+            Svc_Notification[Notification Service]
+        end
+
+        subgraph Support_Services [Support Services]
+            Svc_Support[Ticket Management]
+        end
+    end
+
+    %% --- Data Layer ---
+    subgraph Data_Layer [Data Persistence]
+        DB_Postgres[(PostgreSQL + pgvector)]
+
+        subgraph Tables [Core Tables]
+            TBL_Users[users]
+            TBL_Accts[accounts]
+            TBL_Txns[transactions]
+            TBL_Subs[subscriptions]
+            TBL_House[households]
+            TBL_Members[household_members]
+        end
+    end
+
+    %% --- Connectivity ---
+
+    %% Client -> Backend
+    UI_User --> Store_Auth
+    UI_User --> Store_Data
+    Store_Auth & Store_Data --> Service_FE_API
+    Service_FE_API -- HTTPS/JSON --> API_Gateway
+    UI_Support -- HTTPS/JSON --> API_Gateway
+
+    %% Gateway -> Services
+    API_Gateway --> Svc_Auth
+    API_Gateway --> Svc_Accounts
+    API_Gateway --> Svc_Transactions
+    API_Gateway --> Svc_AI
+    API_Gateway --> Svc_Billing
+    API_Gateway --> Svc_Household
+    API_Gateway --> Svc_Notification
+    API_Gateway --> Svc_Support
+
+    %% Services -> External
+    Svc_Auth -- Verify Token --> EXT_GCP
+    Svc_Billing -- Checkout/Webhooks --> EXT_Stripe
+    Svc_Accounts -- Link Token/Sync --> EXT_Plaid
+    Svc_AI -- Completion/Embedding --> EXT_OpenAI
+    Svc_Notification -- Publish Event --> EXT_PubSub
+
+    %% Services -> Database
+    Svc_Auth --> TBL_Users
+    Svc_Accounts --> TBL_Accts
+    Svc_Transactions --> TBL_Txns
+    Svc_Billing --> TBL_Subs
+    Svc_Household --> TBL_House & TBL_Members
+    Svc_Support --> TBL_Users
+
+    %% DB Relationships (Visual only)
+    TBL_Users -. 1:N .-> TBL_Accts
+    TBL_Accts -. 1:N .-> TBL_Txns
+    TBL_Users -. 1:N .-> TBL_Subs
+    TBL_Users -. 1:N .-> TBL_House
+
+    %% Class Assignments
+    class EXT_Stripe,EXT_Plaid,EXT_OpenAI,EXT_GCP,EXT_PubSub ext
+    class UI_User,Store_Auth,Store_Data,Service_FE_API,UI_Support client
+    class API_Gateway api
+    class Svc_Auth,Svc_Accounts,Svc_Transactions,Svc_AI,Svc_Billing,Svc_Household,Svc_Notification,Svc_Support service
+    class DB_Postgres,TBL_Users,TBL_Accts,TBL_Txns,TBL_Subs,TBL_House,TBL_Members db

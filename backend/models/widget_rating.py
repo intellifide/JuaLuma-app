@@ -1,0 +1,55 @@
+"""WidgetRating model definition."""
+
+import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import Base
+
+if TYPE_CHECKING:
+    from .user import User
+    from .widget import Widget
+
+
+class WidgetRating(Base):
+    __tablename__ = "widget_ratings"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    widget_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("widgets.id"), nullable=False
+    )
+    user_uid: Mapped[str] = mapped_column(
+        String(128), ForeignKey("users.uid"), nullable=False
+    )
+
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5
+    review: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # Relationship
+    widget: Mapped["Widget"] = relationship("Widget", backref="ratings")
+    user: Mapped["User"] = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"WidgetRating(id={self.id!r}, widget_id={self.widget_id!r}, rating={self.rating!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "widget_id": self.widget_id,
+            "user_uid": self.user_uid,
+            "rating": self.rating,
+            "review": self.review,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+__all__ = ["WidgetRating"]

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Access Control Policy</title>
+<style>
+  @page { size: Letter; margin: 0.75in; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111827; line-height: 1.35; font-size: 11pt; }
+  h1 { font-size: 20pt; margin: 0 0 10px 0; color: #0f172a; }
+  h2 { font-size: 14pt; margin: 14px 0 6px; color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; }
+  h3 { font-size: 12pt; margin: 10px 0 4px; color: #1f2937; }
+  p { margin: 0 0 6px 0; }
+  ul { margin: 0 0 8px 18px; padding: 0; }
+  li { margin: 0 0 3px 0; }
+  .spacer { height: 2px; }
+</style>
+</head>
+<body>
+<h1>Access Control Policy</h1>
+<div class="spacer"></div>
+<ul>
+<li>Company: Intellifide, LLC (JuaLuma)</li>
+<li>Policy Owner: Founder / Security Owner</li>
+<li>Security Contact: Trevon Collins (general@intellifide.com)</li>
+<li>Effective Date: 2026-02-20</li>
+<li>Review Cadence: At least annually and after material access model changes</li>
+<li>Classification: Internal</li>
+</ul>
+<div class="spacer"></div>
+<h2>1. Purpose</h2>
+<p>This policy defines how access to production systems and sensitive data is granted, reviewed, and revoked to enforce least privilege and reduce unauthorized access risk.</p>
+<div class="spacer"></div>
+<h2>2. Scope</h2>
+<p>Applies to:</p>
+<ul>
+<li>Production and non-production cloud resources</li>
+<li>Application APIs, databases, secrets, and operational tooling</li>
+<li>Human users (employees/contractors) and non-human identities (service accounts/workloads)</li>
+</ul>
+<div class="spacer"></div>
+<h2>3. Access Control Principles</h2>
+<ul>
+<li>Least privilege: access is limited to the minimum required for job function.</li>
+<li>Need-to-know: sensitive data access is granted only when required for approved business operations.</li>
+<li>Separation of duties: privileged actions should be constrained to authorized roles.</li>
+<li>Default deny: access is not granted unless explicitly approved.</li>
+</ul>
+<div class="spacer"></div>
+<h2>4. Identity and Authentication</h2>
+<h3>4.1 Human Access</h3>
+<ul>
+<li>Access is managed through centralized identity and IAM controls.</li>
+<li>MFA is required for administrative access to critical systems.</li>
+<li>Access is role-based and tied to authorized user identities.</li>
+</ul>
+<div class="spacer"></div>
+<h3>4.2 Non-Human Access</h3>
+<ul>
+<li>Services authenticate using managed service identities, tokens, or certificates.</li>
+<li>Secrets and credentials are stored in managed secret storage and are not hardcoded in source code.</li>
+<li>Machine identities are scoped to required permissions only.</li>
+</ul>
+<div class="spacer"></div>
+<h2>5. Access Provisioning</h2>
+<ul>
+<li>New access requires business justification and owner approval.</li>
+<li>Privileged access is restricted to approved administrators/operators.</li>
+<li>Access grants are recorded through platform IAM configuration and change history.</li>
+</ul>
+<div class="spacer"></div>
+<h2>6. Access Modification and Revocation</h2>
+<ul>
+<li>Access is modified when role responsibilities change.</li>
+<li>Access is revoked promptly upon termination or loss of business need.</li>
+<li>Emergency access changes are time-bounded and documented.</li>
+</ul>
+<div class="spacer"></div>
+<h2>7. Access Review and Audit</h2>
+<ul>
+<li>Access assignments are reviewed periodically based on operational and risk requirements.</li>
+<li>Privileged and sensitive-data access receives priority review.</li>
+<li>Access-related events are logged for audit and incident investigation.</li>
+</ul>
+<div class="spacer"></div>
+<h2>8. Monitoring and Logging</h2>
+<ul>
+<li>Authentication failures, unauthorized attempts, and security-relevant administrative events are logged.</li>
+<li>Security logs are retained according to retention policy and used for investigation and control validation.</li>
+</ul>
+<div class="spacer"></div>
+<h2>9. Exceptions</h2>
+<ul>
+<li>Policy exceptions must be documented, approved by the Policy Owner, and time-limited.</li>
+</ul>
+<div class="spacer"></div>
+<h2>10. Enforcement</h2>
+<p>Non-compliance may result in access suspension/removal and corrective actions.</p>
+<div class="spacer"></div>
+<h2>11. Version History</h2>
+<ul>
+<li>v1.0 (2026-02-20): Initial policy for Plaid security diligence submission.</li>
+</ul>
+</body>
+</html>

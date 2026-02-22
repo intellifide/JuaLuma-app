@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data Retention and Disposal Policy</title>
+<style>
+  @page { size: Letter; margin: 0.75in; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111827; line-height: 1.35; font-size: 11pt; }
+  h1 { font-size: 20pt; margin: 0 0 10px 0; color: #0f172a; }
+  h2 { font-size: 14pt; margin: 14px 0 6px; color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; }
+  h3 { font-size: 12pt; margin: 10px 0 4px; color: #1f2937; }
+  p { margin: 0 0 6px 0; }
+  ul { margin: 0 0 8px 18px; padding: 0; }
+  li { margin: 0 0 3px 0; }
+  .spacer { height: 2px; }
+</style>
+</head>
+<body>
+<h1>Data Retention and Disposal Policy</h1>
+<div class="spacer"></div>
+<ul>
+<li>Company: Intellifide, LLC (JuaLuma)</li>
+<li>Policy Owner: Founder / Security Owner</li>
+<li>Security Contact: Trevon Collins (general@intellifide.com)</li>
+<li>Effective Date: 2026-02-20</li>
+<li>Review Cadence: At least annually and upon legal/regulatory changes</li>
+<li>Classification: Internal</li>
+</ul>
+<div class="spacer"></div>
+<h2>1. Purpose</h2>
+<p>This policy defines retention periods, deletion standards, and disposal methods for customer and operational data, including Plaid-related data.</p>
+<div class="spacer"></div>
+<h2>2. Scope</h2>
+<p>Applies to customer data, financial data, credentials/secrets, logs, legal-consent records, and backup artifacts stored by JuaLuma systems.</p>
+<div class="spacer"></div>
+<h2>3. Retention Principles</h2>
+<ul>
+<li>Retain only data necessary for product functionality, security, legal obligations, and customer support.</li>
+<li>Apply retention limits by data category and subscription constraints where implemented.</li>
+<li>Dispose of data securely once retention period expires or when deletion is requested and permitted by law.</li>
+</ul>
+<div class="spacer"></div>
+<h2>4. Retention Standards by Data Category</h2>
+<h3>4.1 Account and Profile Data</h3>
+<ul>
+<li>Retained while account is active.</li>
+<li>Deleted upon verified account deletion request, subject to legal exceptions.</li>
+</ul>
+<div class="spacer"></div>
+<h3>4.2 Transaction and Financial Data</h3>
+<ul>
+<li>Retained according to product functionality and plan constraints.</li>
+<li>Essential-tier transaction visibility and sync windows are limited to a rolling 365-day window in current implementation.</li>
+<li>For account deletion, user-linked records are deleted through application deletion workflows and database cascades where configured.</li>
+</ul>
+<div class="spacer"></div>
+<h3>4.3 Plaid Connection Data</h3>
+<ul>
+<li>Plaid access credentials are stored as secrets, not plaintext application fields.</li>
+<li>Inactive Plaid items are flagged and removed through cleanup jobs after configured inactivity/grace windows.</li>
+<li>When Plaid items are removed, linked connection status is updated and cleanup actions are logged.</li>
+</ul>
+<div class="spacer"></div>
+<h3>4.4 Security and Audit Logs</h3>
+<ul>
+<li>Security-relevant logs and audit trails are retained for operational and compliance needs.</li>
+<li>Retention periods are reviewed periodically based on legal and operational requirements.</li>
+</ul>
+<div class="spacer"></div>
+<h3>4.5 Legal Agreement Records</h3>
+<ul>
+<li>Terms/privacy and related acceptance records are retained to evidence consent and legal basis.</li>
+</ul>
+<div class="spacer"></div>
+<h2>5. Deletion and Disposal Procedures</h2>
+<h3>5.1 User-Initiated Account Deletion</h3>
+<ul>
+<li>Triggered via authenticated user deletion flow.</li>
+<li>Auth provider tokens/accounts are revoked/deleted.</li>
+<li>User-linked data is deleted or anonymized according to model behavior and legal obligations.</li>
+<li>Deletion events are auditable.</li>
+</ul>
+<div class="spacer"></div>
+<h3>5.2 Scheduled Cleanup</h3>
+<ul>
+<li>Automated cleanup routines remove stale pending-signup artifacts and dormant Plaid items according to configured thresholds.</li>
+</ul>
+<div class="spacer"></div>
+<h3>5.3 Secure Disposal Method</h3>
+<ul>
+<li>Logical deletion from primary stores using controlled application/database operations.</li>
+<li>Secret disposal through secret management lifecycle operations.</li>
+<li>Where cryptographic protection is used, key-based disposal is applied as supported by the storage model.</li>
+</ul>
+<div class="spacer"></div>
+<h2>6. Legal Holds and Exceptions</h2>
+<ul>
+<li>Data subject to legal hold, dispute, fraud investigation, or regulatory obligations may be retained beyond standard periods.</li>
+<li>Exceptions must be documented and approved by the Policy Owner.</li>
+</ul>
+<div class="spacer"></div>
+<h2>7. Verification and Review</h2>
+<ul>
+<li>Retention and deletion controls are reviewed periodically.</li>
+<li>Policy and implementation alignment is reviewed at least annually.</li>
+<li>Gaps are tracked with remediation plans.</li>
+</ul>
+<div class="spacer"></div>
+<h2>8. Responsibilities</h2>
+<ul>
+<li>Security Owner: policy governance and exception approval.</li>
+<li>Engineering: implement and maintain deletion/retention controls.</li>
+<li>Operations: monitor jobs and retention-related failures.</li>
+</ul>
+<div class="spacer"></div>
+<h2>9. Version History</h2>
+<ul>
+<li>v1.0 (2026-02-20): Initial policy for Plaid security diligence submission.</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,173 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+env/
+ENV/
+.venv
+
+# Node.js / Frontend
+node_modules/
+.pnpm-store/
+dist/
+build/
+.cache/
+.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.next/
+out/
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+secrets/
+credentials.json
+service-account*.json
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+backend.tf
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform.tfstate.lock.info
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+.gemini/
+
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+.hypothesis/
+*.cover
+.nyc_output
+
+# Logs
+logs/
+*.log
+frontend_logs.txt
+run_logs.txt
+
+# Temporary files
+tmp/
+tmp_test/
+temp/
+*.tmp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Build artifacts
+*.o
+*.a
+*.lib
+*.dll
+*.exe
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+*storybook.log
+storybook-static
+
+# Notes
+notes.md
+
+# Agent artifacts
+.codex/
+.antigravity/
+.aider/
+.agent/
+.claude/
+.clinerules/
+.windsurf/
+.cursor/
+.cursorrules
+AGENTS.md
+CLAUDE.md
+CONVENTIONS.md
+
+# Capacitor native platforms (generated)
+frontend-app/ios/
+frontend-app/android/
+
+# Debug scripts
+scripts/debug_*.py
+data/
+firebase_data/
+
+firebase_data/
+.tmp.driveupload/
+
+.gcp-key.json
+cloud-sql-proxy
+scripts/test_ai_e2e.py
+scripts/test_coinbase_connection.py
+firebase-mcp-key.json

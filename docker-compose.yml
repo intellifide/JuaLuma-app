@@ -1,0 +1,144 @@
+# Updated 2026-02-14 06:00 CST by Agent
+# Local Docker services are deprecated but kept for reference logic without emulators.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: jualuma-backend
+    env_file: .env
+    environment:
+      APP_ENV: local
+      API_PORT: 8001
+      DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
+      AUTH_EMULATOR_ENABLED: "false"
+      PUBSUB_EMULATOR_ENABLED: "false"
+      ENCRYPTION_PROVIDER: ${ENCRYPTION_PROVIDER:-local}
+      LOCAL_ENCRYPTION_KEY: ${LOCAL_ENCRYPTION_KEY:-local-dev-key-change-me}
+      SECRET_PROVIDER: ${SECRET_PROVIDER:-file}
+      LOCAL_SECRET_STORE_PATH: ${LOCAL_SECRET_STORE_PATH:-/app/data/local_secret_store.json}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-jualuma-dev}
+      GCP_KMS_KEY_NAME: ${GCP_KMS_KEY_NAME:-}
+      GOOGLE_CLOUD_PROJECT: ${GCP_PROJECT_ID:-jualuma-dev}
+      ENABLE_AI_GATEWAY: "false"
+      BACKEND_CORS_ORIGINS: "http://localhost:5175,http://localhost:5176,http://localhost:5177"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/app/data
+      - ./alembic.ini:/app/alembic.ini
+      - ./alembic:/app/alembic
+      - ./scripts:/app/scripts
+    networks:
+      - jualuma-network
+
+  user-frontend:
+    build:
+      context: .
+      dockerfile: frontend-app/Dockerfile
+    container_name: jualuma-user-frontend
+    env_file: .env
+    environment:
+      VITE_API_BASE_URL: /api
+      VITE_API_TARGET: http://backend:8001
+    depends_on:
+      - backend
+    ports:
+      - "5175:5175"
+    volumes:
+      - ./frontend-app:/app
+      - /app/node_modules
+    networks:
+      - jualuma-network
+
+  marketing-site:
+    build:
+      context: .
+      dockerfile: frontend-marketing/Dockerfile
+    container_name: jualuma-marketing-site
+    env_file: .env
+    ports:
+      - "5177:3000"
+    volumes:
+      - ./frontend-marketing:/app
+      - /app/.next
+      - /app/node_modules
+    networks:
+      - jualuma-network
+
+  support-frontend:
+    build:
+      context: .
+      dockerfile: support-portal/Dockerfile
+    container_name: jualuma-support-frontend
+    env_file: .env
+    environment:
+      VITE_API_BASE_URL: /api
+    depends_on:
+      - backend
+    ports:
+      - "5176:5176"
+    volumes:
+      - ./support-portal:/app
+      - /app/node_modules
+    networks:
+      - jualuma-network
+
+  # PostgreSQL (Cloud SQL Mirror)
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: jualuma-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - jualuma-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  db-init:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: jualuma-db-init
+    env_file: .env
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgresql://jualuma_user:jualuma_password@postgres:5432/jualuma_db
+      AUTH_EMULATOR_ENABLED: "false"
+      PUBSUB_EMULATOR_ENABLED: "false"
+      GCP_PROJECT_ID: jualuma-dev
+      ENABLE_AI_GATEWAY: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "python backend/scripts/create_all_from_models.py &&
+             python backend/scripts/seed_initial_data.py"
+    networks:
+      - jualuma-network
+
+volumes:
+  postgres_data:
+
+networks:
+  jualuma-network:
+    driver: bridge

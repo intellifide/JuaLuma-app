@@ -1,0 +1,46 @@
+
+> jualuma-frontend@0.1.0 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+/Users/midnight/Projects/jualuma-app/frontend/src/pages/Dashboard.tsx
+  333:6  warning  React Hook React.useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/midnight/Projects/jualuma-app/frontend/src/pages/DeveloperSDK.tsx
+   7:10  error  'Paywall' is defined but never used               @typescript-eslint/no-unused-vars
+  13:11  error  'hasPro' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  16:11  error  'isDeveloper' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  52:11  error  'isGuest' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+/Users/midnight/Projects/jualuma-app/frontend/src/pages/Settings.tsx
+  166:105  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  166:125  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/midnight/Projects/jualuma-app/frontend/src/pages/Support.tsx
+  33:8  warning  React Hook useEffect has a missing dependency: 'fetchTickets'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/midnight/Projects/jualuma-app/frontend/src/pages/VerifyEmail.tsx
+  87:34  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  92:35  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  92:47  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/midnight/Projects/jualuma-app/frontend/src/pages/developers/DeveloperDashboard.tsx
+  9:22  error  'refetchProfile' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/midnight/Projects/jualuma-app/frontend/src/pages/developers/DeveloperLanding.tsx
+  5:11  error  'navigate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/midnight/Projects/jualuma-app/frontend/src/services/auth.ts
+  6:3  error  'sendPasswordResetEmail' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/midnight/Projects/jualuma-app/frontend/src/services/eventTracking.ts
+  44:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  89:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/midnight/Projects/jualuma-app/frontend/src/tests/signupFlow.test.ts
+  143:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  233:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  258:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 19 problems (17 errors, 2 warnings)
+
