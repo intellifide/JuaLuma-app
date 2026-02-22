@@ -61,7 +61,10 @@ const TOKEN_MAX_AGE_MS = 4 * 60 * 1000 // refresh cached token every 4 minutes
 // Note: gcp_auth_driver handles its own caching, but we keep this for consistency if we use getIdToken wrapper below
 let cachedToken: string | null = null
 let lastTokenAt = 0
-const envApiBase = import.meta.env.VITE_API_BASE_URL
+const envApiBase =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.API_BASE_URL ||
+  import.meta.env.VITE_API_TARGET
 const normalizedApiBase =
   envApiBase && !envApiBase.includes('backend')
     ? envApiBase.replace(/\/+$/, '')

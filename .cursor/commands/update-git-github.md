@@ -1,1 +1,0 @@
-update git and github accordingly using the GitKraken MCP

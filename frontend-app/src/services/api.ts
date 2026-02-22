@@ -16,8 +16,11 @@
 import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken, MfaRequiredError } from './auth'
 
-// Prevent using Docker hostname in browser
-const envBase = import.meta.env.VITE_API_BASE_URL;
+// Accept both env naming conventions across dev/prod.
+const envBase =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.API_BASE_URL ||
+  import.meta.env.VITE_API_TARGET;
 // If envBase contains 'backend' (docker service name), it won't work in browser.
 // Fallback to empty string to use relative path (proxy) or let axios handle it.
 const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';

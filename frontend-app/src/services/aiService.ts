@@ -51,7 +51,10 @@ type StreamHandlers = {
     chunkDebounceMs?: number;
 };
 
-const envBase = import.meta.env.VITE_API_BASE_URL;
+const envBase =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.API_BASE_URL ||
+  import.meta.env.VITE_API_TARGET;
 const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
 
 export const aiService = {
