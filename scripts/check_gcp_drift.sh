@@ -13,7 +13,7 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 EXIT_CODE=0
 
-for DEPLOY_YML in "$REPO_ROOT/.github/workflows/deploy-dev.yml" "$REPO_ROOT/.github/workflows/deploy-prod.yml"; do
+for DEPLOY_YML in "$REPO_ROOT/.github/workflows/deploy-dev.yml" "$REPO_ROOT/.github/workflows/deploy-stage.yml" "$REPO_ROOT/.github/workflows/deploy-prod.yml"; do
   if [[ -f "$DEPLOY_YML" ]]; then
     python3 "$REPO_ROOT/scripts/guard_env_vars.py" "$DEPLOY_YML" || EXIT_CODE=1
   fi
