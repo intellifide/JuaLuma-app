@@ -145,6 +145,14 @@ notes.md
 .antigravity/
 .aider/
 .agent/
+.claude/
+.clinerules/
+.windsurf/
+.cursor/
+.cursorrules
+AGENTS.md
+CLAUDE.md
+CONVENTIONS.md
 
 # Capacitor native platforms (generated)
 frontend-app/ios/

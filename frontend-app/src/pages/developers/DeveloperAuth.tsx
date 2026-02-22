@@ -57,8 +57,11 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
     // Marketing site base URL for legal docs (GCP portability: env-driven, no hardcoded origins)
     const marketingLegalBase = useMemo(() => {
         const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-        const fallback = isLocalhost ? 'http://localhost:5177' : window.location.origin;
-        return (import.meta as any).env?.VITE_MARKETING_SITE_URL || fallback;
+        const fallback = isLocalhost
+            ? 'http://localhost:5177'
+            : 'https://jualuma-marketing-298159098975.us-central1.run.app';
+        const env = (import.meta as any).env || {};
+        return env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL || fallback;
     }, []);
 
     const onSubmit = async (event: FormEvent) => {

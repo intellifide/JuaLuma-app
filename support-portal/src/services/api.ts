@@ -15,8 +15,9 @@
 import axios, { AxiosError } from 'axios';
 import { auth } from './gcp_auth_driver';
 
-// Use same base URL pattern as main app if needed, or hardcode relative to proxy
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Accept both env naming conventions across dev/prod.
+const envBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL;
+const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
 
 export const api = axios.create({
     baseURL,
