@@ -1,0 +1,68 @@
+"""AISettings model definition."""
+
+# Updated 2025-12-08 17:45 CST by ChatGPT
+
+import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import Base
+
+if TYPE_CHECKING:
+    from .user import User
+
+
+class AISettings(Base):
+    __tablename__ = "ai_settings"
+    __table_args__ = (UniqueConstraint("uid", name="uq_ai_settings_uid"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    uid: Mapped[str] = mapped_column(
+        String(128), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="vertex-ai"
+    )
+    model_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="gemini-2.5-flash"
+    )
+    user_dek_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship(
+        "User", back_populates="ai_settings", lazy="selectin"
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"AISettings(id={self.id!r}, uid={self.uid!r}, "
+            f"provider={self.provider!r}, model_id={self.model_id!r})"
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "uid": self.uid,
+            "provider": self.provider,
+            "model_id": self.model_id,
+            "user_dek_ref": self.user_dek_ref,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
+__all__ = ["AISettings"]

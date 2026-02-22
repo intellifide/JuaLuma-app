@@ -1,0 +1,81 @@
+# Feature Requirements Registry
+# Source of truth for feature-to-tier mappings
+# DO NOT manually edit generated files (accessControl.ts, registry.py)
+# Always update this YAML file and regenerate
+
+features:
+  # AI Features
+  ai.cloud:
+    tier: free
+    preview_enabled: true
+    description: Cloud AI chat interface with RAG context (Tiered limits: Free 10/day, Essential 30/day, Pro 40/day)
+
+  # Budget Features
+  budgets.advanced:
+    tier: free
+    preview_enabled: false
+    description: Advanced budgets with rollover, threshold alerts, budget-vs-actual
+
+  # Investment Features
+  investment.aggregation:
+    tier: free
+    preview_enabled: false
+    description: Investment account aggregation via Plaid Investments API
+
+  # Account Limits
+  accounts.plaid:
+    free_limit: 3
+    essential_limit: 5
+    pro_limit: 10
+    ultimate_limit: 40
+    description: Plaid-connected account limits
+
+  accounts.web3:
+    free_limit: 1
+    essential_limit: 1
+    pro_limit: 2
+    ultimate_limit: 8
+    description: Web3 wallet connection limits
+
+  accounts.cex:
+    free_limit: 1
+    essential_limit: 1
+    pro_limit: 3
+    ultimate_limit: 5
+    description: CEX account connection limits
+
+  accounts.manual:
+    free_limit: 5
+    essential_limit: 10
+    pro_limit: 20
+    ultimate_limit: 50
+    description: Manual account tracking limits
+
+  # Marketplace Features
+  marketplace.preview:
+    tier: pro
+    preview_enabled: false
+    description: Access to install and use marketplace widgets
+
+  marketplace.publish:
+    tier: pro
+    preview_enabled: false
+    description: Ability to publish widgets to marketplace (Requires Developer Agreement)
+
+  # Family Features
+  family.tracking:
+    tier: ultimate
+    preview_enabled: true
+    description: Family/couple net worth tracking and account assignment
+
+  # Manual Assets
+  assets.manual:
+    tier: free
+    preview_enabled: false
+    description: Manual asset tracking for non-API assets
+
+  # Recurring Detection
+  recurring.detection:
+    tier: free
+    preview_enabled: false
+    description: Automated detection of recurring transactions

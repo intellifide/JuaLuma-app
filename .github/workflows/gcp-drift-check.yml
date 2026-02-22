@@ -1,0 +1,26 @@
+name: GCP Deploy Guard
+
+on:
+  push:
+    branches: [Dev, main]
+    paths:
+      - ".github/workflows/deploy-dev.yml"
+      - ".github/workflows/deploy-prod.yml"
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-dev.yml"
+      - ".github/workflows/deploy-prod.yml"
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check deploy-dev for env_vars clobber
+        run: python3 scripts/guard_env_vars.py ".github/workflows/deploy-dev.yml" --output github
+
+      - name: Check deploy-prod for env_vars clobber
+        run: python3 scripts/guard_env_vars.py ".github/workflows/deploy-prod.yml" --output github

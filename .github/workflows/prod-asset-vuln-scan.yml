@@ -1,0 +1,45 @@
+name: Production Asset Vulnerability Scan
+
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: jualuma-prod
+  REGION: us-central1
+
+jobs:
+  trivy-prod-images:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - backend:latest
+          - frontend-app:latest
+          - support-portal:latest
+          - marketing-site:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Google Auth (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Authorize Docker
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Trivy image scan (prod assets)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/${{ matrix.image }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'

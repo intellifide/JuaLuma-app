@@ -1,0 +1,23 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-central1-docker.pkg.dev/jualuma-dev/jualuma-repo/marketing-site:latest",
+        "-f",
+        "frontend-marketing/Dockerfile",
+        ".",
+      ]
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "jualuma-marketing"
+      - "--image"
+      - "us-central1-docker.pkg.dev/jualuma-dev/jualuma-repo/marketing-site:latest"
+      - "--region"
+      - "us-central1"
+images:
+  - "us-central1-docker.pkg.dev/jualuma-dev/jualuma-repo/marketing-site:latest"

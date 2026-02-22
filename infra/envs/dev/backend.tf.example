@@ -1,0 +1,12 @@
+# Example backend configuration (dev)
+# Copy this file to backend.tf and update with your actual values.
+# Do NOT commit backend.tf.
+
+terraform {
+  backend "gcs" {
+    bucket = "jualuma-terraform-state" # Replace with your GCS bucket name
+    prefix = "envs/dev"
+    # NOTE: The gcs backend `encryption_key` is a base64-encoded customer-supplied AES-256 key (CSEK),
+    # not a KMS key id. For CMEK, set default bucket encryption in GCS/KMS (recommended).
+  }
+}

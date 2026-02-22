@@ -1,0 +1,50 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: local
+    hooks:
+      - id: backend-pytest
+        name: backend-pytest
+        entry: bash -c 'cd backend && DATABASE_URL=sqlite:///./test.db pytest -q'
+        language: system
+        files: ^backend/.*
+        pass_filenames: false
+
+      - id: frontend-app-lint
+        name: frontend-app-lint
+        entry: bash -c 'cd frontend-app && npm run lint'
+        language: system
+        files: ^frontend-app/.*\.tsx?$
+        pass_filenames: false
+
+      - id: frontend-app-typecheck
+        name: frontend-app-typecheck
+        entry: bash -c 'cd frontend-app && npx tsc --noEmit'
+        language: system
+        files: ^frontend-app/.*\.tsx?$
+        pass_filenames: false
+
+      - id: gcp-deploy-guard
+        name: gcp-deploy-guard
+        entry: bash scripts/check_gcp_drift.sh
+        language: system
+        files: ^\.github/workflows/deploy-(dev|prod)\.yml$
+        pass_filenames: false
+
+      - id: enforce-test-email-domain
+        name: enforce-test-email-domain
+        entry: bash scripts/enforce_test_email_domain.sh
+        language: system
+        files: ^(backend/tests/|frontend-app/src/tests/|tests/|scripts/).*
+        pass_filenames: false

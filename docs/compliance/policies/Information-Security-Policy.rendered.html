@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Information Security Policy</title>
+<style>
+  @page { size: Letter; margin: 0.75in; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111827; line-height: 1.35; font-size: 11pt; }
+  h1 { font-size: 20pt; margin: 0 0 10px 0; color: #0f172a; }
+  h2 { font-size: 14pt; margin: 14px 0 6px; color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; }
+  h3 { font-size: 12pt; margin: 10px 0 4px; color: #1f2937; }
+  p { margin: 0 0 6px 0; }
+  ul { margin: 0 0 8px 18px; padding: 0; }
+  li { margin: 0 0 3px 0; }
+  .spacer { height: 2px; }
+</style>
+</head>
+<body>
+<h1>Information Security Policy</h1>
+<div class="spacer"></div>
+<ul>
+<li>Company: Intellifide, LLC (JuaLuma)</li>
+<li>Policy Owner: Founder / Security Owner</li>
+<li>Security Contact: Trevon Collins (general@intellifide.com)</li>
+<li>Effective Date: 2026-02-20</li>
+<li>Review Cadence: At least annually and after material system changes or incidents</li>
+<li>Classification: Internal</li>
+</ul>
+<div class="spacer"></div>
+<h2>1. Purpose</h2>
+<p>This policy defines the controls used to identify, mitigate, and monitor information security risks for JuaLuma systems that process customer and financial data, including Plaid-connected data.</p>
+<div class="spacer"></div>
+<h2>2. Scope</h2>
+<p>This policy applies to:</p>
+<ul>
+<li>JuaLuma production and non-production environments</li>
+<li>Cloud infrastructure and managed services used by JuaLuma</li>
+<li>Employees and contractors with access to JuaLuma systems</li>
+<li>Application services, APIs, databases, secrets, and logging systems</li>
+</ul>
+<div class="spacer"></div>
+<h2>3. Governance and Accountability</h2>
+<ul>
+<li>Security ownership is assigned to the Security Owner listed above.</li>
+<li>Security responsibilities include access governance, incident response, policy maintenance, and control verification.</li>
+<li>Material control changes are documented and reviewed.</li>
+</ul>
+<div class="spacer"></div>
+<h2>4. Identity and Access Management</h2>
+<ul>
+<li>Access to production systems is restricted to authorized personnel on least-privilege principles.</li>
+<li>Role-based access controls (RBAC) are used where available.</li>
+<li>Administrative access to critical systems requires MFA.</li>
+<li>Non-human system access uses service accounts, managed secrets, and token-based authentication.</li>
+<li>Access changes are made when role changes or separation occurs.</li>
+</ul>
+<div class="spacer"></div>
+<h2>5. Data Protection Controls</h2>
+<h3>5.1 Data in Transit</h3>
+<ul>
+<li>Application traffic is served over HTTPS/TLS (TLS 1.2+).</li>
+<li>Security headers are enforced at the API layer, including HSTS.</li>
+</ul>
+<div class="spacer"></div>
+<h3>5.2 Data at Rest</h3>
+<ul>
+<li>Data is stored in managed cloud services with platform-managed encryption at rest.</li>
+<li>Plaid access tokens are not stored in plaintext in application code or source control and are persisted via secret management controls.</li>
+<li>Sensitive application payloads requiring additional protection are encrypted before storage based on service-level design.</li>
+</ul>
+<div class="spacer"></div>
+<h2>6. Secrets Management</h2>
+<ul>
+<li>Secrets are stored and retrieved through managed secret storage.</li>
+<li>Secrets are not hardcoded in source code.</li>
+<li>Secret access is restricted by IAM and service identity.</li>
+</ul>
+<div class="spacer"></div>
+<h2>7. Application and Infrastructure Security</h2>
+<ul>
+<li>Security middleware is enabled in the backend (request tracing, security headers, API rate limiting).</li>
+<li>Authentication and authorization are enforced for protected endpoints.</li>
+<li>Plaid webhooks are signature-verified before processing.</li>
+<li>Audit logs are generated for sensitive actions.</li>
+</ul>
+<div class="spacer"></div>
+<h2>8. Vulnerability and Patch Management</h2>
+<ul>
+<li>Code quality and correctness checks run in CI before deployment (linting, tests, type checks).</li>
+<li>Security defects identified through development and operations are triaged and remediated by severity.</li>
+<li>Critical and high-severity issues are prioritized for accelerated remediation.</li>
+</ul>
+<div class="spacer"></div>
+<h2>9. Incident Response</h2>
+<ul>
+<li>Security incidents are logged, investigated, and remediated.</li>
+<li>Access is restricted or revoked as needed during containment.</li>
+<li>Post-incident corrective actions are tracked to closure.</li>
+</ul>
+<div class="spacer"></div>
+<h2>10. Vendor and Third-Party Risk</h2>
+<ul>
+<li>Third-party providers used for critical services (for example Plaid, cloud platform, payment providers) are reviewed as part of deployment and operational risk management.</li>
+<li>Integrations are limited to required scopes and credentials.</li>
+</ul>
+<div class="spacer"></div>
+<h2>11. Policy Exceptions</h2>
+<ul>
+<li>Any exception to this policy must be documented, approved by the Security Owner, time-bounded, and reviewed for closure.</li>
+</ul>
+<div class="spacer"></div>
+<h2>12. Enforcement</h2>
+<p>Violations of this policy may result in access removal and other corrective actions.</p>
+<div class="spacer"></div>
+<h2>13. Version History</h2>
+<ul>
+<li>v1.0 (2026-02-20): Initial policy for Plaid security diligence submission.</li>
+</ul>
+</body>
+</html>

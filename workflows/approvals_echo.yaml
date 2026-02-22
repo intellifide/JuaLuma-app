@@ -1,0 +1,13 @@
+# Minimal placeholder workflow so the project has a concrete Workflows resource.
+# This will be replaced with real access/deletion approval orchestration.
+main:
+  params: [input]
+  steps:
+    - init:
+        assign:
+          - request_id: ${default(map.get(input, "request_id"), "unknown")}
+          - status: "accepted"
+    - done:
+        return:
+          request_id: ${request_id}
+          status: ${status}
