@@ -55,7 +55,7 @@ export const Footer = () => (
           <ul>
             {comingSoonItem('Developer Home')}
             {comingSoonItem('Developer SDK')}
-            <li><a href="/PolyForm-Noncommercial-1.0.0.txt">Source Available (Personal Use)</a></li>
+            <li><Link href="/legal/license">Source Available (Personal Use)</Link></li>
           </ul>
         </div>
 
@@ -91,7 +91,7 @@ export const Footer = () => (
       <div className="footer-bottom">
         <p>&copy; 2026 Intellifide LLC. All rights reserved.</p>
         <p style={{ marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-size-xs)' }}>
-          Licensing: <a href="/PolyForm-Noncommercial-1.0.0.txt">Source Available (Personal Use)</a>. Commercial resale or enterprise deployment is prohibited.
+          Licensing: <Link href="/legal/license">Source Available (Personal Use)</Link>. Commercial resale or enterprise deployment is prohibited.
         </p>
         <p style={{ marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-size-xs)' }}>
           JuaLuma is for informational and educational purposes only. It does not provide financial, investment, tax, or legal advice.

@@ -1,84 +1,70 @@
-<!-- Updated 2025-12-10 14:58 CST by ChatGPT -->
+# JuaLuma App
 
-# jualuma App
+JuaLuma is a financial aggregation platform owned and operated by `Intellifide LLC`.
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-85%25-green)
-![License](https://img.shields.io/badge/license-MIT-blue)
+## Monorepo Layout
 
-jualuma is a modern financial management app that syncs bank data, tracks manual assets, surfaces AI-powered insights, and offers a marketplace for extensible widgets.
+- `backend/` - FastAPI API, integrations, jobs, MCP endpoints.
+- `frontend-app/` - Main authenticated user app (Vite + React).
+- `frontend-marketing/` - Public marketing and legal site (Next.js).
+- `support-portal/` - Support operations frontend (Vite + React).
+- `infra/` - Terraform for `dev` -> `stage` -> `prod` environments.
+- `docs/` - legal, compliance, runbooks, release docs.
 
-## Overview
+## Local Run (Canonical)
 
-- **Bank integration**: Plaid-powered webhook-first, cursor-based auto-sync for accounts and transactions.
-- **Manual assets**: Track real estate, vehicles, crypto, and other holdings.
-- **AI assistant**: Conversational guidance with spending summaries and budgeting tips.
-- **Marketplace**: Developer-published widgets with ratings and payouts.
-- **Support portal**: Ticketing and notifications for customers and support staff.
+1. Create root `.env` with required values used by `docker-compose.yml`.
+2. Start all services:
 
-## Technology Stack
+```bash
+docker compose up -d --build
+```
 
-- **Frontend**: React, Vite, TypeScript, Tailwind CSS, Storybook
-- **Backend**: FastAPI, Python 3.11, SQLAlchemy, Pydantic
-- **Data**: PostgreSQL (Cloud SQL) and Google Cloud Firestore
-- **Auth**: GCP Identity Platform (Native REST Implementation)
-- **Infra**: Terraform on Google Cloud Platform
+3. Access services:
+- App frontend: `http://localhost:5175`
+- Support portal: `http://localhost:5176`
+- Marketing site: `http://localhost:5177`
+- Backend API: `http://localhost:8001`
+- Backend docs: `http://localhost:8001/docs`
+- PostgreSQL: `localhost:5433`
 
-## Local Runtime (Docker-only)
+## Service Docs
 
-All app services run via `docker-compose.yml`; the legacy local development doc has been removed.
+- Backend: `backend/README.md`
+- Frontend app: `frontend-app/README.md`
+- Marketing site: `frontend-marketing/README.md`
+- Support portal: `support-portal/README.md`
+- Infrastructure: `infra/README.md`
 
-### Quick Start
+## Collaboration Workflow
 
-1. **Clone**
-   ```bash
-   git clone https://github.com/TCoder920x/jualuma-app.git
-   cd jualuma-app
-   ```
-2. **Environment**
-   - Create `.env` at the repo root with values for `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, and any API keys (see `docker-compose.yml` for expected variables).
-   - Web3 indexer keys and base URLs are documented in `docs/Web3-History-Providers.md`.
-3. **Start stack**
+- Local first: implement and validate in this repo.
+- GitHub second: merge via PR and let CI/CD promote.
+- Promotion order: `dev` -> `stage` -> `prod` only.
+- Do not make direct Cloud Run env/secret/config edits except incident break-glass.
 
-   ```bash
-   docker compose up -d --build
-   ```
+## Quick Validation Commands
 
-   Services:
-   - Backend API: http://localhost:8001
-   - Frontend: http://localhost:5175
-   - Postgres: localhost:5433
+```bash
+# Backend
+pip install -r requirements.txt
+pytest backend/tests
 
-4. **Agent Setup (MCP)**
-   - Configure the IDE to connect to the **Postgres MCP** (`localhost:5433`) and other MCP servers (see details in `docs/tech-stack.md`).
+# Frontend app
+npm --prefix frontend-app run lint
+npm --prefix frontend-app run test
 
-## Developer Tools
+# Marketing site
+npm --prefix frontend-marketing run lint
 
-- **Agent Skills:** Use the AI Agent to perform database seeding, integration verification, and state resets via the `jualuma Dev Tools` MCP (exposed at `/mcp-dev`).
-- **Tests (Host):**
-  ```bash
-  # Backend
-  pip install -r backend/requirements.txt
-  pytest backend/
-  ```
-
-## Contribution Guidelines
-
-- Branch model:
-  - `main` = production
-  - `Dev` = development integration
-  - `stage` = release candidate
-- Create feature branches from `Dev`.
-- Promote changes only by PR flow: `feature/*` -> `Dev` -> `stage` -> `main`.
-- Keep changes small; add tests and docs as needed.
-- Run lint/tests before opening a PR (`pnpm lint && pnpm test` in frontend, `pytest` in backend).
-- Use clear commit messages; avoid committing secrets or `.env`.
-- Promotion gate policy: `docs/stage-release-architecture.md`.
-- Promotion checklist: `docs/stage-promotion-gates.md`.
-- Rollback/incident runbook: `docs/stage-rollback-runbook.md`.
-- Stage ingress/domain policy: `docs/stage-domain-policy.md`.
-- Stage infra inventory: `docs/stage-infra-inventory.md`.
+# Support portal
+npm --prefix support-portal run lint
+npm --prefix support-portal run test
+```
 
 ## License
 
-PolyForm Noncommercial 1.0.0 — see [LICENSE](LICENSE) and [PolyForm-Noncommercial-1.0.0.txt](PolyForm-Noncommercial-1.0.0.txt) for details.
+This repository is source-available under `PolyForm Noncommercial License 1.0.0`.
+
+- Canonical project license notice: `LICENSE`
+- Full license text: `PolyForm-Noncommercial-1.0.0.txt`

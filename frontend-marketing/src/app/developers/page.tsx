@@ -43,7 +43,7 @@ export default function DevelopersPage() {
                 <p className="text-muted mb-3">
                     Commercial resale or enterprise deployment is strictly prohibited.
                 </p>
-                <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline" title="PolyForm Noncommercial 1.0.0">
+                <a href="/legal/license" className="text-primary underline" title="JuaLuma License Notice">
                     View the full license
                 </a>
             </section>
