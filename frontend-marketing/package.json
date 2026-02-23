@@ -2,7 +2,7 @@
   "name": "jualuma-marketing",
   "version": "0.1.0",
   "private": true,
-  "license": "SEE LICENSE IN PolyForm-Noncommercial-1.0.0.txt",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
