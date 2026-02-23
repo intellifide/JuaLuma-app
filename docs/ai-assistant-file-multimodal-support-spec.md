@@ -13,7 +13,9 @@
 - Unsupported files are blocked before submit where platform APIs allow type filtering.
 - Server must reject unsupported file uploads when client-side checks are bypassed.
 - Required user-safe reject copy:
-  - `This file type is not supported. Upload a supported document, spreadsheet, slide, image, JSON, or XML file.`
+  - client pre-submit: `Unsupported file type. Please choose a supported file format.`
+  - server extension reject: `Unsupported file type. Upload a supported document, sheet, slide, image, or structured text file.`
+  - server content-type reject: `Unsupported file content type. Please upload a supported file format.`
 
 ## HEIC Decode And Failure Handling
 
@@ -39,3 +41,11 @@
   - `pdf`, `image`, `word`, `sheet`, `slide`, `text`, `generic`
 - Unknown or edge types must map to `generic`.
 - Composer and storage surfaces must use the same icon taxonomy.
+- Support mapping reference (taxonomy + UI label):
+  - `pdf` -> `PDF` (extensions: `pdf`)
+  - `image` -> `IMG` (extensions: `jpg`, `jpeg`, `png`, `gif`, `webp`, `bmp`, `heic`)
+  - `word` -> `DOC` (extensions: `doc`, `docx`)
+  - `sheet` -> `XLS` (extensions: `csv`, `xls`, `xlsx`)
+  - `slide` -> `PPT` (extensions: `ppt`, `pptx`)
+  - `text` -> `TXT` (extensions: `txt`, `rtf`, `md`, `json`, `xml`)
+  - `generic` -> `FILE` (all unknown/edge extensions)

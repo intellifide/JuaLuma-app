@@ -13,27 +13,65 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { FILE_ICON_LABELS, resolveFileIconKind } from '../utils/fileIconMapping';
+
+const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
+    // Docs
+    'pdf', 'doc', 'docx', 'txt', 'rtf', 'md',
+    // Sheets
+    'csv', 'xls', 'xlsx',
+    // Slides
+    'ppt', 'pptx',
+    // Images
+    'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'heic',
+    // Structured text
+    'json', 'xml',
+]);
+
+const FILE_INPUT_ACCEPT = [
+    '.pdf,.doc,.docx,.txt,.rtf,.md',
+    '.csv,.xls,.xlsx',
+    '.ppt,.pptx',
+    '.png,.jpg,.jpeg,.webp,.gif,.bmp,.heic',
+    '.json,.xml',
+].join(',');
 
 interface ChatInputProps {
     onSendMessage: (message: string) => void;
     onCancel?: () => void;
     onUploadFile?: (file: File) => void;
+    attachments?: ComposerAttachment[];
+    onRemoveAttachment?: (attachmentId: string) => void;
     isLoading: boolean;
     disabled?: boolean;
     placeholder?: string;
     quotaExceeded?: boolean;
 }
 
+export interface ComposerAttachment {
+    id: string;
+    name: string;
+    fileType: string;
+}
+
+const shortenFileName = (name: string): string => {
+    if (name.length <= 10) return name
+    return `${name.slice(0, 10)}...`
+}
+
 export const ChatInput: React.FC<ChatInputProps> = ({
     onSendMessage,
     onCancel,
     onUploadFile,
+    attachments = [],
+    onRemoveAttachment,
     isLoading,
     disabled = false,
     placeholder = "Ask me anything about your finances...",
     quotaExceeded = false
 }) => {
     const [value, setValue] = useState('');
+    const [fileError, setFileError] = useState<string | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     useEffect(() => {
@@ -69,6 +107,42 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     return (
         <div className="flex flex-col gap-2 p-2 bg-transparent">
             <div className="relative w-full rounded-2xl border backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-colors focus-within:border-royal-purple/60" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
+                {attachments.length > 0 && (
+                    <>
+                        <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
+                            {attachments.map((attachment) => (
+                                <div
+                                    key={attachment.id}
+                                    className="inline-flex items-center gap-2 rounded-full border px-2 py-1 text-xs"
+                                    style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}
+                                >
+                                    <span className="inline-flex h-5 min-w-[2.2rem] items-center justify-center rounded-md bg-black/10 px-1 text-[10px] font-semibold tracking-wide text-text-primary">
+                                        {FILE_ICON_LABELS[resolveFileIconKind(attachment.fileType)]}
+                                    </span>
+                                    <span className="max-w-[8rem] truncate text-text-primary">
+                                        {shortenFileName(attachment.name)}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => onRemoveAttachment?.(attachment.id)}
+                                        className="rounded p-0.5 text-text-secondary hover:text-text-primary transition-colors"
+                                        aria-label={`Remove ${attachment.name}`}
+                                        title={`Remove ${attachment.name}`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M18 6L6 18M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <div
+                            className="mx-4 border-t"
+                            style={{ borderColor: 'var(--border-subtle)' }}
+                            data-testid="attachment-separator"
+                        />
+                    </>
+                )}
                 <textarea
                     ref={textareaRef}
                     value={value}
@@ -84,9 +158,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
+                    accept={FILE_INPUT_ACCEPT}
                     onChange={(e) => {
                         const file = e.target.files?.[0]
-                        if (file && onUploadFile) onUploadFile(file)
+                        if (file && onUploadFile) {
+                            const extension = file.name.includes('.')
+                                ? file.name.split('.').pop()?.toLowerCase() ?? ''
+                                : ''
+                            if (!SUPPORTED_UPLOAD_EXTENSIONS.has(extension)) {
+                                setFileError('Unsupported file type. Please choose a supported file format.')
+                            } else {
+                                setFileError(null)
+                                onUploadFile(file)
+                            }
+                        }
                         if (fileInputRef.current) fileInputRef.current.value = ''
                     }}
                 />
@@ -122,6 +207,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     )}
                 </button>
             </div>
+            {fileError && (
+                <p className="text-xs text-red-400 px-1">{fileError}</p>
+            )}
         </div>
     );
 };

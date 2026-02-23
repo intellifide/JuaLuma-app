@@ -43,6 +43,8 @@ export interface HistoryResponse {
 export interface QuotaStatus {
     used: number;
     limit: number;
+    usage_progress?: number;
+    usage_copy?: string;
     resets_at: string;
     tier: string;
 }

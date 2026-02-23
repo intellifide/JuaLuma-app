@@ -19,7 +19,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatTime } from '../utils/datetime';
 import { ChatMessage } from '../components/ChatMessage';
-import { ChatInput } from '../components/ChatInput';
+import { ChatInput, ComposerAttachment } from '../components/ChatInput';
 import { QuotaDisplay } from '../components/QuotaDisplay';
 import { aiService, QuotaStatus } from '../services/aiService';
 import { AIPrivacyModal } from '../components/AIPrivacyModal';
@@ -30,6 +30,7 @@ import { legalService } from '../services/legal';
 import { LEGAL_AGREEMENTS } from '../constants/legal';
 import { AI_STORAGE_UPDATED_EVENT, generateThreadTitle, getAIStorageKeys, getStoredMessages, getStoredThreads } from '../utils/aiThreads';
 import { usePageContext } from '../hooks/usePageContext';
+import { useToast } from '../components/ui/Toast';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -57,6 +58,7 @@ interface Project {
 
 export default function AIAssistant() {
   const { user } = useAuth();
+  const toast = useToast();
   const timeZone = useUserTimeZone();
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -75,6 +77,7 @@ export default function AIAssistant() {
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [composerAttachments, setComposerAttachments] = useState<ComposerAttachment[]>([]);
   const { storageKey, threadStorageKey, threadsStorageKey } = getAIStorageKeys(user?.uid ?? null);
   const projectsStorageKey = user?.uid ? `jualuma_ai_projects_${user.uid}` : 'jualuma_ai_projects_anon';
 
@@ -334,11 +337,28 @@ export default function AIAssistant() {
 
   const handleUploadDoc = async (file: File) => {
       try {
-          await documentService.upload(file);
+          const uploadedDoc = await documentService.upload(file);
+          setComposerAttachments((prev) => [
+            ...prev,
+            {
+              id: uploadedDoc.id,
+              name: uploadedDoc.name,
+              fileType: uploadedDoc.fileType,
+            },
+          ]);
+          toast.show('File uploaded successfully.', 'success');
           mutateDocs(); // Refresh list
-      } catch (e) {
+      } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : 'Upload failed. Please try again.';
+          toast.show(message, 'error');
           console.error("Upload failed", e);
       }
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    setComposerAttachments((prev) =>
+      prev.filter((attachment) => attachment.id !== attachmentId),
+    );
   };
 
   const handleSendMessage = async (text: string) => {
@@ -438,16 +458,23 @@ export default function AIAssistant() {
         response.quota_limit !== undefined &&
         response.quota_used !== undefined
       ) {
+        const nextLimit = response.quota_limit;
+        const nextUsed = response.quota_used;
         setQuota({
-          used: response.quota_used,
-          limit: response.quota_limit,
+          used: nextUsed,
+          limit: nextLimit,
+          usage_progress: nextLimit > 0 ? Math.min(Math.max(nextUsed / nextLimit, 0), 1) : 0,
+          usage_copy: quota?.usage_copy ?? 'AI usage this period',
           tier: quota?.tier ?? 'free',
           resets_at: quota?.resets_at ?? '',
         });
       } else if (response.quota_remaining !== undefined && quota) {
+        const nextUsed = Math.max(quota.limit - response.quota_remaining, 0);
         setQuota({
           ...quota,
-          used: Math.max(quota.limit - response.quota_remaining, 0),
+          used: nextUsed,
+          usage_progress: quota.limit > 0 ? Math.min(Math.max(nextUsed / quota.limit, 0), 1) : 0,
+          usage_copy: quota.usage_copy ?? 'AI usage this period',
         });
       } else {
         const latestQuota = await aiService.getQuota();
@@ -533,6 +560,9 @@ export default function AIAssistant() {
             <QuotaDisplay
               used={quota?.used ?? 0}
               limit={quota?.limit ?? 20}
+              usageProgress={quota?.usage_progress}
+              usageCopy={quota?.usage_copy}
+              resetsAt={quota?.resets_at}
               tier={quota?.tier ?? 'free'}
               loading={!quota}
             />
@@ -660,6 +690,8 @@ export default function AIAssistant() {
                 onSendMessage={handleSendMessage}
                 onCancel={handleCancelResponse}
                 onUploadFile={handleUploadDoc}
+                attachments={composerAttachments}
+                onRemoveAttachment={handleRemoveAttachment}
                 isLoading={isTyping}
                 disabled={!privacyAccepted}
                 quotaExceeded={quotaExceeded}

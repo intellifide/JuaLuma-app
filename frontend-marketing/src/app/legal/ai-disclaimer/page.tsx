@@ -48,6 +48,11 @@ export default function AIDisclaimerPage() {
                             <h3 className="text-xl font-bold text-white">4. Third-Party Data</h3>
                             <p>Insights are only as accurate as the data provided by your linked financial institutions via Plaid. If there are delays or errors in bank data transmission, AI insights will be affected accordingly.</p>
                         </section>
+                        <section className="space-y-4">
+                            <h3 className="text-xl font-bold text-white">5. Model Routing, Fallback, and Usage Reset</h3>
+                            <p>JuaLuma routes free requests to <strong>gpt-oss-120b</strong> and paid requests to <strong>gemini-2.5-flash</strong>. If paid premium capacity is exhausted for the active period, requests automatically fall back to <strong>gpt-oss-120b</strong> with explicit in-product messaging.</p>
+                            <p>Usage is displayed as <strong>AI usage this period</strong> and reset timing follows your billing-cycle anniversary date.</p>
+                        </section>
                     </div>
                 </div>
             </div>
