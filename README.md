@@ -36,8 +36,9 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
    cd jualuma-app
    ```
 2. **Environment**
-   - Create `.env` at the repo root with values for `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, and any API keys (see `docker-compose.yml` for expected variables).
-   - Web3 indexer keys and base URLs are documented in `docs/Web3-History-Providers.md`.
+   - Copy `.env.example` to `.env`, then fill required values.
+   - Active Web3 provider keys are Tatum-only (`TATUM_API_KEY`, `TATUM_BASE_URL`, retry/timeout settings).
+   - Web3 provider contract and support boundaries are documented in `docs/Web3-History-Providers.md`.
 3. **Start stack**
 
    ```bash

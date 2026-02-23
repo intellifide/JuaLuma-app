@@ -32,10 +32,6 @@ from backend.models import (
 from backend.services.analytics import invalidate_analytics_cache
 from backend.services.categorization import predict_category
 from backend.services.connectors import build_connector
-from backend.services.crypto_history import (
-    BitqueryUnavailableError,
-    fetch_crypto_history,
-)
 from backend.services.household_service import get_household_member_uids
 from backend.services.plaid import (
     remove_item,
@@ -44,10 +40,10 @@ from backend.services.plaid_sync import (
     PLAID_SYNC_STATUS_ACTIVE,
     PLAID_SYNC_STATUS_NEEDS_REAUTH,
 )
-from backend.services.web3_history import (
+from backend.services.tatum_history import (
     ProviderError,
     ProviderOverloaded,
-    fetch_web3_history,
+    fetch_tatum_history,
 )
 from backend.utils import get_db
 from backend.utils.normalization import normalize_category, normalize_merchant_name
@@ -974,35 +970,7 @@ def _sync_web3(account: Account) -> tuple[list[dict], str | None, str | None, bo
             if account.web3_sync_chain == chain
             else None
         )
-
-        try:
-            normalized_txns = fetch_crypto_history(account)
-            return (
-                [
-                    {
-                        "date": t.timestamp.date(),
-                        "transaction_id": t.tx_id,
-                        "amount": float(t.amount),
-                        "currency": t.currency_code,
-                        "category": ["Transfer"] if t.type == "transfer" else None,
-                        "merchant_name": t.merchant_name,
-                        "name": t.merchant_name or t.tx_id[:8],
-                        "raw": t.raw,
-                        "on_chain_units": t.on_chain_units,
-                        "on_chain_symbol": t.on_chain_symbol,
-                        "direction": t.direction,  # Pass direction for sign application
-                        "transaction_type": t.type,  # Pass type for better categorization
-                    }
-                    for t in normalized_txns
-                ],
-                None,
-                chain,
-                True,
-            )
-        except BitqueryUnavailableError as exc:
-            logger.warning("Bitquery unavailable; falling back to explorers: %s", exc)
-
-        history = fetch_web3_history(address, chain, cursor)
+        history = fetch_tatum_history(address, chain, cursor)
         normalized_txns = history.transactions
 
         return (

@@ -68,6 +68,21 @@ class AppSettings(BaseSettings):
 
     ai_model: str = Field(default="gemini-2.5-flash", alias="AI_MODEL")
     ai_model_prod: str = Field(default="gemini-2.5-flash", alias="AI_MODEL_PROD")
+    ai_free_model: str = Field(default="gpt-oss-120b", alias="AI_FREE_MODEL")
+    ai_paid_model: str = Field(default="gemini-2.5-flash", alias="AI_PAID_MODEL")
+    ai_paid_fallback_model: str = Field(
+        default="gpt-oss-120b", alias="AI_PAID_FALLBACK_MODEL"
+    )
+    ai_paid_fallback_enabled: bool = Field(
+        default=True, alias="AI_PAID_FALLBACK_ENABLED"
+    )
+    ai_paid_fallback_message: str = Field(
+        default=(
+            "Premium AI limit reached for this period. "
+            "Your request was processed with the standard model (gpt-oss-120b)."
+        ),
+        alias="AI_PAID_FALLBACK_MESSAGE",
+    )
     ai_web_search_enabled: bool = Field(default=True, alias="AI_WEB_SEARCH_ENABLED")
     ai_web_search_max_results: int = Field(default=4, alias="AI_WEB_SEARCH_MAX_RESULTS")
 
@@ -111,42 +126,13 @@ class AppSettings(BaseSettings):
     ripple_rpc_url: str = Field(default="https://s2.ripple.com:51234", alias="RIPPLE_RPC_URL")
     cardano_api_url: str = Field(default="https://api.koios.rest/api/v1", alias="CARDANO_API_URL")
     tron_api_url: str = Field(default="https://api.trongrid.io", alias="TRON_API_URL")
-    etherscan_api_key: str | None = Field(default=None, alias="ETHERSCAN_API_KEY")
-    etherscan_base_url: str = Field(
-        default="https://api.etherscan.io/api", alias="ETHERSCAN_BASE_URL"
-    )
-    polygonscan_api_key: str | None = Field(default=None, alias="POLYGONSCAN_API_KEY")
-    polygonscan_base_url: str = Field(
-        default="https://api.polygonscan.com/api", alias="POLYGONSCAN_BASE_URL"
-    )
-    bscscan_api_key: str | None = Field(default=None, alias="BSCSCAN_API_KEY")
-    bscscan_base_url: str = Field(
-        default="https://api.bscscan.com/api", alias="BSCSCAN_BASE_URL"
-    )
-    helius_api_key: str | None = Field(default=None, alias="HELIUS_API_KEY")
-    helius_base_url: str = Field(
-        default="https://mainnet.helius-rpc.com", alias="HELIUS_BASE_URL"
-    )
-    helius_rpc_url: str | None = Field(default=None, alias="HELIUS_RPC_URL")
-    bitquery_api_key: str | None = Field(default=None, alias="BITQUERY_API_KEY")
-    bitquery_url: str = Field(
-        default="https://streaming.bitquery.io/graphql", alias="BITQUERY_URL"
-    )
-    blockchain_com_url: str = Field(
-        default="https://blockchain.info", alias="BLOCKCHAIN_COM_URL"
-    )
-    blockfrost_api_key: str | None = Field(default=None, alias="BLOCKFROST_API_KEY")
-    blockfrost_url_mainnet: str = Field(
-        default="https://cardano-mainnet.blockfrost.io/api/v0",
-        alias="BLOCKFROST_URL_MAINNET",
-    )
-    xrpscan_url: str = Field(default="https://xrpscan.com/api/v1", alias="XRPSCAN_URL")
-    tronscan_base_url: str = Field(
-        default="https://api.tronscanapi.com", alias="TRONSCAN_BASE_URL"
-    )
-    trongrid_api_key: str | None = Field(default=None, alias="TRONGRID_API_KEY")
-    trongrid_url: str = Field(
-        default="https://api.trongrid.io/v1", alias="TRONGRID_URL"
+    # Active Web3 provider runtime contract (Tatum hard cutover).
+    tatum_api_key: str | None = Field(default=None, alias="TATUM_API_KEY")
+    tatum_base_url: str = Field(default="https://api.tatum.io", alias="TATUM_BASE_URL")
+    tatum_timeout_seconds: int = Field(default=15, alias="TATUM_TIMEOUT_SECONDS")
+    tatum_retry_max_attempts: int = Field(default=3, alias="TATUM_RETRY_MAX_ATTEMPTS")
+    tatum_retry_base_backoff_ms: int = Field(
+        default=250, alias="TATUM_RETRY_BASE_BACKOFF_MS"
     )
 
     # Testmail Config (for development testing)
@@ -236,7 +222,4 @@ class AppSettings(BaseSettings):
 
 settings = AppSettings()
 
-BITQUERY_URL = settings.bitquery_url
-BITQUERY_API_KEY = settings.bitquery_api_key
-
-__all__ = ["AppSettings", "settings", "BITQUERY_URL", "BITQUERY_API_KEY"]
+__all__ = ["AppSettings", "settings"]

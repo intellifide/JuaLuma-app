@@ -53,12 +53,13 @@ jobs:
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest
       # NOTE: All env vars and secrets are managed directly on GCP (GCP-first).
       # Secrets (via secretKeyRef): DATABASE_URL, STRIPE_SECRET_KEY,
-      #   PLAID_CLIENT_ID, PLAID_SECRET, BITQUERY_API_KEY, BLOCKFROST_API_KEY,
+      #   PLAID_CLIENT_ID, PLAID_SECRET, TATUM_API_KEY, TATUM_BASE_URL,
       #   LOCAL_ENCRYPTION_KEY, JOB_RUNNER_SECRET,
       #   GMAIL_SA_KEY (-> GOOGLE_APPLICATION_CREDENTIALS)
       # Plain env vars (set via gcloud directly): APP_ENV, PLAID_ENV,
       #   GCP_PROJECT_ID, STRIPE_PUBLISHABLE_KEY, FRONTEND_URL,
-      #   BACKEND_CORS_ORIGINS, GMAIL_IMPERSONATE_USER
+      #   BACKEND_CORS_ORIGINS, GMAIL_IMPERSONATE_USER,
+      #   TATUM_TIMEOUT_SECONDS, TATUM_RETRY_MAX_ATTEMPTS, TATUM_RETRY_BASE_BACKOFF_MS
       # Do NOT redeclare here -- doing so overwrites secretKeyRef bindings
       # and drops any vars not listed. See scripts/guard_env_vars.py.
       - name: Deploy Backend
