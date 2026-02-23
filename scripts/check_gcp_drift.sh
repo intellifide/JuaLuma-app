@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # GCP Cloud Run Drift Guard — Pre-Commit Hook
 #
-# Strategy: env vars and secrets are managed directly on GCP (GCP-first).
+# Strategy: runtime config must remain consistent with repository-managed
+# deployment policy and Cloud Run bindings.
 # deploy-dev.yml and deploy-prod.yml must NOT declare env_vars for the
 # backend — doing so would overwrite Secret Manager bindings and drop
 # vars not listed.

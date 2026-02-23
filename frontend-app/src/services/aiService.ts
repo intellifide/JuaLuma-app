@@ -22,6 +22,10 @@ export interface AIResponse {
     quota_remaining?: number;
     quota_limit?: number;
     quota_used?: number;
+    effective_model?: string;
+    fallback_applied?: boolean;
+    fallback_reason?: string | null;
+    fallback_message?: string | null;
     web_search_used?: boolean;
     citations?: Array<{ title: string; url: string }>;
 }
@@ -130,6 +134,10 @@ export const aiService = {
                     quota_remaining?: number;
                     quota_limit?: number;
                     quota_used?: number;
+                    effective_model?: string;
+                    fallback_applied?: boolean;
+                    fallback_reason?: string | null;
+                    fallback_message?: string | null;
                     web_search_used?: boolean;
                     citations?: Array<{ title: string; url: string }>;
                     status?: 'started' | 'completed';
@@ -161,6 +169,10 @@ export const aiService = {
                         quota_remaining: parsed.quota_remaining,
                         quota_limit: parsed.quota_limit,
                         quota_used: parsed.quota_used,
+                        effective_model: parsed.effective_model,
+                        fallback_applied: parsed.fallback_applied,
+                        fallback_reason: parsed.fallback_reason,
+                        fallback_message: parsed.fallback_message,
                         web_search_used: parsed.web_search_used,
                         citations: parsed.citations ?? [],
                     };

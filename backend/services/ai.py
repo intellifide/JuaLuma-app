@@ -196,7 +196,7 @@ class AIClient:
             return await self.generate_content(full_prompt)
 
 
-def get_ai_client() -> AIClient:
+def get_ai_client(model_name: str | None = None) -> AIClient:
     """
     Initializes and returns a Vertex AI client.
     """
@@ -208,7 +208,7 @@ def get_ai_client() -> AIClient:
 
     if vertexai:
         vertexai.init(project=project_id, location=location)
-        selected_model = settings.ai_model_prod or settings.ai_model
+        selected_model = model_name or settings.ai_model_prod or settings.ai_model
         model = GenerativeModel(selected_model)
         logger.info(
             "Initialized Vertex AI client with model %s",
@@ -229,6 +229,38 @@ TIER_LIMITS = {
     "ultimate_monthly": 80,
     "ultimate_annual": 80,
 }
+
+
+def _is_paid_tier(tier: str) -> bool:
+    return tier.lower() != "free"
+
+
+def resolve_model_routing(tier: str, usage_today: int, limit: int) -> dict[str, Any]:
+    normalized_tier = tier.lower().strip()
+    paid_limit_exhausted = _is_paid_tier(normalized_tier) and usage_today >= limit
+
+    if normalized_tier == "free":
+        return {
+            "model": settings.ai_free_model,
+            "fallback_applied": False,
+            "fallback_reason": None,
+            "fallback_message": None,
+        }
+
+    if paid_limit_exhausted and settings.ai_paid_fallback_enabled:
+        return {
+            "model": settings.ai_paid_fallback_model,
+            "fallback_applied": True,
+            "fallback_reason": "paid_premium_limit_exhausted",
+            "fallback_message": settings.ai_paid_fallback_message,
+        }
+
+    return {
+        "model": settings.ai_paid_model,
+        "fallback_applied": False,
+        "fallback_reason": None,
+        "fallback_message": None,
+    }
 
 
 def _runtime_context_block() -> str:
@@ -322,7 +354,7 @@ def _check_rate_limit_sync(user_id: str) -> tuple[str, int, int]:
     snapshot = doc_ref.get()
     current_usage = (snapshot.get("request_count") or 0) if snapshot.exists else 0
 
-    if current_usage >= limit:
+    if tier == "free" and current_usage >= limit:
         raise HTTPException(
             status_code=429,
             detail=f"You have reached your daily limit of {limit} AI requests for the {tier} tier.",
@@ -349,7 +381,7 @@ def _increment_usage_sync(user_id: str, tier: str, limit: int) -> int:
         snapshot = doc_ref.get(transaction=transaction)
         current_usage = (snapshot.get("request_count") or 0) if snapshot.exists else 0
 
-        if current_usage >= limit:
+        if tier == "free" and current_usage >= limit:
             raise HTTPException(
                 status_code=429,
                 detail=f"You have reached your daily limit of {limit} AI requests for the {tier} tier.",
@@ -397,7 +429,8 @@ async def generate_chat_response(  # noqa: C901
     else:
         tier, limit, current_usage = await check_rate_limit(user_id)
 
-    client = get_ai_client()
+    routing = resolve_model_routing(tier=tier, usage_today=current_usage, limit=limit)
+    client = get_ai_client(model_name=str(routing["model"]))
 
     # 2. Prepare Prompt & System Instructions using PromptManager
     # Fetch dynamically from Vertex AI if available
@@ -488,7 +521,7 @@ async def generate_chat_response(  # noqa: C901
             tokens_input=prompt_tokens,
             tokens_output=candidates_tokens,
             latency_ms=(end_time - start_time) * 1000,
-            model=settings.ai_model_prod or settings.ai_model,
+            model=str(routing["model"]),
             user_id=user_id,
             is_cached=use_cache and bool(context),
         )
@@ -502,6 +535,10 @@ async def generate_chat_response(  # noqa: C901
             "usage_today": usage_after,
             "citations": citations,
             "web_search_used": web_search_used,
+            "effective_model": routing["model"],
+            "fallback_applied": routing["fallback_applied"],
+            "fallback_reason": routing["fallback_reason"],
+            "fallback_message": routing["fallback_message"],
         }
     except HTTPException:
         # Re-raise HTTPExceptions (like 429/503 from generate_content)
@@ -532,7 +569,8 @@ async def generate_chat_response_stream(
     else:
         tier, limit, _ = await check_rate_limit(user_id)
 
-    client = get_ai_client()
+    routing = resolve_model_routing(tier=tier, usage_today=prechecked_limit[2] if prechecked_limit else 0, limit=limit)
+    client = get_ai_client(model_name=str(routing["model"]))
     context_parts = [part for part in [context or "", _client_context_block(client_context)] if part]
     merged_context = "\n\n".join(context_parts)
 
@@ -589,7 +627,7 @@ async def generate_chat_response_stream(
             tokens_input=0,
             tokens_output=0,
             latency_ms=(end_time - start_time) * 1000,
-            model=settings.ai_model_prod or settings.ai_model,
+            model=str(routing["model"]),
             user_id=user_id,
             is_cached=False,
         )
@@ -603,6 +641,10 @@ async def generate_chat_response_stream(
             "limit": limit,
             "citations": citations,
             "web_search_used": web_search_used,
+            "effective_model": routing["model"],
+            "fallback_applied": routing["fallback_applied"],
+            "fallback_reason": routing["fallback_reason"],
+            "fallback_message": routing["fallback_message"],
         }
     except HTTPException:
         raise
