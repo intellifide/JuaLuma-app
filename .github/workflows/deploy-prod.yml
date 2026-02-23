@@ -69,8 +69,8 @@ jobs:
             --keyversion-keyring=${{ env.BINAUTHZ_KEYRING }} \
             --keyversion-key=${{ env.BINAUTHZ_KEY }} \
             --keyversion=${{ env.BINAUTHZ_KEY_VERSION }}
-      # NOTE: All env vars and secrets are managed directly on GCP (GCP-first).
-      # Do NOT redeclare here -- doing so overwrites secretKeyRef bindings
+      # NOTE: Runtime env vars/secrets are controlled via repository-driven promotion.
+      # Do NOT redeclare here without controlled config updates -- doing so overwrites secretKeyRef bindings
       # and drops any vars not listed. See scripts/guard_env_vars.py.
       - name: Deploy Backend
         uses: "google-github-actions/deploy-cloudrun@v2"

@@ -52,6 +52,10 @@ class ChatResponse(BaseModel):
     quota_remaining: int | None = None
     quota_limit: int | None = None
     quota_used: int | None = None
+    effective_model: str | None = None
+    fallback_applied: bool = False
+    fallback_reason: str | None = None
+    fallback_message: str | None = None
     web_search_used: bool = False
     citations: list[dict[str, str]] = Field(default_factory=list)
 
@@ -167,6 +171,10 @@ async def chat_endpoint(
     )
     ai_response = result.get("response", "")
     usage_today = result.get("usage_today")
+    effective_model = result.get("effective_model") or _active_model_name()
+    fallback_applied = bool(result.get("fallback_applied"))
+    fallback_reason = result.get("fallback_reason")
+    fallback_message = result.get("fallback_message")
     # Compute quota remaining using the same limit used for the rate check
     # Fall back gracefully if the generator did not return usage info
     if usage_today is not None:
@@ -193,7 +201,7 @@ async def chat_endpoint(
 
         log_entry = LLMLog(
             uid=user_id,
-            model=_active_model_name(),
+            model=effective_model,
             encrypted_prompt=encrypted_prompt,
             encrypted_response=encrypted_response,
             # context_used not in model
@@ -210,6 +218,10 @@ async def chat_endpoint(
         quota_remaining=quota_remaining,
         quota_limit=quota_limit,
         quota_used=quota_used,
+        effective_model=effective_model,
+        fallback_applied=fallback_applied,
+        fallback_reason=fallback_reason,
+        fallback_message=fallback_message,
         web_search_used=bool(result.get("web_search_used")),
         citations=result.get("citations") or [],
     )
@@ -256,6 +268,10 @@ async def chat_stream_endpoint(
         effective_tier = tier
         citations: list[dict[str, str]] = []
         web_search_used = False
+        effective_model: str | None = None
+        fallback_applied = False
+        fallback_reason: str | None = None
+        fallback_message: str | None = None
 
         try:
             async for event in generate_chat_response_stream(
@@ -291,6 +307,10 @@ async def chat_stream_endpoint(
                     quota_remaining = max(quota_limit - quota_used, 0)
                     citations = event.get("citations") or []
                     web_search_used = bool(event.get("web_search_used"))
+                    effective_model = str(event.get("effective_model") or "") or _active_model_name()
+                    fallback_applied = bool(event.get("fallback_applied"))
+                    fallback_reason = event.get("fallback_reason")
+                    fallback_message = event.get("fallback_message")
 
             # 4. Log to Audit (LLMLog) - skip for free tier to keep sessions ephemeral
             if effective_tier != "free" and final_response:
@@ -299,7 +319,7 @@ async def chat_stream_endpoint(
 
                 log_entry = LLMLog(
                     uid=user_id,
-                    model=_active_model_name(),
+                    model=effective_model or _active_model_name(),
                     encrypted_prompt=encrypted_prompt,
                     encrypted_response=encrypted_response,
                     tokens=0,
@@ -316,6 +336,10 @@ async def chat_stream_endpoint(
                 "quota_remaining": quota_remaining,
                 "quota_limit": quota_limit,
                 "quota_used": quota_used,
+                "effective_model": effective_model or _active_model_name(),
+                "fallback_applied": fallback_applied,
+                "fallback_reason": fallback_reason,
+                "fallback_message": fallback_message,
                 "web_search_used": web_search_used,
                 "citations": citations,
             }

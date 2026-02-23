@@ -5,7 +5,9 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from backend.core import settings
 from backend.models import LLMLog, Subscription
+from backend.services.ai import resolve_model_routing
 
 # Tests for backend/api/ai.py
 
@@ -22,7 +24,13 @@ def mock_ai_services():
         patch("backend.api.ai.decrypt_prompt") as mock_decrypt,
     ):
         mock_limit.return_value = 5  # 5 used today
-        mock_gen.return_value = {"response": "This is AI response"}
+        mock_gen.return_value = {
+            "response": "This is AI response",
+            "effective_model": "gemini-2.5-flash",
+            "fallback_applied": False,
+            "fallback_reason": None,
+            "fallback_message": None,
+        }
         mock_rag.return_value = "Retrieved Context"
         mock_encrypt.return_value = "encrypted_prompt"
         mock_decrypt.return_value = "Decrypted Prompt"
@@ -48,6 +56,10 @@ def test_chat_success(test_client: TestClient, test_db, mock_auth, mock_ai_servi
     assert response.status_code == 200
     data = response.json()
     assert data["response"] == "This is AI response"
+    assert data["effective_model"] == "gemini-2.5-flash"
+    assert data["fallback_applied"] is False
+    assert data["fallback_reason"] is None
+    assert data["fallback_message"] is None
 
     # Verify calls
     mock_ai_services["check_rate_limit"].assert_called_once_with(mock_auth.uid)
@@ -160,3 +172,25 @@ def test_chat_history(test_client: TestClient, test_db, mock_auth, mock_ai_servi
 
     # Verify decryption called 4 times (2 logs * (prompt + response))
     assert mock_ai_services["decrypt_prompt"].call_count == 4
+
+
+def test_resolve_model_routing_free_default():
+    result = resolve_model_routing(tier="free", usage_today=0, limit=10)
+    assert result["model"] == settings.ai_free_model
+    assert result["fallback_applied"] is False
+    assert result["fallback_reason"] is None
+
+
+def test_resolve_model_routing_paid_default():
+    result = resolve_model_routing(tier="pro", usage_today=3, limit=40)
+    assert result["model"] == settings.ai_paid_model
+    assert result["fallback_applied"] is False
+    assert result["fallback_reason"] is None
+
+
+def test_resolve_model_routing_paid_limit_exhausted_fallback():
+    result = resolve_model_routing(tier="pro", usage_today=40, limit=40)
+    assert result["model"] == settings.ai_paid_fallback_model
+    assert result["fallback_applied"] is True
+    assert result["fallback_reason"] == "paid_premium_limit_exhausted"
+    assert "Premium AI limit reached" in (result["fallback_message"] or "")
