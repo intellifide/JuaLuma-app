@@ -119,3 +119,5 @@ jobs:
           service: "support-portal"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest"
           region: ${{ env.REGION }}
+          env_vars: |-
+            API_UPSTREAM=${{ steps.deploy_backend.outputs.url }}
