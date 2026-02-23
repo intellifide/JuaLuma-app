@@ -160,7 +160,7 @@ describe('HouseholdPage Integration', () => {
         // Modal should open
         expect(screen.getByText('Invite Member', { selector: 'h2' })).toBeInTheDocument()
 
-        const emailInput = screen.getByPlaceholderText('friend@testmail.app')
+        const emailInput = screen.getByPlaceholderText(/friend@.*\.com/i)
         await user.type(emailInput, 'new@testmail.app')
 
         const sendBtn = screen.getByText('Send Invite')
