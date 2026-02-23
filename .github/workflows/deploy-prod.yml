@@ -7,6 +7,11 @@ on:
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   REGION: us-central1
+  BINAUTHZ_ATTESTOR: projects/jualuma-prod/attestors/prod-image-attestor
+  BINAUTHZ_KEY_LOCATION: global
+  BINAUTHZ_KEYRING: binauthz
+  BINAUTHZ_KEY: prod-attestor-key
+  BINAUTHZ_KEY_VERSION: "1"
 
 jobs:
   guard:
@@ -38,6 +43,8 @@ jobs:
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          install_components: "beta"
 
       - name: "Authorize Docker"
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
@@ -51,6 +58,17 @@ jobs:
         run: |
           docker build -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest -f backend/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest
+          BACKEND_DIGEST=$(gcloud artifacts docker images describe us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest --format='value(image_summary.digest)')
+          BACKEND_ARTIFACT=us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend@${BACKEND_DIGEST}
+          gcloud --quiet beta container binauthz attestations sign-and-create \
+            --project=${{ env.PROJECT_ID }} \
+            --artifact-url="${BACKEND_ARTIFACT}" \
+            --attestor="${{ env.BINAUTHZ_ATTESTOR }}" \
+            --keyversion-project=${{ env.PROJECT_ID }} \
+            --keyversion-location=${{ env.BINAUTHZ_KEY_LOCATION }} \
+            --keyversion-keyring=${{ env.BINAUTHZ_KEYRING }} \
+            --keyversion-key=${{ env.BINAUTHZ_KEY }} \
+            --keyversion=${{ env.BINAUTHZ_KEY_VERSION }}
       # NOTE: All env vars and secrets are managed directly on GCP (GCP-first).
       # Do NOT redeclare here -- doing so overwrites secretKeyRef bindings
       # and drops any vars not listed. See scripts/guard_env_vars.py.
@@ -71,6 +89,17 @@ jobs:
             -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest \
             -f frontend-app/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest
+          FRONTEND_DIGEST=$(gcloud artifacts docker images describe us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest --format='value(image_summary.digest)')
+          FRONTEND_ARTIFACT=us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app@${FRONTEND_DIGEST}
+          gcloud --quiet beta container binauthz attestations sign-and-create \
+            --project=${{ env.PROJECT_ID }} \
+            --artifact-url="${FRONTEND_ARTIFACT}" \
+            --attestor="${{ env.BINAUTHZ_ATTESTOR }}" \
+            --keyversion-project=${{ env.PROJECT_ID }} \
+            --keyversion-location=${{ env.BINAUTHZ_KEY_LOCATION }} \
+            --keyversion-keyring=${{ env.BINAUTHZ_KEYRING }} \
+            --keyversion-key=${{ env.BINAUTHZ_KEY }} \
+            --keyversion=${{ env.BINAUTHZ_KEY_VERSION }}
       - name: Deploy Frontend App
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
@@ -88,6 +117,17 @@ jobs:
             -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest \
             -f frontend-marketing/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest
+          MARKETING_DIGEST=$(gcloud artifacts docker images describe us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest --format='value(image_summary.digest)')
+          MARKETING_ARTIFACT=us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site@${MARKETING_DIGEST}
+          gcloud --quiet beta container binauthz attestations sign-and-create \
+            --project=${{ env.PROJECT_ID }} \
+            --artifact-url="${MARKETING_ARTIFACT}" \
+            --attestor="${{ env.BINAUTHZ_ATTESTOR }}" \
+            --keyversion-project=${{ env.PROJECT_ID }} \
+            --keyversion-location=${{ env.BINAUTHZ_KEY_LOCATION }} \
+            --keyversion-keyring=${{ env.BINAUTHZ_KEYRING }} \
+            --keyversion-key=${{ env.BINAUTHZ_KEY }} \
+            --keyversion=${{ env.BINAUTHZ_KEY_VERSION }}
       - name: Deploy Marketing
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
@@ -105,6 +145,17 @@ jobs:
             -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest \
             -f support-portal/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest
+          SUPPORT_DIGEST=$(gcloud artifacts docker images describe us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest --format='value(image_summary.digest)')
+          SUPPORT_ARTIFACT=us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal@${SUPPORT_DIGEST}
+          gcloud --quiet beta container binauthz attestations sign-and-create \
+            --project=${{ env.PROJECT_ID }} \
+            --artifact-url="${SUPPORT_ARTIFACT}" \
+            --attestor="${{ env.BINAUTHZ_ATTESTOR }}" \
+            --keyversion-project=${{ env.PROJECT_ID }} \
+            --keyversion-location=${{ env.BINAUTHZ_KEY_LOCATION }} \
+            --keyversion-keyring=${{ env.BINAUTHZ_KEYRING }} \
+            --keyversion-key=${{ env.BINAUTHZ_KEY }} \
+            --keyversion=${{ env.BINAUTHZ_KEY_VERSION }}
       - name: Deploy Support
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:

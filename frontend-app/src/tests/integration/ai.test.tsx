@@ -84,7 +84,9 @@ describe('AI Assistant Integration', () => {
         await waitFor(() => {
             expect(aiService.getQuota).toHaveBeenCalled()
         })
-        expect(screen.getByText(/5 \/ 20/)).toBeInTheDocument() // Quota display
+        await waitFor(() => {
+            expect(screen.getByText(/5 \/ 20/)).toBeInTheDocument()
+        }) // Quota display
         // Expect default welcome message if history is empty
         expect(screen.getByText(/Hello! I'm your AI Assistant/i)).toBeInTheDocument()
     })
@@ -129,7 +131,9 @@ describe('AI Assistant Integration', () => {
         })
 
         // Quota should update (20 - 14 = 6 used)
-        expect(screen.getByText(/6 \/ 20/)).toBeInTheDocument()
+        await waitFor(() => {
+            expect(screen.getByText(/6 \/ 20/)).toBeInTheDocument()
+        })
     })
 
     it('shows privacy modal if not accepted', async () => {

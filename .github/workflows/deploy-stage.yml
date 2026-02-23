@@ -33,12 +33,14 @@ jobs:
           set -euo pipefail
           test -n "${PROJECT_ID}" || (echo "Missing vars.GCP_PROJECT_ID_STAGE" && exit 1)
           test -n "${REGION}" || (echo "Missing vars.GCP_REGION_STAGE" && exit 1)
-          test -n "${{ secrets.GCP_SA_KEY_STAGE }}" || (echo "Missing secret GCP_SA_KEY_STAGE" && exit 1)
+          test -n "${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}" || (echo "Missing secret GCP_WIF_PROVIDER_STAGE" && exit 1)
+          test -n "${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}" || (echo "Missing secret GCP_WIF_SERVICE_ACCOUNT_STAGE" && exit 1)
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_STAGE }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
