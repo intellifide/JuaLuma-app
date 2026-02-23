@@ -17,7 +17,7 @@ try:
     from PIL import Image, UnidentifiedImageError
 except ImportError:  # pragma: no cover - dependency fallback
     Image = None  # type: ignore[assignment]
-    UnidentifiedImageError = Exception  # type: ignore[assignment]
+    UnidentifiedImageError = Exception  # type: ignore[misc]
 
 try:
     from pillow_heif import register_heif_opener

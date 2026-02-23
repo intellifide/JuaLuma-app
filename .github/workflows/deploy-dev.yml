@@ -63,6 +63,7 @@ jobs:
       # Do NOT redeclare here without controlled config updates -- doing so overwrites secretKeyRef bindings
       # and drops any vars not listed. See scripts/guard_env_vars.py.
       - name: Deploy Backend
+        id: deploy_backend
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: "jualuma-backend"
@@ -84,6 +85,8 @@ jobs:
           service: "frontend-app"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest"
           region: ${{ env.REGION }}
+          env_vars: |-
+            API_UPSTREAM=${{ steps.deploy_backend.outputs.url }}
 
       # 3. Marketing
       - name: Build and Push Marketing
