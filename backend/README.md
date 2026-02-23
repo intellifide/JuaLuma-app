@@ -8,4 +8,6 @@
 
 ## Development
 - Dependencies: `requirements.txt`
-- Env: `.env` (Loaded via `backend.core.settings`)
+- Env: `.env` (loaded via `backend.core.settings`)
+- Local template: copy repo-root `.env.example` to repo-root `.env`
+- Active Web3 provider env contract: `TATUM_API_KEY`, `TATUM_BASE_URL`, `TATUM_TIMEOUT_SECONDS`, `TATUM_RETRY_MAX_ATTEMPTS`, `TATUM_RETRY_BASE_BACKOFF_MS`

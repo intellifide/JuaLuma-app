@@ -53,6 +53,42 @@ gcloud sql instances describe jualuma-db-prod --project=jualuma-prod --format="v
 **Symptom:** deploy-prod.yml fails
 **Action:** Check GitHub Actions run log. Common causes: Docker build failure, Artifact Registry auth, Cloud Run quota.
 
+### 5. Tatum 429 Rate-Limit Or Credit-Guardrail Events
+**Symptom:** Backend logs contain `ProviderOverloaded`, `Tatum rate limit hit`, or repeated HTTP `429`.
+**Action:**
+```bash
+# Provider overload / retry failures (last 1 hour)
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=jualuma-backend AND (textPayload:\"ProviderOverloaded\" OR textPayload:\"Tatum rate limit hit\" OR textPayload:\"429\")" \
+  --project=jualuma-prod --limit=100 --freshness=1h
+```
+- If sustained, reduce non-critical sync load and defer bulk backfills.
+- Verify `TATUM_RETRY_MAX_ATTEMPTS` and `TATUM_RETRY_BASE_BACKOFF_MS` are aligned with policy.
+
+### 6. Tatum Provider Outage / 5xx Burst
+**Symptom:** Elevated backend errors with `Tatum returned 5xx`.
+**Action:**
+```bash
+# Provider 5xx signature (last 1 hour)
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=jualuma-backend AND (textPayload:\"Tatum returned 5\" OR textPayload:\"Tatum request failed\")" \
+  --project=jualuma-prod --limit=100 --freshness=1h
+```
+- Confirm whether failures are isolated to Web3 sync endpoints.
+- Follow incident-response flow if user-facing impact exceeds SEV-2 thresholds.
+
+## Web3 Safety-Gate Verification Reference (TAT-009)
+
+Use this checklist when validating provider behavior after config changes:
+
+- Chain parity pass/fail is captured for all supported chains.
+- Normalization output remains schema-safe (no violations).
+- Cursor/idempotency is stable across repeated runs.
+- 429/retry escalation behavior matches policy.
+
+Primary evidence sources:
+
+- `backend/tests/test_tatum_history.py`
+- gate report artifact (for example `/tmp/tat009_gate_report.json`)
+
 ## Maintenance Windows
 - **Database maintenance:** Scheduled by GCP, notifications via email
 - **Planned downtime:** Not applicable (Cloud Run is serverless)

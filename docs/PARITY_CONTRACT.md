@@ -1,6 +1,6 @@
 # Runtime Parity Contract (Prod vs Stage)
 
-Last updated: 2026-02-22 (UTC)
+Last updated: 2026-02-23 (UTC)
 
 ## Rule
 
@@ -21,8 +21,8 @@ Last updated: 2026-02-22 (UTC)
 - `STRIPE_SECRET_KEY` (secret ref)
 - `PLAID_CLIENT_ID` (secret ref)
 - `PLAID_SECRET` (secret ref)
-- `BITQUERY_API_KEY` (secret ref)
-- `BLOCKFROST_API_KEY` (secret ref)
+- `TATUM_API_KEY` (secret ref)
+- `TATUM_BASE_URL` (secret ref)
 - `JOB_RUNNER_SECRET` (secret ref)
 - `LOCAL_ENCRYPTION_KEY` (secret ref)
 - `GOOGLE_APPLICATION_CREDENTIALS` (secret ref)
