@@ -12,9 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - https://jualuma-user-app-77ybfmw7cq-uc.a.run.app
-          - https://jualuma-support-77ybfmw7cq-uc.a.run.app
-          - https://jualuma-marketing-77ybfmw7cq-uc.a.run.app
+          - https://frontend-app-77ybfmw7cq-uc.a.run.app
+          - https://support-portal-77ybfmw7cq-uc.a.run.app
+          - https://marketing-site-77ybfmw7cq-uc.a.run.app
     steps:
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.14.0
