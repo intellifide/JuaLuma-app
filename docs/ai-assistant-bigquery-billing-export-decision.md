@@ -16,6 +16,18 @@
 - Decision owner: `Platform Operations (ops@intellifide.com)`.
 - Review cadence owner: `Platform Operations`, monthly cost review.
 
+## Post-Cutover Budget Alert Tuning Review
+
+- Review date: `2026-02-23`.
+- Reviewed scope:
+  - AI assistant budget guardrail thresholds (`50%`, `75%`, `90%`, `100%`).
+  - Dev/prod notification channel routing and alert delivery.
+  - Alert noise level vs actionable signal in post-cutover window.
+- Outcome: `No threshold changes required` at closeout; current thresholds remain active.
+- Follow-up cadence:
+  - weekly alert triage in operations review
+  - monthly threshold tuning checkpoint owned by `Platform Operations`
+
 ## Enablement Criteria (If Later Enabled)
 
 - Export target dataset created with CMEK/KMS policy aligned to environment controls.

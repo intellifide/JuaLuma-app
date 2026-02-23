@@ -1,8 +1,8 @@
 
 import logging
 import os
-import shutil
 import uuid
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -13,12 +13,108 @@ from backend.middleware.auth import get_current_user
 from backend.models import User, UserDocument
 from backend.utils import get_db
 
+try:
+    from PIL import Image, UnidentifiedImageError
+except ImportError:  # pragma: no cover - dependency fallback
+    Image = None  # type: ignore[assignment]
+    UnidentifiedImageError = Exception  # type: ignore[assignment]
+
+try:
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+    HEIC_DECODER_AVAILABLE = True
+except ImportError:
+    HEIC_DECODER_AVAILABLE = False
+
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
 
 # Basic local storage configuration
 UPLOAD_DIR = Path("data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_FILE_EXTENSIONS = {
+    # Docs
+    "pdf", "doc", "docx", "txt", "rtf", "md",
+    # Sheets
+    "csv", "xls", "xlsx",
+    # Slides
+    "ppt", "pptx",
+    # Images
+    "png", "jpg", "jpeg", "webp", "gif", "bmp", "heic",
+    # Structured text
+    "json", "xml",
+}
+
+ALLOWED_CONTENT_TYPE_PREFIXES = (
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "application/rtf",
+    "text/markdown",
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "image/",
+    "application/json",
+    "application/xml",
+    "text/xml",
+)
+
+HEIC_EXTENSIONS = {"heic", "heif"}
+
+HEIC_FAILURE_MESSAGES = {
+    "HEIC_DECODER_UNAVAILABLE": (
+        "HEIC upload is currently unavailable. Please convert the image to JPG or PNG and retry."
+    ),
+    "HEIC_EMPTY_FILE": "The HEIC file is empty. Please upload a valid image.",
+    "HEIC_DECODE_FAILED": (
+        "We couldn't process that HEIC image. Please export it as JPG or PNG and try again."
+    ),
+}
+
+
+class HeicNormalizationError(Exception):
+    def __init__(self, reason_code: str) -> None:
+        super().__init__(reason_code)
+        self.reason_code = reason_code
+
+
+def _is_content_type_allowed(content_type: str | None) -> bool:
+    if not content_type:
+        return True
+    normalized = content_type.lower().strip()
+    return any(
+        normalized == prefix or normalized.startswith(prefix)
+        for prefix in ALLOWED_CONTENT_TYPE_PREFIXES
+    )
+
+
+def _extract_file_extension(filename: str | None) -> str:
+    if not filename or "." not in filename:
+        return ""
+    return filename.rsplit(".", 1)[-1].lower().strip()
+
+
+def _normalize_heic_bytes(file_bytes: bytes) -> bytes:
+    if not file_bytes:
+        raise HeicNormalizationError("HEIC_EMPTY_FILE")
+    if not HEIC_DECODER_AVAILABLE or Image is None:
+        raise HeicNormalizationError("HEIC_DECODER_UNAVAILABLE")
+
+    try:
+        with Image.open(BytesIO(file_bytes)) as source_image:
+            rgb_image = source_image.convert("RGB")
+            output = BytesIO()
+            rgb_image.save(output, format="JPEG", quality=90, optimize=True)
+            return output.getvalue()
+    except (UnidentifiedImageError, OSError):
+        raise HeicNormalizationError("HEIC_DECODE_FAILED") from None
+
 
 @router.get("/")
 @router.get("", include_in_schema=False)
@@ -39,17 +135,55 @@ async def upload_document(
     db: Session = Depends(get_db),
 ):
     """Upload a new document."""
-    # Validate file type/size if necessary
+    file_ext = _extract_file_extension(file.filename)
+    if file_ext not in ALLOWED_FILE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Unsupported file type. Upload a supported document, sheet, slide, image, "
+                "or structured text file."
+            ),
+        )
+
+    if not _is_content_type_allowed(file.content_type):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file content type. Please upload a supported file format.",
+        )
+
+    stored_file_ext = file_ext
+
+    try:
+        raw_bytes = await file.read()
+        if stored_file_ext in HEIC_EXTENSIONS:
+            raw_bytes = _normalize_heic_bytes(raw_bytes)
+            stored_file_ext = "jpg"
+    except HeicNormalizationError as exc:
+        logger.warning(
+            "HEIC_NORMALIZATION_FAILED reason_code=%s filename=%s uid=%s",
+            exc.reason_code,
+            file.filename,
+            current_user.uid,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=HEIC_FAILURE_MESSAGES.get(
+                exc.reason_code,
+                "We couldn't process that HEIC image. Please export it as JPG or PNG and try again.",
+            ),
+        ) from exc
+
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
     # Generate secure filename
-    file_ext = file.filename.split(".")[-1].lower() if "." in file.filename else "txt"
     file_id = uuid.uuid4()
-    secure_filename = f"{file_id}.{file_ext}"
+    secure_filename = f"{file_id}.{stored_file_ext}"
     file_path = UPLOAD_DIR / secure_filename
 
     try:
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(raw_bytes)
 
         file_size = os.path.getsize(file_path)
 
@@ -58,7 +192,7 @@ async def upload_document(
             uid=current_user.uid,
             name=file.filename,
             type=type,
-            file_type=file_ext,
+            file_type=stored_file_ext,
             file_path=str(file_path),
             size_bytes=file_size
         )
@@ -109,7 +243,7 @@ def preview_document(
 
     # Simple logic: if image or text, return it.
     media_type = "application/octet-stream"
-    if doc.file_type in ['jpg', 'jpeg', 'png', 'gif']:
+    if doc.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic']:
         media_type = f"image/{doc.file_type}"
     elif doc.file_type == 'pdf':
         media_type = "application/pdf"

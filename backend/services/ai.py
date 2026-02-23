@@ -1,5 +1,6 @@
 # Last Modified: 2026-01-18 03:16 CST
 import asyncio
+import calendar
 import datetime
 import inspect
 import json
@@ -218,21 +219,157 @@ def get_ai_client(model_name: str | None = None) -> AIClient:
     raise ImportError("google.cloud.aiplatform package is missing.")
 
 
+# Token budgets per billing-cycle period.
 TIER_LIMITS = {
-    "free": 10,
-    "essential": 30,
-    "essential_monthly": 30,
-    "pro": 40,
-    "pro_monthly": 40,
-    "pro_annual": 40,
-    "ultimate": 80,
-    "ultimate_monthly": 80,
-    "ultimate_annual": 80,
+    "free": 20000,
+    "essential": 120000,
+    "essential_monthly": 120000,
+    "pro": 300000,
+    "pro_monthly": 300000,
+    "pro_annual": 300000,
+    "ultimate": 600000,
+    "ultimate_monthly": 600000,
+    "ultimate_annual": 600000,
 }
 
 
 def _is_paid_tier(tier: str) -> bool:
     return tier.lower() != "free"
+
+
+def _safe_anchor_day(year: int, month: int, anchor_day: int) -> int:
+    return min(anchor_day, calendar.monthrange(year, month)[1])
+
+
+def _month_start_from_anchor(year: int, month: int, anchor_day: int) -> datetime.datetime:
+    day = _safe_anchor_day(year, month, anchor_day)
+    return datetime.datetime(year=year, month=month, day=day, tzinfo=datetime.UTC)
+
+
+def _shift_year_month(year: int, month: int, months: int) -> tuple[int, int]:
+    month_index = (month - 1) + months
+    shifted_year = year + (month_index // 12)
+    shifted_month = (month_index % 12) + 1
+    return shifted_year, shifted_month
+
+
+def _anniversary_period_window(
+    now_utc: datetime.datetime, anchor_day: int
+) -> tuple[datetime.datetime, datetime.datetime]:
+    this_month_start = _month_start_from_anchor(now_utc.year, now_utc.month, anchor_day)
+    if now_utc >= this_month_start:
+        period_start = this_month_start
+        next_year, next_month = _shift_year_month(period_start.year, period_start.month, 1)
+        period_end = _month_start_from_anchor(next_year, next_month, anchor_day)
+    else:
+        prev_year, prev_month = _shift_year_month(now_utc.year, now_utc.month, -1)
+        period_start = _month_start_from_anchor(prev_year, prev_month, anchor_day)
+        period_end = this_month_start
+    return period_start, period_end
+
+
+def _estimate_tokens_from_text(text: str | None) -> int:
+    if not text:
+        return 0
+    # Deterministic approximation used when provider usage metadata is unavailable.
+    return max(1, (len(text) + 3) // 4)
+
+
+def _resolve_consumed_tokens(
+    *,
+    prompt_text: str,
+    response_text: str,
+    prompt_tokens: int,
+    response_tokens: int,
+) -> tuple[int, int, int]:
+    resolved_prompt = prompt_tokens if prompt_tokens > 0 else _estimate_tokens_from_text(prompt_text)
+    resolved_response = (
+        response_tokens if response_tokens > 0 else _estimate_tokens_from_text(response_text)
+    )
+    return resolved_prompt, resolved_response, max(1, resolved_prompt + resolved_response)
+
+
+def _resolve_tier_and_subscription(user_id: str) -> tuple[str, Subscription | None]:
+    tier = "free"
+    subscription: Subscription | None = None
+    db = None
+    try:
+        session_gen = get_session()
+        db = next(session_gen)
+        household_member = (
+            db.query(HouseholdMember).filter(HouseholdMember.uid == user_id).first()
+        )
+        if household_member:
+            if not household_member.ai_access_enabled:
+                raise HTTPException(
+                    status_code=403,
+                    detail="AI features have been disabled for your account by your household administrator.",
+                )
+            tier = "ultimate"
+            subscription = (
+                db.query(Subscription).filter(Subscription.uid == user_id).first()
+            )
+        else:
+            subscription = (
+                db.query(Subscription).filter(Subscription.uid == user_id).first()
+            )
+            if subscription:
+                tier = subscription.plan.lower()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error resolving subscription tier context: %s", e)
+    finally:
+        if db is not None:
+            db.close()
+    return tier, subscription
+
+
+def _resolve_anchor_day(tier: str, subscription: Subscription | None) -> int:
+    today_day = datetime.datetime.now(datetime.UTC).day
+    if subscription is None:
+        return today_day
+    if tier != "free" and subscription.renew_at:
+        return subscription.renew_at.day
+    if subscription.created_at:
+        return subscription.created_at.day
+    if subscription.renew_at:
+        return subscription.renew_at.day
+    return today_day
+
+
+def _quota_doc_ref(
+    user_id: str, period_start: datetime.datetime
+):
+    db_fs = get_firestore_client()
+    period_key = period_start.date().isoformat()
+    return (
+        db_fs.collection("ai_quota")
+        .document(user_id)
+        .collection("anniversary_periods")
+        .document(period_key)
+    )
+
+
+def _read_quota_state_sync(user_id: str) -> dict[str, Any]:
+    tier, subscription = _resolve_tier_and_subscription(user_id)
+    limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
+    now_utc = datetime.datetime.now(datetime.UTC)
+    anchor_day = _resolve_anchor_day(tier, subscription)
+    period_start, period_end = _anniversary_period_window(now_utc, anchor_day)
+    snapshot = _quota_doc_ref(user_id, period_start).get()
+    used_tokens = int(
+        (snapshot.get("tokens_used") or snapshot.get("request_count") or 0)
+        if snapshot.exists
+        else 0
+    )
+    return {
+        "tier": tier,
+        "limit": limit,
+        "used_tokens": used_tokens,
+        "period_start": period_start,
+        "period_end": period_end,
+    }
 
 
 def resolve_model_routing(tier: str, usage_today: int, limit: int) -> dict[str, Any]:
@@ -300,101 +437,87 @@ def _citations_from_web_results(results: list[dict[str, str]]) -> list[dict[str,
 # 2025-12-11 14:15 CST - split rate-limit check from usage increment
 def _check_rate_limit_sync(user_id: str) -> tuple[str, int, int]:
     """
-    Reads the user's tier and current usage without incrementing.
-    Returns (tier, limit, current_usage). Raises HTTP 429 if already over limit.
+    Reads current period token usage without incrementing.
+    Returns (tier, limit, current_usage_tokens). Raises HTTP 429 for free overages.
     """
-    # 1. Get User Tier from Postgres
-    tier = "free"  # Default
-    try:
-        # Create a new session for this check
-        # Note: In a real app, you might inject the session or cache the tier
-        session_gen = get_session()
-        db = next(session_gen)
-
-        # 1a. Check Household Context first (Overrides subscription)
-        household_member = (
-            db.query(HouseholdMember).filter(HouseholdMember.uid == user_id).first()
-        )
-        if household_member:
-            if not household_member.ai_access_enabled:
-                raise HTTPException(
-                    status_code=403,
-                    detail="AI features have been disabled for your account by your household administrator.",
-                )
-            # Members inherit Ultimate status
-            tier = "ultimate"
-        else:
-            # 1b. Fallback to personal subscription
-            subscription = (
-                db.query(Subscription).filter(Subscription.uid == user_id).first()
-            )
-            if subscription:
-                tier = subscription.plan.lower()
-        db.close()
-        db.close()
-    except HTTPException:
-        # Re-raise explicit HTTP exceptions (e.g. 403 Forbidden)
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching subscription for rate limit: {e}")
-        # Fallback to free tier safely
-
-    limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
-
-    # 2. Check Firestore for daily usage (read-only)
-    db_fs = get_firestore_client()
-    today = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
-    doc_ref = (
-        db_fs.collection("ai_quota")
-        .document(user_id)
-        .collection("daily_stats")
-        .document(today)
-    )
-
-    snapshot = doc_ref.get()
-    current_usage = (snapshot.get("request_count") or 0) if snapshot.exists else 0
+    quota = _read_quota_state_sync(user_id)
+    tier = str(quota["tier"])
+    limit = int(quota["limit"])
+    current_usage = int(quota["used_tokens"])
+    period_end = quota["period_end"]
 
     if tier == "free" and current_usage >= limit:
         raise HTTPException(
             status_code=429,
-            detail=f"You have reached your daily limit of {limit} AI requests for the {tier} tier.",
+            detail=(
+                f"You have reached your AI usage limit for this period "
+                f"({limit} tokens). Resets at {period_end.isoformat()}."
+            ),
         )
 
     return tier, limit, current_usage
 
 
-def _increment_usage_sync(user_id: str, tier: str, limit: int) -> int:
+def _increment_usage_sync(user_id: str, tier: str, limit: int, token_count: int) -> int:
     """
-    Increment usage atomically, ensuring we stay within limit at commit time.
+    Increment token usage atomically within the active anniversary period.
     """
-    db_fs = get_firestore_client()
-    today = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
-    doc_ref = (
-        db_fs.collection("ai_quota")
-        .document(user_id)
-        .collection("daily_stats")
-        .document(today)
-    )
+    if token_count <= 0:
+        token_count = 1
+
+    quota = _read_quota_state_sync(user_id)
+    period_start = quota["period_start"]
+    period_end = quota["period_end"]
+    doc_ref = _quota_doc_ref(user_id, period_start)
+    normalized_tier = str(quota["tier"] or tier)
+    effective_limit = int(quota["limit"] or limit)
 
     @firestore.transactional
     def Increment(transaction, doc_ref):
         snapshot = doc_ref.get(transaction=transaction)
-        current_usage = (snapshot.get("request_count") or 0) if snapshot.exists else 0
+        current_usage = (
+            int(snapshot.get("tokens_used") or snapshot.get("request_count") or 0)
+            if snapshot.exists
+            else 0
+        )
 
-        if tier == "free" and current_usage >= limit:
+        next_usage = current_usage + token_count
+        if normalized_tier == "free" and next_usage > effective_limit:
             raise HTTPException(
                 status_code=429,
-                detail=f"You have reached your daily limit of {limit} AI requests for the {tier} tier.",
+                detail=(
+                    f"You have reached your AI usage limit for this period "
+                    f"({effective_limit} tokens). Resets at {period_end.isoformat()}."
+                ),
             )
 
         if not snapshot.exists:
-            transaction.set(doc_ref, {"request_count": 1, "tier": tier, "date": today})
-            return 1
+            transaction.set(
+                doc_ref,
+                {
+                    "tokens_used": token_count,
+                    "request_count": 1,
+                    "tier": normalized_tier,
+                    "period_start": period_start.isoformat(),
+                    "period_end": period_end.isoformat(),
+                    "updated_at": datetime.datetime.now(datetime.UTC).isoformat(),
+                },
+            )
+            return token_count
 
-        transaction.update(doc_ref, {"request_count": firestore.Increment(1)})
-        return current_usage + 1
+        transaction.update(
+            doc_ref,
+            {
+                "tokens_used": firestore.Increment(token_count),
+                "request_count": firestore.Increment(1),
+                "tier": normalized_tier,
+                "period_end": period_end.isoformat(),
+                "updated_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            },
+        )
+        return next_usage
 
-    transaction = db_fs.transaction()
+    transaction = get_firestore_client().transaction()
     return Increment(transaction, doc_ref)
 
 
@@ -405,11 +528,30 @@ async def check_rate_limit(user_id: str) -> tuple[str, int, int]:
     return await asyncio.to_thread(_check_rate_limit_sync, user_id)
 
 
-async def record_rate_limit_usage(user_id: str, tier: str, limit: int) -> int:
+def get_quota_snapshot_sync(user_id: str) -> dict[str, Any]:
+    quota = _read_quota_state_sync(user_id)
+    used = int(quota["used_tokens"])
+    limit = int(quota["limit"])
+    progress = 0.0
+    if limit > 0:
+        progress = min(max(used / limit, 0.0), 1.0)
+    return {
+        "tier": str(quota["tier"]),
+        "limit": limit,
+        "used": used,
+        "usage_progress": progress,
+        "usage_copy": "AI usage this period",
+        "resets_at": quota["period_end"].isoformat(),
+    }
+
+
+async def record_rate_limit_usage(
+    user_id: str, tier: str, limit: int, token_count: int
+) -> int:
     """
-    Async wrapper to increment usage only after a successful AI call.
+    Async wrapper to increment token usage only after a successful AI call.
     """
-    return await asyncio.to_thread(_increment_usage_sync, user_id, tier, limit)
+    return await asyncio.to_thread(_increment_usage_sync, user_id, tier, limit, token_count)
 
 
 async def generate_chat_response(  # noqa: C901
@@ -514,12 +656,23 @@ async def generate_chat_response(  # noqa: C901
             except Exception as e:
                 logger.warning(f"Failed to extract usage metadata: {e}")
 
+        (
+            resolved_prompt_tokens,
+            resolved_response_tokens,
+            consumed_tokens,
+        ) = _resolve_consumed_tokens(
+            prompt_text=final_prompt,
+            response_text=response_text,
+            prompt_tokens=prompt_tokens,
+            response_tokens=candidates_tokens,
+        )
+
         # Log formatted request
         log_ai_request(
             prompt=prompt,
             response=response_text,
-            tokens_input=prompt_tokens,
-            tokens_output=candidates_tokens,
+            tokens_input=resolved_prompt_tokens,
+            tokens_output=resolved_response_tokens,
             latency_ms=(end_time - start_time) * 1000,
             model=str(routing["model"]),
             user_id=user_id,
@@ -527,7 +680,12 @@ async def generate_chat_response(  # noqa: C901
         )
 
         # 5. Persist usage only after success to avoid charging failures
-        usage_after = await record_rate_limit_usage(user_id, tier, limit)
+        usage_after = await record_rate_limit_usage(
+            user_id,
+            tier,
+            limit,
+            consumed_tokens,
+        )
 
         # 6. Return both the model response and updated usage
         return {
@@ -621,18 +779,34 @@ async def generate_chat_response_stream(
         full_response = "".join(chunks)
         end_time = time.time()
 
+        (
+            resolved_prompt_tokens,
+            resolved_response_tokens,
+            consumed_tokens,
+        ) = _resolve_consumed_tokens(
+            prompt_text=final_prompt,
+            response_text=full_response,
+            prompt_tokens=0,
+            response_tokens=0,
+        )
+
         log_ai_request(
             prompt=prompt,
             response=full_response,
-            tokens_input=0,
-            tokens_output=0,
+            tokens_input=resolved_prompt_tokens,
+            tokens_output=resolved_response_tokens,
             latency_ms=(end_time - start_time) * 1000,
             model=str(routing["model"]),
             user_id=user_id,
             is_cached=False,
         )
 
-        usage_after = await record_rate_limit_usage(user_id, tier, limit)
+        usage_after = await record_rate_limit_usage(
+            user_id,
+            tier,
+            limit,
+            consumed_tokens,
+        )
         yield {
             "type": "complete",
             "response": full_response,

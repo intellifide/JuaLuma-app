@@ -17,6 +17,7 @@ from backend.services.ai import (
     check_rate_limit,
     generate_chat_response,
     generate_chat_response_stream,
+    get_quota_snapshot_sync,
 )
 from backend.services.financial_context import get_financial_context
 from backend.utils import get_db
@@ -423,53 +424,20 @@ def get_quota_status(
     Get current AI usage quota for the user.
 
     Returns:
-    - **used**: Requests made today.
-    - **limit**: Daily limit based on tier.
-    - **resets_at**: Time of next reset (UTC midnight).
+    - **used**: Token usage in current billing-cycle period.
+    - **limit**: Token budget for current billing-cycle period.
+    - **resets_at**: Time of next reset (billing-cycle anniversary).
     - **tier**: Current subscription plan.
     """
+    _ = db  # keep dependency for auth/session parity with existing route contracts
     user_id = current_user.uid
-
-    # 1. Get Tier limit
-    subscription = db.query(Subscription).filter(Subscription.uid == user_id).first()
-    tier = subscription.plan.lower() if subscription else "free"
-
-    # TIER_LIMITS is imported from backend.services.ai at module level
-    limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
-
-    # 2. Check Usage (read-only)
-    # check_rate_limit modifies usage.
-    # I should implement a read_only version or just read Firestore directly here.
-    # Reading Firestore directly is better to avoid side effects.
-
-    import datetime
-
-    from backend.utils.firestore import get_firestore_client
-
-    db_fs = get_firestore_client()
-    today = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
-    doc_ref = (
-        db_fs.collection("ai_quota")
-        .document(user_id)
-        .collection("daily_stats")
-        .document(today)
-    )
-
-    snapshot = doc_ref.get()
-    used = 0
-    if snapshot.exists:
-        used = snapshot.get("request_count") or 0
-
-    # Calculate resets_at (next UTC midnight)
-    now = datetime.datetime.now(datetime.UTC)
-    tomorrow = now + datetime.timedelta(days=1)
-    resets_at = datetime.datetime(
-        year=tomorrow.year, month=tomorrow.month, day=tomorrow.day, tzinfo=datetime.UTC
-    )
+    quota = get_quota_snapshot_sync(user_id)
 
     return {
-        "used": used,
-        "limit": limit,
-        "resets_at": resets_at.isoformat(),
-        "tier": tier,
+        "used": quota["used"],
+        "limit": quota["limit"],
+        "usage_progress": quota["usage_progress"],
+        "usage_copy": quota["usage_copy"],
+        "resets_at": quota["resets_at"],
+        "tier": quota["tier"],
     }

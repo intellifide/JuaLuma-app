@@ -16,6 +16,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Document } from '../services/documentService';
+import { FILE_ICON_LABELS, resolveFileIconKind } from '../utils/fileIconMapping';
 
 interface Thread {
     id: string;
@@ -125,13 +126,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({
         return { x: left, y: top };
     };
 
-    const getFileIcon = (fileType: string) => {
-        const type = fileType.toLowerCase();
-        if (['pdf'].includes(type)) return '📄';
-        if (['csv', 'xls', 'xlsx'].includes(type)) return '📊';
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(type)) return '🖼️';
-        return '📎';
-    };
+    const getFileIcon = (fileType: string) =>
+        FILE_ICON_LABELS[resolveFileIconKind(fileType)];
 
     const unassignedThreads = threads.filter((thread) => !thread.projectId);
     const totalChatPages = Math.max(1, Math.ceil(unassignedThreads.length / chatsPerPage));
@@ -254,7 +250,9 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                                                 onClick={() => onDownloadDoc(doc)}
                                                 className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
                                             >
-                                                <span className="text-lg">{getFileIcon(doc.fileType)}</span>
+                                                <span className="inline-flex h-5 min-w-[2.2rem] items-center justify-center rounded-md bg-white/10 px-1 text-[10px] font-semibold tracking-wide text-text-primary">
+                                                    {getFileIcon(doc.fileType)}
+                                                </span>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm text-text-primary truncate group-hover:text-primary transition-colors">
                                                         {doc.name}

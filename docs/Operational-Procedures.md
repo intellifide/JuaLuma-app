@@ -63,7 +63,7 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 
 - All new users start on Free Tier
 - Limits: 3 traditional (Plaid) accounts, 1 Web3 wallet, 1 CEX account
-- Cloud AI model: Vertex AI Gemini 2.5 Flash, limited to 10 queries/day. AI chat history is temporary and never stored (stateless sessions).
+- Cloud AI model routing: free requests use `gpt-oss-120b` with period usage tracking (`AI usage this period`) and billing-cycle-anniversary reset date visibility.
 - Standard features
 - Rolling 45-day transaction window stored exclusively in Cloud SQL (`ledger_hot_free`). The nightly `free-ledger-pruner` Cloud Run Job deletes entries older than 45 days—no archive is retained—ensuring low storage costs and straightforward GDPR/GLBA erasure handling.
 - Plaid sync is automatic (webhook + cursor jobs). Manual sync actions apply only to Web3/CEX connectors.
@@ -72,10 +72,10 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 
 - Upgrade option presented alongside Pro during subscription flow.
 - Limits: 5 traditional accounts, 5 investment accounts, 5 Web3 wallets, 5 CEX accounts.
-- Cloud AI models enabled (Vertex AI Gemini 2.5 Flash) with encrypted RAG context.
+- Cloud AI models enabled with encrypted RAG context. Default paid model is `gemini-2.5-flash`; when paid premium capacity is exhausted, runtime auto-falls back to `gpt-oss-120b` with explicit user-facing fallback messaging.
 - Sync cadence: Plaid uses webhook-first cursor sync with safety-net jobs; Web3/CEX retain manual sync actions.
 - Rolling 30-day hot data window stored in Cloud SQL (`ledger_hot_essential`). The paired `essential-ledger-archiver` job moves data older than 30 days into Coldline (`gs://jualuma-ledger-archive/essential/<uid>/<YYYY>/<MM>`) for read-only access.
-- 75 cloud AI queries/day quota set (shared enforcement with Pro Tier through the Firestore `api_usage` collection).
+- AI quota metering is token-based via Firestore `api_usage`; UI shows progress (`AI usage this period`) and period reset date.
 
 **Pro Tier (Upgrade):**
 
@@ -84,8 +84,8 @@ This document outlines day-to-day operational procedures for the jualuma platfor
 - Payment processed
 - Account upgraded upon successful payment
 - Limits increased: 5 traditional accounts, 5 investment accounts, 5 Web3 wallets, 5 CEX accounts
-- Cloud AI models enabled via Vertex AI Gemini (MVP: Gemini 2.5 Flash)
-- 75 cloud AI queries/day quota set (Essential Tier shares this limit)
+- Cloud AI models enabled via Vertex AI (`gemini-2.5-flash` default for paid) with automatic fallback to `gpt-oss-120b` on paid premium exhaustion.
+- AI quota metering is token-based with billing-cycle-anniversary reset and reset-date visibility in UI/support surfaces.
 
 ---
 

@@ -28,11 +28,15 @@ const faqs = [
   },
   {
     q: 'Is my data used to train AI?',
-    a: 'No. Our AI runs on Google Vertex AI, which does not use your data to train or improve its models under Google’s policy.',
+    a: 'No. JuaLuma routes requests through configured runtime models (`gpt-oss-120b` and `gemini-2.5-flash`) and does not use your data to train foundation models.',
   },
   {
     q: 'How does the AI assistant answer questions?',
-    a: 'It analyzes your categorized transaction history and account context to generate specific answers, not generic finance content.',
+    a: 'It analyzes categorized transaction/account context plus supported uploaded files to generate specific answers, not generic finance content.',
+  },
+  {
+    q: 'How does AI fallback and reset timing work?',
+    a: 'Paid usage defaults to `gemini-2.5-flash` and falls back to `gpt-oss-120b` when paid premium capacity is exhausted for the period. Usage is shown as `AI usage this period` with a billing-cycle reset date.',
   },
   {
     q: 'Can I cancel anytime?',
