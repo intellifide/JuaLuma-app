@@ -68,6 +68,21 @@ class AppSettings(BaseSettings):
 
     ai_model: str = Field(default="gemini-2.5-flash", alias="AI_MODEL")
     ai_model_prod: str = Field(default="gemini-2.5-flash", alias="AI_MODEL_PROD")
+    ai_free_model: str = Field(default="gpt-oss-120b", alias="AI_FREE_MODEL")
+    ai_paid_model: str = Field(default="gemini-2.5-flash", alias="AI_PAID_MODEL")
+    ai_paid_fallback_model: str = Field(
+        default="gpt-oss-120b", alias="AI_PAID_FALLBACK_MODEL"
+    )
+    ai_paid_fallback_enabled: bool = Field(
+        default=True, alias="AI_PAID_FALLBACK_ENABLED"
+    )
+    ai_paid_fallback_message: str = Field(
+        default=(
+            "Premium AI limit reached for this period. "
+            "Your request was processed with the standard model (gpt-oss-120b)."
+        ),
+        alias="AI_PAID_FALLBACK_MESSAGE",
+    )
     ai_web_search_enabled: bool = Field(default=True, alias="AI_WEB_SEARCH_ENABLED")
     ai_web_search_max_results: int = Field(default=4, alias="AI_WEB_SEARCH_MAX_RESULTS")
 
