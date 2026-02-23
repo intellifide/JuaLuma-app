@@ -68,7 +68,14 @@ describe('AI Assistant Integration', () => {
                 resetPassword: vi.fn()
             })
             ; vi.mocked(aiService.getHistory).mockResolvedValue([])
-            ; vi.mocked(aiService.getQuota).mockResolvedValue({ used: 5, limit: 20, resets_at: '', tier: 'free' })
+            ; vi.mocked(aiService.getQuota).mockResolvedValue({
+                used: 5,
+                limit: 20,
+                usage_progress: 0.25,
+                usage_copy: 'AI usage this period',
+                resets_at: '',
+                tier: 'free',
+            })
     })
 
     it('loads and displays initial state', async () => {
@@ -85,7 +92,7 @@ describe('AI Assistant Integration', () => {
             expect(aiService.getQuota).toHaveBeenCalled()
         })
         await waitFor(() => {
-            expect(screen.getByText(/5 \/ 20/)).toBeInTheDocument()
+            expect(screen.getByText(/AI usage this period: 25%/)).toBeInTheDocument()
         }) // Quota display
         // Expect default welcome message if history is empty
         expect(screen.getByText(/Hello! I'm your AI Assistant/i)).toBeInTheDocument()
@@ -132,7 +139,7 @@ describe('AI Assistant Integration', () => {
 
         // Quota should update (20 - 14 = 6 used)
         await waitFor(() => {
-            expect(screen.getByText(/6 \/ 20/)).toBeInTheDocument()
+            expect(screen.getByText(/AI usage this period: 30%/)).toBeInTheDocument()
         })
     })
 

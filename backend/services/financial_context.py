@@ -9,6 +9,7 @@ enforces RLS for user-data isolation, and formats structured context for prompts
 import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import func, select
@@ -20,11 +21,16 @@ from backend.models import (
     Subscription,
     SupportTicket,
     Transaction,
+    UserDocument,
     get_session,
 )
 from backend.utils.rls import set_db_user_context
 
 logger = logging.getLogger(__name__)
+
+TEXT_PARSABLE_FILE_TYPES = {"txt", "md", "csv", "json", "xml", "rtf"}
+UPLOAD_CONTEXT_MAX_DOCS = 5
+UPLOAD_CONTEXT_MAX_CHARS_PER_DOC = 1800
 
 
 async def get_financial_context(
@@ -73,15 +79,25 @@ async def get_financial_context(
         account_summary = _account_summary(db, user_id)
         support_summary = _support_summary(db, user_id)
         subscription_summary = _subscription_summary(db, user_id)
+        uploaded_file_context, upload_audit = _uploaded_documents_context(db, user_id)
 
         # 4. Format combined context
-        return _format_context(
+        context_str = _format_context(
             transactions=similar_txns,
             spending_summary=spending_summary,
             account_summary=account_summary,
             support_summary=support_summary,
             subscription_summary=subscription_summary,
+            uploaded_file_context=uploaded_file_context,
         )
+        logger.info(
+            "AI_UPLOAD_CONTEXT_ASSEMBLY uid=%s docs_considered=%s docs_included=%s skip_reasons=%s",
+            user_id,
+            upload_audit["considered"],
+            upload_audit["included"],
+            upload_audit["skip_reasons"],
+        )
+        return context_str
 
     except Exception as e:
         logger.error(f"Financial context retrieval failed: {e}", exc_info=True)
@@ -186,6 +202,7 @@ def _format_context(
     account_summary: dict[str, Any] | None = None,
     support_summary: dict[str, Any] | None = None,
     subscription_summary: dict[str, Any] | None = None,
+    uploaded_file_context: str | None = None,
 ) -> str:
     """
     Formats transaction search results and spending summary into
@@ -257,7 +274,73 @@ def _format_context(
             )
         sections.append("\n".join(lines))
 
+    if uploaded_file_context:
+        sections.append(uploaded_file_context)
+
     return "\n\n".join(sections)
+
+
+def _uploaded_documents_context(
+    db: Session,
+    user_id: str,
+    max_docs: int = UPLOAD_CONTEXT_MAX_DOCS,
+    max_chars_per_doc: int = UPLOAD_CONTEXT_MAX_CHARS_PER_DOC,
+) -> tuple[str, dict[str, Any]]:
+    docs = (
+        db.query(UserDocument)
+        .filter(UserDocument.uid == user_id)
+        .order_by(UserDocument.created_at.desc())
+        .limit(max_docs)
+        .all()
+    )
+
+    lines: list[str] = []
+    skip_reasons: dict[str, int] = {}
+
+    for doc in docs:
+        excerpt, skip_reason = _document_excerpt_for_context(doc, max_chars_per_doc)
+        if skip_reason:
+            skip_reasons[skip_reason] = skip_reasons.get(skip_reason, 0) + 1
+            continue
+        if excerpt:
+            lines.append(f"- {doc.name} ({doc.file_type}): {excerpt}")
+
+    if not lines:
+        return "", {
+            "considered": len(docs),
+            "included": 0,
+            "skip_reasons": skip_reasons,
+        }
+
+    section = "## Uploaded File Context\n" + "\n".join(lines)
+    return section, {
+        "considered": len(docs),
+        "included": len(lines),
+        "skip_reasons": skip_reasons,
+    }
+
+
+def _document_excerpt_for_context(
+    doc: UserDocument, max_chars: int
+) -> tuple[str | None, str | None]:
+    file_type = (doc.file_type or "").lower()
+    if file_type not in TEXT_PARSABLE_FILE_TYPES:
+        return None, "DOC_UNPARSEABLE_TYPE"
+
+    path = Path(doc.file_path)
+    if not path.exists():
+        return None, "DOC_FILE_MISSING"
+
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None, "DOC_READ_ERROR"
+
+    normalized = " ".join(content.split())
+    if not normalized:
+        return None, "DOC_EMPTY_CONTENT"
+
+    return normalized[:max_chars], None
 
 
 def _account_summary(db: Session, user_id: str) -> dict[str, Any]:

@@ -45,6 +45,14 @@ Rule:
 
 - Do not add deploy-time `env_vars` blocks that override Cloud Run secret bindings for backend services.
 
+Support/Legal copy parity checks (required before promotion):
+
+- Use period framing (`AI usage this period`) and avoid legacy daily-query phrasing.
+- Confirm support/legal surfaces communicate:
+  - paid-exhaustion fallback behavior (`gemini-2.5-flash` -> `gpt-oss-120b`)
+  - quota reset date behavior (billing-cycle anniversary anchor)
+- Ensure upload policy copy reflects supported allowlist + unsupported file rejection behavior.
+
 ## Step 3: Remote Promotion
 
 After repo sync, promote branches in order `Dev -> stage -> main` so deployments flow `Dev -> Stage -> Prod`.
@@ -60,6 +68,19 @@ Local sanity check:
 ```bash
 python -c "from backend.core.config import settings; print(settings.service_name)"
 ```
+
+## Legacy Quota Path Archive
+
+Canonical quota surface is period-based (`AI usage this period`) with backend token metering.
+
+Archived legacy paths:
+
+- Local legacy env keys removed from active local config: `AI_RATE_LIMIT_RPM`, `AI_RATE_LIMIT_TPM`, `AI_RATE_LIMIT_RPD`.
+- Legacy response field naming (`usage_today`) is compatibility-only in API event handling; canonical fields are `quota_used`, `quota_remaining`, `quota_limit`, `usage_progress`, and `resets_at`.
+
+Rule:
+
+- Do not introduce new daily-query/day-based quota copy, fields, or config keys in AI assistant surfaces.
 
 ## Drift Hooks And Commands
 
