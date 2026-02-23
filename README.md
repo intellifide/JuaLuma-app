@@ -64,10 +64,20 @@ All app services run via `docker-compose.yml`; the legacy local development doc 
 
 ## Contribution Guidelines
 
-- Create a feature branch from `Dev`.
+- Branch model:
+  - `main` = production
+  - `Dev` = development integration
+  - `stage` = release candidate
+- Create feature branches from `Dev`.
+- Promote changes only by PR flow: `feature/*` -> `Dev` -> `stage` -> `main`.
 - Keep changes small; add tests and docs as needed.
 - Run lint/tests before opening a PR (`pnpm lint && pnpm test` in frontend, `pytest` in backend).
 - Use clear commit messages; avoid committing secrets or `.env`.
+- Promotion gate policy: `docs/stage-release-architecture.md`.
+- Promotion checklist: `docs/stage-promotion-gates.md`.
+- Rollback/incident runbook: `docs/stage-rollback-runbook.md`.
+- Stage ingress/domain policy: `docs/stage-domain-policy.md`.
+- Stage infra inventory: `docs/stage-infra-inventory.md`.
 
 ## License
 

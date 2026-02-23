@@ -38,8 +38,11 @@ from backend.api.widgets import router as widgets_router
 from backend.core import configure_logging, settings
 from backend.core.events import initialize_events
 
-# MCP Imports
-from backend.mcp_server import mcp
+# MCP Imports (optional in non-dev runtime images)
+try:
+    from backend.mcp_server import mcp
+except ModuleNotFoundError:
+    mcp = None
 from backend.middleware import (
     RateLimitMiddleware,
     RequestContextMiddleware,
@@ -157,11 +160,14 @@ app.include_router(jobs_router)
 # Initialize and Mount Main MCP Server (Phase 3)
 # FastMCP instances are ASGI apps, so we mount them directly into FastAPI
 # Compatibility: 'sse_app' (v0.x) vs 'http_app' (v2.x)
-mcp_app = getattr(mcp, "sse_app", getattr(mcp, "http_app", None))
-if mcp_app:
-    app.mount("/mcp", mcp_app)
+if mcp is None:
+    logger.warning("MCP server module is not available; skipping /mcp mount.")
 else:
-    logger.warning("Could not find ASGI app attribute on FastMCP instance.")
+    mcp_app = getattr(mcp, "sse_app", getattr(mcp, "http_app", None))
+    if mcp_app:
+        app.mount("/mcp", mcp_app)
+    else:
+        logger.warning("Could not find ASGI app attribute on FastMCP instance.")
 
 # Initialize and Mount Dev Tools MCP Server (Phase 4)
 # Only mount dangerous dev tools in LOCAL environment

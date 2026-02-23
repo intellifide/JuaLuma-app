@@ -1,0 +1,138 @@
+name: deploy-stage
+
+on:
+  push:
+    branches:
+      - stage
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-stage
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    environment: stage
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID_STAGE || 'jualuma-stage' }}
+      REGION: ${{ vars.GCP_REGION_STAGE || 'us-central1' }}
+      IMAGE_REPO: ${{ vars.ARTIFACT_REPO_STAGE || 'jualuma-repo' }}
+      TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required stage settings
+        run: |
+          set -euo pipefail
+          test -n "${PROJECT_ID}" || (echo "Missing vars.GCP_PROJECT_ID_STAGE" && exit 1)
+          test -n "${REGION}" || (echo "Missing vars.GCP_REGION_STAGE" && exit 1)
+          test -n "${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}" || (echo "Missing secret GCP_WIF_PROVIDER_STAGE" && exit 1)
+          test -n "${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}" || (echo "Missing secret GCP_WIF_SERVICE_ACCOUNT_STAGE" && exit 1)
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Artifact Registry auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and deploy backend
+        run: |
+          set -euo pipefail
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-backend-stage:${TAG}"
+          docker build -f backend/Dockerfile -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          gcloud run deploy jualuma-backend-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${IMAGE}" \
+            --platform=managed \
+            --no-allow-unauthenticated \
+            --quiet
+
+      - name: Build and deploy approvals
+        run: |
+          set -euo pipefail
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-approvals-stage:${TAG}"
+          docker build -f approvals-service/Dockerfile -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          gcloud run deploy jualuma-approvals-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${IMAGE}" \
+            --platform=managed \
+            --no-allow-unauthenticated \
+            --quiet
+
+      - name: Build and deploy user app
+        run: |
+          set -euo pipefail
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-user-app-stage:${TAG}"
+          docker build \
+            -f frontend-app/Dockerfile \
+            -t "${IMAGE}" \
+            --build-arg VITE_GCP_API_KEY="${{ secrets.VITE_GCP_API_KEY_STAGE }}" \
+            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL_STAGE }}" \
+            --build-arg VITE_MARKETING_URL="${{ vars.VITE_MARKETING_URL_STAGE }}" \
+            --build-arg VITE_MAINTENANCE_MODE="${{ vars.VITE_MAINTENANCE_MODE_STAGE || 'false' }}" \
+            .
+          docker push "${IMAGE}"
+          gcloud run deploy jualuma-user-app-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${IMAGE}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Build and deploy support portal
+        run: |
+          set -euo pipefail
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-support-stage:${TAG}"
+          docker build \
+            -f support-portal/Dockerfile \
+            -t "${IMAGE}" \
+            --build-arg VITE_GCP_API_KEY="${{ secrets.VITE_GCP_API_KEY_STAGE }}" \
+            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL_STAGE }}" \
+            .
+          docker push "${IMAGE}"
+          gcloud run deploy jualuma-support-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${IMAGE}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Build and deploy marketing
+        run: |
+          set -euo pipefail
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-marketing-stage:${TAG}"
+          docker build \
+            -f frontend-marketing/Dockerfile \
+            -t "${IMAGE}" \
+            --build-arg NEXT_PUBLIC_APP_URL="${{ vars.NEXT_PUBLIC_APP_URL_STAGE }}" \
+            --build-arg NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL_STAGE }}" \
+            .
+          docker push "${IMAGE}"
+          gcloud run deploy jualuma-marketing-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${IMAGE}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --quiet
