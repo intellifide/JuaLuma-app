@@ -47,7 +47,7 @@ const faqs = [
     a: (
       <>
         JuaLuma is Source Available (Personal Use). You can audit the code, run it locally, and build widgets for the ecosystem. Commercial resale or enterprise deployment is strictly prohibited.{' '}
-        <a className="text-primary underline" href="/PolyForm-Noncommercial-1.0.0.txt" title="PolyForm Noncommercial 1.0.0">
+        <a className="text-primary underline" href="/legal/license" title="JuaLuma License Notice">
           View the full license
         </a>
         .

@@ -1,10 +1,24 @@
-Copyright (c) 2026 Intellifide, LLC.
+JuaLuma Source-Available License Notice
+Copyright (c) 2026 Intellifide LLC. All rights reserved.
 
-JuaLuma is licensed under the PolyForm Noncommercial License 1.0.0.
+Project:
+- Brand: JuaLuma
+- Legal owner/operator: Intellifide LLC
+- Repository scope: all source code, assets, and documentation in this repository unless a file states otherwise
 
-The complete license text is provided in:
-- PolyForm-Noncommercial-1.0.0.txt
+License grant:
+- This repository is licensed under the PolyForm Noncommercial License 1.0.0.
+- You may use, copy, modify, and share this software for noncommercial purposes under that license.
 
-For convenience, this LICENSE file serves as the canonical repository license pointer.
-If there is any conflict in summaries or descriptions, the full terms in
-PolyForm-Noncommercial-1.0.0.txt control.
+Commercial restrictions:
+- No resale, paid redistribution, repackaging-for-fee, hosted enterprise resale, or other commercial use is allowed without separate written permission from Intellifide LLC.
+
+Canonical legal text:
+- Full legal terms: `PolyForm-Noncommercial-1.0.0.txt`
+- Public license URL: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
+Conflict rule:
+- If this notice conflicts with the full PolyForm text, the full PolyForm text controls.
+
+Commercial licensing contact:
+- legal@intellifide.com
