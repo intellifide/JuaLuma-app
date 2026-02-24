@@ -167,40 +167,13 @@ jobs:
               --no-invoker-iam-check \
               --ingress=all \
               --quiet
-          done
 
-      - name: Disable IAP on backend services (Dev)
-        run: |
-          set -euo pipefail
-
-          mapfile -t iap_backends < <(
-            gcloud compute backend-services list \
+            gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
-              --format='value(name,region,iap.enabled)' \
-              | awk '$3=="True" || $3=="true" {print $1 "\t" $2}'
-          )
-
-          if [[ ${#iap_backends[@]} -eq 0 ]]; then
-            echo "No IAP-enabled backend services detected."
-          else
-            for backend_entry in "${iap_backends[@]}"; do
-              IFS=$'\t' read -r backend_name backend_region <<< "${backend_entry}"
-              echo "Disabling IAP for backend service ${backend_name}"
-              if [[ -z "${backend_region}" ]]; then
-                gcloud compute backend-services update "${backend_name}" \
-                  --project="${PROJECT_ID}" \
-                  --global \
-                  --iap=disabled \
-                  --quiet
-              else
-                gcloud compute backend-services update "${backend_name}" \
-                  --project="${PROJECT_ID}" \
-                  --region="${backend_region##*/}" \
-                  --iap=disabled \
-                  --quiet
-              fi
-            done
-          fi
+              --region="${REGION}" \
+              --no-iap \
+              --quiet
+          done
 
       - name: Verify public access policy (Dev)
         run: |
