@@ -80,6 +80,14 @@ jobs:
           region: ${{ env.REGION }}
           flags: "--binary-authorization=default"
 
+      - name: Enforce Plaid production mode on backend runtime
+        run: |
+          gcloud run services update jualuma-backend \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --update-env-vars=PLAID_ENV=production \
+            --quiet
+
       # 2. Frontend App
       - name: Build and Push Frontend App
         run: |

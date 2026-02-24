@@ -70,6 +70,14 @@ jobs:
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
 
+      - name: Enforce Plaid production mode on backend runtime
+        run: |
+          gcloud run services update jualuma-backend \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --update-env-vars=PLAID_ENV=production \
+            --quiet
+
       # 2. Frontend App (VITE_GCP_API_KEY required for Identity Platform sign-up/sign-in)
       - name: Build and Push Frontend App
         run: |
