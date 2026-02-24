@@ -2,14 +2,13 @@ name: GCP Deploy Guard
 
 on:
   push:
-    branches: [Dev, main]
+    branches: [Dev, stage, main]
     paths:
       - ".github/workflows/deploy-dev.yml"
+      - ".github/workflows/deploy-stage.yml"
       - ".github/workflows/deploy-prod.yml"
   pull_request:
-    paths:
-      - ".github/workflows/deploy-dev.yml"
-      - ".github/workflows/deploy-prod.yml"
+    branches: [Dev, stage, main]
   workflow_dispatch:
 
 jobs:
@@ -21,6 +20,9 @@ jobs:
 
       - name: Check deploy-dev for env_vars clobber
         run: python3 scripts/guard_env_vars.py ".github/workflows/deploy-dev.yml" --output github
+
+      - name: Check deploy-stage for env_vars clobber
+        run: python3 scripts/guard_env_vars.py ".github/workflows/deploy-stage.yml" --output github
 
       - name: Check deploy-prod for env_vars clobber
         run: python3 scripts/guard_env_vars.py ".github/workflows/deploy-prod.yml" --output github
