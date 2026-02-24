@@ -50,6 +50,11 @@ jobs:
       - name: Configure Artifact Registry auth
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
+      - name: Load browser API key from Secret Manager
+        run: |
+          set -euo pipefail
+          echo "VITE_GCP_API_KEY=$(gcloud secrets versions access latest --secret=VITE_GCP_API_KEY --project=${PROJECT_ID})" >> "$GITHUB_ENV"
+
       - name: Build and deploy backend
         run: |
           set -euo pipefail
@@ -85,7 +90,7 @@ jobs:
           docker build \
             -f frontend-app/Dockerfile \
             -t "${IMAGE}" \
-            --build-arg VITE_GCP_API_KEY="${{ secrets.VITE_GCP_API_KEY_STAGE }}" \
+            --build-arg VITE_GCP_API_KEY="${{ env.VITE_GCP_API_KEY }}" \
             --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL_STAGE }}" \
             --build-arg VITE_MARKETING_URL="${{ vars.VITE_MARKETING_URL_STAGE }}" \
             --build-arg VITE_MAINTENANCE_MODE="${{ vars.VITE_MAINTENANCE_MODE_STAGE || 'false' }}" \
@@ -106,7 +111,7 @@ jobs:
           docker build \
             -f support-portal/Dockerfile \
             -t "${IMAGE}" \
-            --build-arg VITE_GCP_API_KEY="${{ secrets.VITE_GCP_API_KEY_STAGE }}" \
+            --build-arg VITE_GCP_API_KEY="${{ env.VITE_GCP_API_KEY }}" \
             --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL_STAGE }}" \
             .
           docker push "${IMAGE}"
