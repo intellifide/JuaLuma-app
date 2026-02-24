@@ -149,6 +149,26 @@ jobs:
             --no-invoker-iam-check
             --ingress=all
 
+      - name: Force public invoker policy (Dev)
+        run: |
+          set -euo pipefail
+
+          for service in frontend-app support-portal; do
+            gcloud run services add-iam-policy-binding "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --member="allUsers" \
+              --role="roles/run.invoker" \
+              --quiet
+
+            gcloud run services update "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --no-invoker-iam-check \
+              --ingress=all \
+              --quiet
+          done
+
       - name: Verify public access policy (Dev)
         run: |
           set -euo pipefail
