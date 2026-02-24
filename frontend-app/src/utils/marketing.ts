@@ -17,7 +17,11 @@ const DEFAULT_MARKETING_ORIGIN = 'https://marketing-site-77ybfmw7cq-uc.a.run.app
 
 const normalizeOrigin = (origin: string): string => origin.trim().replace(/\/$/, '')
 
-const deriveMarketingHostname = (hostname: string): string | null => {
+const deriveMarketingHostname = (hostname?: string | null): string | null => {
+  if (!hostname) {
+    return null
+  }
+
   if (hostname.startsWith('frontend-app-')) {
     return `marketing-site-${hostname.slice('frontend-app-'.length)}`
   }
@@ -50,13 +54,15 @@ export const getMarketingSiteUrl = (): string => {
     return DEFAULT_MARKETING_ORIGIN
   }
 
-  if (window.location.hostname === 'localhost') {
+  const hostname = window.location?.hostname || ''
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return DEFAULT_LOCAL_MARKETING_ORIGIN
   }
 
-  const derivedHostname = deriveMarketingHostname(window.location.hostname)
+  const derivedHostname = deriveMarketingHostname(hostname)
   if (derivedHostname) {
-    return `${window.location.protocol}//${derivedHostname}`
+    const protocol = window.location?.protocol || 'https:'
+    return `${protocol}//${derivedHostname}`
   }
 
   return DEFAULT_MARKETING_ORIGIN
