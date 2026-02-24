@@ -16,6 +16,23 @@
 import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken, MfaRequiredError } from './auth'
 
+const AUTH_ACCESS_ERROR_MESSAGE =
+  'Unable to verify your access right now. Please sign in and try again.'
+const GENERIC_REQUEST_ERROR_MESSAGE =
+  'Request could not be completed right now. Please try again.'
+
+const normalizeApiErrorMessage = (status: number | undefined, raw: unknown): string => {
+  if (status === 401) return AUTH_ACCESS_ERROR_MESSAGE
+  if (typeof raw !== 'string') return 'Request failed. Please try again.'
+
+  const message = raw.trim()
+  if (!message) return 'Request failed. Please try again.'
+  if (/<(?:!doctype\s+html|html|body)\b/i.test(message)) {
+    return GENERIC_REQUEST_ERROR_MESSAGE
+  }
+  return message
+}
+
 // Accept both env naming conventions across dev/prod.
 const envBase =
   import.meta.env.VITE_API_BASE_URL ||
@@ -48,23 +65,24 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     const status = error.response?.status
-    const message =
+    const rawMessage =
       (error.response?.data as { detail?: string; message?: string } | undefined)
         ?.detail ||
       (error.response?.data as { message?: string } | undefined)?.message ||
       error.message
+    const message = normalizeApiErrorMessage(status, rawMessage)
 
-    if (status === 403 && (message === 'MFA_REQUIRED' || message === 'MFA_PASSKEY_REQUIRED')) {
+    if (status === 403 && (rawMessage === 'MFA_REQUIRED' || rawMessage === 'MFA_PASSKEY_REQUIRED')) {
       clearCachedToken()
       try {
         window.dispatchEvent(
-          new CustomEvent('mfa-required', { detail: { reason: message } }),
+          new CustomEvent('mfa-required', { detail: { reason: rawMessage } }),
         )
       } catch {
         // no-op
       }
       return Promise.reject(
-        new MfaRequiredError(message === 'MFA_PASSKEY_REQUIRED' ? 'passkey' : 'totp'),
+        new MfaRequiredError(rawMessage === 'MFA_PASSKEY_REQUIRED' ? 'passkey' : 'totp'),
       )
     }
 

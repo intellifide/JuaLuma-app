@@ -58,6 +58,10 @@ export class MfaRequiredError extends Error {
 type ApiRequestInit = RequestInit & { skipAuth?: boolean; throwOnError?: boolean }
 
 const TOKEN_MAX_AGE_MS = 4 * 60 * 1000 // refresh cached token every 4 minutes
+const AUTH_ACCESS_ERROR_MESSAGE =
+  'Unable to verify your access right now. Please sign in and try again.'
+const GENERIC_REQUEST_ERROR_MESSAGE =
+  'Request could not be completed right now. Please try again.'
 // Note: gcp_auth_driver handles its own caching, but we keep this for consistency if we use getIdToken wrapper below
 let cachedToken: string | null = null
 let lastTokenAt = 0
@@ -206,8 +210,7 @@ export const completeBackendLogin = async (
     throw new MfaRequiredError('totp')
   }
 
-  const fallback = `Request failed with status ${response.status}`
-  throw new Error((detail as string) || fallback)
+  throw new Error(normalizeApiErrorMessage(response.status, detail))
 }
 
 export const logout = async (): Promise<void> => {
@@ -431,6 +434,18 @@ const buildUrl = (path: string): string => {
   return normalizedApiBase ? `${normalizedApiBase}${relativePath}` : relativePath
 }
 
+const normalizeApiErrorMessage = (status: number, raw: unknown): string => {
+  if (status === 401) return AUTH_ACCESS_ERROR_MESSAGE
+  if (typeof raw !== 'string') return `Request failed with status ${status}`
+
+  const message = raw.trim()
+  if (!message) return `Request failed with status ${status}`
+  if (/<(?:!doctype\s+html|html|body)\b/i.test(message)) {
+    return GENERIC_REQUEST_ERROR_MESSAGE
+  }
+  return message
+}
+
 export const apiFetch = async (
   path: string,
   init: ApiRequestInit = {},
@@ -460,7 +475,7 @@ export const apiFetch = async (
   // Basic error handling for 4xx/5xx - can be expanded
   if (!response.ok && init.throwOnError !== false) {
     const maybeJson = await response.clone().json().catch(() => null)
-    let message =
+    let message: unknown =
         (maybeJson && (maybeJson.detail || maybeJson.message || maybeJson.error)) ||
         `Request failed with status ${response.status}`
 
@@ -469,6 +484,8 @@ export const apiFetch = async (
          const text = await response.text().catch(() => '')
          if (text) message = text
     }
+
+    const normalizedMessage = normalizeApiErrorMessage(response.status, message)
 
     if (response.status === 403 && (message === 'MFA_REQUIRED' || message === 'MFA_PASSKEY_REQUIRED')) {
       clearCachedToken()
@@ -481,7 +498,12 @@ export const apiFetch = async (
       }
       throw new MfaRequiredError(message === 'MFA_PASSKEY_REQUIRED' ? 'passkey' : 'totp')
     }
-    throw new Error(message as string)
+
+    if (response.status === 401) {
+      clearCachedToken()
+    }
+
+    throw new Error(normalizedMessage)
   }
 
   return response
