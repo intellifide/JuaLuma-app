@@ -1,0 +1,95 @@
+name: Identity Key Drift Guard
+
+on:
+  pull_request:
+    branches: [Dev, stage, main]
+    paths:
+      - ".github/workflows/deploy-dev.yml"
+      - ".github/workflows/deploy-stage.yml"
+      - ".github/workflows/deploy-prod.yml"
+      - ".github/workflows/identity-key-drift-check.yml"
+      - "frontend-app/src/services/gcp_auth_driver.ts"
+      - "support-portal/src/services/gcp_auth_driver.ts"
+      - "ops/identity-keys/**"
+      - "scripts/check_identity_key_drift.sh"
+  workflow_dispatch:
+  schedule:
+    - cron: "23 10 * * *"
+
+jobs:
+  key-material-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Block accidental API key string commits
+        run: |
+          set -euo pipefail
+          if rg -n --pcre2 'AIza[0-9A-Za-z_-]{35}' ops/identity-keys; then
+            echo "Detected API key material in ops/identity-keys. Remove key strings from repository files." >&2
+            exit 1
+          fi
+
+  drift-dev:
+    needs: [key-material-guard]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (dev)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: jualuma-dev
+
+      - name: Check dev browser key drift
+        run: ./scripts/check_identity_key_drift.sh --env dev
+
+  drift-stage:
+    needs: [key-material-guard]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (stage)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: jualuma-stage
+
+      - name: Check stage browser key drift
+        run: ./scripts/check_identity_key_drift.sh --env stage
+
+  drift-prod:
+    needs: [key-material-guard]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (prod)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: jualuma-prod
+
+      - name: Check prod browser key drift
+        run: ./scripts/check_identity_key_drift.sh --env prod
