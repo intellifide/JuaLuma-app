@@ -64,6 +64,15 @@ jobs:
             --no-allow-unauthenticated \
             --quiet
 
+      - name: Enforce Plaid production mode on backend runtime
+        run: |
+          set -euo pipefail
+          gcloud run services update jualuma-backend-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --update-env-vars=PLAID_ENV=production \
+            --quiet
+
       - name: Build and deploy approvals
         run: |
           set -euo pipefail
