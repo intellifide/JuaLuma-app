@@ -13,6 +13,7 @@
  */
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 
 const FULL_LICENSE_TEXT = `PolyForm Noncommercial License 1.0.0 (Tailored for JuaLuma)
 
@@ -158,14 +159,12 @@ application code, and related repository artifacts).
 export default function LicensePage() {
   return (
     <div className="container py-24 max-w-5xl">
-      <h1 className="text-5xl font-extrabold mb-10">
-        Full <span className="text-primary">License</span>
-      </h1>
+      <h1 className="text-5xl font-extrabold text-text-primary mb-10">Full License</h1>
       <div className="space-y-8 text-muted leading-relaxed">
         <p className="italic">Last Updated: February 24, 2026</p>
 
         <section>
-          <h2 className="text-2xl font-bold text-white mb-4">1. JuaLuma License Notice</h2>
+          <h2 className="text-2xl font-bold text-text-primary mb-4">1. JuaLuma License Notice</h2>
           <p>
             JuaLuma is a brand and software product owned and operated by
             Intellifide LLC.
@@ -176,11 +175,11 @@ export default function LicensePage() {
           </p>
         </section>
 
-        <section className="bg-surface-1 p-8 rounded-xl border border-white/5 shadow-inner">
-          <h2 className="text-2xl font-bold text-white mb-4">2. Full PolyForm Noncommercial 1.0.0 Text (Tailored)</h2>
-          <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-text-secondary font-mono m-0">
-            {FULL_LICENSE_TEXT}
-          </pre>
+        <section className="glass-panel p-8">
+          <h2 className="text-2xl font-bold text-text-primary mb-4">2. Full PolyForm Noncommercial 1.0.0 Text (Tailored)</h2>
+          <div className="license-markdown text-text-secondary">
+            <ReactMarkdown>{FULL_LICENSE_TEXT}</ReactMarkdown>
+          </div>
         </section>
       </div>
     </div>

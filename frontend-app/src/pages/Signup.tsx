@@ -20,10 +20,11 @@ import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 import { LEGAL_AGREEMENTS } from '../constants/legal'
 import { AgreementAcceptanceInput } from '../types/legal'
 import Switch from '../components/ui/Switch'
-	import { Alert } from '../components/ui/Alert'
-	import { Check, Circle, AlertCircle } from 'lucide-react'
-	import { AnimatedBrandText } from '../components/AnimatedBrandText'
-	import { ATTRIBUTION_PRIMARY } from '../constants/branding'
+import { Alert } from '../components/ui/Alert'
+import { Check, Circle, AlertCircle } from 'lucide-react'
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
+import { ATTRIBUTION_PRIMARY } from '../constants/branding'
+import { getMarketingSiteUrl } from '../utils/marketing'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -58,15 +59,7 @@ export const Signup = () => {
     [password],
   )
 
-  // Marketing site base URL for legal docs (GCP portability: env-driven, no hardcoded origins)
-  const marketingLegalBase = useMemo(() => {
-    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    const fallback = isLocalhost
-      ? 'http://localhost:5177'
-      : 'https://jualuma-marketing-298159098975.us-central1.run.app'
-    const env = (import.meta as any).env || {}
-    return env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL || fallback
-  }, [])
+  const marketingLegalBase = useMemo(() => getMarketingSiteUrl(), [])
 
   // Track when user lands on signup page
   useEffect(() => {

@@ -141,15 +141,10 @@ export const Navbar: React.FC = () => {
     >
       <div ref={navRowRef} className="max-w-7xl mx-auto pl-6 pr-8 h-20 flex items-center justify-between gap-6">
         <div ref={navBrandRef} className="flex flex-shrink-0 mr-2">
-          <Link href="/" className="marketing-brand-lockup flex items-center gap-3 group">
-            <span className="marketing-brand-mark" aria-hidden>
-              <span />
-              <span />
-              <span />
-            </span>
+          <Link href="/" className="flex items-center group">
             <span className="flex flex-col leading-none">
               <span
-                className="text-2xl font-bold tracking-tight select-none"
+                className="text-[2.15rem] font-bold tracking-tight select-none"
                 onMouseMove={handleBrandMouseMove}
                 onMouseLeave={handleBrandMouseLeave}
               >
@@ -178,9 +173,6 @@ export const Navbar: React.FC = () => {
                     {letter}
                   </span>
                 ))}
-              </span>
-              <span className="marketing-brand-subtitle text-[11px] font-semibold tracking-wide mt-1">
-                by Intellifide
               </span>
             </span>
           </Link>

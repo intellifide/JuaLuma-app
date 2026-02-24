@@ -14,10 +14,11 @@
 
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { getMarketingLegalUrl } from '../utils/marketing';
 
 export const CookieConsentBanner: React.FC = () => {
     const [isVisible, setIsVisible] = useState(false);
+    const privacyPolicyUrl = getMarketingLegalUrl('privacy');
 
     useEffect(() => {
         const consent = localStorage.getItem('jualuma_cookie_consent');
@@ -49,7 +50,7 @@ export const CookieConsentBanner: React.FC = () => {
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                             We use cookies to enhance your experience and analyze our traffic.
                             By clicking &quot;Accept&quot;, you consent to our use of cookies.
-                            Read our <Link to="/legal/privacy" className="text-royal-purple hover:text-deep-indigo underline">Privacy Policy</Link> to learn more.
+                            Read our <a href={privacyPolicyUrl} target="_blank" rel="noopener noreferrer" className="text-royal-purple hover:text-deep-indigo underline">Privacy Policy</a> to learn more.
                         </p>
                     </div>
                     <div className="flex gap-4 min-w-fit">

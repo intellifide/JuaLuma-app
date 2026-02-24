@@ -50,6 +50,7 @@ import { createPasskeyCredential, getPasskeyAssertion } from '../services/passke
 import { CopyIconButton } from '../components/ui/CopyIconButton';
 import QRCode from 'qrcode';
 import { ATTRIBUTION_PRIMARY } from '../constants/branding';
+import { getMarketingSiteUrl } from '../utils/marketing';
 
 type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref' | 'time_zone'>> & {
   phone_number?: string | null;
@@ -1113,15 +1114,7 @@ export const Settings = () => {
     { id: 'about', label: 'About' },
   ];
 
-  // Marketing site base URL for legal docs (env-driven; avoid hardcoded origins).
-  const marketingLegalBase = React.useMemo(() => {
-    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    const fallback = isLocalhost
-      ? 'http://localhost:5177'
-      : 'https://jualuma-marketing-298159098975.us-central1.run.app'
-    const env = (import.meta as any).env || {}
-    return env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL || fallback
-  }, [])
+  const marketingLegalBase = React.useMemo(() => getMarketingSiteUrl(), [])
 
   return (
     <div>

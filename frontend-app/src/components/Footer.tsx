@@ -13,10 +13,15 @@
  */
 
 import { Link } from 'react-router-dom';
+import { getMarketingLegalUrl } from '../utils/marketing';
 
 // Updated 2025-12-09 16:45 CST by ChatGPT
-export const Footer = () => (
-  <footer className="footer">
+export const Footer = () => {
+  const termsUrl = getMarketingLegalUrl('terms')
+  const privacyUrl = getMarketingLegalUrl('privacy')
+
+  return (
+    <footer className="footer">
     <div className="footer-container">
       <div className="footer-grid">
         <div className="footer-section">
@@ -33,8 +38,8 @@ export const Footer = () => (
             <li><Link to="/support">Contact Support</Link></li>
             <li><Link to="/support#faq">FAQ</Link></li>
             <li><Link to="/feature-request">Feature Request</Link></li>
-            <li><Link to="/legal/terms">Terms of Service</Link></li>
-            <li><Link to="/legal/privacy">Privacy Policy</Link></li>
+            <li><a href={termsUrl} target="_blank" rel="noopener noreferrer">Terms of Service</a></li>
+            <li><a href={privacyUrl} target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
           </ul>
         </div>
         <div className="footer-section">
@@ -85,4 +90,5 @@ export const Footer = () => (
       </div>
     </div>
   </footer>
-)
+  )
+}

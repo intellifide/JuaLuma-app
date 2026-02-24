@@ -17,7 +17,7 @@
 import Link from 'next/link'
 import { motion, type Variants } from '@/lib/motion'
 import { APP_URL } from '@/lib/constants'
-import { Diamond, Link2, LineChart } from 'lucide-react'
+import { Link2, LineChart, Sparkles } from 'lucide-react'
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -38,16 +38,19 @@ const item: Variants = {
 const workflowCards = [
   {
     icon: Link2,
+    iconClass: 'marketing-story-icon-connect',
     title: 'Connect your accounts',
     body: 'Sync banks, brokerages, wallets, and manual assets in one place with clear ownership and account-type controls.',
   },
   {
     icon: LineChart,
+    iconClass: 'marketing-story-icon-balance',
     title: 'Watch balances normalize',
     body: 'We convert data into one timeline so your net worth trend, allocation shifts, and monthly changes are instantly readable.',
   },
   {
-    icon: Diamond,
+    icon: Sparkles,
+    iconClass: 'marketing-story-icon-ai',
     title: 'Act on AI insights',
     body: 'Get spending anomalies, category drifts, and what changed summaries tied directly to real transactions.',
   },
@@ -55,9 +58,12 @@ const workflowCards = [
 
 export default function Home() {
   return (
-    <div className="marketing-home-root -mx-6">
-      <div className="marketing-home-bg" aria-hidden />
-      <div className="marketing-home-overlay" aria-hidden />
+    <div className="marketing-home-root marketing-home-full-bleed">
+      <div className="marketing-galaxy-layer spaceBase" aria-hidden />
+      <div className="marketing-galaxy-layer nebula1" aria-hidden />
+      <div className="marketing-galaxy-layer nebula2" aria-hidden />
+      <div className="marketing-galaxy-layer nebulaBand" aria-hidden />
+      <div className="marketing-galaxy-layer spaceDust" aria-hidden />
 
       <div className="relative z-10 px-6 pb-8 md:pb-10">
         <motion.section
@@ -66,9 +72,9 @@ export default function Home() {
           initial="hidden"
           animate="show"
         >
-          <motion.h1 variants={item} className="marketing-hero-title">Build a living map of your money.</motion.h1>
+          <motion.h1 variants={item} className="marketing-hero-title">Get total clarity across your entire financial life.</motion.h1>
           <motion.p variants={item} className="marketing-hero-subtitle">
-            Not just another static dashboard. JuaLuma aggregates traditional finance, crypto, and real-world assets into one clear, visual overview with feature replicas of the actual workflow.
+            JuaLuma unifies traditional accounts, crypto, and real-world assets into one real-time view so you can track net worth, spot changes faster, and make better financial decisions with confidence.
           </motion.p>
           <motion.div variants={item} className="marketing-hero-ctas">
             <a href={`${APP_URL}/signup`} className="btn btn-lg marketing-primary-btn">Start Free Trial</a>
@@ -77,7 +83,6 @@ export default function Home() {
 
           <motion.div variants={item} className="marketing-preview-panel">
             <h2>Wealth Builder Preview</h2>
-            <p>Financial overview demo inspired by live dashboard cards.</p>
             <div className="marketing-metric-grid">
               <article className="marketing-metric-card">
                 <h3>Net Worth</h3>
@@ -127,7 +132,7 @@ export default function Home() {
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.5, delay: 0.06 }}
           >
-            The app is built for people managing real complexity: multiple accounts, multiple asset classes, and multiple stakeholders.
+            JuaLuma is built for every stage of the financial journey, from first account to multi-asset portfolios.
           </motion.p>
 
           <div className="marketing-story-grid">
@@ -142,7 +147,7 @@ export default function Home() {
                   transition={{ duration: 0.5, delay: index * 0.07 }}
                   className="marketing-story-card"
                 >
-                  <span className="marketing-story-icon" aria-hidden>
+                  <span className={`marketing-story-icon ${card.iconClass}`} aria-hidden>
                     <Icon size={15} strokeWidth={1.95} />
                   </span>
                   <h3>{card.title}</h3>
