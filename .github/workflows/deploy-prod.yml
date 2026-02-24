@@ -3,6 +3,17 @@ name: CD - Deploy to Prod (jualuma-prod)
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      incident_id:
+        description: "Incident ID or emergency reference"
+        required: true
+      change_summary:
+        description: "High-level summary of the change"
+        required: true
+      rollback_plan:
+        description: "Immediate rollback plan"
+        required: true
 
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -34,6 +45,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Record emergency deploy context
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          : "${{ github.event.inputs.incident_id }}"
+          : "${{ github.event.inputs.change_summary }}"
+          : "${{ github.event.inputs.rollback_plan }}"
+          {
+            echo "## Emergency deployment metadata"
+            echo "- **Incident ID**: `${{ github.event.inputs.incident_id }}`"
+            echo "- **Change summary**: ${{ github.event.inputs.change_summary }}"
+            echo "- **Rollback plan**: ${{ github.event.inputs.rollback_plan }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Google Auth
         uses: "google-github-actions/auth@v2"
