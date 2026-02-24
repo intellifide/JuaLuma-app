@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -164,7 +164,7 @@ export default function Dashboard() {
   const { data: budgetStatus, loading: budgetStatusLoading } = useBudgetStatus(dashboardScope);
   const toast = useToast();
 
-  
+
 
 
   // Invite Member State
@@ -224,8 +224,8 @@ export default function Dashboard() {
     if (!inviteEmail) return;
     setSendingInvite(true);
     try {
-      await householdService.inviteMember({ 
-        email: inviteEmail, 
+      await householdService.inviteMember({
+        email: inviteEmail,
         is_minor: inviteIsMinor,
         can_view_household: inviteCanViewHousehold
       });
@@ -235,7 +235,7 @@ export default function Dashboard() {
       setInviteIsMinor(false);
       setInviteCanViewHousehold(true);
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail 
+      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
         || (err instanceof Error ? err.message : "Failed to send invite.");
       toast.show(message, "error");
     } finally {
@@ -673,7 +673,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
+
         {/* Scope Toggle & Invite */}
         <div className="flex items-center gap-4">
           {canSeeScopeToggle && (
@@ -702,9 +702,9 @@ export default function Dashboard() {
               </FeaturePreview>
             </div>
           )}
-          
+
           {profile?.plan?.toLowerCase().includes('ultimate') && (
-            <button 
+            <button
               onClick={handleInviteClick}
               className="text-xs font-medium text-primary border border-primary/30 rounded px-2 py-1.5 hover:bg-primary/10 transition-colors flex items-center gap-1"
             >
@@ -1238,14 +1238,14 @@ export default function Dashboard() {
         title="Invite Family Member"
         footer={
           <div className="flex justify-end gap-2">
-            <button 
-              onClick={() => setInviteModalOpen(false)} 
+            <button
+              onClick={() => setInviteModalOpen(false)}
               className="btn btn-ghost text-sm"
             >
               Cancel
             </button>
-            <button 
-              onClick={sendInvite} 
+            <button
+              onClick={sendInvite}
               disabled={sendingInvite || !inviteEmail}
               className="btn btn-primary text-sm"
             >
@@ -1260,9 +1260,9 @@ export default function Dashboard() {
           </p>
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Email Address</label>
-            <input 
-              type="email" 
-              className="form-input w-full" 
+            <input
+              type="email"
+              className="form-input w-full"
               placeholder="family@example.com"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
@@ -1270,19 +1270,19 @@ export default function Dashboard() {
             />
           </div>
           <div className="space-y-4 mt-4">
-            <Switch 
+            <Switch
               checked={inviteIsMinor}
               onChange={setInviteIsMinor}
               label="Is this member a minor?"
               description="Minors have restricted access to AI features."
             />
-            
-            <Switch 
+
+            <Switch
               checked={inviteCanViewHousehold}
               onChange={setInviteCanViewHousehold}
               label="Allow viewing finances?"
               description="Enable access to shared household metrics."
-              disabled={inviteIsMinor} 
+              disabled={inviteIsMinor}
             />
           </div>
         </div>
