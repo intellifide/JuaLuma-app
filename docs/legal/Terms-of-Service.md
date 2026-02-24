@@ -222,7 +222,7 @@ You retain ownership of any content you provide to the Service. By providing con
 
 #### 7.4 Source-Available License Notice
 
-The JuaLuma codebase is licensed under the PolyForm Noncommercial License 1.0.0. See `PolyForm-Noncommercial-1.0.0.txt`.
+The JuaLuma codebase is licensed under the PolyForm Noncommercial License 1.0.0. See `/legal/license`.
 
 You may audit, run, and modify the software for personal and noncommercial use, including building widgets/plugins for the ecosystem.
 

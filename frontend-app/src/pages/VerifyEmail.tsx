@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -44,7 +44,7 @@ export const VerifyEmail = () => {
         // If user has completed verification, redirect to pricing or dashboard
         // ProtectedRoute will handle the final destination based on status
         // BUT we want to preserve returnUrl if present
-        
+
         const nextParams = new URLSearchParams()
         if (returnUrl) {
             nextParams.set('returnUrl', returnUrl)
@@ -53,7 +53,7 @@ export const VerifyEmail = () => {
             nextParams.set('plan', plan)
         }
         const queryString = nextParams.toString()
-        
+
         // Prioritize household invites - bypass pricing check
         if (returnUrl && returnUrl.includes('/household/accept-invite')) {
              navigate(returnUrl, { replace: true })
