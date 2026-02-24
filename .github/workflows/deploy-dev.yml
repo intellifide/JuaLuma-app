@@ -69,6 +69,10 @@ jobs:
           service: "jualuma-backend"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
+          flags: >-
+            --allow-unauthenticated
+            --no-invoker-iam-check
+            --ingress=all
 
       - name: Enforce Plaid production mode on backend runtime
         run: |
@@ -88,6 +92,7 @@ jobs:
             -f frontend-app/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest
       - name: Deploy Frontend App
+        id: deploy_frontend
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: "frontend-app"
@@ -95,6 +100,10 @@ jobs:
           region: ${{ env.REGION }}
           env_vars: |-
             API_UPSTREAM=${{ steps.deploy_backend.outputs.url }}
+          flags: >-
+            --allow-unauthenticated
+            --no-invoker-iam-check
+            --ingress=all
 
       # 3. Marketing
       - name: Build and Push Marketing
@@ -106,11 +115,16 @@ jobs:
             -f frontend-marketing/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest
       - name: Deploy Marketing
+        id: deploy_marketing
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: "marketing-site"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest"
           region: ${{ env.REGION }}
+          flags: >-
+            --allow-unauthenticated
+            --no-invoker-iam-check
+            --ingress=all
 
       # 4. Support
       - name: Build and Push Support
@@ -122,6 +136,7 @@ jobs:
             -f support-portal/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest
       - name: Deploy Support
+        id: deploy_support
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: "support-portal"
@@ -129,3 +144,58 @@ jobs:
           region: ${{ env.REGION }}
           env_vars: |-
             API_UPSTREAM=${{ steps.deploy_backend.outputs.url }}
+          flags: >-
+            --allow-unauthenticated
+            --no-invoker-iam-check
+            --ingress=all
+
+      - name: Verify public access policy (Dev)
+        run: |
+          set -euo pipefail
+
+          FRONTEND_URL="${{ steps.deploy_frontend.outputs.url }}"
+          BACKEND_URL="${{ steps.deploy_backend.outputs.url }}"
+          SUPPORT_URL="${{ steps.deploy_support.outputs.url }}"
+
+          check_html_or_iap() {
+            local url="$1"
+            local method="${2:-GET}"
+            local data="${3:-}"
+            local headers_file body_file status
+            headers_file="$(mktemp)"
+            body_file="$(mktemp)"
+
+            if [[ "$method" == "POST" ]]; then
+              status="$(curl -sS -D "$headers_file" -o "$body_file" \
+                -X POST "$url" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer test.invalid.token" \
+                --data "$data" \
+                -w "%{http_code}")"
+            else
+              status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
+            fi
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              echo "::error::IAP interception detected at $url"
+              sed -n '1,30p' "$headers_file"
+              exit 1
+            fi
+            if grep -qi '<html' "$body_file"; then
+              echo "::error::HTML gateway response detected at $url (status=$status)"
+              sed -n '1,20p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+          }
+
+          # Public shell endpoints should not be IAP/gateway HTML.
+          check_html_or_iap "${FRONTEND_URL}/"
+          check_html_or_iap "${SUPPORT_URL}/"
+          check_html_or_iap "${BACKEND_URL}/api/health"
+
+          # Invalid Firebase token should fail in app (JSON), not Cloud Run gateway HTML.
+          check_html_or_iap \
+            "${BACKEND_URL}/api/auth/signup/pending" \
+            "POST" \
+            '{"agreements":[],"first_name":"probe","last_name":"probe"}'
