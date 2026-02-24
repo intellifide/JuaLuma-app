@@ -17,7 +17,19 @@
 import Link from 'next/link'
 import { APP_URL } from '@/lib/constants'
 
-const footerColumns = [
+type FooterItem = {
+  label: string
+  href: string
+  external?: boolean
+  soon?: boolean
+}
+
+type FooterColumn = {
+  heading: string
+  items: FooterItem[]
+}
+
+const footerColumns: FooterColumn[] = [
   {
     heading: 'Product',
     items: [
