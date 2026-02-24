@@ -169,6 +169,64 @@ jobs:
               --quiet
           done
 
+      - name: Disable IAP on web backend services (Dev)
+        run: |
+          set -euo pipefail
+
+          mapfile -t web_negs < <(
+            gcloud compute network-endpoint-groups list \
+              --project="${PROJECT_ID}" \
+              --format='value(name,region.basename(),cloudRun.service)' \
+              | awk '$3=="frontend-app" || $3=="support-portal" {print $1 "\t" $2 "\t" $3}'
+          )
+
+          if [[ ${#web_negs[@]} -eq 0 ]]; then
+            echo "::warning::No serverless NEGs found for frontend-app/support-portal."
+          else
+            backend_json="$(gcloud compute backend-services list --project="${PROJECT_ID}" --format=json)"
+            declare -A processed_backends=()
+
+            for neg_entry in "${web_negs[@]}"; do
+              IFS=$'\t' read -r neg_name neg_region service_name <<< "${neg_entry}"
+              neg_suffix="/regions/${neg_region}/networkEndpointGroups/${neg_name}"
+
+              mapfile -t backend_entries < <(
+                jq -r --arg suffix "${neg_suffix}" '
+                  .[]
+                  | select(any(.backends[]?; (.group // "") | endswith($suffix)))
+                  | [.name, (.region // "global")]
+                  | @tsv
+                ' <<< "${backend_json}"
+              )
+
+              for backend_entry in "${backend_entries[@]}"; do
+                IFS=$'\t' read -r backend_name backend_region <<< "${backend_entry}"
+                backend_key="${backend_name}::${backend_region}"
+
+                if [[ -n "${processed_backends[${backend_key}]:-}" ]]; then
+                  continue
+                fi
+
+                echo "Disabling IAP for backend service ${backend_name} (service=${service_name}, neg=${neg_name})"
+                if [[ "${backend_region}" == "global" ]]; then
+                  gcloud compute backend-services update "${backend_name}" \
+                    --project="${PROJECT_ID}" \
+                    --global \
+                    --iap=disabled \
+                    --quiet
+                else
+                  gcloud compute backend-services update "${backend_name}" \
+                    --project="${PROJECT_ID}" \
+                    --region="${backend_region##*/}" \
+                    --iap=disabled \
+                    --quiet
+                fi
+
+                processed_backends["${backend_key}"]=1
+              done
+            done
+          fi
+
       - name: Verify public access policy (Dev)
         run: |
           set -euo pipefail
