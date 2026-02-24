@@ -46,6 +46,27 @@ docker compose up -d --build
 - Active Web3 provider keys are Tatum-only (`TATUM_API_KEY`, `TATUM_BASE_URL`, retry/timeout settings).
 - Web3 provider contract and support boundaries are documented in `docs/Web3-History-Providers.md`.
 
+### Branch Safety Setup
+
+Use one-time repository bootstrap after clone or when branch guard settings drift:
+
+```bash
+./scripts/bootstrap-git-workflow.sh
+```
+
+This command does three things:
+
+- pins local fetch/push behavior to the canonical `Dev` branch,
+- enables the repo-tracked pre-push hook,
+- hard-resets local `Dev` to match `origin/Dev`.
+
+To push intentionally to stage or prod from this environment, use explicit override:
+
+```bash
+ALLOW_NON_DEV_PUSH=1 git push origin Dev:stage
+ALLOW_NON_DEV_PUSH=1 git push origin Dev:main
+```
+
 ## Quick Validation Commands
 
 ```bash
