@@ -70,4 +70,4 @@ npm --prefix support-portal run test
 This repository is source-available under `PolyForm Noncommercial License 1.0.0`.
 
 - Canonical project license notice: `LICENSE`
-- Full license text: `PolyForm-Noncommercial-1.0.0.txt`
+- Full license text: `/legal/license`

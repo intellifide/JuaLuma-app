@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -100,13 +100,13 @@ function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="household" element={<HouseholdPage />} />
               <Route path="support" element={<Support />} />
-              
+
               {/* Nested or Specific App Pages */}
               <Route path="support/tickets/:ticketId" element={<TicketDetail />} />
               <Route path="checkout/success" element={<CheckoutSuccess />} />
               <Route path="checkout/start" element={<CheckoutStart />} />
               <Route path="developers/dashboard" element={<DeveloperDashboard />} />
-              
+
                {/* Legacy Redirects */}
               <Route path="developer-marketplace" element={<Navigate to="/developers/dashboard" replace />} />
             </Route>
@@ -115,7 +115,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
 
 
-          
+
             </Routes>
           </AuthProvider>
         </SWRConfig>
