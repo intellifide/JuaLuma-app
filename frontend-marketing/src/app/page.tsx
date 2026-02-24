@@ -17,6 +17,7 @@
 import Link from 'next/link'
 import { motion, type Variants } from '@/lib/motion'
 import { APP_URL } from '@/lib/constants'
+import { Diamond, Link2, LineChart } from 'lucide-react'
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -34,142 +35,134 @@ const item: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
 }
 
-const timeline = [
+const workflowCards = [
   {
+    icon: Link2,
     title: 'Connect your accounts',
     body: 'Sync banks, brokerages, wallets, and manual assets in one place with clear ownership and account-type controls.',
   },
   {
+    icon: LineChart,
     title: 'Watch balances normalize',
     body: 'We convert data into one timeline so your net worth trend, allocation shifts, and monthly changes are instantly readable.',
   },
   {
+    icon: Diamond,
     title: 'Act on AI insights',
-    body: 'Get spending anomalies, category drifts, and “what changed” summaries tied directly to real transactions.',
+    body: 'Get spending anomalies, category drifts, and what changed summaries tied directly to real transactions.',
   },
 ]
 
 export default function Home() {
   return (
-    <div data-theme="dark">
-      {/* Full-page hero background — fixed to viewport; must be outside any overflow ancestor to fill entire page */}
-      <div
-        className="fixed inset-0 z-0"
-        style={{
-          backgroundImage: "url('/assets/hero-bg.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      <div className="relative z-10 overflow-x-hidden pb-16">
-      <section className="relative pt-14 pb-16 md:pt-20 md:pb-20">
-        <div className="floating-orb -top-24 -left-20 bg-secondary/30" />
-        <div className="floating-orb top-8 -right-20 bg-primary/35" style={{ animationDelay: '-8s' }} />
+    <div className="marketing-home-root -mx-6">
+      <div className="marketing-home-bg" aria-hidden />
+      <div className="marketing-home-overlay" aria-hidden />
 
-        <motion.div className="relative z-10" variants={container} initial="hidden" animate="show">
-          <motion.h1 variants={item} className="text-center text-4xl md:text-6xl xl:text-7xl max-w-5xl mx-auto leading-[1.04]">
-            Build a living map of your money.
-            <span className="block mt-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Not just another static dashboard.
-            </span>
-          </motion.h1>
-
-          <motion.p variants={item} className="text-center text-lg md:text-xl text-text-secondary max-w-3xl mx-auto mt-6 mb-10">
-            JuaLuma aggregates traditional finance, crypto, and real-world assets into one clear, visual overview with feature replicas of the actual workflow.
+      <div className="relative z-10 px-6 pb-8 md:pb-10">
+        <motion.section
+          className="marketing-hero-wrap max-w-[1460px] mx-auto"
+          variants={container}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.h1 variants={item} className="marketing-hero-title">Build a living map of your money.</motion.h1>
+          <motion.p variants={item} className="marketing-hero-subtitle">
+            Not just another static dashboard. JuaLuma aggregates traditional finance, crypto, and real-world assets into one clear, visual overview with feature replicas of the actual workflow.
           </motion.p>
-
-          <motion.div variants={item} className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href={`${APP_URL}/signup`} className="btn btn-lg">
-              Start Free Trial
-            </a>
-            <Link href="/features" className="btn btn-lg btn-secondary">
-              See Feature Stories
-            </Link>
+          <motion.div variants={item} className="marketing-hero-ctas">
+            <a href={`${APP_URL}/signup`} className="btn btn-lg marketing-primary-btn">Start Free Trial</a>
+            <Link href="/features" className="btn btn-lg marketing-secondary-btn">See Feature Stories</Link>
           </motion.div>
 
-          <motion.div variants={item} className="mt-14 md:mt-16 glass-panel max-w-6xl mx-auto p-4 md:p-6">
-            <div className="replica-shell rounded-2xl overflow-hidden p-4 md:p-5">
-              <div className="replica-divider px-1 pb-4 border-b flex flex-wrap gap-3 items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-text-primary">Wealth Builder Preview</span>
-                  <span className="text-xs text-text-muted">Financial overview demo inspired by live dashboard cards</span>
-                </div>
-              </div>
+          <motion.div variants={item} className="marketing-preview-panel">
+            <h2>Wealth Builder Preview</h2>
+            <p>Financial overview demo inspired by live dashboard cards.</p>
+            <div className="marketing-metric-grid">
+              <article className="marketing-metric-card">
+                <h3>Net Worth</h3>
+                <p className="marketing-metric-value positive">$638,240</p>
+                <p className="marketing-metric-detail">Assets $1.00M • Liabilities $415K</p>
+                <p className="marketing-metric-footnote">Up $12.7k in last 30 days</p>
+              </article>
 
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                <div className="card gap-2">
-                  <h4 className="text-sm text-text-muted mb-0">Net Worth</h4>
-                  <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
-                  <p className="text-2xl font-bold text-primary mb-0">$638,240</p>
-                  <p className="text-xs text-text-muted mb-0">Assets $1.05M • Liabilities $412k</p>
-                  <p className="text-xs text-emerald-400 mb-0">Up $12.7k in Last 30 days</p>
-                </div>
+              <article className="marketing-metric-card">
+                <h3>Cash Flow</h3>
+                <p className="marketing-metric-value positive">+$3,180</p>
+                <p className="marketing-metric-detail">In $11,450 • Out $8,270</p>
+              </article>
 
-                <div className="card gap-2">
-                  <h4 className="text-sm text-text-muted mb-0">Cash Flow</h4>
-                  <p className="text-xs text-text-muted mb-0">Period: Last 30 days</p>
-                  <p className="text-2xl font-bold text-emerald-400 mb-0">+$3,180</p>
-                  <p className="text-xs text-text-muted mb-0">In $11,450 • Out $8,270</p>
+              <article className="marketing-metric-card">
+                <h3>Budget Status</h3>
+                <p className="marketing-metric-value">72%</p>
+                <div className="marketing-meter-track" aria-hidden>
+                  <span className="marketing-meter-fill" style={{ width: '72%' }} />
                 </div>
+                <p className="marketing-metric-detail">$8.0k of $8.0k spent</p>
+              </article>
 
-                <div className="card gap-2">
-                  <h4 className="text-sm text-text-muted mb-0">Budget Status</h4>
-                  <p className="text-xs text-text-muted mb-0">Based on budget period logic</p>
-                  <p className="text-2xl font-bold text-primary mb-0">72%</p>
-                  <p className="text-xs text-text-muted mb-0">$5.8k of $8.0k spent</p>
-                  <div className="replica-progress-track w-full rounded-full h-2">
-                    <div className="h-2 rounded-full bg-primary" style={{ width: '72%' }} />
-                  </div>
-                </div>
-
-                <div className="card gap-2">
-                  <h4 className="text-sm text-text-muted mb-0">Linked Accounts</h4>
-                  <p className="text-xs text-text-muted mb-0">As of today</p>
-                  <p className="text-2xl font-bold text-primary mb-0">21</p>
-                  <p className="text-xs text-text-muted mb-0">Checking 5 • Savings 4 • Brokerage 3 • +more</p>
-                </div>
-              </div>
+              <article className="marketing-metric-card">
+                <h3>Linked Accounts</h3>
+                <p className="marketing-metric-value">21</p>
+                <p className="marketing-metric-detail">Checking 5 • Savings 4 • Brokerage 3 • + more</p>
+              </article>
             </div>
           </motion.div>
-        </motion.div>
-      </section>
+        </motion.section>
 
-      <section className="py-10 md:py-12">
-        <div className="text-center mb-6">
-          <h2 className="text-3xl md:text-5xl">From scattered data to confident decisions</h2>
-          <p className="max-w-2xl mx-auto text-lg text-text-secondary">
+        <section className="marketing-story-wrap max-w-[1460px] mx-auto">
+          <motion.h2
+            className="marketing-story-title"
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.5 }}
+          >
+            From scattered data to confident decisions
+          </motion.h2>
+          <motion.p
+            className="marketing-story-subtitle"
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.5, delay: 0.06 }}
+          >
             The app is built for people managing real complexity: multiple accounts, multiple asset classes, and multiple stakeholders.
-          </p>
-        </div>
+          </motion.p>
 
-        <div className="grid md:grid-cols-3 gap-4">
-          {timeline.map((step, index) => (
-            <motion.article
-              key={step.title}
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.5, delay: index * 0.07 }}
-              className="glass-panel relative"
-            >
-              <h3 className="text-xl md:text-2xl">{step.title}</h3>
-              <p className="text-text-secondary leading-relaxed">{step.body}</p>
-            </motion.article>
-          ))}
-        </div>
-      </section>
+          <div className="marketing-story-grid">
+            {workflowCards.map((card, index) => {
+              const Icon = card.icon
+              return (
+                <motion.article
+                  key={card.title}
+                  initial={{ opacity: 0, y: 14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.5, delay: index * 0.07 }}
+                  className="marketing-story-card"
+                >
+                  <span className="marketing-story-icon" aria-hidden>
+                    <Icon size={15} strokeWidth={1.95} />
+                  </span>
+                  <h3>{card.title}</h3>
+                  <p>{card.body}</p>
+                </motion.article>
+              )
+            })}
+          </div>
+        </section>
 
-      <section className="pt-4 md:pt-6 pb-4">
-        <div className="glass-panel text-center">
-          <h2 className="text-3xl md:text-5xl mb-4">Ready to see your financial system in motion?</h2>
-          <p className="max-w-2xl mx-auto text-lg mb-8">
-            Start with your current accounts and grow into forecasting, household collaboration, and AI-powered optimization.
-          </p>
-          <a href={`${APP_URL}/signup`} className="btn btn-lg">
-            Create Free Account
-          </a>
-        </div>
-      </section>
+        <motion.section
+          className="marketing-final-cta max-w-[1460px] mx-auto"
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2>Ready to see your financial system in motion?</h2>
+          <a href={`${APP_URL}/signup`} className="btn btn-lg marketing-primary-btn">Create Free Account</a>
+        </motion.section>
       </div>
     </div>
   )
