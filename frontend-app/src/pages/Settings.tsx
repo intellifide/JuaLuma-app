@@ -1115,18 +1115,46 @@ export const Settings = () => {
     { id: 'about', label: 'About' },
   ];
 
-  const nextPlanCode = useMemo(() => {
-    const currentPlan = profile?.plan?.toLowerCase() || 'free';
-    if (currentPlan.includes('ultimate')) return null;
-    if (currentPlan.includes('pro')) return 'ultimate';
-    if (currentPlan.includes('essential')) return 'pro';
-    return 'essential';
+  const [selectedUpgradePlan, setSelectedUpgradePlan] = useState<string>('');
+
+  const upgradePlanOptions = useMemo(() => {
+    const currentPlan = (profile?.plan || 'free').toLowerCase();
+    const currentTierRank = currentPlan.includes('ultimate')
+      ? 3
+      : currentPlan.includes('pro')
+        ? 2
+        : currentPlan.includes('essential')
+          ? 1
+          : 0;
+
+    const allUpgradeTiers = [
+      { code: 'essential', label: 'Essential' , rank: 1 },
+      { code: 'pro', label: 'Pro', rank: 2 },
+      { code: 'ultimate', label: 'Ultimate', rank: 3 },
+    ];
+
+    return allUpgradeTiers.filter((plan) => plan.rank > currentTierRank);
   }, [profile?.plan]);
 
+  useEffect(() => {
+    if (upgradePlanOptions.length === 0) {
+      setSelectedUpgradePlan('');
+      return;
+    }
+    const hasValidSelectedOption = upgradePlanOptions.some(
+      (option) => option.code === selectedUpgradePlan,
+    );
+    if (!hasValidSelectedOption) {
+      setSelectedUpgradePlan(upgradePlanOptions[0].code);
+    }
+  }, [upgradePlanOptions, selectedUpgradePlan]);
+
   const handleUpgrade = useCallback(async () => {
-    if (!nextPlanCode || !user) {
+    if (!selectedUpgradePlan || !user) {
       if (!user) {
         alert('You must be signed in to upgrade your subscription.');
+      } else {
+        alert('Please select a plan to upgrade.');
       }
       return;
     }
@@ -1134,7 +1162,7 @@ export const Settings = () => {
     try {
       const returnUrl = new URL('/settings?tab=subscription', window.location.origin);
       const checkoutUrl = await createCheckoutSession(
-        nextPlanCode,
+        selectedUpgradePlan,
         returnUrl.toString()
       );
       window.location.assign(checkoutUrl);
@@ -1142,7 +1170,7 @@ export const Settings = () => {
       const message = e instanceof Error ? e.message : 'Unable to start upgrade checkout.';
       alert(message);
     }
-  }, [nextPlanCode, user]);
+  }, [selectedUpgradePlan, user]);
 
   const marketingLegalBase = React.useMemo(() => getMarketingSiteUrl(), [])
 
@@ -1221,7 +1249,7 @@ export const Settings = () => {
                       )}
                     </div>
                     <div className="card-footer">
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap items-end gap-3">
                         <button onClick={async () => {
                           try {
                             if (!user) {
@@ -1245,10 +1273,28 @@ export const Settings = () => {
                             alert(message);
                           }
                         }} className="btn btn-primary">Manage Subscription</button>
-                        {nextPlanCode && (
-                          <button onClick={handleUpgrade} className="btn btn-secondary">
-                            Upgrade Plan
-                          </button>
+                        {upgradePlanOptions.length > 0 && (
+                          <>
+                            <div className="min-w-[180px]">
+                              <label htmlFor="upgrade-plan-select" className="block text-xs text-text-muted mb-1">
+                                Upgrade to
+                              </label>
+                              <Select
+                                id="upgrade-plan-select"
+                                value={selectedUpgradePlan}
+                                onChange={(e) => setSelectedUpgradePlan(e.target.value)}
+                              >
+                                {upgradePlanOptions.map((option) => (
+                                  <option key={option.code} value={option.code}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </div>
+                            <button onClick={handleUpgrade} className="btn btn-secondary">
+                              Upgrade Subscription
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
