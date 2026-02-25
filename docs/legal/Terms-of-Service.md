@@ -222,14 +222,16 @@ You retain ownership of any content you provide to the Service. By providing con
 
 #### 7.4 Source-Available License Notice
 
-The JuaLuma codebase is licensed under the PolyForm Noncommercial License 1.0.0. See `/legal/license`.
+The JuaLuma codebase is licensed under the PolyForm Noncommercial License 1.0.0. See `docs/legal/Source-Available-License.md` and `/legal/license`.
 
 You may audit, run, and modify the software for personal and noncommercial use, including building widgets/plugins for the ecosystem.
 
 You may not:
 
 - Resell, repackage, sublicense, or distribute the application for a fee
-- Use the application for commercial enterprise deployment without separate written permission from Intellifide, LLC
+- Use the application for commercial enterprise deployment
+
+Intellifide, LLC does not offer commercial licensing rights for this software. License-compliance questions should be sent to legal@jualuma.com.
 
 ---
 

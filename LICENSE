@@ -11,10 +11,12 @@ License grant:
 - You may use, copy, modify, and share this software for noncommercial purposes under that license.
 
 Commercial restrictions:
-- No resale, paid redistribution, repackaging-for-fee, hosted enterprise resale, or other commercial use is allowed without separate written permission from Intellifide LLC.
+- No resale, paid redistribution, repackaging-for-fee, hosted enterprise resale, or other commercial use is allowed.
+- Intellifide LLC does not provide commercial licensing rights for this software.
 
 Canonical legal text:
-- Full legal terms: `/legal/license`
+- Repository details: `docs/legal/Source-Available-License.md`
+- Product legal page route: `/legal/license`
 - Public license URL: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 Conflict rule:

@@ -26,3 +26,6 @@ npm run storybook
 ## License
 
 Source-available under `PolyForm Noncommercial License 1.0.0`.
+
+- Canonical notice: `LICENSE` (repo root)
+- Details: `docs/legal/Source-Available-License.md` (repo root)

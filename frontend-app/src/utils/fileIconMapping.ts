@@ -16,6 +16,7 @@ const FILE_ICON_KIND_BY_EXTENSION: Record<string, FileIconKind> = {
   webp: 'image',
   bmp: 'image',
   heic: 'image',
+  svg: 'image',
   doc: 'word',
   docx: 'word',
   csv: 'sheet',

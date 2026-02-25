@@ -64,10 +64,14 @@ const envBase =
 const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
 
 export const aiService = {
-    sendMessage: async (message: string, clientContext?: PageContext): Promise<AIResponse> => {
+    sendMessage: async (
+        message: string,
+        clientContext?: PageContext,
+        attachmentIds?: string[],
+    ): Promise<AIResponse> => {
         const response = await api.post<AIResponse>(
             '/ai/chat',
-            { message, client_context: clientContext },
+            { message, client_context: clientContext, attachment_ids: attachmentIds },
             { timeout: 30000 }
         );
         return response.data;
@@ -76,7 +80,8 @@ export const aiService = {
     sendMessageStream: async (
         message: string,
         handlers: StreamHandlers,
-        clientContext?: PageContext
+        clientContext?: PageContext,
+        attachmentIds?: string[],
     ): Promise<AIResponse> => {
         const token = await getIdToken();
         const flushMs = Math.max(0, handlers.chunkDebounceMs ?? 60);
@@ -87,7 +92,11 @@ export const aiService = {
                 'Accept': 'text/event-stream',
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
-            body: JSON.stringify({ message, client_context: clientContext }),
+            body: JSON.stringify({
+                message,
+                client_context: clientContext,
+                attachment_ids: attachmentIds,
+            }),
             signal: handlers.signal,
         });
 

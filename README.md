@@ -91,4 +91,12 @@ npm --prefix support-portal run test
 This repository is source-available under `PolyForm Noncommercial License 1.0.0`.
 
 - Canonical project license notice: `LICENSE`
-- Full license text: `/legal/license`
+- Repository license details: `docs/legal/Source-Available-License.md`
+- Product legal page route: `/legal/license`
+
+## Email Identity Policy
+
+- OTP emails: `noreply@jualuma.com`
+- Friendly product emails: `hello@jualuma.com`
+- Support ticket emails only: `support@jualuma.com`
+- Inbound blocking guidance for `noreply@jualuma.com`: `docs/runbooks/email-sender-policy.md`

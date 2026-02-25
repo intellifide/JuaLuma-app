@@ -87,7 +87,10 @@ export default function TermsPage() {
                         JuaLuma is source available under the PolyForm Noncommercial License 1.0.0. You may audit the code, run it locally, and build widgets/plugins for personal and noncommercial ecosystem use.
                     </p>
                     <p className="mt-4">
-                        Commercial resale, repackaging, paid redistribution, or enterprise deployment of the application is strictly prohibited without separate written permission from Intellifide LLC.
+                        Commercial resale, repackaging, paid redistribution, or enterprise deployment of the application is strictly prohibited.
+                    </p>
+                    <p className="mt-4">
+                        Intellifide LLC does not offer commercial licensing rights for this software. License-compliance questions can be sent to <a href="mailto:legal@jualuma.com" className="text-primary underline">legal@jualuma.com</a>.
                     </p>
                     <p className="mt-4">
                         <a href="/legal/license" className="text-primary underline" title="JuaLuma License Notice">View the full license</a>

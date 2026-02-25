@@ -110,7 +110,43 @@ def test_uploaded_documents_context_skips_unparsable_file_types(test_db, mock_au
     )
 
     section, audit = _uploaded_documents_context(test_db, mock_auth.uid)
-    assert section == ""
+    assert "## Uploaded File Context" in section
+    assert "statement.pdf (pdf): Uploaded file metadata only." in section
     assert audit["considered"] == 1
-    assert audit["included"] == 0
-    assert audit["skip_reasons"]["DOC_UNPARSEABLE_TYPE"] == 1
+    assert audit["included"] == 1
+    assert audit["skip_reasons"] == {}
+
+
+def test_uploaded_documents_context_respects_attachment_ids_filter(test_db, mock_auth, tmp_path):
+    notes_path = tmp_path / "notes.txt"
+    notes_path.write_text("First file included.", encoding="utf-8")
+    doc_a = _create_user_document(
+        test_db=test_db,
+        uid=mock_auth.uid,
+        name="notes.txt",
+        file_type="txt",
+        file_path=notes_path,
+        size_bytes=notes_path.stat().st_size,
+    )
+
+    other_path = tmp_path / "other.txt"
+    other_path.write_text("Second file should be excluded.", encoding="utf-8")
+    _create_user_document(
+        test_db=test_db,
+        uid=mock_auth.uid,
+        name="other.txt",
+        file_type="txt",
+        file_path=other_path,
+        size_bytes=other_path.stat().st_size,
+    )
+
+    section, audit = _uploaded_documents_context(
+        test_db,
+        mock_auth.uid,
+        attachment_ids=[str(doc_a.id)],
+    )
+
+    assert "notes.txt (txt): First file included." in section
+    assert "other.txt (txt)" not in section
+    assert audit["considered"] == 1
+    assert audit["included"] == 1

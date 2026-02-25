@@ -19,7 +19,10 @@ from backend.services.ai import (
     generate_chat_response_stream,
     get_quota_snapshot_sync,
 )
-from backend.services.financial_context import get_financial_context
+from backend.services.financial_context import (
+    get_financial_context,
+    get_uploaded_documents_context,
+)
 from backend.utils import get_db
 
 # Import encryption utils (TIER 3.4)
@@ -38,6 +41,13 @@ class ChatRequest(BaseModel):
     message: str = Field(example="Give me a spending summary for this week.")
     client_context: dict[str, Any] | None = Field(
         default=None, description="Optional frontend page/view context."
+    )
+    attachment_ids: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional uploaded document IDs selected in the composer. "
+            "When provided, context assembly prioritizes these uploads."
+        ),
     )
 
     model_config = ConfigDict(
@@ -144,15 +154,28 @@ async def chat_endpoint(
         limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
         prechecked_limit = (tier, limit, int(precheck) if precheck is not None else 0)
 
-    # 3. RAG Context (Essential+ only)
+    # 3. Context Assembly
     context = ""
     if tier not in ["free"]:
-        # TIER 3.5: RAG Context Injection
         try:
-            context = await get_financial_context(user_id, message, db=db)
+            context = await get_financial_context(
+                user_id,
+                message,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
         except Exception as e:
             logger.warning(f"RAG context retrieval failed: {e}")
             # Continue without context
+    else:
+        try:
+            context = await get_uploaded_documents_context(
+                user_id,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
+        except Exception as e:
+            logger.warning(f"Upload context retrieval failed for free tier: {e}")
 
     # 4. Generate Response (TIER 3.2/3.6)
     # Pass prechecked_limit to avoid duplicate lookups in generate_chat_response.
@@ -253,13 +276,27 @@ async def chat_stream_endpoint(
         limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
         prechecked_limit = (tier, limit, int(precheck) if precheck is not None else 0)
 
-    # 3. RAG Context (Essential+ only)
+    # 3. Context Assembly
     context = ""
     if tier not in ["free"]:
         try:
-            context = await get_financial_context(user_id, message, db=db)
+            context = await get_financial_context(
+                user_id,
+                message,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
         except Exception as e:
             logger.warning(f"RAG context retrieval failed during stream: {e}")
+    else:
+        try:
+            context = await get_uploaded_documents_context(
+                user_id,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
+        except Exception as e:
+            logger.warning(f"Upload context retrieval failed for free tier stream: {e}")
 
     async def event_stream():
         final_response = ""

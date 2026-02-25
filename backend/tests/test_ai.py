@@ -27,6 +27,9 @@ def mock_ai_services():
             "backend.api.ai.generate_chat_response", new_callable=AsyncMock
         ) as mock_gen,
         patch("backend.api.ai.get_financial_context", new_callable=AsyncMock) as mock_rag,
+        patch(
+            "backend.api.ai.get_uploaded_documents_context", new_callable=AsyncMock
+        ) as mock_upload_context,
         patch("backend.api.ai.encrypt_prompt") as mock_encrypt,
         patch("backend.api.ai.decrypt_prompt") as mock_decrypt,
     ):
@@ -39,6 +42,7 @@ def mock_ai_services():
             "fallback_message": None,
         }
         mock_rag.return_value = "Retrieved Context"
+        mock_upload_context.return_value = ""
         mock_encrypt.return_value = "encrypted_prompt"
         mock_decrypt.return_value = "Decrypted Prompt"
 
@@ -46,6 +50,7 @@ def mock_ai_services():
             "check_rate_limit": mock_limit,
             "generate_chat_response": mock_gen,
             "get_rag_context": mock_rag,
+            "get_uploaded_context": mock_upload_context,
             "encrypt_prompt": mock_encrypt,
             "decrypt_prompt": mock_decrypt,
         }
@@ -128,6 +133,7 @@ def test_chat_free_tier_no_rag(
 
     # Verify RAG NOT called
     mock_ai_services["get_rag_context"].assert_not_called()
+    mock_ai_services["get_uploaded_context"].assert_called_once()
     mock_ai_services["generate_chat_response"].assert_called_once()
 
     # Verify context_used is False in result call args (kwargs 'context')

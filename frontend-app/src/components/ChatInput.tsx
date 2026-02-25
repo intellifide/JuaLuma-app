@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { MAX_UPLOAD_SIZE_BYTES } from '../services/documentService';
 import { FILE_ICON_LABELS, resolveFileIconKind } from '../utils/fileIconMapping';
 
 const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
@@ -23,7 +24,7 @@ const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
     // Slides
     'ppt', 'pptx',
     // Images
-    'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'heic',
+    'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'heic', 'svg',
     // Structured text
     'json', 'xml',
 ]);
@@ -32,7 +33,7 @@ const FILE_INPUT_ACCEPT = [
     '.pdf,.doc,.docx,.txt,.rtf,.md',
     '.csv,.xls,.xlsx',
     '.ppt,.pptx',
-    '.png,.jpg,.jpeg,.webp,.gif,.bmp,.heic',
+    '.png,.jpg,.jpeg,.webp,.gif,.bmp,.heic,.svg',
     '.json,.xml',
 ].join(',');
 
@@ -167,6 +168,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                                 : ''
                             if (!SUPPORTED_UPLOAD_EXTENSIONS.has(extension)) {
                                 setFileError('Unsupported file type. Please choose a supported file format.')
+                            } else if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+                                setFileError(
+                                    `File is too large. Maximum supported size is ${Math.floor(
+                                        MAX_UPLOAD_SIZE_BYTES / (1024 * 1024),
+                                    )} MB.`,
+                                )
                             } else {
                                 setFileError(null)
                                 onUploadFile(file)

@@ -173,6 +173,10 @@ export default function LicensePage() {
             Commercial resale, repackaging, paid redistribution, and enterprise
             deployment of JuaLuma are prohibited.
           </p>
+          <p className="mt-4">
+            Intellifide LLC does not offer commercial licensing rights for this software.
+            License-compliance questions: <a href="mailto:legal@jualuma.com" className="text-primary underline">legal@jualuma.com</a>.
+          </p>
         </section>
 
         <section className="glass-panel p-8">

@@ -15,6 +15,8 @@
 
 import { api } from './api';
 
+export const MAX_UPLOAD_SIZE_BYTES = 20 * 1024 * 1024;
+
 export interface Document {
     id: string;
     uid: string;
@@ -37,11 +39,7 @@ export const documentService = {
         formData.append('file', file);
         formData.append('type', type);
 
-        const response = await api.post('/documents/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        const response = await api.post('/documents/upload', formData);
         return response.data;
     },
 

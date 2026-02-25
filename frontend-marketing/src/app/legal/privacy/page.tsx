@@ -91,7 +91,7 @@ export default function PrivacyPage() {
                         We retain data only as long as needed for service operation, security, legal compliance, tax and payment obligations, and dispute resolution.
                     </p>
                     <p className="mt-4">
-                        You may request account deletion through account settings or by contacting privacy@jualuma.com. We process verified deletion requests within a commercially reasonable period, subject to legal retention requirements. Backup copies may persist temporarily under standard backup lifecycles.
+                        You may request account deletion through account settings or by contacting support@jualuma.com. We process verified deletion requests within a commercially reasonable period, subject to legal retention requirements. Backup copies may persist temporarily under standard backup lifecycles.
                     </p>
                 </section>
 

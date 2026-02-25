@@ -387,6 +387,7 @@ export default function AIAssistant() {
     try {
       const abortController = new AbortController();
       streamAbortRef.current = abortController;
+      const attachmentIds = composerAttachments.map((attachment) => attachment.id);
       const response = await aiService.sendMessageStream(text, {
         signal: abortController.signal,
         chunkDebounceMs: 50,
@@ -405,7 +406,7 @@ export default function AIAssistant() {
             return updated;
           });
         },
-      }, pageContext);
+      }, pageContext, attachmentIds);
 
       const finalResponse = response.response || streamedText;
       setMessages(prev => {

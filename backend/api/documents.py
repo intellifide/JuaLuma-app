@@ -5,7 +5,7 @@ import uuid
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,7 @@ ALLOWED_FILE_EXTENSIONS = {
     # Slides
     "ppt", "pptx",
     # Images
-    "png", "jpg", "jpeg", "webp", "gif", "bmp", "heic",
+    "png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "svg",
     # Structured text
     "json", "xml",
 }
@@ -76,6 +76,9 @@ HEIC_FAILURE_MESSAGES = {
         "We couldn't process that HEIC image. Please export it as JPG or PNG and try again."
     ),
 }
+
+# App-level guardrail for large uploads. Cloud Run ingress has separate hard limits.
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
 class HeicNormalizationError(Exception):
@@ -129,6 +132,7 @@ def list_documents(
 
 @router.post("/upload")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     type: str = "uploaded",
     current_user: User = Depends(get_current_user),
@@ -154,7 +158,29 @@ async def upload_document(
     stored_file_ext = file_ext
 
     try:
+        content_length_raw = request.headers.get("content-length")
+        if content_length_raw:
+            try:
+                if int(content_length_raw) > MAX_UPLOAD_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(
+                            "Uploaded file is too large. Maximum supported size is "
+                            f"{MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
+                        ),
+                    )
+            except ValueError:
+                pass
+
         raw_bytes = await file.read()
+        if len(raw_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    "Uploaded file is too large. Maximum supported size is "
+                    f"{MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
+                ),
+            )
         if stored_file_ext in HEIC_EXTENSIONS:
             raw_bytes = _normalize_heic_bytes(raw_bytes)
             stored_file_ext = "jpg"
@@ -243,7 +269,9 @@ def preview_document(
 
     # Simple logic: if image or text, return it.
     media_type = "application/octet-stream"
-    if doc.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic']:
+    if doc.file_type == "svg":
+        media_type = "image/svg+xml"
+    elif doc.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic']:
         media_type = f"image/{doc.file_type}"
     elif doc.file_type == 'pdf':
         media_type = "application/pdf"
