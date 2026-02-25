@@ -12,13 +12,16 @@
  * - You CANNOT use this application for commercial enterprise purposes.
  */
 
-export * from './Alert'
-export * from './Badge'
-export * from './Button'
-export * from './Card'
-export * from './CopyIconButton'
-export * from './FeaturePreview'
-export * from './GlassCard'
-export * from './Modal'
-export * from './Tabs'
-export * from './Toast'
+import type { HTMLAttributes, PropsWithChildren } from 'react'
+
+type GlassCardProps = PropsWithChildren<HTMLAttributes<HTMLDivElement>>
+
+const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ')
+
+export const GlassCard = ({ children, className, ...props }: GlassCardProps) => {
+  return (
+    <div className={cx('glass-card card', className)} {...props}>
+      {children}
+    </div>
+  )
+}
