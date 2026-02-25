@@ -79,6 +79,7 @@ required_stage_backend = {
     "GCP_PROJECT_ID",
     "GMAIL_IMPERSONATE_USER",
     "PLAID_ENV",
+    "PLAID_REDIRECT_URI",
     "STRIPE_PUBLISHABLE_KEY",
     "DATABASE_URL",
     "STRIPE_SECRET_KEY",

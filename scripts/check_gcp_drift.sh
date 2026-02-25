@@ -3,7 +3,7 @@
 #
 # Strategy: runtime config must remain consistent with repository-managed
 # deployment policy and Cloud Run bindings.
-# deploy-dev.yml and deploy-prod.yml must NOT declare env_vars for the
+# deploy-dev.yml, deploy-stage.yml, and deploy-prod.yml must NOT declare env_vars for the
 # backend — doing so would overwrite Secret Manager bindings and drop
 # vars not listed.
 #

@@ -36,6 +36,11 @@ class AppSettings(BaseSettings):
     plaid_client_id: str = Field(..., alias="PLAID_CLIENT_ID")
     plaid_secret: str = Field(..., alias="PLAID_SECRET")
     plaid_env: str = Field(default="sandbox", alias="PLAID_ENV")
+    plaid_webhook_url: str | None = Field(default=None, alias="PLAID_WEBHOOK_URL")
+    plaid_redirect_uri: str | None = Field(default=None, alias="PLAID_REDIRECT_URI")
+    plaid_android_package_name: str | None = Field(
+        default=None, alias="PLAID_ANDROID_PACKAGE_NAME"
+    )
     plaid_webhook_secret: str | None = Field(default=None, alias="PLAID_WEBHOOK_SECRET")
     plaid_webhook_tolerance_seconds: int = Field(
         default=300, alias="PLAID_WEBHOOK_TOLERANCE_SECONDS"
@@ -171,6 +176,9 @@ class AppSettings(BaseSettings):
         "stripe_secret_key",
         "stripe_webhook_secret",
         "stripe_publishable_key",
+        "plaid_webhook_url",
+        "plaid_redirect_uri",
+        "plaid_android_package_name",
         mode="before",
     )
     @classmethod

@@ -18,6 +18,8 @@ import { usePlaidLink, type PlaidLinkOnSuccessMetadata, type PlaidLinkError } fr
 import { api } from '../services/api'
 import { ExternalLinkModal } from './ExternalLinkModal'
 
+const PLAID_OAUTH_TOKEN_KEY = 'plaid_oauth_link_token'
+
 type PlaidLinkButtonProps = {
   onSuccess?: () => void | Promise<void>
   onError?: (message: string) => void
@@ -31,6 +33,10 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
   const [showModal, setShowModal] = useState(false)
   const linkReadyOnce = useRef(false)
   const fetchedTokenOnce = useRef(false)
+  const receivedRedirectUri = useMemo(() => {
+    if (typeof window === 'undefined') return undefined
+    return window.location.search.includes('oauth_state_id=') ? window.location.href : undefined
+  }, [])
 
   useEffect(() => {
     const scripts = document.querySelectorAll('script[src*="plaid/link-initialize.js"]')
@@ -43,24 +49,54 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
     }
   }, [])
 
-  useEffect(() => {
-    const createToken = async () => {
+  const fetchLinkToken = useCallback(
+    async (options?: { allowCachedOauthToken?: boolean }) => {
+      const allowCachedOauthToken = options?.allowCachedOauthToken ?? true
+      if (receivedRedirectUri && allowCachedOauthToken) {
+        try {
+          const cachedToken = window.sessionStorage.getItem(PLAID_OAUTH_TOKEN_KEY)
+          if (cachedToken) {
+            setLinkToken(cachedToken)
+            return
+          }
+        } catch {
+          // Ignore sessionStorage access issues and fall back to API token creation.
+        }
+      }
+
       try {
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Request timed out')), 8000)
         )
         // Race API call against 8s timeout
-        const response = await Promise.race([
+        const response = (await Promise.race([
           api.post('/plaid/link-token'),
-          timeoutPromise
-        ]) as { data: { link_token?: string; linkToken?: string } }
+          timeoutPromise,
+        ])) as { data: { link_token?: string; linkToken?: string } }
 
-        setLinkToken(response.data.link_token ?? response.data.linkToken)
+        const resolvedLinkToken = response.data.link_token ?? response.data.linkToken ?? null
+        setLinkToken(resolvedLinkToken)
+        if (resolvedLinkToken) {
+          try {
+            window.sessionStorage.setItem(PLAID_OAUTH_TOKEN_KEY, resolvedLinkToken)
+          } catch {
+            // Ignore sessionStorage access issues.
+          }
+        }
       } catch (error) {
-        // Fallback to testing/sandbox mode if backend fails
-        console.warn('Plaid Link Token fetch failed, checking for cached or mock token needed.')
+        // Surface backend token creation failures directly.
+        console.warn('Plaid Link Token fetch failed.')
         const message = error instanceof Error ? error.message : 'Unable to start Plaid Link.'
         onError?.(message)
+      }
+    },
+    [onError, receivedRedirectUri]
+  )
+
+  useEffect(() => {
+    const createToken = async () => {
+      try {
+        await fetchLinkToken({ allowCachedOauthToken: true })
       } finally {
         setLoading(false)
       }
@@ -70,7 +106,7 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
       fetchedTokenOnce.current = true
       createToken()
     }
-  }, [onError])
+  }, [fetchLinkToken])
 
   const linkConfig = useMemo(() => {
     if (!linkToken) return null
@@ -83,11 +119,16 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
               ?.map((account) => account.id)
               .filter((accountId): accountId is string => Boolean(accountId)) ?? []
 
-          const response = await api.post('/plaid/exchange-token', {
+          await api.post('/plaid/exchange-token', {
             public_token: publicToken,
             institution_name: metadata.institution?.name ?? 'plaid',
             selected_account_ids: selectedAccountIds,
           })
+          try {
+            window.sessionStorage.removeItem(PLAID_OAUTH_TOKEN_KEY)
+          } catch {
+            // no-op
+          }
 
           const afterSync = onSuccess?.()
           if (afterSync instanceof Promise) {
@@ -99,10 +140,26 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
         }
       },
       onExit: (err: PlaidLinkError | null) => {
-        if (err) onError?.(err.display_message || 'Plaid Link closed.')
-      }
+        try {
+          window.sessionStorage.removeItem(PLAID_OAUTH_TOKEN_KEY)
+        } catch {
+          // no-op
+        }
+        if (err) {
+          if (err.error_code === 'INVALID_LINK_TOKEN') {
+            setLoading(true)
+            void fetchLinkToken({ allowCachedOauthToken: false }).finally(() => {
+              setLoading(false)
+            })
+            onError?.('Your Plaid session expired. Please try again.')
+            return
+          }
+          onError?.(err.display_message || 'Plaid Link closed.')
+        }
+      },
+      receivedRedirectUri,
     }
-  }, [linkToken, onError, onSuccess])
+  }, [fetchLinkToken, linkToken, onError, onSuccess, receivedRedirectUri])
 
   const fallbackConfig = useMemo(() => ({
     token: null,

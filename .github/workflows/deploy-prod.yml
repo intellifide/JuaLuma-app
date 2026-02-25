@@ -77,6 +77,15 @@ jobs:
         run: |
           echo "VITE_GCP_API_KEY=$(gcloud secrets versions access latest --secret=VITE_GCP_API_KEY --project=${{ env.PROJECT_ID }})" >> "$GITHUB_ENV"
 
+      - name: Validate Plaid production credentials
+        run: |
+          set -euo pipefail
+          export PLAID_CLIENT_ID="$(gcloud secrets versions access latest --secret=PLAID_CLIENT_ID --project=${PROJECT_ID})"
+          export PLAID_SECRET="$(gcloud secrets versions access latest --secret=PLAID_SECRET --project=${PROJECT_ID})"
+          export PLAID_ENV="production"
+          export PLAID_REDIRECT_URI="https://app.jualuma.com/connect-accounts"
+          ./scripts/check_plaid_credentials.sh
+
       # 1. Backend
       - name: Build and Push Backend
         run: |
@@ -109,7 +118,7 @@ jobs:
           gcloud run services update jualuma-backend \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
-            --update-env-vars=PLAID_ENV=production \
+            --update-env-vars=PLAID_ENV=production,PLAID_REDIRECT_URI=https://app.jualuma.com/connect-accounts \
             --quiet
 
       # 2. Frontend App
