@@ -119,9 +119,16 @@ jobs:
 
       # 3. Marketing
       - name: Build and Push Marketing
+        env:
+          NEXT_PUBLIC_APP_URL_RUNTIME: ${{ steps.deploy_frontend.outputs.url }}
         run: |
+          APP_URL="${NEXT_PUBLIC_APP_URL_RUNTIME}"
+          if [[ -z "${APP_URL}" ]]; then
+            APP_URL="${{ vars.NEXT_PUBLIC_APP_URL }}"
+          fi
+
           docker build \
-            --build-arg NEXT_PUBLIC_APP_URL="${{ vars.NEXT_PUBLIC_APP_URL }}" \
+            --build-arg NEXT_PUBLIC_APP_URL="${APP_URL}" \
             --build-arg NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL }}" \
             -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest \
             -f frontend-marketing/Dockerfile .
