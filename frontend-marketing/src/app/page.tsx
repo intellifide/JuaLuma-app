@@ -52,7 +52,7 @@ const workflowCards = [
     icon: Sparkles,
     iconClass: 'marketing-story-icon-ai',
     title: 'Act on AI insights',
-    body: 'Get spending anomalies, category drifts, and what changed summaries tied directly to real transactions.',
+    body: 'Built for what matters to you: private AI guidance that helps you reduce waste, organize money flows, and stay aligned with your financial goals.',
   },
 ]
 

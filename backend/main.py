@@ -120,6 +120,12 @@ if settings.app_env.lower() != "test":
         window_seconds=settings.rate_limit_window_seconds,
         # Limit API calls only (not static/proxy paths). "/api" includes "/api/auth" and "/api/health".
         path_prefixes=("/api",),
+        # Signup has a dedicated limiter in backend/api/auth.py to avoid starvation
+        # from unrelated API traffic sharing the same client IP bucket.
+        exclude_paths=(
+            "/api/auth/signup",
+            "/api/auth/signup/pending",
+        ),
     )
 
 app.add_middleware(SecurityHeadersMiddleware)

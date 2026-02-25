@@ -402,11 +402,25 @@ _login_lock = Lock()
 _login_window_seconds = 60
 _login_max_attempts = 10
 
+# Dedicated signup limiter to protect onboarding endpoints without coupling
+# them to the global "/api" limiter bucket.
+_signup_attempts: dict[str, deque[float]] = defaultdict(deque)
+_signup_lock = Lock()
+_signup_window_seconds = 600
+_signup_max_attempts = 20
+
+
+def _client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
 
 def _rate_limit(request: Request) -> None:
     import time
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     now = time.time()
 
     with _login_lock:
@@ -417,6 +431,24 @@ def _rate_limit(request: Request) -> None:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many login attempts. Please wait before retrying.",
+            )
+        attempts.append(now)
+
+
+def _signup_rate_limit(request: Request) -> None:
+    import time
+
+    client_ip = _client_ip(request)
+    now = time.time()
+
+    with _signup_lock:
+        attempts = _signup_attempts[client_ip]
+        while attempts and attempts[0] <= now - _signup_window_seconds:
+            attempts.popleft()
+        if len(attempts) >= _signup_max_attempts:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded. Please try again later.",
             )
         attempts.append(now)
 
@@ -971,6 +1003,7 @@ def _store_pending_signup(
 @router.post("/signup/pending", status_code=status.HTTP_201_CREATED)
 def signup_pending(
     payload: PendingSignupRequest,
+    request: Request,
     identity: dict = Depends(get_current_identity),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -979,6 +1012,8 @@ def signup_pending(
 
     Requires a valid Identity ID token.
     """
+    _signup_rate_limit(request)
+
     uid = identity.get("uid")
     email = identity.get("email")
     if not uid or not email:
@@ -1059,6 +1094,8 @@ def signup(
 
     Returns the new user's UID and email.
     """
+    _signup_rate_limit(request)
+
     is_fresh_identity_user = False
     record = None
 
