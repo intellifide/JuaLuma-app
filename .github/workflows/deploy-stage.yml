@@ -104,12 +104,18 @@ jobs:
       - name: Build and deploy user app
         run: |
           set -euo pipefail
+          BACKEND_URL="$(gcloud run services describe jualuma-backend-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          if [[ -z "${BACKEND_URL}" ]]; then
+            echo "Missing backend stage service URL"
+            exit 1
+          fi
+
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-user-app-stage:${TAG}"
           docker build \
             -f frontend-app/Dockerfile \
             -t "${IMAGE}" \
             --build-arg VITE_GCP_API_KEY="${{ env.VITE_GCP_API_KEY }}" \
-            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL_STAGE }}" \
+            --build-arg VITE_API_BASE_URL="${BACKEND_URL}" \
             --build-arg VITE_MARKETING_URL="${{ vars.VITE_MARKETING_URL_STAGE }}" \
             --build-arg VITE_MAINTENANCE_MODE="${{ vars.VITE_MAINTENANCE_MODE_STAGE || 'false' }}" \
             .
@@ -125,12 +131,18 @@ jobs:
       - name: Build and deploy support portal
         run: |
           set -euo pipefail
+          BACKEND_URL="$(gcloud run services describe jualuma-backend-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          if [[ -z "${BACKEND_URL}" ]]; then
+            echo "Missing backend stage service URL"
+            exit 1
+          fi
+
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-support-stage:${TAG}"
           docker build \
             -f support-portal/Dockerfile \
             -t "${IMAGE}" \
             --build-arg VITE_GCP_API_KEY="${{ env.VITE_GCP_API_KEY }}" \
-            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL_STAGE }}" \
+            --build-arg VITE_API_BASE_URL="${BACKEND_URL}" \
             .
           docker push "${IMAGE}"
           gcloud run deploy jualuma-support-stage \
@@ -144,12 +156,20 @@ jobs:
       - name: Build and deploy marketing
         run: |
           set -euo pipefail
+          APP_URL="$(gcloud run services describe jualuma-user-app-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          API_URL="$(gcloud run services describe jualuma-backend-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+
+          if [[ -z "${APP_URL}" || -z "${API_URL}" ]]; then
+            echo "Missing stage URL(s) for marketing build args"
+            exit 1
+          fi
+
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/jualuma-marketing-stage:${TAG}"
           docker build \
             -f frontend-marketing/Dockerfile \
             -t "${IMAGE}" \
-            --build-arg NEXT_PUBLIC_APP_URL="${{ vars.NEXT_PUBLIC_APP_URL_STAGE }}" \
-            --build-arg NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL_STAGE }}" \
+            --build-arg NEXT_PUBLIC_APP_URL="${APP_URL}" \
+            --build-arg NEXT_PUBLIC_API_URL="${API_URL}" \
             .
           docker push "${IMAGE}"
           gcloud run deploy jualuma-marketing-stage \
@@ -158,4 +178,23 @@ jobs:
             --image="${IMAGE}" \
             --platform=managed \
             --allow-unauthenticated \
+            --quiet
+
+      - name: Align backend runtime URLs (Stage)
+        run: |
+          set -euo pipefail
+
+          FRONTEND_URL="$(gcloud run services describe jualuma-user-app-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          SUPPORT_URL="$(gcloud run services describe jualuma-support-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          MARKETING_URL="$(gcloud run services describe jualuma-marketing-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+
+          if [[ -z "${FRONTEND_URL}" || -z "${SUPPORT_URL}" || -z "${MARKETING_URL}" ]]; then
+            echo "Missing stage service URL(s) needed to align backend runtime URLs"
+            exit 1
+          fi
+
+          gcloud run services update jualuma-backend-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}" \
             --quiet

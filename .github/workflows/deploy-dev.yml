@@ -97,9 +97,15 @@ jobs:
       # 2. Frontend App (VITE_GCP_API_KEY required for Identity Platform sign-up/sign-in)
       - name: Build and Push Frontend App
         run: |
+          API_BASE_URL="${{ steps.deploy_backend.outputs.url }}"
+          if [[ -z "${API_BASE_URL}" ]]; then
+            echo "Missing backend deployment URL output"
+            exit 1
+          fi
+
           docker build \
             --build-arg VITE_GCP_API_KEY="${{ env.VITE_GCP_API_KEY }}" \
-            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL }}" \
+            --build-arg VITE_API_BASE_URL="${API_BASE_URL}" \
             -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest \
             -f frontend-app/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest
@@ -121,15 +127,23 @@ jobs:
       - name: Build and Push Marketing
         env:
           NEXT_PUBLIC_APP_URL_RUNTIME: ${{ steps.deploy_frontend.outputs.url }}
+          NEXT_PUBLIC_API_URL_RUNTIME: ${{ steps.deploy_backend.outputs.url }}
         run: |
           APP_URL="${NEXT_PUBLIC_APP_URL_RUNTIME}"
+          API_URL="${NEXT_PUBLIC_API_URL_RUNTIME}"
+
           if [[ -z "${APP_URL}" ]]; then
-            APP_URL="${{ vars.NEXT_PUBLIC_APP_URL }}"
+            echo "Missing frontend deployment URL output"
+            exit 1
+          fi
+          if [[ -z "${API_URL}" ]]; then
+            echo "Missing backend deployment URL output"
+            exit 1
           fi
 
           docker build \
             --build-arg NEXT_PUBLIC_APP_URL="${APP_URL}" \
-            --build-arg NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL }}" \
+            --build-arg NEXT_PUBLIC_API_URL="${API_URL}" \
             -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest \
             -f frontend-marketing/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest
@@ -148,9 +162,15 @@ jobs:
       # 4. Support
       - name: Build and Push Support
         run: |
+          API_BASE_URL="${{ steps.deploy_backend.outputs.url }}"
+          if [[ -z "${API_BASE_URL}" ]]; then
+            echo "Missing backend deployment URL output"
+            exit 1
+          fi
+
           docker build \
             --build-arg VITE_GCP_API_KEY="${{ env.VITE_GCP_API_KEY }}" \
-            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL }}" \
+            --build-arg VITE_API_BASE_URL="${API_BASE_URL}" \
             -t us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest \
             -f support-portal/Dockerfile .
           docker push us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest
@@ -167,6 +187,25 @@ jobs:
             --allow-unauthenticated
             --no-invoker-iam-check
             --ingress=all
+
+      - name: Align backend runtime URLs (Dev)
+        run: |
+          set -euo pipefail
+
+          FRONTEND_URL="${{ steps.deploy_frontend.outputs.url }}"
+          SUPPORT_URL="${{ steps.deploy_support.outputs.url }}"
+          MARKETING_URL="${{ steps.deploy_marketing.outputs.url }}"
+
+          if [[ -z "${FRONTEND_URL}" || -z "${SUPPORT_URL}" || -z "${MARKETING_URL}" ]]; then
+            echo "Missing service URL output(s) needed to align backend runtime URLs"
+            exit 1
+          fi
+
+          gcloud run services update jualuma-backend \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}" \
+            --quiet
 
       - name: Force public invoker policy (Dev)
         run: |
