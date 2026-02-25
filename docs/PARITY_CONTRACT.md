@@ -43,3 +43,11 @@ Last updated: 2026-02-23 (UTC)
 - Domain and CORS values: stage `*.run.app` URLs
 - Stripe mode/keys: stage test values
 - Secret payload values: stage-scoped, stored in `jualuma-stage` Secret Manager
+
+## Gmail Credential Contract
+
+- `GOOGLE_APPLICATION_CREDENTIALS` may be either:
+  - Service-account JSON payload (legacy), or
+  - Service-account email principal for keyless impersonation (preferred).
+- For keyless mode, runtime service account must have:
+  - `roles/iam.serviceAccountTokenCreator` on the delegated Gmail sender service account.

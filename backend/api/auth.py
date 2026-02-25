@@ -75,6 +75,13 @@ from backend.utils import get_db
 
 router = APIRouter(tags=["auth"])
 logger = logging.getLogger(__name__)
+OTP_DELIVERY_ERROR_MESSAGE = (
+    "We couldn't send the verification code right now. Please try again shortly."
+)
+
+
+class OtpDeliveryError(RuntimeError):
+    """Raised when OTP delivery fails after code generation."""
 
 
 def _require_webauthn() -> None:
@@ -921,9 +928,13 @@ def _generate_and_send_otp(target: User | PendingSignup, db: Session) -> None:
     try:
         client = get_email_client()
         client.send_otp(target.email, code)
-    except Exception as e:
-        logger.error(f"Failed to send initial OTP to {target.email}: {e}")
-        # Don't block signup success, user can resend later
+    except Exception as exc:
+        logger.error(
+            "Failed to send OTP email.",
+            extra={"email": target.email, "uid": getattr(target, "uid", None)},
+            exc_info=exc,
+        )
+        raise OtpDeliveryError("OTP delivery failed.") from exc
 
 
 def _store_pending_signup(
@@ -1023,7 +1034,13 @@ def signup_pending(
         status=UserStatus.PENDING_VERIFICATION,
     )
 
-    _generate_and_send_otp(pending_signup, db)
+    try:
+        _generate_and_send_otp(pending_signup, db)
+    except OtpDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=OTP_DELIVERY_ERROR_MESSAGE,
+        ) from exc
 
     return {"uid": uid, "email": email, "message": "Signup started."}
 
@@ -1125,7 +1142,20 @@ def signup(
     )
 
     # Automatically send verification OTP
-    _generate_and_send_otp(pending_signup, db)
+    try:
+        _generate_and_send_otp(pending_signup, db)
+    except OtpDeliveryError as exc:
+        _cleanup_partial_signup(db, uid)
+        if is_fresh_identity_user and record:
+            _rollback_identity_user(
+                uid,
+                email=email_addr,
+                reason="otp_send_failed",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=OTP_DELIVERY_ERROR_MESSAGE,
+        ) from exc
 
     return {"uid": uid, "email": email_addr, "message": "Signup started."}
 
@@ -1503,14 +1533,26 @@ def request_email_code(
     """Request an Email OTP for login or setup."""
     user = db.query(User).filter(User.email == payload.email).first()
     if user:
-        _generate_and_send_otp(user, db)
+        try:
+            _generate_and_send_otp(user, db)
+        except OtpDeliveryError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=OTP_DELIVERY_ERROR_MESSAGE,
+            ) from exc
         return {"message": "Code sent."}
 
     pending_signup = (
         db.query(PendingSignup).filter(PendingSignup.email == payload.email).first()
     )
     if pending_signup:
-        _generate_and_send_otp(pending_signup, db)
+        try:
+            _generate_and_send_otp(pending_signup, db)
+        except OtpDeliveryError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=OTP_DELIVERY_ERROR_MESSAGE,
+            ) from exc
         return {"message": "Code sent."}
 
     # Prevent enumeration

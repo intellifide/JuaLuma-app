@@ -8,7 +8,6 @@ from backend.core import settings
 
 logger = logging.getLogger(__name__)
 
-
 class EmailClient(Protocol):
     def send_generic_alert(self, to_email: str, title: str) -> None:
         """Send a generic Alert email pointing to the secure portal."""

@@ -262,17 +262,25 @@ export const changePassword = async (
 }
 
 export const requestEmailCode = async (email: string): Promise<void> => {
-  await apiFetch('/auth/mfa/email/request-code', {
+  const response = await apiFetch('/auth/mfa/email/request-code', {
     method: 'POST',
     body: JSON.stringify({ email }),
     skipAuth: true,
-    throwOnError: false // Avoid automatic error throwing, handle manually if needed
-  }).then(async res => {
-      if (!res.ok) {
-           const data = await res.json()
-           throw new Error(data.message || 'Failed to request email code')
-      }
+    throwOnError: false,
   })
+
+  if (response.ok) return
+
+  const maybeJson = await response
+    .clone()
+    .json()
+    .catch(() => null as { detail?: unknown; message?: unknown; error?: unknown } | null)
+  const rawMessage =
+    maybeJson?.detail ??
+    maybeJson?.message ??
+    maybeJson?.error ??
+    (await response.text().catch(() => ''))
+  throw new Error(normalizeApiErrorMessage(response.status, rawMessage))
 }
 
 export const verifyResetPasswordCode = async (oobCode: string): Promise<string> => {

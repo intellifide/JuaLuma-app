@@ -96,6 +96,48 @@ def test_signup_pending_missing_agreements(test_client: TestClient):
     assert "missing required legal agreements" in response.json()["detail"].lower()
 
 
+def test_signup_pending_otp_send_failure_returns_503(test_client: TestClient):
+    def override_identity():
+        return {"uid": "pending_user_otp_fail", "email": "otp-fail@testmail.app"}
+
+    app.dependency_overrides[get_current_identity] = override_identity
+
+    payload = {
+        "first_name": "Otp",
+        "last_name": "Failure",
+        "agreements": [
+            {"agreement_key": "terms_of_service"},
+            {"agreement_key": "privacy_policy"},
+            {"agreement_key": "us_residency_certification"},
+        ],
+    }
+
+    with patch("backend.api.auth.get_email_client") as mock_client:
+        mock_client.return_value.send_otp.side_effect = RuntimeError("smtp offline")
+        response = test_client.post("/api/auth/signup/pending", json=payload)
+
+    app.dependency_overrides.pop(get_current_identity, None)
+
+    assert response.status_code == 503
+    assert "verification code" in response.json()["detail"].lower()
+
+
+def test_request_email_code_otp_send_failure_returns_503(test_client: TestClient, test_db):
+    user = User(uid="email_code_user", email="email-code-fail@testmail.app", role="user")
+    test_db.add(user)
+    test_db.commit()
+
+    with patch("backend.api.auth.get_email_client") as mock_client:
+        mock_client.return_value.send_otp.side_effect = RuntimeError("smtp offline")
+        response = test_client.post(
+            "/api/auth/mfa/email/request-code",
+            json={"email": "email-code-fail@testmail.app"},
+        )
+
+    assert response.status_code == 503
+    assert "verification code" in response.json()["detail"].lower()
+
+
 def test_login_success(test_client: TestClient, test_db, mock_auth):
     # mock_auth fixture creates the user in DB.
     # But login endpoint verifies token first.
