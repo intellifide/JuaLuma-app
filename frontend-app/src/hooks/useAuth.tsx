@@ -21,6 +21,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -152,13 +153,21 @@ const LOCAL_BYPASS_PROFILE: UserProfile = {
   display_name_pref: 'username',
   mfa_enabled: false,
 }
+const LOCAL_BYPASS_USER = buildLocalBypassUser()
+const PROFILE_RETRY_DELAY_MS = 5000
+const PROFILE_RATE_LIMIT_RETRY_DELAY_MS = 30000
+
+const getApiErrorStatus = (error: unknown): number | null => {
+  const status = (error as { status?: unknown })?.status
+  if (typeof status === 'number') return status
+  return null
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const localAuthBypassEnabled = isLocalAuthBypassEnabled()
-  const localBypassUser = buildLocalBypassUser()
-  const [user, setUser] = useState<User | null>(localAuthBypassEnabled ? localBypassUser : null)
+  const [user, setUser] = useState<User | null>(localAuthBypassEnabled ? LOCAL_BYPASS_USER : null)
   const [profile, setProfile] = useState<UserProfile | null>(localAuthBypassEnabled ? LOCAL_BYPASS_PROFILE : null)
   const [loading, setLoading] = useState(!localAuthBypassEnabled)
   const [profileLoading, setProfileLoading] = useState(false)
@@ -167,54 +176,108 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [mfaGateMethod, setMfaGateMethod] = useState<'totp' | 'passkey'>('totp')
   const [mfaGateCode, setMfaGateCode] = useState('')
   const [mfaGateWorking, setMfaGateWorking] = useState(false)
+  const currentProfileUidRef = useRef<string | null>(localAuthBypassEnabled ? LOCAL_BYPASS_PROFILE.uid ?? null : null)
+  const profileFetchInFlightRef = useRef<Promise<UserProfile | null> | null>(null)
+  const profileRetryAtRef = useRef(0)
 
   const refetchProfile = useCallback(async (): Promise<UserProfile | null> => {
     if (localAuthBypassEnabled) {
       setProfile(LOCAL_BYPASS_PROFILE)
+      currentProfileUidRef.current = LOCAL_BYPASS_PROFILE.uid ?? null
+      profileRetryAtRef.current = 0
       return LOCAL_BYPASS_PROFILE
     }
 
     if (!auth.currentUser) {
       setProfile(null)
+      currentProfileUidRef.current = null
+      profileRetryAtRef.current = 0
       return null
     }
 
-    setProfileLoading(true)
-    try {
-      const response = await apiFetch('/auth/profile')
-      const data = await response.json()
-      setProfile(data.user ?? null)
-      return data.user ?? null
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Unable to load profile right now.'
-      setError(message)
+    if (profileFetchInFlightRef.current) {
+      return profileFetchInFlightRef.current
+    }
+
+    if (Date.now() < profileRetryAtRef.current) {
       return null
+    }
+
+    const fetchPromise = (async (): Promise<UserProfile | null> => {
+      setProfileLoading(true)
+      try {
+        const response = await apiFetch('/auth/profile')
+        const data = await response.json()
+        const nextProfile = data.user ?? null
+        setProfile(nextProfile)
+        currentProfileUidRef.current =
+          typeof nextProfile?.uid === 'string' ? nextProfile.uid : null
+        profileRetryAtRef.current = 0
+        setError(null)
+        return nextProfile
+      } catch (err) {
+        const status = getApiErrorStatus(err)
+        if (status === 429) {
+          profileRetryAtRef.current = Date.now() + PROFILE_RATE_LIMIT_RETRY_DELAY_MS
+        } else if (status === 404) {
+          profileRetryAtRef.current = Date.now() + PROFILE_RETRY_DELAY_MS
+        } else {
+          profileRetryAtRef.current = 0
+        }
+
+        const message =
+          err instanceof Error ? err.message : 'Unable to load profile right now.'
+        setError(message)
+        return null
+      } finally {
+        setProfileLoading(false)
+      }
+    })()
+
+    profileFetchInFlightRef.current = fetchPromise
+
+    try {
+      return await fetchPromise
     } finally {
-      setProfileLoading(false)
+      if (profileFetchInFlightRef.current === fetchPromise) {
+        profileFetchInFlightRef.current = null
+      }
     }
   }, [localAuthBypassEnabled])
 
   useEffect(() => {
     if (localAuthBypassEnabled) {
-      setUser(localBypassUser)
+      currentProfileUidRef.current = LOCAL_BYPASS_PROFILE.uid ?? null
+      profileRetryAtRef.current = 0
+      setUser(LOCAL_BYPASS_USER)
       setProfile(LOCAL_BYPASS_PROFILE)
       setLoading(false)
       return
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+      const nextUid = nextUser?.uid ?? null
       setUser(nextUser)
       setError(null)
 
       if (nextUser) {
-        // Clear any stale profile while re-establishing backend auth for this session.
-        setProfile(null)
-        // Prevent infinite loading if backend is unreachable
-        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000))
-        await Promise.race([refetchProfile(), timeoutPromise])
+        const profileUid = currentProfileUidRef.current
+        const shouldRefetchProfile = !profileUid || profileUid !== nextUid
+
+        if (shouldRefetchProfile && profileUid && profileUid !== nextUid) {
+          setProfile(null)
+          currentProfileUidRef.current = null
+        }
+
+        if (shouldRefetchProfile) {
+          // Prevent infinite loading if backend is unreachable
+          const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000))
+          await Promise.race([refetchProfile(), timeoutPromise])
+        }
       } else {
         clearCachedToken()
+        profileRetryAtRef.current = 0
+        currentProfileUidRef.current = null
         setProfile(null)
       }
 
@@ -222,7 +285,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     return () => unsubscribe()
-  }, [localAuthBypassEnabled, localBypassUser, refetchProfile])
+  }, [localAuthBypassEnabled, refetchProfile])
 
   useEffect(() => {
     if (localAuthBypassEnabled) return

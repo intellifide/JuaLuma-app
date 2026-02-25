@@ -210,7 +210,7 @@ export const completeBackendLogin = async (
     throw new MfaRequiredError('totp')
   }
 
-  throw new Error(normalizeApiErrorMessage(response.status, detail))
+  throw createApiError(response.status, normalizeApiErrorMessage(response.status, detail))
 }
 
 export const logout = async (): Promise<void> => {
@@ -280,7 +280,7 @@ export const requestEmailCode = async (email: string): Promise<void> => {
     maybeJson?.message ??
     maybeJson?.error ??
     (await response.text().catch(() => ''))
-  throw new Error(normalizeApiErrorMessage(response.status, rawMessage))
+  throw createApiError(response.status, normalizeApiErrorMessage(response.status, rawMessage))
 }
 
 export const verifyResetPasswordCode = async (oobCode: string): Promise<string> => {
@@ -454,6 +454,12 @@ const normalizeApiErrorMessage = (status: number, raw: unknown): string => {
   return message
 }
 
+const createApiError = (status: number, message: string): Error & { status: number } => {
+  const error = new Error(message) as Error & { status: number }
+  error.status = status
+  return error
+}
+
 export const apiFetch = async (
   path: string,
   init: ApiRequestInit = {},
@@ -511,7 +517,7 @@ export const apiFetch = async (
       clearCachedToken()
     }
 
-    throw new Error(normalizedMessage)
+    throw createApiError(response.status, normalizedMessage)
   }
 
   return response
