@@ -1,5 +1,5 @@
 locals {
-  use_private_network = var.private_network != null && trim(var.private_network) != ""
+  use_private_network = var.private_network != null && trimspace(var.private_network) != ""
 }
 
 resource "google_sql_database_instance" "this" {

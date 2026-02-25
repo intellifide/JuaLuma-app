@@ -13,7 +13,7 @@ resource "google_cloud_run_v2_service" "this" {
     }
 
     dynamic "vpc_access" {
-      for_each = var.vpc_connector != null && trim(var.vpc_connector) != "" ? [1] : []
+      for_each = var.vpc_connector != null && trimspace(var.vpc_connector) != "" ? [1] : []
       content {
         connector = var.vpc_connector
         egress    = var.vpc_egress
