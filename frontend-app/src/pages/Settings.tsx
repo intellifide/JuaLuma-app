@@ -15,7 +15,7 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
 // Last Updated 2026-01-26 13:00 CST
 
-import React, { useCallback, useEffect, useRef, useState, FormEvent } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   changePassword,
