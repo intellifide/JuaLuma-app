@@ -190,6 +190,7 @@ jobs:
             local url="$1"
             local method="${2:-GET}"
             local data="${3:-}"
+            local expect_html="${4:-false}"
             local headers_file body_file status
             headers_file="$(mktemp)"
             body_file="$(mktemp)"
@@ -210,17 +211,24 @@ jobs:
               sed -n '1,30p' "$headers_file"
               exit 1
             fi
-            if grep -qi '<html' "$body_file"; then
+            if [[ "${expect_html}" != "true" ]] && grep -qi '<html' "$body_file"; then
               echo "::error::HTML gateway response detected at $url (status=$status)"
               sed -n '1,20p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+
+            if [[ "${expect_html}" == "true" ]] && [[ "${status}" -ge 400 ]]; then
+              echo "::error::Unexpected status for web shell endpoint at $url (status=$status)"
+              sed -n '1,30p' "$headers_file"
               sed -n '1,40p' "$body_file"
               exit 1
             fi
           }
 
           # Public shell endpoints should not be IAP/gateway HTML.
-          check_html_or_iap "${FRONTEND_URL}/"
-          check_html_or_iap "${SUPPORT_URL}/"
+          check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
+          check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
           check_html_or_iap "${BACKEND_URL}/api/health"
 
           # Invalid Firebase token should fail in app (JSON), not Cloud Run gateway HTML.
