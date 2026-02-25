@@ -106,7 +106,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     return (
         <div className="flex flex-col gap-2 p-2 bg-transparent">
-            <div className="relative w-full rounded-2xl border backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-colors focus-within:border-royal-purple/60" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
+            <div className="relative w-full rounded-2xl border backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.08)]" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
                 {attachments.length > 0 && (
                     <>
                         <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
@@ -149,7 +149,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     placeholder={quotaExceeded ? "Daily query limit reached." : placeholder}
-                    className="w-full min-h-[56px] max-h-[200px] resize-none py-4 pr-28 pl-5 rounded-2xl bg-transparent text-text-primary placeholder:text-text-muted/80 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base leading-6"
+                    className="w-full min-h-[56px] max-h-[200px] resize-none py-4 pr-28 pl-5 rounded-2xl bg-transparent text-text-primary placeholder:text-text-muted/80 focus:outline-none focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base leading-6"
                     disabled={isInputDisabled}
                     rows={1}
                     aria-label="Chat input"

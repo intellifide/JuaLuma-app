@@ -483,15 +483,39 @@ export default function AIAssistant() {
 
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+          if (lastAssistantIndex >= 0) {
+            const index = updated.length - 1 - lastAssistantIndex;
+            if (!updated[index].text.trim()) {
+              updated.splice(index, 1);
+            }
+          }
+          localStorage.setItem(`${storageKey}_${threadId}`, JSON.stringify(updated));
+          return updated;
+        });
         return;
       }
-      const errorMessage: Message = {
-        role: 'assistant',
-        text: `Error: ${error instanceof Error ? error.message : 'Something went wrong.'}`,
-        time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' })
-      };
       setMessages(prev => {
-        const updated = [...prev, errorMessage];
+        const updated = [...prev];
+        const errorText = `Error: ${error instanceof Error ? error.message : 'Something went wrong.'}`;
+        const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+        if (lastAssistantIndex >= 0) {
+          const index = updated.length - 1 - lastAssistantIndex;
+          updated[index] = {
+            ...updated[index],
+            text: errorText,
+            citations: [],
+            webSearchUsed: false,
+          };
+        } else {
+          updated.push({
+            role: 'assistant',
+            text: errorText,
+            time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' }),
+          });
+        }
         localStorage.setItem(`${storageKey}_${threadId}`, JSON.stringify(updated));
         return updated;
       });

@@ -21,6 +21,7 @@ from backend.services.web_search import (
     search_web,
     should_use_web_search,
 )
+from backend.utils.gcp_credentials import get_adc_credentials
 from backend.utils.firestore import get_firestore_client
 from backend.utils.logging import log_ai_request
 
@@ -208,7 +209,14 @@ def get_ai_client(model_name: str | None = None) -> AIClient:
         logger.warning("GCP_PROJECT_ID not found for Vertex AI initialization.")
 
     if vertexai:
-        vertexai.init(project=project_id, location=location)
+        credentials, detected_project = get_adc_credentials(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        vertexai.init(
+            project=project_id or detected_project,
+            location=location,
+            credentials=credentials,
+        )
         selected_model = model_name or settings.ai_model_prod or settings.ai_model
         model = GenerativeModel(selected_model)
         logger.info(

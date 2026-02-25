@@ -183,4 +183,35 @@ describe('AI Assistant Integration', () => {
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
         })
     })
+
+    it('reuses pending assistant bubble on stream failure', async () => {
+        vi.mocked(aiService.sendMessageStream).mockRejectedValue(
+            new Error('We encountered an issue while processing your AI request. Please try again.'),
+        )
+
+        const { container } = render(
+            <BrowserRouter>
+                <ToastProvider>
+                    <AIAssistant />
+                </ToastProvider>
+            </BrowserRouter>
+        )
+
+        await waitFor(() => {
+            expect(aiService.getQuota).toHaveBeenCalled()
+        })
+
+        const input = screen.getByRole('textbox', { name: /Chat input/i })
+        const sendButton = screen.getByRole('button', { name: /Send/i })
+
+        fireEvent.change(input, { target: { value: 'Hello AI' } })
+        fireEvent.click(sendButton)
+
+        await waitFor(() => {
+            expect(screen.getByText(/Error: We encountered an issue while processing your AI request/i)).toBeInTheDocument()
+        })
+
+        const assistantBubbles = container.querySelectorAll('.chat-message-assistant')
+        expect(assistantBubbles.length).toBe(1)
+    })
 })
