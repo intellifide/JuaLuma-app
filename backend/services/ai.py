@@ -357,12 +357,20 @@ def _read_quota_state_sync(user_id: str) -> dict[str, Any]:
     now_utc = datetime.datetime.now(datetime.UTC)
     anchor_day = _resolve_anchor_day(tier, subscription)
     period_start, period_end = _anniversary_period_window(now_utc, anchor_day)
-    snapshot = _quota_doc_ref(user_id, period_start).get()
-    used_tokens = int(
-        (snapshot.get("tokens_used") or snapshot.get("request_count") or 0)
-        if snapshot.exists
-        else 0
-    )
+    used_tokens = 0
+    try:
+        snapshot = _quota_doc_ref(user_id, period_start).get()
+        used_tokens = int(
+            (snapshot.get("tokens_used") or snapshot.get("request_count") or 0)
+            if snapshot.exists
+            else 0
+        )
+    except Exception:
+        logger.warning(
+            "Failed to read Firestore AI quota state for user %s; returning local fallback usage.",
+            user_id,
+            exc_info=True,
+        )
     return {
         "tier": tier,
         "limit": limit,

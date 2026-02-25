@@ -46,6 +46,7 @@ import { useToast } from '../components/ui/Toast';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { digestService, DigestSettings } from '../services/digestService';
+import { createCheckoutSession } from '../services/billing';
 import { createPasskeyCredential, getPasskeyAssertion } from '../services/passkey';
 import { CopyIconButton } from '../components/ui/CopyIconButton';
 import QRCode from 'qrcode';
@@ -1114,6 +1115,35 @@ export const Settings = () => {
     { id: 'about', label: 'About' },
   ];
 
+  const nextPlanCode = useMemo(() => {
+    const currentPlan = profile?.plan?.toLowerCase() || 'free';
+    if (currentPlan.includes('ultimate')) return null;
+    if (currentPlan.includes('pro')) return 'ultimate';
+    if (currentPlan.includes('essential')) return 'pro';
+    return 'essential';
+  }, [profile?.plan]);
+
+  const handleUpgrade = useCallback(async () => {
+    if (!nextPlanCode || !user) {
+      if (!user) {
+        alert('You must be signed in to upgrade your subscription.');
+      }
+      return;
+    }
+
+    try {
+      const returnUrl = new URL('/settings?tab=subscription', window.location.origin);
+      const checkoutUrl = await createCheckoutSession(
+        nextPlanCode,
+        returnUrl.toString()
+      );
+      window.location.assign(checkoutUrl);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Unable to start upgrade checkout.';
+      alert(message);
+    }
+  }, [nextPlanCode, user]);
+
   const marketingLegalBase = React.useMemo(() => getMarketingSiteUrl(), [])
 
   return (
@@ -1191,29 +1221,36 @@ export const Settings = () => {
                       )}
                     </div>
                     <div className="card-footer">
-                      <button onClick={async () => {
-                        try {
-                          if (!user) {
-                            alert('You must be signed in to manage billing.');
-                            return;
-                          }
+                      <div className="flex gap-3">
+                        <button onClick={async () => {
+                          try {
+                            if (!user) {
+                              alert('You must be signed in to manage billing.');
+                              return;
+                            }
 
-                          const response = await apiFetch('/billing/portal', {
-                            method: 'POST',
-                            body: JSON.stringify({ return_url: window.location.href })
-                          });
+                            const response = await apiFetch('/billing/portal', {
+                              method: 'POST',
+                              body: JSON.stringify({ return_url: window.location.href })
+                            });
 
-                          if (response.ok) {
-                            const data = await response.json();
-                            window.location.href = data.url;
-                          } else {
-                            alert('Failed to redirect to billing portal.');
+                            if (response.ok) {
+                              const data = await response.json();
+                              window.location.href = data.url;
+                            } else {
+                              alert('Failed to redirect to billing portal.');
+                            }
+                          } catch (e) {
+                            const message = e instanceof Error ? e.message : 'An error occurred opening the billing portal.';
+                            alert(message);
                           }
-                        } catch (e) {
-                          const message = e instanceof Error ? e.message : 'An error occurred opening the billing portal.';
-                          alert(message);
-                        }
-                      }} className="btn btn-primary">Manage Subscription</button>
+                        }} className="btn btn-primary">Manage Subscription</button>
+                        {nextPlanCode && (
+                          <button onClick={handleUpgrade} className="btn btn-secondary">
+                            Upgrade Plan
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
