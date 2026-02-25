@@ -32,6 +32,11 @@ class AppSettings(BaseSettings):
     )
 
     database_url: str = Field(..., alias="DATABASE_URL")
+    db_pool_size: int = Field(default=10, alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=20, alias="DB_MAX_OVERFLOW")
+    db_pool_timeout_seconds: int = Field(default=30, alias="DB_POOL_TIMEOUT_SECONDS")
+    db_pool_recycle_seconds: int = Field(default=1800, alias="DB_POOL_RECYCLE_SECONDS")
+    db_pool_pre_ping: bool = Field(default=True, alias="DB_POOL_PRE_PING")
 
     plaid_client_id: str = Field(..., alias="PLAID_CLIENT_ID")
     plaid_secret: str = Field(..., alias="PLAID_SECRET")
@@ -171,6 +176,18 @@ class AppSettings(BaseSettings):
                 "PLAID_ENV must be one of: sandbox, development/dev, production/prod."
             )
         return normalized
+
+    @field_validator(
+        "db_pool_size",
+        "db_max_overflow",
+        "db_pool_timeout_seconds",
+        "db_pool_recycle_seconds",
+    )
+    @classmethod
+    def _require_non_negative_int(cls, value: int, info) -> int:
+        if value < 0:
+            raise ValueError(f"{info.field_name} must be >= 0.")
+        return value
 
     @field_validator(
         "stripe_secret_key",

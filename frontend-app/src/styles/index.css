@@ -2308,7 +2308,7 @@ body {
   background: radial-gradient(circle at 15% 20%, rgba(78, 156, 255, 0.2), transparent 34%),
     radial-gradient(circle at 84% 16%, rgba(127, 94, 255, 0.24), transparent 36%),
     radial-gradient(circle at 52% 88%, rgba(76, 224, 245, 0.18), transparent 42%);
-  animation: galaxyDrift 26s ease-in-out infinite alternate;
+  animation: galaxyDrift 52s ease-in-out infinite alternate;
 }
 
 .galaxy-wave-network {
@@ -2318,7 +2318,7 @@ body {
   height: 108%;
   opacity: 0.9;
   transform-origin: center;
-  animation: galaxyDrift 34s ease-in-out infinite alternate;
+  animation: galaxyDrift 78s ease-in-out infinite alternate;
 }
 
 .galaxy-wave-curves path {
@@ -2327,7 +2327,7 @@ body {
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-dasharray: 1.5 6;
-  animation: galaxyPulse 18s linear infinite;
+  animation: none;
 }
 
 .galaxy-wave-links polyline,
@@ -2340,7 +2340,7 @@ body {
 
 .galaxy-wave-nodes circle {
   fill: url(#galaxyNode);
-  animation: galaxyNodeGlow 6.2s ease-in-out infinite;
+  animation: galaxyNodeGlow 13s ease-in-out infinite;
 }
 
 .galaxy-wave-nodes circle:nth-child(3n) {
@@ -2363,8 +2363,8 @@ body {
 .app-sidebar {
   background: linear-gradient(180deg, rgba(11, 25, 52, 0.84) 0%, rgba(7, 15, 34, 0.82) 100%);
   border-right: 1px solid rgba(161, 196, 255, 0.2);
-  backdrop-filter: blur(20px) saturate(145%);
-  -webkit-backdrop-filter: blur(20px) saturate(145%);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
   box-shadow: 28px 0 56px rgba(2, 8, 25, 0.42);
 }
 
@@ -2454,8 +2454,8 @@ body {
 .app-topbar {
   background: linear-gradient(180deg, rgba(8, 20, 44, 0.84) 0%, rgba(8, 20, 44, 0.65) 100%);
   border-bottom: 1px solid rgba(160, 195, 255, 0.2);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(135%);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
 }
 
 .app-mobile-header {
@@ -2540,8 +2540,8 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: 20px;
   box-shadow: var(--glass-shadow);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
   color: var(--text-primary);
   position: relative;
   overflow: hidden;
@@ -2655,6 +2655,21 @@ body {
   background: rgba(44, 77, 141, 0.5);
 }
 
+.galaxy-wave-background.is-static .galaxy-wave-gradient,
+.galaxy-wave-background.is-static .galaxy-wave-network,
+.galaxy-wave-background.is-static .galaxy-wave-curves path,
+.galaxy-wave-background.is-static .galaxy-wave-nodes circle {
+  animation: none !important;
+}
+
+.galaxy-wave-background.is-static .galaxy-wave-network {
+  opacity: 0.68;
+}
+
+.galaxy-wave-background.is-static .galaxy-wave-nodes circle:nth-child(2n) {
+  opacity: 0.45;
+}
+
 .info-popover-trigger {
   border-color: rgba(170, 202, 255, 0.35);
   background: rgba(9, 22, 49, 0.82);
@@ -2676,6 +2691,8 @@ body {
   .card,
   .glass-card {
     border-radius: 16px;
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
   }
 
   .timeframe-selector .timeframe-btn {

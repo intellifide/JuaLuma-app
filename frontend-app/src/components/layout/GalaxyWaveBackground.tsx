@@ -15,8 +15,35 @@
 import React from 'react'
 
 export const GalaxyWaveBackground: React.FC = () => {
+  const [isStaticMode, setIsStaticMode] = React.useState(false)
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const nav = window.navigator as Navigator & { deviceMemory?: number }
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const mobileQuery = window.matchMedia('(max-width: 1024px)')
+
+    const evaluate = () => {
+      const lowCpu = typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 6
+      const lowMemory = typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 8
+      setIsStaticMode(motionQuery.matches || mobileQuery.matches || lowCpu || lowMemory)
+    }
+
+    evaluate()
+    motionQuery.addEventListener?.('change', evaluate)
+    mobileQuery.addEventListener?.('change', evaluate)
+    window.addEventListener('resize', evaluate)
+
+    return () => {
+      motionQuery.removeEventListener?.('change', evaluate)
+      mobileQuery.removeEventListener?.('change', evaluate)
+      window.removeEventListener('resize', evaluate)
+    }
+  }, [])
+
   return (
-    <div className="galaxy-wave-background" aria-hidden="true">
+    <div className={`galaxy-wave-background${isStaticMode ? ' is-static' : ''}`} aria-hidden="true">
       <div className="galaxy-wave-gradient" />
       <svg className="galaxy-wave-network" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
         <defs>
