@@ -33,6 +33,11 @@ describe('ChatMessage', () => {
         expect(screen.getByTitle('Copy assistant message')).toBeInTheDocument()
     })
 
+    it('renders thinking animation for pending assistant message', () => {
+        renderWithToast(<ChatMessage role="assistant" text="" time="10:01 AM" isThinking />)
+        expect(screen.getByLabelText('Assistant is thinking')).toBeInTheDocument()
+    })
+
     it('copies text when copy button is clicked', async () => {
         const writeTextMock = vi.fn()
         Object.assign(navigator, {

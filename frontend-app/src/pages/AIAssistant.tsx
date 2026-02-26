@@ -689,6 +689,12 @@ export default function AIAssistant() {
                       text={msg.text}
                       time={msg.time}
                       citations={msg.citations}
+                      isThinking={
+                        isTyping &&
+                        msg.role === 'assistant' &&
+                        !msg.text.trim() &&
+                        idx === messages.length - 1
+                      }
                     />
                   ))}
                   {isWebSearching && (

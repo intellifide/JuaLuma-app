@@ -51,6 +51,7 @@ locals {
       env = {
         APP_ENV              = "stage"
         GCP_PROJECT_ID       = var.project_id
+        TZ                   = "America/Chicago"
         PLAID_ENV            = "production"
         PLAID_REDIRECT_URI   = "https://jualuma-user-app-stage-ripznron4a-uc.a.run.app/connect-accounts"
         FRONTEND_URL         = "https://jualuma-user-app-stage-ripznron4a-uc.a.run.app"
@@ -84,6 +85,7 @@ locals {
         APP_ENV                    = "stage"
         GCP_PROJECT_ID             = var.project_id
         GCP_LOCATION               = var.region
+        TZ                         = "America/Chicago"
         DISPATCH_ALLOWED_JOBS      = "jualuma-backend-stage-migrate"
         DISPATCH_ALLOWED_WORKFLOWS = ""
       }
@@ -102,7 +104,10 @@ locals {
       max_instances         = 10
       cpu                   = "1"
       memory                = "512Mi"
-      env                   = { API_UPSTREAM = "https://jualuma-backend-stage-ripznron4a-uc.a.run.app" }
+      env = {
+        API_UPSTREAM = "https://jualuma-backend-stage-ripznron4a-uc.a.run.app"
+        TZ           = "America/Chicago"
+      }
       secret_env            = {}
     }
 
@@ -116,7 +121,10 @@ locals {
       max_instances         = 10
       cpu                   = "1"
       memory                = "512Mi"
-      env                   = { API_UPSTREAM = "https://jualuma-backend-stage-ripznron4a-uc.a.run.app" }
+      env = {
+        API_UPSTREAM = "https://jualuma-backend-stage-ripznron4a-uc.a.run.app"
+        TZ           = "America/Chicago"
+      }
       secret_env            = {}
     }
 
@@ -130,7 +138,9 @@ locals {
       max_instances         = 10
       cpu                   = "1"
       memory                = "512Mi"
-      env                   = {}
+      env = {
+        TZ = "America/Chicago"
+      }
       secret_env            = {}
     }
   }
