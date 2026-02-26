@@ -39,6 +39,7 @@ TEXT_PARSABLE_FILE_TYPES = {"txt", "md", "csv", "json", "xml", "rtf"}
 IMAGE_FILE_TYPES = {"png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "svg"}
 UPLOAD_CONTEXT_MAX_DOCS = 5
 UPLOAD_CONTEXT_MAX_CHARS_PER_DOC = 1800
+UPLOAD_CONTEXT_QUERY_TOKEN_MIN_LEN = 3
 
 
 async def get_financial_context(
@@ -92,6 +93,7 @@ async def get_financial_context(
             db,
             user_id,
             attachment_ids=attachment_ids,
+            query=query,
         )
 
         # 4. Format combined context
@@ -131,6 +133,7 @@ async def get_uploaded_documents_context(
     max_docs: int = UPLOAD_CONTEXT_MAX_DOCS,
     max_chars_per_doc: int = UPLOAD_CONTEXT_MAX_CHARS_PER_DOC,
     attachment_ids: list[str] | None = None,
+    query: str | None = None,
 ) -> str:
     """Fetch only uploaded-file context for prompt injection."""
     local_session = False
@@ -147,6 +150,7 @@ async def get_uploaded_documents_context(
             max_docs=max_docs,
             max_chars_per_doc=max_chars_per_doc,
             attachment_ids=attachment_ids,
+            query=query,
         )
         logger.info(
             "AI_UPLOAD_CONTEXT_ONLY uid=%s docs_considered=%s docs_included=%s skip_reasons=%s",
@@ -343,21 +347,24 @@ def _uploaded_documents_context(
     max_docs: int = UPLOAD_CONTEXT_MAX_DOCS,
     max_chars_per_doc: int = UPLOAD_CONTEXT_MAX_CHARS_PER_DOC,
     attachment_ids: list[str] | None = None,
+    query: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     normalized_attachment_ids = _normalize_attachment_ids(attachment_ids)
 
-    query = (
+    docs_query = (
         db.query(UserDocument)
         .filter(UserDocument.uid == user_id)
         .order_by(UserDocument.created_at.desc())
     )
     if normalized_attachment_ids:
-        query = query.filter(UserDocument.id.in_(normalized_attachment_ids))
+        docs_query = docs_query.filter(UserDocument.id.in_(normalized_attachment_ids))
 
-    docs = query.limit(max_docs).all()
+    docs = docs_query.all()
+    query_tokens = _normalize_query_tokens(query)
 
-    lines: list[str] = []
+    context_lines: list[str] = []
     skip_reasons: dict[str, int] = {}
+    candidates: list[dict[str, Any]] = []
 
     for doc in docs:
         excerpt, skip_reason = _document_excerpt_for_context(doc, max_chars_per_doc)
@@ -365,19 +372,46 @@ def _uploaded_documents_context(
             skip_reasons[skip_reason] = skip_reasons.get(skip_reason, 0) + 1
             continue
         if excerpt:
-            lines.append(f"- {doc.name} ({doc.file_type}): {excerpt}")
+            candidates.append(
+                {
+                    "doc": doc,
+                    "line": f"- {doc.name} ({doc.file_type}): {excerpt}",
+                    "score": _document_relevance_score(doc, excerpt, query_tokens),
+                }
+            )
 
-    if not lines:
+    if not candidates:
         return "", {
             "considered": len(docs),
             "included": 0,
             "skip_reasons": skip_reasons,
         }
 
-    section = "## Uploaded File Context\n" + "\n".join(lines)
+    if normalized_attachment_ids:
+        ranked = candidates
+    elif query_tokens:
+        ranked = sorted(
+            candidates,
+            key=lambda item: (
+                item["score"],
+                item["doc"].created_at or datetime.min.replace(tzinfo=UTC),
+            ),
+            reverse=True,
+        )
+    else:
+        ranked = sorted(
+            candidates,
+            key=lambda item: item["doc"].created_at or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
+
+    for candidate in ranked[:max_docs]:
+        context_lines.append(candidate["line"])
+
+    section = "## Uploaded File Context\n" + "\n".join(context_lines)
     return section, {
         "considered": len(docs),
-        "included": len(lines),
+        "included": len(context_lines),
         "skip_reasons": skip_reasons,
     }
 
@@ -475,6 +509,41 @@ def _normalize_attachment_ids(attachment_ids: list[str] | None) -> list[UUID]:
         except (TypeError, ValueError):
             continue
     return normalized
+
+
+def _normalize_query_tokens(query: str | None) -> set[str]:
+    if not query:
+        return set()
+    tokens = {
+        token.strip(".,:;!?()[]{}\"'`").lower()
+        for token in query.split()
+    }
+    return {
+        token
+        for token in tokens
+        if len(token) >= UPLOAD_CONTEXT_QUERY_TOKEN_MIN_LEN
+    }
+
+
+def _document_relevance_score(
+    doc: UserDocument,
+    excerpt: str,
+    query_tokens: set[str],
+) -> float:
+    if not query_tokens:
+        return 0.0
+
+    excerpt_tokens = _normalize_query_tokens(excerpt)
+    name_tokens = _normalize_query_tokens(doc.name or "")
+    overlap = len(query_tokens & excerpt_tokens)
+    name_overlap = len(query_tokens & name_tokens)
+    phrase_bonus = 0.0
+    lowered_excerpt = excerpt.lower()
+    for token in query_tokens:
+        if token in lowered_excerpt:
+            phrase_bonus += 0.1
+
+    return float(overlap) + (float(name_overlap) * 0.5) + phrase_bonus
 
 
 def _account_summary(db: Session, user_id: str) -> dict[str, Any]:
