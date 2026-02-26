@@ -51,7 +51,7 @@ export const AnimatedBrandText: React.FC<AnimatedBrandTextProps> = ({
 
   return (
     <span
-      className={`font-bold tracking-tight select-none ${className}`}
+      className={`animated-brand-text font-bold tracking-tight select-none ${className}`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
