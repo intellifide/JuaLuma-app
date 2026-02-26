@@ -108,16 +108,18 @@ This document outlines the complete technology stack for the jualuma financial a
 
 - **Google AI Studio**: Gemini 2.5 Flash API
   - Authentication: API key via `AI_STUDIO_API_KEY`
-  - Model: `gemini-2.5-flash`
+  - Local default model target for paid-path testing: `gemini-2.5-flash`
+  - Routing policy defaults remain: Free -> `gpt-oss-120b`; Paid -> `gemini-2.5-flash`; Paid exhausted fallback -> `gpt-oss-120b`
   - Rate Limits: Client-side throttling (~10 RPM, 250k TPM, 250 RPD)
 
 ### Production
 
 - **Vertex AI**: Gemini models
-  - Models: Gemini 2.5 Flash (Essential/Pro), Gemini 2.5 Pro (Ultimate)
+  - Model routing: Free -> `gpt-oss-120b`; Paid default -> `gemini-2.5-flash`; Paid premium exhausted -> auto fallback `gpt-oss-120b`
   - Authentication: Service account credentials
   - RAG: Vertex AI Vector Search (Essential/Pro/Ultimate tiers)
   - Encryption: User DEK for prompt/response encryption
+- **Quota Metering**: Token-based period usage with billing-cycle-anniversary reset; UI copy uses `AI usage this period` and shows reset date.
 
 ### ML Pipeline
 

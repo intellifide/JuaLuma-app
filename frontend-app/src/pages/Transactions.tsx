@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -54,7 +54,7 @@ export const Transactions = () => {
   const { profile, user } = useAuth()
   // Load preferences from localStorage per-user (prevents cross-account leakage).
   const savedPreferences = useMemo(() => loadTransactionPreferences(user?.uid), [user?.uid])
-  
+
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState(savedPreferences.category)
   const [page, setPage] = useState(1)
@@ -73,7 +73,7 @@ export const Transactions = () => {
   const toast = useToast()
   const [scope, setScope] = useState<'personal' | 'household'>('personal')
   const { accounts } = useAccounts({ filters: { scope } })
-  
+
   // Check if user has Pro or Ultimate tier for manual transactions
   // Check both profile.plan and subscriptions array as fallback
   const { start, end } = useMemo(() => getTransactionDateRange(timeframe), [timeframe])

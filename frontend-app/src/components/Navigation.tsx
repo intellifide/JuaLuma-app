@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -18,15 +18,9 @@ import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationDrawer } from './notifications/NotificationDrawer'
 import { AnimatedBrandText } from './AnimatedBrandText'
+import { getMarketingSiteUrl } from '../utils/marketing'
 
-const MARKETING_URL = (() => {
-  const env = (import.meta as any).env || {}
-  const configured = env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL
-  if (configured) return configured
-  return window.location.hostname === 'localhost'
-    ? 'http://localhost:5177'
-    : 'https://jualuma-marketing-298159098975.us-central1.run.app'
-})()
+const MARKETING_URL = getMarketingSiteUrl()
 
 const linkClass = 'nav-link'
 const activeClass = 'nav-link active'

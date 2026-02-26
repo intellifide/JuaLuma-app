@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -68,7 +68,14 @@ describe('AI Assistant Integration', () => {
                 resetPassword: vi.fn()
             })
             ; vi.mocked(aiService.getHistory).mockResolvedValue([])
-            ; vi.mocked(aiService.getQuota).mockResolvedValue({ used: 5, limit: 20, resets_at: '', tier: 'free' })
+            ; vi.mocked(aiService.getQuota).mockResolvedValue({
+                used: 5,
+                limit: 20,
+                usage_progress: 0.25,
+                usage_copy: 'AI usage this period',
+                resets_at: '',
+                tier: 'free',
+            })
     })
 
     it('loads and displays initial state', async () => {
@@ -85,7 +92,7 @@ describe('AI Assistant Integration', () => {
             expect(aiService.getQuota).toHaveBeenCalled()
         })
         await waitFor(() => {
-            expect(screen.getByText(/5 \/ 20/)).toBeInTheDocument()
+            expect(screen.getByText(/AI usage this period: 25%/)).toBeInTheDocument()
         }) // Quota display
         // Expect default welcome message if history is empty
         expect(screen.getByText(/Hello! I'm your AI Assistant/i)).toBeInTheDocument()
@@ -132,7 +139,7 @@ describe('AI Assistant Integration', () => {
 
         // Quota should update (20 - 14 = 6 used)
         await waitFor(() => {
-            expect(screen.getByText(/6 \/ 20/)).toBeInTheDocument()
+            expect(screen.getByText(/AI usage this period: 30%/)).toBeInTheDocument()
         })
     })
 
@@ -175,5 +182,36 @@ describe('AI Assistant Integration', () => {
         await waitFor(() => {
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
         })
+    })
+
+    it('reuses pending assistant bubble on stream failure', async () => {
+        vi.mocked(aiService.sendMessageStream).mockRejectedValue(
+            new Error('We encountered an issue while processing your AI request. Please try again.'),
+        )
+
+        const { container } = render(
+            <BrowserRouter>
+                <ToastProvider>
+                    <AIAssistant />
+                </ToastProvider>
+            </BrowserRouter>
+        )
+
+        await waitFor(() => {
+            expect(aiService.getQuota).toHaveBeenCalled()
+        })
+
+        const input = screen.getByRole('textbox', { name: /Chat input/i })
+        const sendButton = screen.getByRole('button', { name: /Send/i })
+
+        fireEvent.change(input, { target: { value: 'Hello AI' } })
+        fireEvent.click(sendButton)
+
+        await waitFor(() => {
+            expect(screen.getByText(/Error: We encountered an issue while processing your AI request/i)).toBeInTheDocument()
+        })
+
+        const assistantBubbles = container.querySelectorAll('.chat-message-assistant')
+        expect(assistantBubbles.length).toBe(1)
     })
 })

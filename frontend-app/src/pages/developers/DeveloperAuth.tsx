@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -19,6 +19,8 @@ import { LEGAL_AGREEMENTS } from '../../constants/legal';
 import { AgreementAcceptanceInput } from '../../types/legal';
 import { developerService } from '../../services/developers';
 import { AnimatedBrandText } from '../../components/AnimatedBrandText';
+import { PasswordInput } from '../../components/ui/PasswordInput';
+import { getMarketingSiteUrl } from '../../utils/marketing';
 
 interface DeveloperAuthProps {
     mode: 'login' | 'signup';
@@ -45,7 +47,6 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
     const [acceptDeveloperAgreement, setAcceptDeveloperAgreement] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptPrivacy, setAcceptPrivacy] = useState(false);
-    const [acceptResident, setAcceptResident] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -54,15 +55,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
         [password],
     );
 
-    // Marketing site base URL for legal docs (GCP portability: env-driven, no hardcoded origins)
-    const marketingLegalBase = useMemo(() => {
-        const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-        const fallback = isLocalhost
-            ? 'http://localhost:5177'
-            : 'https://jualuma-marketing-298159098975.us-central1.run.app';
-        const env = (import.meta as any).env || {};
-        return env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL || fallback;
-    }, []);
+    const marketingLegalBase = useMemo(() => getMarketingSiteUrl(), []);
 
     const onSubmit = async (event: FormEvent) => {
         event.preventDefault();
@@ -77,7 +70,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                 setError('Password does not meet complexity requirements.');
                 return;
             }
-            if (!acceptDeveloperAgreement || !acceptTerms || !acceptPrivacy || !acceptResident) {
+            if (!acceptDeveloperAgreement || !acceptTerms || !acceptPrivacy) {
                 setError('You must accept all required legal agreements.');
                 return;
             }
@@ -108,11 +101,6 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                     {
                         agreement_key: LEGAL_AGREEMENTS.privacyPolicy.key,
                         agreement_version: LEGAL_AGREEMENTS.privacyPolicy.version,
-                        acceptance_method: 'clickwrap',
-                    },
-                    {
-                        agreement_key: LEGAL_AGREEMENTS.usResidencyCertification.key,
-                        agreement_version: LEGAL_AGREEMENTS.usResidencyCertification.version,
                         acceptance_method: 'clickwrap',
                     },
                     {
@@ -228,8 +216,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-text-secondary mb-1">Password</label>
-                            <input
-                                type="password"
+                            <PasswordInput
                                 required
                                 className="input w-full bg-black/20"
                                 value={password}
@@ -242,8 +229,7 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                             <>
                                 <div>
                                     <label className="block text-sm font-medium text-text-secondary mb-1">Confirm Password</label>
-                                    <input
-                                        type="password"
+                                    <PasswordInput
                                         required
                                         className="input w-full bg-black/20"
                                         value={confirmPassword}
@@ -296,17 +282,6 @@ export const DeveloperAuth = ({ mode }: DeveloperAuthProps) => {
                                         />
                                         <span className="text-xs text-text-secondary">
                                             I agree to the <a href={`${marketingLegalBase}/legal/privacy`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</a>.
-                                        </span>
-                                    </label>
-                                    <label className="flex items-start gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox checkbox-xs mt-1"
-                                            checked={acceptResident}
-                                            onChange={e => setAcceptResident(e.target.checked)}
-                                        />
-                                        <span className="text-xs text-text-secondary">
-                                            I certify that I am a resident of the United States and agree to the Terms of Service.
                                         </span>
                                     </label>
                                 </div>

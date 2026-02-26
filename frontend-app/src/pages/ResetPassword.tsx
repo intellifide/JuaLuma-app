@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -17,6 +17,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { confirmResetPassword, requestEmailCode, verifyResetPasswordCode } from '../services/auth'
+import { PasswordInput } from '../components/ui/PasswordInput'
 
 export const ResetPassword = () => {
   const { resetPassword } = useAuth()
@@ -167,8 +168,7 @@ export const ResetPassword = () => {
               <form className="space-y-4" onSubmit={onResetSubmit}>
                 <div>
                   <label className="form-label">New Password</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     required
                     minLength={8}
                     value={newPassword}
@@ -181,8 +181,7 @@ export const ResetPassword = () => {
                 </div>
                 <div>
                   <label className="form-label">Confirm New Password</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     required
                     minLength={8}
                     value={confirmPassword}

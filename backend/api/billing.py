@@ -90,6 +90,7 @@ async def create_checkout(
         )
 
     url = create_checkout_session_for_pending(
+        db,
         pending.uid,
         pending.email,
         request.plan_type,

@@ -1,0 +1,14 @@
+# Dev rollout profile (safe start)
+enable_artifact_registry = true
+enable_network           = false
+enable_nat               = false
+enable_serverless_connector = false
+enable_cloud_sql         = false
+enable_service_accounts  = false
+enable_cloud_run         = false
+enable_log_export        = false
+enable_org_policies      = false
+
+# Existing runtime references when modules are gated off
+existing_network_self_link = "projects/jualuma-dev/global/networks/<network-name>"
+existing_vpc_connector     = "projects/jualuma-dev/locations/us-central1/connectors/<connector-name>"

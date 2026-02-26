@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -51,6 +51,32 @@ export interface AnalyticsFilters {
     isManual?: boolean;
 }
 
+const inflightAnalyticsRequests = new Map<string, Promise<unknown>>();
+
+const buildRequestKey = (
+    endpoint: string,
+    params: Record<string, string | boolean>,
+): string => {
+    const sortedEntries = Object.entries(params).sort(([a], [b]) => a.localeCompare(b));
+    return `${endpoint}?${JSON.stringify(sortedEntries)}`;
+};
+
+const withInflightDedup = async <T>(
+    key: string,
+    run: () => Promise<T>,
+): Promise<T> => {
+    const existing = inflightAnalyticsRequests.get(key);
+    if (existing) {
+        return existing as Promise<T>;
+    }
+
+    const request = run().finally(() => {
+        inflightAnalyticsRequests.delete(key);
+    });
+    inflightAnalyticsRequests.set(key, request);
+    return request;
+};
+
 export const AnalyticsService = {
     getNetWorth: async (
         startDate: string,
@@ -64,8 +90,11 @@ export const AnalyticsService = {
         if (filters?.excludeAccountTypes) params.exclude_account_types = filters.excludeAccountTypes;
         if (filters?.category) params.category = filters.category;
         if (filters?.isManual !== undefined) params.is_manual = filters.isManual;
-        
-        const response = await api.get<NetWorthResponse>('/analytics/net-worth', { params });
+
+        const requestKey = buildRequestKey('/analytics/net-worth', params);
+        const response = await withInflightDedup(requestKey, () =>
+            api.get<NetWorthResponse>('/analytics/net-worth', { params }),
+        );
         return response.data;
     },
 
@@ -81,8 +110,11 @@ export const AnalyticsService = {
         if (filters?.excludeAccountTypes) params.exclude_account_types = filters.excludeAccountTypes;
         if (filters?.category) params.category = filters.category;
         if (filters?.isManual !== undefined) params.is_manual = filters.isManual;
-        
-        const response = await api.get<CashFlowResponse>('/analytics/cash-flow', { params });
+
+        const requestKey = buildRequestKey('/analytics/cash-flow', params);
+        const response = await withInflightDedup(requestKey, () =>
+            api.get<CashFlowResponse>('/analytics/cash-flow', { params }),
+        );
         return response.data;
     },
 
@@ -97,8 +129,11 @@ export const AnalyticsService = {
         if (filters?.excludeAccountTypes) params.exclude_account_types = filters.excludeAccountTypes;
         if (filters?.category) params.category = filters.category;
         if (filters?.isManual !== undefined) params.is_manual = filters.isManual;
-        
-        const response = await api.get<SpendingByCategoryResponse>('/analytics/spending-by-category', { params });
+
+        const requestKey = buildRequestKey('/analytics/spending-by-category', params);
+        const response = await withInflightDedup(requestKey, () =>
+            api.get<SpendingByCategoryResponse>('/analytics/spending-by-category', { params }),
+        );
         return response.data;
     }
 };

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+BLOCKED_BRANCHES="main stage"
+ALLOW_NON_DEV_PUSH="${ALLOW_NON_DEV_PUSH:-0}"
+
+blocked_push=0
+blocked_details=()
+
+while read -r local_ref _local_sha remote_ref _remote_sha; do
+  for blocked in $BLOCKED_BRANCHES; do
+    if [[ "$local_ref" == "refs/heads/$blocked" || "$remote_ref" == "refs/heads/$blocked" ]]; then
+      blocked_push=1
+      blocked_details+=("  - blocked: ${local_ref:-<delete/local>} -> ${remote_ref:-<delete/remote>}.")
+    fi
+  done
+done
+
+if (( blocked_push == 1 )) && [[ "$ALLOW_NON_DEV_PUSH" != "1" ]]; then
+  echo "Refusing push to protected branch."
+  echo "Set ALLOW_NON_DEV_PUSH=1 to allow an explicit override (e.g. promotion to stage/prod)."
+  printf "%s\n" "${blocked_details[@]}"
+  exit 1
+fi
+
+echo "Pre-push branch safety check passed."
+exit 0

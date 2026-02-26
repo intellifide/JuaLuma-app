@@ -1,0 +1,75 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    branches: [Dev, stage, main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-ci.yml"
+      - "scripts/terraform_ci_plan.sh"
+  push:
+    branches: [Dev, stage, main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-ci.yml"
+      - "scripts/terraform_ci_plan.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    env:
+      GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER || secrets.GCP_WIF_PROVIDER_STAGE }}
+      GCP_WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT || secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE }}
+    strategy:
+      fail-fast: false
+      matrix:
+        env_dir: [dev, stage, prod]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform fmt check
+        run: terraform -chdir=infra fmt -check -recursive
+
+      - name: Terraform init (no backend)
+        run: terraform -chdir=infra/envs/${{ matrix.env_dir }} init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform -chdir=infra/envs/${{ matrix.env_dir }} validate
+
+      - name: Authenticate to GCP for speculative plan
+        if: ${{ env.GCP_WIF_PROVIDER != '' && env.GCP_WIF_SERVICE_ACCOUNT != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_WIF_SERVICE_ACCOUNT }}
+
+      - name: Note skipped speculative plan (no GCP auth configured)
+        if: ${{ env.GCP_WIF_PROVIDER == '' || env.GCP_WIF_SERVICE_ACCOUNT == '' }}
+        run: |
+          echo "Skipping speculative plan because GCP WIF secrets are not configured."
+
+      - name: Terraform speculative plan (all modules gated off)
+        if: ${{ env.GCP_WIF_PROVIDER != '' && env.GCP_WIF_SERVICE_ACCOUNT != '' }}
+        run: |
+          terraform -chdir=infra/envs/${{ matrix.env_dir }} plan -refresh=false -lock=false -input=false -no-color \
+            -var='enable_artifact_registry=false' \
+            -var='enable_network=false' \
+            -var='enable_nat=false' \
+            -var='enable_serverless_connector=false' \
+            -var='enable_cloud_sql=false' \
+            -var='enable_service_accounts=false' \
+            -var='enable_cloud_run=false' \
+            -var='enable_log_export=false' \
+            -var='enable_org_policies=false'

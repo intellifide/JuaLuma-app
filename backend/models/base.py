@@ -15,8 +15,12 @@ from backend.core import settings
 DATABASE_URL = settings.database_url
 
 engine_kwargs: dict[str, Any] = {
-    "pool_size": 5,
-    "max_overflow": 10,
+    "pool_size": settings.db_pool_size,
+    "max_overflow": settings.db_max_overflow,
+    "pool_timeout": settings.db_pool_timeout_seconds,
+    "pool_recycle": settings.db_pool_recycle_seconds,
+    "pool_pre_ping": settings.db_pool_pre_ping,
+    "pool_use_lifo": True,
     "future": True,
 }
 if DATABASE_URL.startswith("sqlite"):
@@ -28,6 +32,10 @@ if DATABASE_URL.startswith("sqlite"):
     )
     engine_kwargs.pop("pool_size", None)
     engine_kwargs.pop("max_overflow", None)
+    engine_kwargs.pop("pool_timeout", None)
+    engine_kwargs.pop("pool_recycle", None)
+    engine_kwargs.pop("pool_pre_ping", None)
+    engine_kwargs.pop("pool_use_lifo", None)
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 

@@ -67,11 +67,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         max_requests: int = 100,
         window_seconds: int = 60,
         path_prefixes: Iterable[str] = ("/api/auth", "/", "/health", "/api/health"),
+        exclude_paths: Iterable[str] = (),
     ):
         super().__init__(app)
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.path_prefixes = tuple(path_prefixes)
+        self.exclude_paths = tuple(exclude_paths)
         self._attempts: dict[str, deque[float]] = {}
         self._lock = Lock()
         # Expose the limiter for tests/administration
@@ -88,6 +90,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
     def _should_limit(self, path: str) -> bool:
+        if any(path == excluded or path.startswith(f"{excluded}/") for excluded in self.exclude_paths):
+            return False
         return any(path.startswith(prefix) for prefix in self.path_prefixes)
 
     def _check_limit(self, request: Request) -> JSONResponse | None:

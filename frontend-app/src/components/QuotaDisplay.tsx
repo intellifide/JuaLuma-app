@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -19,11 +19,22 @@ import { Link } from 'react-router-dom';
 interface QuotaDisplayProps {
     used: number;
     limit: number;
+    usageProgress?: number;
+    usageCopy?: string;
+    resetsAt?: string;
     tier: string;
     loading?: boolean;
 }
 
-export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ used, limit, tier, loading }) => {
+export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({
+    used,
+    limit,
+    usageProgress,
+    usageCopy,
+    resetsAt,
+    tier,
+    loading,
+}) => {
     if (loading) {
         return (
             <div className="flex flex-col items-end justify-center animate-pulse">
@@ -33,9 +44,18 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ used, limit, tier, l
         );
     }
 
-    const percentage = Math.min((used / limit) * 100, 100);
+    const normalizedProgress = usageProgress ?? (limit > 0 ? Math.min(Math.max(used / limit, 0), 1) : 0);
+    const percentage = Math.round(normalizedProgress * 100);
     const isExceeded = used >= limit;
     const isNearLimit = percentage >= 80;
+    const copy = usageCopy || 'AI usage this period';
+    const resetDateLabel = resetsAt
+        ? new Date(resetsAt).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        })
+        : null;
 
     // Color based on usage
     let progressBarColor = 'bg-primary';
@@ -43,10 +63,10 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ used, limit, tier, l
     else if (isNearLimit) progressBarColor = 'bg-yellow-500';
 
     return (
-        <div className="flex flex-col items-end min-w-[200px]">
+        <div className="flex flex-col items-end min-w-[240px]">
             <div className="flex items-center gap-2 mb-1">
                 <span className={`text-sm font-medium ${isExceeded ? 'text-red-400' : 'text-text-primary'}`}>
-                    {used} / {limit}
+                    {copy}: {percentage}%
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded-full text-text-secondary border capitalize" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
                     {tier.replace('_', ' ')}
@@ -59,6 +79,9 @@ export const QuotaDisplay: React.FC<QuotaDisplayProps> = ({ used, limit, tier, l
                     style={{ width: `${percentage}%` }}
                 />
             </div>
+            {resetDateLabel && (
+                <span className="mt-1 text-xs text-text-secondary">Resets {resetDateLabel}</span>
+            )}
 
             {isExceeded && tier === 'free' && (
                 <Link to="/settings" className="text-xs text-primary hover:underline mt-1 font-medium transition-colors">

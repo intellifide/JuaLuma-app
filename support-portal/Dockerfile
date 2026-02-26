@@ -22,8 +22,7 @@ FROM nginx:1.27-alpine
 # Used by nginx template envsubst: `${DOLLAR}host` -> `$host` (nginx var).
 # IMPORTANT: DOLLAR must expand to a single '$' so nginx variables like $uri work.
 ENV DOLLAR="$"
-ENV API_UPSTREAM="http://backend:8001"
-ENV API_UPSTREAM_HOST="backend"
+ENV API_UPSTREAM="http://127.0.0.1:8001"
 
 # Use nginx's built-in envsubst entrypoint support (templates -> conf.d at runtime)
 # so Cloud Run can set API_UPSTREAM without rebuilding the image.

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -67,11 +67,11 @@ export const ChatHistoryList: React.FC<ChatHistoryListProps> = ({ items }) => {
       </div>
       <div className="space-y-4">
         {currentItems.map((item, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className={`border border-white/5 rounded-lg overflow-hidden transition-all duration-200 ${expandedIndex === index ? 'bg-white/5' : 'hover:bg-white/5'}`}
           >
-            <button 
+            <button
               onClick={() => toggleExpand(index)}
               className="w-full text-left p-4 flex justify-between items-start"
             >
@@ -87,7 +87,7 @@ export const ChatHistoryList: React.FC<ChatHistoryListProps> = ({ items }) => {
                  {expandedIndex === index ? '−' : '+'}
               </div>
             </button>
-            
+
             {expandedIndex === index && (
               <div className="p-4 pt-0 border-t border-white/5 bg-black/10">
                 <div className="mb-4 pt-4">

@@ -1,71 +1,57 @@
-# Web3 Full-History Providers
+# Web3 History Provider Contract (Tatum Only)
+
+Last updated: 2026-02-23 (UTC)
+
+## Runtime Architecture
+
+- Web3 history ingestion is hard-cutover to Tatum only (`backend/services/tatum_history.py`).
+- Active sync path: `backend/api/accounts.py` -> `fetch_tatum_history(...)`.
+- No cross-provider fallback is allowed in the active sync path.
 
 ## Environment Variables
 
-### EVM (Ethereum / Polygon / BSC)
-- `ETHERSCAN_API_KEY`
-- `ETHERSCAN_BASE_URL` (default: `https://api.etherscan.io/api`)
-- `POLYGONSCAN_API_KEY`
-- `POLYGONSCAN_BASE_URL` (default: `https://api.polygonscan.com/api`)
-- `BSCSCAN_API_KEY`
-- `BSCSCAN_BASE_URL` (default: `https://api.bscscan.com/api`)
+### Required
 
-### Solana
-- `HELIUS_API_KEY`
-- `HELIUS_BASE_URL` (default: `https://mainnet.helius-rpc.com`)
-- `HELIUS_RPC_URL` (optional full override)
-- `SOLANA_RPC_URL` (fallback RPC)
+- `TATUM_API_KEY`
 
-### Bitcoin
-- `BITQUERY_API_KEY`
-- `BITQUERY_URL` (default: `https://api.bitquery.io/graphql`)
-- `BLOCKCHAIN_COM_URL` (fallback; default: `https://blockchain.info`)
+### Required In Production-Grade Deployments
 
-### Cardano
-- `BLOCKFROST_API_KEY`
-- `BLOCKFROST_URL_MAINNET` (default: `https://cardano-mainnet.blockfrost.io/api/v0`)
+- `TATUM_BASE_URL` (default: `https://api.tatum.io`; pin explicitly in Cloud Run for parity)
 
-### XRP Ledger
-- `XRPSCAN_URL` (default: `https://xrpscan.com/api/v1`)
+### Optional Tuning
 
-### Tron
-- `TRONSCAN_BASE_URL` (default: `https://api.tronscanapi.com`)
-- `TRONGRID_API_KEY`
-- `TRONGRID_URL` (default: `https://api.trongrid.io/v1`)
+- `TATUM_TIMEOUT_SECONDS` (default: `15`)
+- `TATUM_RETRY_MAX_ATTEMPTS` (default: `3`)
+- `TATUM_RETRY_BASE_BACKOFF_MS` (default: `250`)
 
-## Provider Rules
-- API keys and base URLs are read from `.env` via `backend/core/config.py`.
-- Missing keys disable that provider (the sync returns an empty list and keeps cursors unchanged).
+## Supported Chains (Current Scope)
 
-## Manual Verification Steps
+- `eip155:1` (Ethereum)
+- `eip155:56` (BSC)
+- `eip155:137` (Polygon)
+- `bip122:000000000019d6689c085ae165831e93` (Bitcoin mainnet)
+- `solana:*` (Solana)
+- `ripple:mainnet` (XRP Ledger)
+- `cardano:mainnet` (Cardano)
+- `tron:mainnet` (Tron)
 
-### Ethereum / Polygon / BSC
-1. Set the relevant `*SCAN` API key in `.env`.
-2. Link a Web3 wallet on the chain via `/api/accounts/link/web3`.
-3. Trigger sync: `POST /api/accounts/{account_id}/sync?initial_sync=true`.
-4. Verify transactions and `raw_json` entries for native + token transfers.
+## Support Boundaries
 
-### Solana
-1. Set `HELIUS_API_KEY` (or `HELIUS_RPC_URL`) in `.env`.
-2. Link a Solana wallet and run a sync.
-3. Confirm SOL + SPL token transfers were persisted with token mints in `currency`.
+- Unsupported chains must raise provider errors and must not silently route to non-Tatum providers.
+- Persistent `429` responses must surface `ProviderOverloaded` after configured retries.
+- Non-2xx provider responses are treated as provider errors; no silent fallback path is allowed.
 
-### Bitcoin
-1. Set `BITQUERY_API_KEY` (preferred) or rely on `BLOCKCHAIN_COM_URL` fallback.
-2. Link a BTC wallet and run a sync.
-3. Confirm inflow/outflow entries and `raw_json` from UTXO aggregation.
+## Dev Safety-Gate Verification (TAT-009 Alignment)
 
-### Cardano
-1. Set `BLOCKFROST_API_KEY`.
-2. Link a Cardano wallet and run a sync.
-3. Confirm inflow/outflow entries computed from UTXO comparisons.
+Execute and evidence these gates before cutover/promotion:
 
-### XRP Ledger
-1. Ensure `XRPSCAN_URL` is reachable.
-2. Link an XRP wallet and run a sync.
-3. Confirm Payment transactions and IOU transfers (if present).
+1. Chain parity: pass/fail per supported chain.
+2. Normalization parity: no schema violations in normalized transaction model.
+3. Cursor/idempotency: repeated runs return stable tx IDs and stable next cursor.
+4. 429/retry policy: retry/backoff works and persistent 429 escalates to provider-overloaded path.
 
-### Tron
-1. Set `TRONGRID_API_KEY` (preferred) or rely on `TRONSCAN_BASE_URL` fallback.
-2. Link a Tron wallet and run a sync.
-3. Confirm TRX transfers and token transfers when `tokenInfo` is present.
+Minimum evidence set:
+
+- Gate report artifact (example: `/tmp/tat009_gate_report.json`)
+- Test proof for retry policy (`backend/tests/test_tatum_history.py`)
+- Updated task execution notes in Notion with pass/fail outcomes

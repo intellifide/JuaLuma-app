@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -383,7 +383,7 @@ const BudgetTool = ({
 
     const val = amountStr === '' ? null : parseFloat(amountStr);
     if (val !== null && val < 0 && cat === 'Income') return;
-    
+
     const thresholdPercent = thresholdStr === '' ? 80 : parseFloat(thresholdStr);
     saveBudget(
       cat,
@@ -1394,7 +1394,7 @@ export default function FinancialAnalysis() {
         type="line"
         loading={nwFullLoading}
       />
-      
+
       <ExpandableChartModal
         isOpen={expandedChart === 'cashflow'}
         onClose={() => setExpandedChart(null)}

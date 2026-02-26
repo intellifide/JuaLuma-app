@@ -1,6 +1,6 @@
 # Runtime Parity Contract (Prod vs Stage)
 
-Last updated: 2026-02-22 (UTC)
+Last updated: 2026-02-23 (UTC)
 
 ## Rule
 
@@ -21,8 +21,8 @@ Last updated: 2026-02-22 (UTC)
 - `STRIPE_SECRET_KEY` (secret ref)
 - `PLAID_CLIENT_ID` (secret ref)
 - `PLAID_SECRET` (secret ref)
-- `BITQUERY_API_KEY` (secret ref)
-- `BLOCKFROST_API_KEY` (secret ref)
+- `TATUM_API_KEY` (secret ref)
+- `TATUM_BASE_URL` (secret ref)
 - `JOB_RUNNER_SECRET` (secret ref)
 - `LOCAL_ENCRYPTION_KEY` (secret ref)
 - `GOOGLE_APPLICATION_CREDENTIALS` (secret ref)
@@ -43,3 +43,11 @@ Last updated: 2026-02-22 (UTC)
 - Domain and CORS values: stage `*.run.app` URLs
 - Stripe mode/keys: stage test values
 - Secret payload values: stage-scoped, stored in `jualuma-stage` Secret Manager
+
+## Gmail Credential Contract
+
+- `GOOGLE_APPLICATION_CREDENTIALS` may be either:
+  - Service-account JSON payload (legacy), or
+  - Service-account email principal for keyless impersonation (preferred).
+- For keyless mode, runtime service account must have:
+  - `roles/iam.serviceAccountTokenCreator` on the delegated Gmail sender service account.

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -14,10 +14,11 @@
 
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { getMarketingLegalUrl } from '../utils/marketing';
 
 export const CookieConsentBanner: React.FC = () => {
     const [isVisible, setIsVisible] = useState(false);
+    const privacyPolicyUrl = getMarketingLegalUrl('privacy');
 
     useEffect(() => {
         const consent = localStorage.getItem('jualuma_cookie_consent');
@@ -49,7 +50,7 @@ export const CookieConsentBanner: React.FC = () => {
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                             We use cookies to enhance your experience and analyze our traffic.
                             By clicking &quot;Accept&quot;, you consent to our use of cookies.
-                            Read our <Link to="/legal/privacy" className="text-royal-purple hover:text-deep-indigo underline">Privacy Policy</Link> to learn more.
+                            Read our <a href={privacyPolicyUrl} target="_blank" rel="noopener noreferrer" className="text-royal-purple hover:text-deep-indigo underline">Privacy Policy</a> to learn more.
                         </p>
                     </div>
                     <div className="flex gap-4 min-w-fit">
@@ -61,7 +62,7 @@ export const CookieConsentBanner: React.FC = () => {
                         </button>
                         <button
                             onClick={handleAccept}
-                            className="px-6 py-2.5 rounded-xl text-sm font-medium bg-royal-purple text-white shadow-lg shadow-royal-purple/25 hover:bg-deep-indigo hover:shadow-royal-purple/40 hover:-translate-y-0.5 transition-all duration-200"
+                            className="px-6 py-2.5 rounded-xl text-sm font-medium bg-primary text-white shadow-lg hover:bg-primary-dark hover:-translate-y-0.5 transition-all duration-200"
                         >
                             Accept
                         </button>

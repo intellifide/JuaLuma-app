@@ -120,6 +120,12 @@ if settings.app_env.lower() != "test":
         window_seconds=settings.rate_limit_window_seconds,
         # Limit API calls only (not static/proxy paths). "/api" includes "/api/auth" and "/api/health".
         path_prefixes=("/api",),
+        # Signup has a dedicated limiter in backend/api/auth.py to avoid starvation
+        # from unrelated API traffic sharing the same client IP bucket.
+        exclude_paths=(
+            "/api/auth/signup",
+            "/api/auth/signup/pending",
+        ),
     )
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -415,17 +421,37 @@ async def _probe_web3_health(checks: dict):
 
 
 async def _probe_cex_health(checks: dict):
-    try:
-        import ccxt
+    import ccxt
 
-        binance = ccxt.binance()
-        await asyncio.to_thread(binance.fetch_time)
-        checks["cex"] = "connected"
-    except Exception as exc:
-        checks["cex"] = f"error:{exc.__class__.__name__}"
-        logger.error(f"CEX health check failed: {exc}")
-        return False
-    return True
+    exchanges = ("binanceus", "kraken", "coinbase")
+    failures: list[str] = []
+
+    for exchange_id in exchanges:
+        try:
+            exchange_cls = getattr(ccxt, exchange_id)
+            exchange = exchange_cls()
+            await asyncio.to_thread(exchange.fetch_time)
+            checks["cex"] = f"connected:{exchange_id}"
+            return True
+        except Exception as exc:
+            failures.append(f"{exchange_id}:{exc.__class__.__name__}")
+            msg = str(exc)
+            if exchange_id == "binanceus" and "451" in msg:
+                logger.warning(
+                    "CEX health check restricted for %s (expected in some regions): %s",
+                    exchange_id,
+                    msg,
+                )
+            else:
+                logger.warning(
+                    "CEX health check failed for %s: %s",
+                    exchange_id,
+                    msg,
+                )
+
+    checks["cex"] = "error:all_exchanges_unavailable"
+    logger.error("CEX health check failed: %s", "; ".join(failures))
+    return False
 
 
 async def _probe_marketplace_health(checks: dict):

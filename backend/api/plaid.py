@@ -1,6 +1,7 @@
 # Updated 2026-02-10 14:25 CST - item-centric Plaid linking with tier policy and mappings
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -22,9 +23,10 @@ from backend.services.plaid import (
 )
 from backend.services.plaid_sync import PLAID_SYNC_STATUS_SYNC_NEEDED, sync_plaid_item
 from backend.utils import get_db
-from backend.utils.secret_manager import store_secret
+from backend.utils.secret_manager import get_secret, store_secret
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
+logger = logging.getLogger(__name__)
 
 
 def _days_requested_for_tier(tier: str) -> int:
@@ -69,6 +71,10 @@ class ExchangeTokenResponse(BaseModel):
     accounts: list[ExchangeAccount]
 
 
+class LinkTokenUpdateRequest(BaseModel):
+    item_id: str = Field(min_length=1, max_length=128)
+
+
 @router.post("/link-token", response_model=LinkTokenResponse)
 def create_link_token_endpoint(
     current_user: User = Depends(get_current_user),
@@ -86,8 +92,58 @@ def create_link_token_endpoint(
             days_requested=days_requested,
         )
     except RuntimeError as exc:
+        logger.error(
+            "Plaid link token creation failed for uid=%s: %s",
+            current_user.uid,
+            exc,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
+
+    return LinkTokenResponse(link_token=link_token, expiration=str(expiration))
+
+
+@router.post("/link-token/update", response_model=LinkTokenResponse)
+def create_update_link_token_endpoint(
+    payload: LinkTokenUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> LinkTokenResponse:
+    """Create an update-mode Link token for an existing Plaid Item."""
+    plaid_item = (
+        db.query(PlaidItem)
+        .filter(
+            PlaidItem.uid == current_user.uid,
+            PlaidItem.item_id == payload.item_id,
+            PlaidItem.is_active.is_(True),
+            PlaidItem.removed_at.is_(None),
+        )
+        .first()
+    )
+    if plaid_item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plaid item was not found.",
+        )
+
+    try:
+        access_token = get_secret(plaid_item.secret_ref, uid=current_user.uid)
+        link_token, expiration = create_link_token(
+            current_user.uid,
+            products=[],
+            access_token=access_token,
+        )
+    except RuntimeError as exc:
+        logger.error(
+            "Plaid update-mode link token creation failed for uid=%s item_id=%s: %s",
+            current_user.uid,
+            payload.item_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
         ) from exc
 
     return LinkTokenResponse(link_token=link_token, expiration=str(expiration))

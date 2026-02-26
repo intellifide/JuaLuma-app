@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -112,7 +112,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
         sortedData.length - 1,
       ]),
     ).filter((index) => index >= 0 && index < sortedData.length)
-    
+
     const xLabels = xLabelIndices.map(i => {
       const dateValue = parseDateUTC(sortedData[i].date)
       const includeYear = sortedData.length > 90
@@ -203,7 +203,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
         normalizedIncome.length - 1,
       ]),
     ).filter((index) => index >= 0 && index < normalizedIncome.length)
-    
+
     const xLabels = xLabelIndices.map(i => {
       const dateValue = parseDateUTC(normalizedIncome[i].date)
       const label = interval === 'week'
@@ -232,7 +232,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!lineChartData || type !== 'line') return
-    
+
     const svg = svgRef.current
     if (!svg) return
 
@@ -401,7 +401,7 @@ export const ExpandableChartModal: React.FC<ExpandableChartModalProps> = ({
                   const tooltipHeight = 50;
                   const tooltipX = Math.max(10, Math.min(lineChartData.width - tooltipWidth - 10, hoveredPoint.x - tooltipWidth / 2));
                   const tooltipY = Math.max(10, hoveredPoint.y - tooltipHeight - 10);
-                  
+
                   return (
                     <g>
                       <line
