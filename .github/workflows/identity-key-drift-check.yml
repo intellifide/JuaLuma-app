@@ -38,18 +38,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve auth inputs (dev)
+        id: auth_inputs
+        run: |
+          set -euo pipefail
+          PROVIDER="${{ secrets.GCP_WIF_PROVIDER || secrets.GCP_WIF_PROVIDER_STAGE }}"
+          SERVICE_ACCOUNT="${{ secrets.GCP_WIF_SERVICE_ACCOUNT || secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE }}"
+          if [[ -z "${PROVIDER}" || -z "${SERVICE_ACCOUNT}" ]]; then
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::warning::Skipping dev drift check because WIF secrets are unavailable in this workflow context."
+            exit 0
+          fi
+          echo "enabled=true" >> "${GITHUB_OUTPUT}"
+
       - name: Authenticate to GCP (dev)
+        if: steps.auth_inputs.outputs.enabled == 'true'
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER || secrets.GCP_WIF_PROVIDER_STAGE }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT || secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE }}
 
       - name: Setup gcloud
+        if: steps.auth_inputs.outputs.enabled == 'true'
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: jualuma-dev
 
       - name: Check dev browser key drift
+        if: steps.auth_inputs.outputs.enabled == 'true'
         run: ./scripts/check_identity_key_drift.sh --env dev
 
   drift-stage:
@@ -59,18 +75,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve auth inputs (stage)
+        id: auth_inputs
+        run: |
+          set -euo pipefail
+          PROVIDER="${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}"
+          SERVICE_ACCOUNT="${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}"
+          if [[ -z "${PROVIDER}" || -z "${SERVICE_ACCOUNT}" ]]; then
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::warning::Skipping stage drift check because WIF secrets are unavailable in this workflow context."
+            exit 0
+          fi
+          echo "enabled=true" >> "${GITHUB_OUTPUT}"
+
       - name: Authenticate to GCP (stage)
+        if: steps.auth_inputs.outputs.enabled == 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}
 
       - name: Setup gcloud
+        if: steps.auth_inputs.outputs.enabled == 'true'
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: jualuma-stage
 
       - name: Check stage browser key drift
+        if: steps.auth_inputs.outputs.enabled == 'true'
         run: ./scripts/check_identity_key_drift.sh --env stage
 
   drift-prod:
@@ -80,16 +112,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve auth inputs (prod)
+        id: auth_inputs
+        run: |
+          set -euo pipefail
+          PROVIDER="${{ secrets.GCP_WIF_PROVIDER || secrets.GCP_WIF_PROVIDER_STAGE }}"
+          SERVICE_ACCOUNT="${{ secrets.GCP_WIF_SERVICE_ACCOUNT || secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE }}"
+          if [[ -z "${PROVIDER}" || -z "${SERVICE_ACCOUNT}" ]]; then
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::warning::Skipping prod drift check because WIF secrets are unavailable in this workflow context."
+            exit 0
+          fi
+          echo "enabled=true" >> "${GITHUB_OUTPUT}"
+
       - name: Authenticate to GCP (prod)
+        if: steps.auth_inputs.outputs.enabled == 'true'
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER || secrets.GCP_WIF_PROVIDER_STAGE }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT || secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE }}
 
       - name: Setup gcloud
+        if: steps.auth_inputs.outputs.enabled == 'true'
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: jualuma-prod
 
       - name: Check prod browser key drift
+        if: steps.auth_inputs.outputs.enabled == 'true'
         run: ./scripts/check_identity_key_drift.sh --env prod
