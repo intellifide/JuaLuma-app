@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -36,7 +36,7 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
   const [loading, setLoading] = useState(false)
   const { show } = useToast()
   const { accounts, loading: accountsLoading } = useAccounts({ filters: { accountType: 'manual' } })
-  
+
   const [formData, setFormData] = useState({
     accountId: '',
     ts: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:mm
@@ -91,7 +91,7 @@ export const AddManualTransactionModal = ({ open, onClose, onSuccess }: AddManua
       show('Transaction added successfully', 'success')
       onSuccess()
       onClose()
-      
+
       // Reset form
       setFormData({
         accountId: accounts.length > 0 ? accounts[0].id : '',

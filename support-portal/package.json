@@ -2,7 +2,7 @@
   "name": "support-portal",
   "private": true,
   "version": "0.0.0",
-  "license": "SEE LICENSE IN PolyForm-Noncommercial-1.0.0.txt",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

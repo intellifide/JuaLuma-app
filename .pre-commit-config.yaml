@@ -39,7 +39,14 @@ repos:
         name: gcp-deploy-guard
         entry: bash scripts/check_gcp_drift.sh
         language: system
-        files: ^\.github/workflows/deploy-(dev|prod)\.yml$
+        files: ^\.github/workflows/deploy-(dev|stage|prod)\.yml$
+        pass_filenames: false
+
+      - id: infra-terraform-guard
+        name: infra-terraform-guard
+        entry: bash scripts/terraform_ci_plan.sh
+        language: system
+        files: ^infra/.*\.tf$
         pass_filenames: false
 
       - id: enforce-test-email-domain

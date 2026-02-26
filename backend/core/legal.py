@@ -34,12 +34,6 @@ AGREEMENTS: dict[str, AgreementDefinition] = {
         title="Privacy Policy",
         url="/legal/privacy",
     ),
-    "us_residency_certification": AgreementDefinition(
-        key="us_residency_certification",
-        version="2025-01-15",
-        title="US Residency Certification",
-        url=None,
-    ),
     "developer_agreement": AgreementDefinition(
         key="developer_agreement",
         version="2025-01-15",
@@ -63,7 +57,6 @@ AGREEMENTS: dict[str, AgreementDefinition] = {
 REQUIRED_SIGNUP_AGREEMENTS = (
     "terms_of_service",
     "privacy_policy",
-    "us_residency_certification",
 )
 REQUIRED_DEVELOPER_AGREEMENTS = ("developer_agreement",)
 
@@ -80,4 +73,3 @@ def resolve_agreement_version(key: str, version: str | None) -> str:
     if resolved not in definition.allowed_versions():
         raise ValueError(f"Unsupported agreement version for {key}: {resolved}")
     return resolved
-

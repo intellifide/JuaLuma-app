@@ -30,6 +30,7 @@ from .support import (
     SupportTicketMessage,
     SupportTicketRating,
 )
+from .trial_redemption import TrialRedemption
 from .transaction import Transaction
 from .user import User
 from .user_document import UserDocument
@@ -68,6 +69,7 @@ __all__ = [
     "SupportTicketRating",
     "SupportTicket",
     "SupportTicketMessage",
+    "TrialRedemption",
     "DeveloperPayout",
     "ManualAsset",
     "LegalAgreementAcceptance",

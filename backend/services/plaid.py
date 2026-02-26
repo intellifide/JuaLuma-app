@@ -93,14 +93,34 @@ def _wrap_plaid_error(action: str, exc: ApiException) -> RuntimeError:
     """Convert Plaid ApiException into a friendlier RuntimeError (or subclass)."""
     error_data = _parse_plaid_error(exc)
     error_code = error_data.get("error_code")
+    error_type = error_data.get("error_type")
+    request_id = error_data.get("request_id")
     error_message = (
         error_data.get("error_message")
         or error_data.get("display_message")
         or str(exc)
     )
+    logger.error(
+        "Plaid API error during %s: code=%s type=%s request_id=%s message=%s",
+        action,
+        error_code,
+        error_type,
+        request_id,
+        error_message,
+    )
     if error_code == "ITEM_LOGIN_REQUIRED":
         return PlaidItemLoginRequired(
             f"{error_message} (action: {action})."
+        )
+    if error_code == "INVALID_API_KEYS":
+        return RuntimeError(
+            "Plaid credentials are invalid for the configured PLAID_ENV. "
+            "Verify PLAID_CLIENT_ID/PLAID_SECRET and PLAID_ENV."
+        )
+    if _is_oauth_redirect_uri_error(error_data):
+        return RuntimeError(
+            "Plaid OAuth redirect URI is not configured in the Plaid Dashboard. "
+            "Add this app URL under Team OAuth redirect URIs and retry."
         )
     return RuntimeError(
         f"We encountered an issue with your bank connection during {action}. Please try again."
@@ -119,6 +139,18 @@ def _parse_plaid_error(exc: ApiException) -> dict[str, object]:
     if isinstance(body, dict):
         return body
     return {}
+
+
+def _is_oauth_redirect_uri_error(error_data: dict[str, object]) -> bool:
+    error_code = str(error_data.get("error_code") or "")
+    if error_code != "INVALID_FIELD":
+        return False
+    message = str(
+        error_data.get("error_message")
+        or error_data.get("display_message")
+        or ""
+    ).lower()
+    return "oauth redirect uri" in message and "developer dashboard" in message
 
 
 class PlaidItemLoginRequired(RuntimeError):
@@ -148,6 +180,7 @@ def create_link_token(
     products: Iterable[str],
     *,
     days_requested: int | None = None,
+    access_token: str | None = None,
 ) -> tuple[str, str]:
     """
     Generate a link_token for the Link flow and return its expiration.
@@ -158,11 +191,23 @@ def create_link_token(
     request_kwargs: dict[str, object] = {
         "user": LinkTokenCreateRequestUser(client_user_id=user_id),
         "client_name": "jualuma",
-        "products": requested_products,
-        "country_codes": [CountryCode("US")],
         "language": "en",
     }
-    if days_requested and days_requested > 0:
+    if access_token:
+        # Update mode: Link derives product context from the Item access token.
+        request_kwargs["access_token"] = access_token
+    else:
+        request_kwargs["products"] = requested_products
+        request_kwargs["country_codes"] = [CountryCode("US")]
+
+    if settings.plaid_webhook_url:
+        request_kwargs["webhook"] = settings.plaid_webhook_url
+    if settings.plaid_redirect_uri:
+        request_kwargs["redirect_uri"] = settings.plaid_redirect_uri
+    if settings.plaid_android_package_name:
+        request_kwargs["android_package_name"] = settings.plaid_android_package_name
+
+    if days_requested and days_requested > 0 and not access_token:
         if LinkTokenCreateRequestTransactions is not None:
             request_kwargs["transactions"] = LinkTokenCreateRequestTransactions(
                 days_requested=days_requested
@@ -175,7 +220,25 @@ def create_link_token(
     try:
         response = client.link_token_create(request)
     except ApiException as exc:
-        raise _wrap_plaid_error("link_token creation", exc) from exc
+        error_data = _parse_plaid_error(exc)
+        if settings.plaid_redirect_uri and _is_oauth_redirect_uri_error(error_data):
+            # Production resiliency: if redirect URI is not yet allowlisted in Plaid
+            # Dashboard, retry once without redirect_uri so non-redirect web Link can proceed.
+            logger.warning(
+                "Plaid rejected redirect_uri=%s for link_token creation; retrying without redirect_uri.",
+                settings.plaid_redirect_uri,
+            )
+            retry_kwargs = dict(request_kwargs)
+            retry_kwargs.pop("redirect_uri", None)
+            retry_request = LinkTokenCreateRequest(**retry_kwargs)
+            try:
+                response = client.link_token_create(retry_request)
+            except ApiException as retry_exc:
+                raise _wrap_plaid_error(
+                    "link_token creation (retry without redirect_uri)", retry_exc
+                ) from retry_exc
+        else:
+            raise _wrap_plaid_error("link_token creation", exc) from exc
 
     expiration = (
         response.expiration

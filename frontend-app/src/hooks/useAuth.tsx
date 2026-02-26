@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -21,6 +21,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -121,55 +122,162 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+const LOCAL_AUTH_BYPASS_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0'])
+
+const isLocalAuthBypassEnabled = (): boolean => {
+  if (!import.meta.env.DEV) return false
+  if (import.meta.env.VITE_LOCAL_AUTH_BYPASS !== 'true') return false
+  const hostname = window.location.hostname
+  return LOCAL_AUTH_BYPASS_HOSTS.has(hostname)
+}
+
+const buildLocalBypassUser = (): User => ({
+  uid: 'local-dev-user',
+  email: 'local-dev@localhost',
+  emailVerified: true,
+  displayName: 'Local Dev User',
+  isAnonymous: false,
+  getIdToken: async () => 'local-dev-token',
+})
+
+const LOCAL_BYPASS_PROFILE: UserProfile = {
+  uid: 'local-dev-user',
+  email: 'local-dev@localhost',
+  role: 'owner',
+  status: 'active',
+  plan: 'pro',
+  subscription_status: 'active',
+  first_name: 'Local',
+  last_name: 'Dev',
+  username: 'local-dev-user',
+  display_name_pref: 'username',
+  mfa_enabled: false,
+}
+const LOCAL_BYPASS_USER = buildLocalBypassUser()
+const PROFILE_RETRY_DELAY_MS = 5000
+const PROFILE_RATE_LIMIT_RETRY_DELAY_MS = 30000
+
+const getApiErrorStatus = (error: unknown): number | null => {
+  const status = (error as { status?: unknown })?.status
+  if (typeof status === 'number') return status
+  return null
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const localAuthBypassEnabled = isLocalAuthBypassEnabled()
+  const [user, setUser] = useState<User | null>(localAuthBypassEnabled ? LOCAL_BYPASS_USER : null)
+  const [profile, setProfile] = useState<UserProfile | null>(localAuthBypassEnabled ? LOCAL_BYPASS_PROFILE : null)
+  const [loading, setLoading] = useState(!localAuthBypassEnabled)
   const [profileLoading, setProfileLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mfaGateOpen, setMfaGateOpen] = useState(false)
   const [mfaGateMethod, setMfaGateMethod] = useState<'totp' | 'passkey'>('totp')
   const [mfaGateCode, setMfaGateCode] = useState('')
   const [mfaGateWorking, setMfaGateWorking] = useState(false)
+  const currentProfileUidRef = useRef<string | null>(localAuthBypassEnabled ? LOCAL_BYPASS_PROFILE.uid ?? null : null)
+  const profileFetchInFlightRef = useRef<Promise<UserProfile | null> | null>(null)
+  const profileRetryAtRef = useRef(0)
 
   const refetchProfile = useCallback(async (): Promise<UserProfile | null> => {
+    if (localAuthBypassEnabled) {
+      setProfile(LOCAL_BYPASS_PROFILE)
+      currentProfileUidRef.current = LOCAL_BYPASS_PROFILE.uid ?? null
+      profileRetryAtRef.current = 0
+      return LOCAL_BYPASS_PROFILE
+    }
+
     if (!auth.currentUser) {
       setProfile(null)
+      currentProfileUidRef.current = null
+      profileRetryAtRef.current = 0
       return null
     }
 
-    setProfileLoading(true)
-    try {
-      const response = await apiFetch('/auth/profile')
-      const data = await response.json()
-      setProfile(data.user ?? null)
-      return data.user ?? null
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Unable to load profile right now.'
-      setError(message)
-      return null
-    } finally {
-      setProfileLoading(false)
+    if (profileFetchInFlightRef.current) {
+      return profileFetchInFlightRef.current
     }
-  }, [])
+
+    if (Date.now() < profileRetryAtRef.current) {
+      return null
+    }
+
+    const fetchPromise = (async (): Promise<UserProfile | null> => {
+      setProfileLoading(true)
+      try {
+        const response = await apiFetch('/auth/profile')
+        const data = await response.json()
+        const nextProfile = data.user ?? null
+        setProfile(nextProfile)
+        currentProfileUidRef.current =
+          typeof nextProfile?.uid === 'string' ? nextProfile.uid : null
+        profileRetryAtRef.current = 0
+        setError(null)
+        return nextProfile
+      } catch (err) {
+        const status = getApiErrorStatus(err)
+        if (status === 429) {
+          profileRetryAtRef.current = Date.now() + PROFILE_RATE_LIMIT_RETRY_DELAY_MS
+        } else if (status === 404) {
+          profileRetryAtRef.current = Date.now() + PROFILE_RETRY_DELAY_MS
+        } else {
+          profileRetryAtRef.current = 0
+        }
+
+        const message =
+          err instanceof Error ? err.message : 'Unable to load profile right now.'
+        setError(message)
+        return null
+      } finally {
+        setProfileLoading(false)
+      }
+    })()
+
+    profileFetchInFlightRef.current = fetchPromise
+
+    try {
+      return await fetchPromise
+    } finally {
+      if (profileFetchInFlightRef.current === fetchPromise) {
+        profileFetchInFlightRef.current = null
+      }
+    }
+  }, [localAuthBypassEnabled])
 
   useEffect(() => {
+    if (localAuthBypassEnabled) {
+      currentProfileUidRef.current = LOCAL_BYPASS_PROFILE.uid ?? null
+      profileRetryAtRef.current = 0
+      setUser(LOCAL_BYPASS_USER)
+      setProfile(LOCAL_BYPASS_PROFILE)
+      setLoading(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+      const nextUid = nextUser?.uid ?? null
       setUser(nextUser)
       setError(null)
 
       if (nextUser) {
-        // Clear any stale profile while re-establishing backend auth for this session.
-        setProfile(null)
-        // Prevent infinite loading if backend is unreachable
-        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000))
-        await Promise.race([refetchProfile(), timeoutPromise])
+        const profileUid = currentProfileUidRef.current
+        const shouldRefetchProfile = !profileUid || profileUid !== nextUid
+
+        if (shouldRefetchProfile && profileUid && profileUid !== nextUid) {
+          setProfile(null)
+          currentProfileUidRef.current = null
+        }
+
+        if (shouldRefetchProfile) {
+          // Prevent infinite loading if backend is unreachable
+          const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000))
+          await Promise.race([refetchProfile(), timeoutPromise])
+        }
       } else {
         clearCachedToken()
+        profileRetryAtRef.current = 0
+        currentProfileUidRef.current = null
         setProfile(null)
       }
 
@@ -177,9 +285,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     return () => unsubscribe()
-  }, [refetchProfile])
+  }, [localAuthBypassEnabled, refetchProfile])
 
   useEffect(() => {
+    if (localAuthBypassEnabled) return
+
     const handler = (event: Event) => {
       // Only gate if the user is signed in; otherwise normal 401 handling should occur.
       if (!auth.currentUser) return
@@ -199,7 +309,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     window.addEventListener('mfa-required', handler as EventListener)
     return () => window.removeEventListener('mfa-required', handler as EventListener)
-  }, [mfaGateOpen, profile?.mfa_method])
+  }, [localAuthBypassEnabled, mfaGateOpen, profile?.mfa_method])
 
   const signup = useCallback(
     async (
@@ -210,6 +320,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       last_name?: string,
       username?: string,
     ) => {
+      if (localAuthBypassEnabled) {
+        setError(null)
+        setLoading(false)
+        return
+      }
+
       setError(null)
       setLoading(true)
       try {
@@ -224,11 +340,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false)
       }
     },
-    [refetchProfile],
+    [localAuthBypassEnabled, refetchProfile],
   )
 
   const login = useCallback(
     async (email: string, password: string) => {
+      if (localAuthBypassEnabled) {
+        setError(null)
+        setLoading(false)
+        return
+      }
+
       setError(null)
       setLoading(true)
     try {
@@ -251,11 +373,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false)
       }
     },
-    [refetchProfile],
+    [localAuthBypassEnabled, refetchProfile],
   )
 
   const completeLoginMfa = useCallback(
     async (mfa_code?: string, passkey_assertion?: Record<string, unknown>) => {
+      if (localAuthBypassEnabled) {
+        return
+      }
+
       setError(null)
       if (!auth.currentUser) {
         throw new Error('Please sign in again to continue.')
@@ -267,7 +393,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await completeBackendLogin(token, mfa_code, passkey_assertion)
       await refetchProfile()
     },
-    [refetchProfile],
+    [localAuthBypassEnabled, refetchProfile],
   )
 
   const completeMfaGate = useCallback(async () => {
@@ -309,6 +435,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [location.pathname, location.search, mfaGateCode, mfaGateMethod, navigate, refetchProfile])
 
   const logout = useCallback(async () => {
+    if (localAuthBypassEnabled) {
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     setError(null)
     setLoading(true)
     try {
@@ -317,10 +449,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [localAuthBypassEnabled])
 
   const resetPassword = useCallback(
     async (email: string, mfa_code?: string, passkey_assertion?: Record<string, unknown>) => {
+    if (localAuthBypassEnabled) {
+      return 'sent'
+    }
+
     setError(null)
     try {
       return await resetPasswordWithAuth(email, mfa_code, passkey_assertion)
@@ -331,7 +467,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw err
     }
     },
-    [],
+    [localAuthBypassEnabled],
   )
 
   const value = useMemo(

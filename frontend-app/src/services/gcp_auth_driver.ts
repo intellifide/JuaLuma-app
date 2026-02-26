@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  */
 
 // This file replaces the Firebase SDK with direct REST API calls to GCP Identity Platform
@@ -52,7 +52,14 @@ export const onAuthStateChanged = (auth: any, listener: AuthStateListener) => {
 }
 
 // Helper: Persist session to localStorage (simple implementation)
-const saveSession = (idToken: string, refreshToken: string, expiresIn: string, localId: string, email: string) => {
+const saveSession = (
+  idToken: string,
+  refreshToken: string,
+  expiresIn: string,
+  localId: string,
+  email: string,
+  options: { notifyAuthState?: boolean } = {},
+) => {
   const expiresAppx = Date.now() + parseInt(expiresIn, 10) * 1000
   _idToken = idToken
   _refreshToken = refreshToken
@@ -80,7 +87,9 @@ const saveSession = (idToken: string, refreshToken: string, expiresIn: string, l
     uid: localId,
     email
   }))
-  notifyListeners()
+  if (options.notifyAuthState !== false) {
+    notifyListeners()
+  }
 }
 
 const clearSession = () => {
@@ -146,7 +155,14 @@ const refreshAuthToken = async () => {
 
     const data = await response.json()
     // data.id_token, data.refresh_token, data.expires_in, data.user_id
-    saveSession(data.id_token, data.refresh_token, data.expires_in, data.user_id, currentUser?.email || '')
+    saveSession(
+      data.id_token,
+      data.refresh_token,
+      data.expires_in,
+      data.user_id,
+      currentUser?.email || '',
+      { notifyAuthState: false },
+    )
     return data.id_token
 }
 

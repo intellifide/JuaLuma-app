@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from backend.api import auth as auth_api
 from backend.main import app
 from backend.middleware.auth import get_current_identity
 from backend.models import PendingSignup, Subscription, User
@@ -21,7 +22,6 @@ def test_signup_pending_success(test_client: TestClient, test_db):
         "agreements": [
             {"agreement_key": "terms_of_service"},
             {"agreement_key": "privacy_policy"},
-            {"agreement_key": "us_residency_certification"},
         ],
     }
 
@@ -60,7 +60,6 @@ def test_signup_pending_duplicate_email(test_client: TestClient, test_db):
         "agreements": [
             {"agreement_key": "terms_of_service"},
             {"agreement_key": "privacy_policy"},
-            {"agreement_key": "us_residency_certification"},
         ],
     }
     with patch("backend.api.auth.get_email_client") as mock_client:
@@ -94,6 +93,80 @@ def test_signup_pending_missing_agreements(test_client: TestClient):
 
     assert response.status_code == 400
     assert "missing required legal agreements" in response.json()["detail"].lower()
+
+
+def test_signup_pending_otp_send_failure_returns_503(test_client: TestClient):
+    def override_identity():
+        return {"uid": "pending_user_otp_fail", "email": "otp-fail@testmail.app"}
+
+    app.dependency_overrides[get_current_identity] = override_identity
+
+    payload = {
+        "first_name": "Otp",
+        "last_name": "Failure",
+        "agreements": [
+            {"agreement_key": "terms_of_service"},
+            {"agreement_key": "privacy_policy"},
+        ],
+    }
+
+    with patch("backend.api.auth.get_email_client") as mock_client:
+        mock_client.return_value.send_otp.side_effect = RuntimeError("smtp offline")
+        response = test_client.post("/api/auth/signup/pending", json=payload)
+
+    app.dependency_overrides.pop(get_current_identity, None)
+
+    assert response.status_code == 503
+    assert "verification code" in response.json()["detail"].lower()
+
+
+def test_signup_pending_rate_limit_returns_429(test_client: TestClient):
+    def override_identity():
+        return {"uid": "pending_user_429", "email": "pending-429@testmail.app"}
+
+    app.dependency_overrides[get_current_identity] = override_identity
+    auth_api._signup_attempts.clear()
+
+    payload = {
+        "first_name": "Rate",
+        "last_name": "Limited",
+        "agreements": [
+            {"agreement_key": "terms_of_service"},
+            {"agreement_key": "privacy_policy"},
+        ],
+    }
+
+    with (
+        patch("backend.api.auth._signup_max_attempts", 1),
+        patch("backend.api.auth._signup_window_seconds", 60),
+        patch("backend.api.auth.get_email_client") as mock_client,
+    ):
+        mock_client.return_value.send_otp = lambda *_args, **_kwargs: None
+        first = test_client.post("/api/auth/signup/pending", json=payload)
+        second = test_client.post("/api/auth/signup/pending", json=payload)
+
+    app.dependency_overrides.pop(get_current_identity, None)
+    auth_api._signup_attempts.clear()
+
+    assert first.status_code == 201
+    assert second.status_code == 429
+    assert "rate limit exceeded" in second.json()["detail"].lower()
+
+
+def test_request_email_code_otp_send_failure_returns_503(test_client: TestClient, test_db):
+    user = User(uid="email_code_user", email="email-code-fail@testmail.app", role="user")
+    test_db.add(user)
+    test_db.commit()
+
+    with patch("backend.api.auth.get_email_client") as mock_client:
+        mock_client.return_value.send_otp.side_effect = RuntimeError("smtp offline")
+        response = test_client.post(
+            "/api/auth/mfa/email/request-code",
+            json={"email": "email-code-fail@testmail.app"},
+        )
+
+    assert response.status_code == 503
+    assert "verification code" in response.json()["detail"].lower()
 
 
 def test_login_success(test_client: TestClient, test_db, mock_auth):

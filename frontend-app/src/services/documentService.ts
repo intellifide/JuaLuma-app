@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -14,6 +14,8 @@
 
 
 import { api } from './api';
+
+export const MAX_UPLOAD_SIZE_BYTES = 20 * 1024 * 1024;
 
 export interface Document {
     id: string;
@@ -37,11 +39,7 @@ export const documentService = {
         formData.append('file', file);
         formData.append('type', type);
 
-        const response = await api.post('/documents/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        const response = await api.post('/documents/upload', formData);
         return response.data;
     },
 

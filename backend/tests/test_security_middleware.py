@@ -42,3 +42,12 @@ def test_rate_limit_exceeded_returns_structured_error(test_client: TestClient):
         assert payload["error"] == "too_many_requests"
         assert "message" in payload
         assert payload["request_id"] is None
+
+
+def test_signup_routes_are_excluded_from_global_rate_limiter(test_client: TestClient):
+    if not ACTIVE_RATE_LIMITER:
+        return
+
+    assert ACTIVE_RATE_LIMITER._should_limit("/api/auth/signup") is False
+    assert ACTIVE_RATE_LIMITER._should_limit("/api/auth/signup/pending") is False
+    assert ACTIVE_RATE_LIMITER._should_limit("/api/auth/profile") is True

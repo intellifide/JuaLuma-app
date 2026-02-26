@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -26,10 +26,10 @@ export default function JoinHousehold() {
   const [agreed, setAgreed] = useState(false)
   const [status, setStatus] = useState<'validating' | 'pending' | 'joining' | 'success' | 'failed'>('validating')
   const [inviteDetails, setInviteDetails] = useState<{ email: string; user_exists: boolean } | null>(null)
-  
+
   const location = useLocation()
   const navigate = useNavigate()
-  
+
   // Extract token from URL query params
   const searchParams = new URLSearchParams(location.search)
   const token = searchParams.get('token')
@@ -79,7 +79,7 @@ export default function JoinHousehold() {
             // Send to Signup
             navigate(`/signup?returnUrl=${returnUrl}&email=${encodeURIComponent(inviteDetails.email)}`)
         }
-    } 
+    }
     // If user IS logged in, we stay here and show the Accept UI.
     // Safety check: warn if logged-in email doesn't match invite email?
     if (user && user.email !== inviteDetails.email) {
@@ -101,9 +101,9 @@ export default function JoinHousehold() {
     setStatus('joining')
 
     try {
-      await householdService.acceptInvite({ 
-        token, 
-        consent_agreed: true 
+      await householdService.acceptInvite({
+        token,
+        consent_agreed: true
       })
       setStatus('success')
       // Redirect to dashboard after short delay
@@ -150,7 +150,7 @@ export default function JoinHousehold() {
             <Shield className="w-8 h-8 text-blue-500" />
           </div>
         </div>
-        
+
         <h1 className="text-2xl font-bold text-center mb-2">Join Household</h1>
         <p className="text-neutral-400 text-center mb-8">
           You have been invited to join a JuaLuma household.
@@ -165,7 +165,7 @@ export default function JoinHousehold() {
 
         {status === 'failed' && (
            <div className="text-center">
-             <button 
+             <button
                 onClick={() => navigate('/')}
                 className="bg-neutral-700 hover:bg-neutral-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
              >
@@ -201,8 +201,8 @@ export default function JoinHousehold() {
             </div>
 
             <label className="flex items-start gap-3 p-4 bg-neutral-700/10 rounded-lg cursor-pointer hover:bg-neutral-700/20 transition-colors">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 className="mt-1 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-neutral-800"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
@@ -217,7 +217,7 @@ export default function JoinHousehold() {
               disabled={!agreed || loading}
               className={`w-full py-3 px-6 rounded-lg font-medium text-white transition-all transform active:scale-[0.98] ${
                 agreed && !loading
-                  ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20' 
+                  ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20'
                   : 'bg-neutral-700 cursor-not-allowed opacity-50'
               }`}
             >
