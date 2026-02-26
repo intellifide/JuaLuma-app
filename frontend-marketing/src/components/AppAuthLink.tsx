@@ -17,8 +17,12 @@ const resolveTheme = (): ThemeMode | null => {
     if (queryTheme === 'light' || queryTheme === 'dark') return queryTheme
   }
 
-  if (typeof localStorage !== 'undefined') {
-    const storedTheme = localStorage.getItem('theme')
+  if (
+    typeof window !== 'undefined' &&
+    window.localStorage &&
+    typeof window.localStorage.getItem === 'function'
+  ) {
+    const storedTheme = window.localStorage.getItem('theme')
     if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme
   }
 
