@@ -11,7 +11,7 @@ type AppAuthLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & 
 
 const THEME_EVENT = 'marketing-theme-change'
 
-const resolveTheme = (): ThemeMode => {
+const resolveTheme = (): ThemeMode | null => {
   if (typeof localStorage !== 'undefined') {
     const storedTheme = localStorage.getItem('theme')
     if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme
@@ -22,12 +22,22 @@ const resolveTheme = (): ThemeMode => {
     if (documentTheme === 'light' || documentTheme === 'dark') return documentTheme
   }
 
-  return 'dark'
+  if (typeof window !== 'undefined') {
+    const queryTheme = new URLSearchParams(window.location.search).get('theme')
+    if (queryTheme === 'light' || queryTheme === 'dark') return queryTheme
+  }
+
+  return null
 }
 
 const withThemeParam = (appPath: string): string => {
   const url = new URL(appPath, APP_URL)
-  url.searchParams.set('theme', resolveTheme())
+  const resolvedTheme = resolveTheme()
+  if (resolvedTheme) {
+    url.searchParams.set('theme', resolvedTheme)
+  } else {
+    url.searchParams.delete('theme')
+  }
   return url.toString()
 }
 
