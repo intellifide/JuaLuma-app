@@ -358,6 +358,7 @@ export const PlanSelection = () => {
                           ? 'border-t-primary shadow-xl relative z-10'
                           : 'border-t-accent'
                   } ${isMonthlyOnly ? 'opacity-70 grayscale-[0.5]' : ''}`}
+                  style={{ overflow: 'visible' }}
                 >
                   {plan.code.includes('pro') && (
                     <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-1 rounded-xl text-xs font-semibold">
