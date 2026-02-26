@@ -1,6 +1,8 @@
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.core import settings
@@ -81,7 +83,18 @@ async def create_checkout(
 
     pending = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
     if not pending and email:
-        pending = db.query(PendingSignup).filter(PendingSignup.email == email).first()
+        pending = (
+            db.query(PendingSignup)
+            .filter(func.lower(PendingSignup.email) == email.strip().lower())
+            .first()
+        )
+        if pending and pending.uid != uid:
+            try:
+                pending.uid = uid
+                db.flush()
+            except IntegrityError:
+                db.rollback()
+                pending = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
 
     if not pending:
         raise HTTPException(

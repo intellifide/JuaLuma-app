@@ -2,6 +2,7 @@
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.exc import ProgrammingError
 
 from backend.core import settings
 from backend.models import Subscription, TrialRedemption, User
@@ -169,3 +170,36 @@ def test_record_trial_redemption_skips_official_stripe_test_card_last4(test_db):
 
     records = test_db.query(TrialRedemption).all()
     assert records == []
+
+
+def test_create_checkout_session_survives_missing_trial_redemptions_table(
+    test_db, monkeypatch
+):
+    settings.stripe_secret_key = "sk_test"
+    user = User(uid="user_missing_trial_table", email="trial-missing@testmail.app")
+    test_db.add(user)
+    test_db.commit()
+
+    capture = _CheckoutCapture()
+    monkeypatch.setattr(billing, "create_stripe_customer", lambda *_, **__: "cus_test")
+    monkeypatch.setattr(billing.stripe.checkout.Session, "create", capture)
+
+    def raise_missing_table(*_args, **_kwargs):
+        raise ProgrammingError(
+            "SELECT * FROM trial_redemptions",
+            {},
+            Exception('relation "trial_redemptions" does not exist'),
+        )
+
+    monkeypatch.setattr(billing, "_find_prior_trial_redemption", raise_missing_table)
+
+    url = billing.create_checkout_session(
+        test_db,
+        user.uid,
+        "pro",
+        "https://app.local/checkout/success",
+    )
+
+    assert url == "https://checkout.stripe.test/session"
+    assert capture.kwargs is not None
+    assert capture.kwargs["line_items"][0]["price"] == billing.STRIPE_PLANS["pro_monthly"]
