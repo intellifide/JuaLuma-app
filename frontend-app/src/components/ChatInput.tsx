@@ -107,10 +107,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     return (
         <div className="flex flex-col gap-2 p-2 bg-transparent">
-            <div className="relative w-full rounded-2xl border backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.08)]" style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface-hover)' }}>
+            <div
+                className="w-full rounded-[1.35rem] p-[1px]"
+                style={{
+                    background:
+                        'linear-gradient(130deg, rgba(90,132,196,0.48) 0%, rgba(92,220,255,0.34) 52%, rgba(152,166,186,0.34) 100%)',
+                    boxShadow: '0 10px 32px rgba(3, 8, 22, 0.28)',
+                }}
+            >
+                <div
+                    className="relative w-full rounded-[1.3rem] border backdrop-blur-sm shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+                    style={{ borderColor: 'rgba(169, 196, 225, 0.35)', background: 'var(--surface-hover)' }}
+                >
                 {attachments.length > 0 && (
                     <>
-                        <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
+                        <div className="flex flex-wrap items-center gap-2 px-4 pr-24 pt-3 pb-2">
                             {attachments.map((attachment) => (
                                 <div
                                     key={attachment.id}
@@ -138,7 +149,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             ))}
                         </div>
                         <div
-                            className="mx-4 border-t"
+                            className="mx-4 mr-24 border-t"
                             style={{ borderColor: 'var(--border-subtle)' }}
                             data-testid="attachment-separator"
                         />
@@ -150,7 +161,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     placeholder={quotaExceeded ? "Daily query limit reached." : placeholder}
-                    className="w-full min-h-[56px] max-h-[200px] resize-none py-4 pr-28 pl-5 rounded-2xl bg-transparent text-text-primary placeholder:text-text-muted/80 focus:outline-none focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base leading-6"
+                    className="chat-composer-textarea w-full min-h-[56px] max-h-[200px] resize-none py-4 pr-28 pl-5 rounded-2xl bg-transparent text-text-primary placeholder:text-text-muted/80 focus:outline-none focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base leading-6"
                     disabled={isInputDisabled}
                     rows={1}
                     aria-label="Chat input"
@@ -186,7 +197,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={!canUpload}
-                    className="absolute right-[3.1rem] top-1/2 -translate-y-1/2 p-0 rounded-xl text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9 border"
+                    className="absolute right-[3.1rem] bottom-3 p-0 rounded-xl text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9 border"
                     style={{ borderColor: 'var(--border-subtle)' }}
                     aria-label="Upload file"
                     title="Upload file"
@@ -197,7 +208,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 </button>
                 <button
                     disabled={isLoading ? false : (!value.trim() || isInputDisabled)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0 rounded-xl bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9"
+                    className="absolute right-3 bottom-3 p-0 rounded-xl bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9"
                     style={{ color: 'var(--text-primary)' }}
                     aria-label={isLoading ? "Stop response" : "Send message"}
                     type="button"
@@ -207,12 +218,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     {isLoading ? (
                         <div className="w-4 h-4 rounded-sm" style={{ background: 'currentColor' }} />
                     ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
                     )}
                 </button>
+                </div>
             </div>
             {fileError && (
                 <p className="text-xs text-red-400 px-1">{fileError}</p>

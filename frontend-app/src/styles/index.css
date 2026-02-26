@@ -2178,6 +2178,22 @@ input[type="number"] {
   padding: var(--spacing-sm) var(--spacing-lg);
 }
 
+.chat-composer-textarea::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 74%, white 26%);
+}
+
+[data-theme='light'] .chat-composer-textarea::placeholder {
+  color: #000000;
+}
+
+[data-theme='light'] .chat-composer-textarea {
+  color: #000000 !important;
+}
+
+[data-theme='dark'] .chat-composer-textarea::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 86%, white 14%);
+}
+
 .typing-indicator {
   display: flex;
   gap: 4px;

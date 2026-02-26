@@ -14,6 +14,7 @@
 
 import { api } from './api';
 import { getIdToken } from './auth';
+import { normalizeApiErrorMessage } from './apiErrorMessages';
 import type { PageContext } from '../hooks/usePageContext';
 
 export interface AIResponse {
@@ -63,6 +64,19 @@ const envBase =
   import.meta.env.VITE_API_TARGET;
 const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
 
+const extractResponseError = async (response: Response): Promise<unknown> => {
+    const maybeJson = await response
+        .clone()
+        .json()
+        .catch(() => null as { detail?: unknown; message?: unknown; error?: unknown } | null);
+    if (maybeJson) {
+        return maybeJson.detail ?? maybeJson.message ?? maybeJson.error;
+    }
+
+    const text = await response.text().catch(() => '');
+    return text || `Request failed with status code ${response.status}`;
+};
+
 export const aiService = {
     sendMessage: async (
         message: string,
@@ -100,8 +114,12 @@ export const aiService = {
             signal: handlers.signal,
         });
 
-        if (!response.ok || !response.body) {
-            throw new Error(`Streaming failed (${response.status})`);
+        if (!response.ok) {
+            const rawMessage = await extractResponseError(response);
+            throw new Error(normalizeApiErrorMessage(response.status, rawMessage));
+        }
+        if (!response.body) {
+            throw new Error('The AI response stream is temporarily unavailable. Please try again.');
         }
 
         const decoder = new TextDecoder();
