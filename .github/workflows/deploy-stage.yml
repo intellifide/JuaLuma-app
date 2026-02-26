@@ -47,6 +47,9 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
 
+      - name: Install Cloud SDK beta component
+        run: gcloud components install beta --quiet
+
       - name: Verify required GCP APIs are enabled
         run: |
           set -euo pipefail
@@ -223,7 +226,7 @@ jobs:
           gcloud run services update jualuma-backend-stage \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
-            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}|TZ=America/Chicago" \
+            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}|TZ=America/Chicago|GMAIL_OTP_IMPERSONATE_USER=noreply@jualuma.com" \
             --quiet
 
       - name: Enforce stage runtime timezone (CST/CDT)
@@ -257,7 +260,7 @@ jobs:
           done
 
           # These stage shell endpoints must not be IAP-intercepted.
-          for service in jualuma-user-app-stage jualuma-support-stage; do
+          for service in jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
             gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
@@ -272,6 +275,7 @@ jobs:
           FRONTEND_URL="$(gcloud run services describe jualuma-user-app-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
           BACKEND_URL="$(gcloud run services describe jualuma-backend-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
           SUPPORT_URL="$(gcloud run services describe jualuma-support-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          MARKETING_URL="$(gcloud run services describe jualuma-marketing-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
 
           check_html_or_iap() {
             local url="$1"
@@ -315,6 +319,7 @@ jobs:
           # Public shell endpoints should not be IAP/gateway HTML.
           check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
           check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
+          check_html_or_iap "${MARKETING_URL}/pricing" "GET" "" "true"
           check_html_or_iap "${BACKEND_URL}/api/health"
 
           # Invalid Firebase token should fail in app (JSON), not Cloud Run gateway HTML.

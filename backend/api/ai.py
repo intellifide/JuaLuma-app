@@ -173,6 +173,7 @@ async def chat_endpoint(
                 user_id,
                 db=db,
                 attachment_ids=payload.attachment_ids,
+                query=message,
             )
         except Exception as e:
             logger.warning(f"Upload context retrieval failed for free tier: {e}")
@@ -294,6 +295,7 @@ async def chat_stream_endpoint(
                 user_id,
                 db=db,
                 attachment_ids=payload.attachment_ids,
+                query=message,
             )
         except Exception as e:
             logger.warning(f"Upload context retrieval failed for free tier stream: {e}")

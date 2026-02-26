@@ -2,6 +2,7 @@ import base64
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any
 from typing import Protocol
 
 from backend.core import settings
@@ -344,7 +345,10 @@ class GmailApiEmailClient:
     """
 
     def __init__(self):
-        self.impersonate_user = settings.gmail_impersonate_user
+        self.default_impersonate_user = settings.gmail_impersonate_user
+        self.otp_impersonate_user = (
+            settings.gmail_otp_impersonate_user or self.default_impersonate_user
+        )
         self.friendly_from_name = FRIENDLY_FROM_NAME
         self.friendly_from_email = settings.mail_contact_hello or FRIENDLY_FROM_EMAIL
         self.friendly_reply_to = self.friendly_from_email
@@ -354,11 +358,12 @@ class GmailApiEmailClient:
         self.otp_from_name = OTP_FROM_NAME
         self.otp_from_email = OTP_FROM_EMAIL
         self.otp_reply_to = self.support_from_email
-        self._service = None
+        self._services: dict[str, Any] = {}
 
-    def _get_service(self):
-        if self._service is not None:
-            return self._service
+    def _get_service(self, impersonate_user: str | None = None):
+        sender_user = (impersonate_user or self.default_impersonate_user).strip()
+        if sender_user in self._services:
+            return self._services[sender_user]
         import json
         import os
 
@@ -382,7 +387,7 @@ class GmailApiEmailClient:
             creds = service_account.Credentials.from_service_account_info(
                 sa_info,
                 scopes=scopes,
-                subject=self.impersonate_user,
+                subject=sender_user,
             )
         else:
             if normalized.endswith(".gserviceaccount.com") and "@" in normalized:
@@ -399,17 +404,22 @@ class GmailApiEmailClient:
                     source_credentials=source_creds,
                     target_principal=normalized,
                     target_scopes=scopes,
-                    subject=self.impersonate_user,
+                    subject=sender_user,
                     lifetime=3600,
                 )
             else:
                 creds = service_account.Credentials.from_service_account_file(
                     normalized,
                     scopes=scopes,
-                    subject=self.impersonate_user,
+                    subject=sender_user,
                 )
-        self._service = build("gmail", "v1", credentials=creds, cache_discovery=False)
-        return self._service
+        self._services[sender_user] = build(
+            "gmail",
+            "v1",
+            credentials=creds,
+            cache_discovery=False,
+        )
+        return self._services[sender_user]
 
     def _build_message(
         self,
@@ -442,9 +452,13 @@ class GmailApiEmailClient:
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
         return {"raw": raw}
 
-    def _send(self, message_body: dict) -> None:
+    def _send(
+        self,
+        message_body: dict,
+        impersonate_user: str | None = None,
+    ) -> None:
         try:
-            service = self._get_service()
+            service = self._get_service(impersonate_user)
             service.users().messages().send(userId="me", body=message_body).execute()
         except Exception as e:
             logger.error("Gmail API send failed: %s", e)
@@ -580,7 +594,8 @@ class GmailApiEmailClient:
                     from_name=self.otp_from_name,
                     from_email=self.otp_from_email,
                     reply_to=self.otp_reply_to,
-                )
+                ),
+                impersonate_user=self.otp_impersonate_user,
             )
             logger.info("Sent OTP to %s", to_email)
         except Exception as e:
@@ -602,7 +617,8 @@ class GmailApiEmailClient:
                     from_name=self.otp_from_name,
                     from_email=self.otp_from_email,
                     reply_to=self.otp_reply_to,
-                )
+                ),
+                impersonate_user=self.otp_impersonate_user,
             )
             logger.info("Sent password reset link to %s", to_email)
         except Exception as e:

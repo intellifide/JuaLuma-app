@@ -349,7 +349,7 @@ export const PlanSelection = () => {
               return (
                 <div
                   key={plan.code}
-                  className={`glass-panel flex flex-col items-center text-center border-t-4 ${
+                  className={`glass-panel relative overflow-visible flex flex-col items-center text-center border-t-4 ${
                     plan.code === 'free'
                       ? 'border-t-gray-400'
                       : plan.code.includes('essential')
