@@ -216,7 +216,11 @@ export default function Pricing() {
 
         if (response.ok) {
           const data = await response.json()
-          setPlans(data)
+          if (Array.isArray(data) && data.length > 0) {
+            setPlans(data)
+          } else {
+            setPlans(fallbackPlans)
+          }
           setLoading(false)
           return
         }
