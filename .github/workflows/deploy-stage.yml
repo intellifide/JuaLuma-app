@@ -47,6 +47,9 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
 
+      - name: Install Cloud SDK beta component
+        run: gcloud components install beta --quiet
+
       - name: Configure Artifact Registry auth
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
