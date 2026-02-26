@@ -198,3 +198,83 @@ jobs:
             --region="${REGION}" \
             --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}" \
             --quiet
+
+      - name: Enforce public runtime access posture (Stage)
+        run: |
+          set -euo pipefail
+
+          for service in jualuma-backend-stage jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
+            gcloud run services update "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --no-invoker-iam-check \
+              --ingress=all \
+              --quiet
+          done
+
+          # These stage shell endpoints must not be IAP-intercepted.
+          for service in jualuma-user-app-stage jualuma-support-stage; do
+            gcloud beta run services update "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --no-iap \
+              --quiet
+          done
+
+      - name: Verify public access policy (Stage)
+        run: |
+          set -euo pipefail
+
+          FRONTEND_URL="$(gcloud run services describe jualuma-user-app-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          BACKEND_URL="$(gcloud run services describe jualuma-backend-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          SUPPORT_URL="$(gcloud run services describe jualuma-support-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+
+          check_html_or_iap() {
+            local url="$1"
+            local method="${2:-GET}"
+            local data="${3:-}"
+            local expect_html="${4:-false}"
+            local headers_file body_file status
+            headers_file="$(mktemp)"
+            body_file="$(mktemp)"
+
+            if [[ "$method" == "POST" ]]; then
+              status="$(curl -sS -D "$headers_file" -o "$body_file" \
+                -X POST "$url" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer test.invalid.token" \
+                --data "$data" \
+                -w "%{http_code}")"
+            else
+              status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
+            fi
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              echo "::error::IAP interception detected at $url"
+              sed -n '1,30p' "$headers_file"
+              exit 1
+            fi
+            if [[ "${expect_html}" != "true" ]] && grep -qi '<html' "$body_file"; then
+              echo "::error::HTML gateway response detected at $url (status=$status)"
+              sed -n '1,20p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+            if [[ "${expect_html}" == "true" ]] && [[ "${status}" -ge 400 ]]; then
+              echo "::error::Unexpected status for web shell endpoint at $url (status=$status)"
+              sed -n '1,30p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+          }
+
+          # Public shell endpoints should not be IAP/gateway HTML.
+          check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
+          check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
+          check_html_or_iap "${BACKEND_URL}/api/health"
+
+          # Invalid Firebase token should fail in app (JSON), not Cloud Run gateway HTML.
+          check_html_or_iap \
+            "${BACKEND_URL}/api/auth/signup/pending" \
+            "POST" \
+            '{"agreements":[],"first_name":"probe","last_name":"probe"}'
