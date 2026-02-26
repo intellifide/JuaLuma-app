@@ -15,23 +15,7 @@
 // Updated 2026-01-20 03:40 CST by Antigravity
 import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken, MfaRequiredError } from './auth'
-
-const AUTH_ACCESS_ERROR_MESSAGE =
-  'Unable to verify your access right now. Please sign in and try again.'
-const GENERIC_REQUEST_ERROR_MESSAGE =
-  'Request could not be completed right now. Please try again.'
-
-const normalizeApiErrorMessage = (status: number | undefined, raw: unknown): string => {
-  if (status === 401) return AUTH_ACCESS_ERROR_MESSAGE
-  if (typeof raw !== 'string') return 'Request failed. Please try again.'
-
-  const message = raw.trim()
-  if (!message) return 'Request failed. Please try again.'
-  if (/<(?:!doctype\s+html|html|body)\b/i.test(message)) {
-    return GENERIC_REQUEST_ERROR_MESSAGE
-  }
-  return message
-}
+import { normalizeApiErrorMessage } from './apiErrorMessages'
 
 // Accept both env naming conventions across dev/prod.
 const envBase =

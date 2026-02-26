@@ -171,3 +171,7 @@ cloud-sql-proxy
 scripts/test_ai_e2e.py
 scripts/test_coinbase_connection.py
 firebase-mcp-key.json
+
+# Codex visual/test artifacts (must stay untracked)
+.codex-artifacts/
+**/.codex-artifacts/
