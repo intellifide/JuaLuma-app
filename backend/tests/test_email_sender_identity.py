@@ -24,9 +24,14 @@ def test_send_otp_uses_dedicated_otp_impersonation_and_noreply_sender(monkeypatc
     client = GmailApiEmailClient()
     captured: dict[str, str | None] = {}
 
-    def fake_send(message_body: dict, impersonate_user: str | None = None) -> None:
+    def fake_send(
+        message_body: dict,
+        impersonate_user: str | None = None,
+        preferred_from_email: str | None = None,
+    ) -> None:
         captured["raw"] = message_body["raw"]
         captured["impersonate_user"] = impersonate_user
+        captured["preferred_from_email"] = preferred_from_email
 
     monkeypatch.setattr(client, "_send", fake_send)
 
@@ -34,6 +39,7 @@ def test_send_otp_uses_dedicated_otp_impersonation_and_noreply_sender(monkeypatc
 
     parsed = _decode_raw_message(str(captured["raw"]))
     assert captured["impersonate_user"] == "noreply@jualuma.com"
+    assert captured["preferred_from_email"] == "noreply@jualuma.com"
     assert parsed["From"] == "JuaLuma Security <noreply@jualuma.com>"
     assert parsed["Reply-To"] == "support@jualuma.com"
 

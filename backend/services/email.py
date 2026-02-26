@@ -389,7 +389,10 @@ class GmailApiEmailClient:
                 "GOOGLE_APPLICATION_CREDENTIALS is not set. "
                 "Cannot initialize Gmail API client."
             )
-        scopes = ["https://www.googleapis.com/auth/gmail.send"]
+        scopes = [
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/gmail.settings.basic",
+        ]
         normalized = sa_value.strip()
         if normalized.startswith("{"):
             sa_info = json.loads(normalized)
@@ -517,10 +520,17 @@ class GmailApiEmailClient:
         self,
         message_body: dict,
         impersonate_user: str | None = None,
+        preferred_from_email: str | None = None,
     ) -> None:
         try:
             sender_user = self._resolve_sender_user(impersonate_user)
             service = self._get_service(sender_user)
+            if preferred_from_email:
+                self._ensure_send_as_default(
+                    service=service,
+                    sender_user=sender_user,
+                    preferred_from_email=preferred_from_email,
+                )
             logger.info("GMAIL_SEND sender_user=%s", sender_user)
             # Use explicit delegated user mailbox to avoid provider-side default sender rewrites.
             service.users().messages().send(
@@ -530,6 +540,70 @@ class GmailApiEmailClient:
         except Exception as e:
             logger.error("Gmail API send failed: %s", e)
             raise
+
+    def _ensure_send_as_default(
+        self,
+        service: Any,
+        sender_user: str,
+        preferred_from_email: str,
+    ) -> None:
+        """Ensure Gmail sends from the preferred alias when available."""
+        target = preferred_from_email.strip().lower()
+        try:
+            send_as_entries = (
+                service.users()
+                .settings()
+                .sendAs()
+                .list(userId=sender_user)
+                .execute()
+                .get("sendAs", [])
+            )
+        except Exception as exc:
+            logger.warning(
+                "GMAIL_SENDAS_LIST_FAILED sender_user=%s preferred=%s error=%s",
+                sender_user,
+                target,
+                exc,
+            )
+            return
+
+        preferred = next(
+            (
+                entry
+                for entry in send_as_entries
+                if (entry.get("sendAsEmail") or "").strip().lower() == target
+            ),
+            None,
+        )
+        if not preferred:
+            logger.warning(
+                "GMAIL_SENDAS_MISSING sender_user=%s preferred=%s available=%s",
+                sender_user,
+                target,
+                [entry.get("sendAsEmail") for entry in send_as_entries],
+            )
+            return
+        if preferred.get("isDefault"):
+            return
+
+        try:
+            service.users().settings().sendAs().patch(
+                userId=sender_user,
+                sendAsEmail=preferred_from_email,
+                body={"isDefault": True},
+            ).execute()
+            logger.info(
+                "GMAIL_SENDAS_DEFAULT_SET sender_user=%s preferred=%s",
+                sender_user,
+                target,
+            )
+        except Exception as exc:
+            logger.warning(
+                "GMAIL_SENDAS_DEFAULT_SET_FAILED sender_user=%s preferred=%s error=%s",
+                sender_user,
+                target,
+                exc,
+            )
 
     def send_generic_alert(self, to_email: str, title: str) -> None:
         body = (
@@ -663,6 +737,7 @@ class GmailApiEmailClient:
                     reply_to=self.otp_reply_to,
                 ),
                 impersonate_user=self.otp_impersonate_user,
+                preferred_from_email=self.otp_from_email,
             )
             logger.info("Sent OTP to %s", to_email)
         except Exception as e:
@@ -686,6 +761,7 @@ class GmailApiEmailClient:
                     reply_to=self.otp_reply_to,
                 ),
                 impersonate_user=self.otp_impersonate_user,
+                preferred_from_email=self.otp_from_email,
             )
             logger.info("Sent password reset link to %s", to_email)
         except Exception as e:
