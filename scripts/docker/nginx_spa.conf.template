@@ -8,6 +8,7 @@ server {
   add_header X-Content-Type-Options nosniff;
   add_header X-Frame-Options DENY;
   add_header Referrer-Policy no-referrer;
+  client_max_body_size 20m;
 
   # Cloud Run frontends are static SPAs. The backend lives on a separate Cloud Run
   # service, so we must reverse-proxy /api requests instead of SPA-fallbacking them

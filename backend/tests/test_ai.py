@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from backend.core import settings
 from backend.models import LLMLog, Subscription
 from backend.services.ai import (
+    _allows_model_recovery_for_tier,
     _anniversary_period_window,
     _resolve_consumed_tokens,
     get_quota_snapshot_sync,
@@ -207,6 +208,14 @@ def test_resolve_model_routing_paid_limit_exhausted_fallback():
     assert result["fallback_applied"] is True
     assert result["fallback_reason"] == "paid_premium_limit_exhausted"
     assert "Premium AI limit reached" in (result["fallback_message"] or "")
+
+
+def test_model_recovery_disabled_for_free_tier():
+    assert _allows_model_recovery_for_tier("free") is False
+
+
+def test_model_recovery_enabled_for_paid_tier():
+    assert _allows_model_recovery_for_tier("pro") is True
 
 
 def test_anniversary_period_window_uses_anchor_day_not_calendar_midnight():

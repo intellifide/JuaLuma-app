@@ -28,6 +28,7 @@ import {
   User,
 } from './gcp_auth_driver'
 import { AgreementAcceptanceInput } from '../types/legal'
+import { normalizeApiErrorMessage } from './apiErrorMessages'
 
 export interface UserSessionData {
   id: string
@@ -58,10 +59,6 @@ export class MfaRequiredError extends Error {
 type ApiRequestInit = RequestInit & { skipAuth?: boolean; throwOnError?: boolean }
 
 const TOKEN_MAX_AGE_MS = 4 * 60 * 1000 // refresh cached token every 4 minutes
-const AUTH_ACCESS_ERROR_MESSAGE =
-  'Unable to verify your access right now. Please sign in and try again.'
-const GENERIC_REQUEST_ERROR_MESSAGE =
-  'Request could not be completed right now. Please try again.'
 // Note: gcp_auth_driver handles its own caching, but we keep this for consistency if we use getIdToken wrapper below
 let cachedToken: string | null = null
 let lastTokenAt = 0
@@ -440,18 +437,6 @@ const buildUrl = (path: string): string => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const relativePath = `/api${normalizedPath}`
   return normalizedApiBase ? `${normalizedApiBase}${relativePath}` : relativePath
-}
-
-const normalizeApiErrorMessage = (status: number, raw: unknown): string => {
-  if (status === 401) return AUTH_ACCESS_ERROR_MESSAGE
-  if (typeof raw !== 'string') return `Request failed with status ${status}`
-
-  const message = raw.trim()
-  if (!message) return `Request failed with status ${status}`
-  if (/<(?:!doctype\s+html|html|body)\b/i.test(message)) {
-    return GENERIC_REQUEST_ERROR_MESSAGE
-  }
-  return message
 }
 
 const createApiError = (status: number, message: string): Error & { status: number } => {
