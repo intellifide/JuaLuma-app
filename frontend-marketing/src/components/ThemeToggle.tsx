@@ -22,11 +22,15 @@ type ThemeToggleProps = {
 
 export const ThemeToggle = ({ className = '' }: ThemeToggleProps) => {
   const [theme, setTheme] = useState('dark')
+  const emitThemeChange = (nextTheme: string) => {
+    window.dispatchEvent(new CustomEvent('marketing-theme-change', { detail: { theme: nextTheme } }))
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') || 'dark'
     setTheme(saved)
     document.documentElement.setAttribute('data-theme', saved)
+    emitThemeChange(saved)
   }, [])
 
   const toggle = () => {
@@ -34,6 +38,7 @@ export const ThemeToggle = ({ className = '' }: ThemeToggleProps) => {
     setTheme(next)
     document.documentElement.setAttribute('data-theme', next)
     localStorage.setItem('theme', next)
+    emitThemeChange(next)
   }
 
   const isLight = theme === 'light'
