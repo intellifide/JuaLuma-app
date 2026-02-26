@@ -211,7 +211,7 @@ jobs:
           gcloud run services update jualuma-backend-stage \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
-            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}|AI_FREE_MODEL=gpt-oss-120b|AI_PAID_FALLBACK_MODEL=gpt-oss-120b|TZ=America/Chicago" \
+            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}|TZ=America/Chicago" \
             --quiet
 
       - name: Enforce stage runtime timezone (CST/CDT)

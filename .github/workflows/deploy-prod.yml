@@ -118,7 +118,7 @@ jobs:
           gcloud run services update jualuma-backend \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
-            --update-env-vars=PLAID_ENV=production,PLAID_REDIRECT_URI=https://app.jualuma.com/connect-accounts,AI_FREE_MODEL=gpt-oss-120b,AI_PAID_FALLBACK_MODEL=gpt-oss-120b \
+            --update-env-vars=PLAID_ENV=production,PLAID_REDIRECT_URI=https://app.jualuma.com/connect-accounts \
             --quiet
 
       # 2. Frontend App
