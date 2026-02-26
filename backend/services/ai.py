@@ -27,8 +27,8 @@ from backend.services.web_search import (
     search_web,
     should_use_web_search,
 )
-from backend.utils.gcp_credentials import get_adc_credentials
 from backend.utils.firestore import get_firestore_client
+from backend.utils.gcp_credentials import get_adc_credentials
 from backend.utils.logging import log_ai_request
 
 try:
@@ -423,7 +423,7 @@ def resolve_model_routing(tier: str, usage_today: int, limit: int) -> dict[str, 
 
 
 def _is_unavailable_model_error(error: Exception) -> bool:
-    if isinstance(error, (NotFound, PermissionDenied, FailedPrecondition)):
+    if isinstance(error, NotFound | PermissionDenied | FailedPrecondition):
         return True
     message = str(error).lower()
     return (
