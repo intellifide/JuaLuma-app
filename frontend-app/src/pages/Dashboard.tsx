@@ -105,6 +105,7 @@ type MiniTrendChartProps = {
   primaryColor: string
   secondaryColor?: string
   className?: string
+  emptyLabel?: string
 }
 
 const buildSparklinePath = (
@@ -143,6 +144,7 @@ const MiniTrendChart: React.FC<MiniTrendChartProps> = ({
   primaryColor,
   secondaryColor,
   className = '',
+  emptyLabel = 'No trend data for this period',
 }) => {
   const width = 320
   const height = 78
@@ -176,7 +178,9 @@ const MiniTrendChart: React.FC<MiniTrendChartProps> = ({
   if (!hasData) {
     return (
       <div className={`mini-trend-chart ${className}`} aria-hidden="true">
-        <div className="mini-trend-empty-line" />
+        <div className="mini-trend-empty-line">
+          <span className="mini-trend-empty-label">{emptyLabel}</span>
+        </div>
       </div>
     )
   }
@@ -758,6 +762,18 @@ export default function Dashboard() {
     : netWorthTotal;
   const netWorthStart = netWorthSeries.length ? netWorthSeries[0].value : null;
   const netWorthChange = netWorthStart !== null ? netWorthCurrent - netWorthStart : null;
+  const hasNetWorthData =
+    netWorthSeries.length > 1 ||
+    Math.abs(assetsTotal) > 0 ||
+    Math.abs(liabilitiesTotal) > 0 ||
+    Math.abs(netWorthCurrent) > 0;
+  const hasCashFlowTrendData =
+    (insightsCashFlowData?.income?.length ?? 0) > 1 ||
+    (insightsCashFlowData?.expenses?.length ?? 0) > 1;
+  const hasCashFlowData =
+    hasCashFlowTrendData ||
+    Math.abs(insightsCashFlowStats.income) > 0 ||
+    Math.abs(insightsCashFlowStats.expense) > 0;
 
   const linkedAccountCategories = useMemo(() => {
     const counts = new Map<PrimaryAccountCategory, number>();
@@ -857,15 +873,18 @@ export default function Dashboard() {
             <MiniTrendChart
               primarySeries={netWorthSeries}
               primaryColor="rgba(144, 205, 255, 0.95)"
+              emptyLabel="No net worth trend available"
               className="mb-1"
             />
             <p id="net-worth-value" className="text-3xl font-bold text-primary">
-              {insightsNetWorthLoading ? '...' : formatCurrency(netWorthCurrent)}
+              {insightsNetWorthLoading ? '...' : hasNetWorthData ? formatCurrency(netWorthCurrent) : '—'}
             </p>
             <p className="text-xs text-text-muted">
-              Assets {formatCompactCurrency(assetsTotal)} • Liabilities {formatCompactCurrency(liabilitiesTotal)}
+              {hasNetWorthData
+                ? `Assets ${formatCompactCurrency(assetsTotal)} • Liabilities ${formatCompactCurrency(liabilitiesTotal)}`
+                : 'Connect accounts or add manual assets to populate net worth.'}
             </p>
-            {netWorthChange !== null && (
+            {hasNetWorthData && netWorthChange !== null && (
               <p className={`text-xs ${netWorthChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {netWorthChange >= 0 ? 'Up' : 'Down'} {formatCompactCurrency(Math.abs(netWorthChange))} in {insightsLabel}
               </p>
@@ -888,13 +907,25 @@ export default function Dashboard() {
               secondarySeries={insightsCashFlowData?.expenses ?? []}
               primaryColor="rgba(103, 252, 198, 0.98)"
               secondaryColor="rgba(255, 134, 196, 0.85)"
+              emptyLabel="No cash flow trend available"
               className="mb-1"
             />
-            <p id="cashflow-value" className={`text-3xl font-bold ${insightsCashFlowStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {insightsCashFlowLoading ? '...' : formatCurrency(insightsCashFlowStats.net)}
+            <p
+              id="cashflow-value"
+              className={`cashflow-value text-3xl font-bold ${
+                !hasCashFlowData
+                  ? 'cashflow-value-neutral'
+                  : insightsCashFlowStats.net >= 0
+                  ? 'cashflow-value-positive'
+                  : 'cashflow-value-negative'
+              }`}
+            >
+              {insightsCashFlowLoading ? '...' : hasCashFlowData ? formatCurrency(insightsCashFlowStats.net) : '—'}
             </p>
             <p className="text-xs text-text-muted">
-              In {formatCompactCurrency(insightsCashFlowStats.income)} • Out {formatCompactCurrency(insightsCashFlowStats.expense)}
+              {hasCashFlowData
+                ? `In ${formatCompactCurrency(insightsCashFlowStats.income)} • Out ${formatCompactCurrency(insightsCashFlowStats.expense)}`
+                : 'No categorized cash flow activity in this period.'}
             </p>
           </GlassCard>
 

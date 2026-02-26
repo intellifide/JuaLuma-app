@@ -17,6 +17,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink, Link, useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { NotificationDrawer } from '../components/notifications/NotificationDrawer'
 import { QuickAIChat } from '../components/QuickAIChat'
@@ -124,86 +125,176 @@ export const AppLayout: React.FC = () => {
 
   const isAiAssistant = location.pathname.startsWith('/ai-assistant')
   const isDashboardRoute = location.pathname.startsWith('/dashboard')
+  const sidebarBrandIconSrc = '/assets/jualuma-logo-main.svg'
 
   const handleLogout = async () => {
     await logout()
     navigate('/login')
   }
 
+  const { theme } = useTheme()
+  const isDarkTheme = theme === 'dark'
+
+  const sidebarContent = (
+    <>
+      <div className="sidebar-header flex items-center px-6 relative">
+        <Link
+          to="/"
+          className={`flex items-center ${sidebarOpen ? 'justify-start' : 'justify-center w-full'} gap-3 group`}
+        >
+          {sidebarOpen ? (
+            <AnimatedBrandText className="transition-all duration-200 text-[2.9rem]" text="JuaLuma" />
+          ) : (
+            <img
+              src={sidebarBrandIconSrc}
+              alt="JuaLuma logo"
+              className="sidebar-brand-logo"
+              width={57}
+              height={57}
+            />
+          )}
+        </Link>
+
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="sidebar-collapse-btn"
+          aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+        >
+          <ChevronLeft className={`w-3.5 h-3.5 transition-transform ${!sidebarOpen ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
+        {sidebarLinks.map((link) => {
+          if (link.comingSoon) {
+            return (
+              <div
+                key={link.path}
+                aria-disabled="true"
+                title="Marketplace coming soon"
+                className="sidebar-link sidebar-coming-soon"
+              >
+                <link.icon className={`w-5 h-5 shrink-0 ${sidebarOpen ? '' : 'mx-auto'}`} />
+                {sidebarOpen && <span>{link.name}</span>}
+                {sidebarOpen && <span className="sidebar-badge">Coming soon</span>}
+              </div>
+            )
+          }
+
+          return (
+            <NavLink
+              key={link.path}
+              to={link.path}
+              className={({ isActive }) => `sidebar-link ${isActive ? 'is-active' : ''}`}
+            >
+              <>
+                <link.icon className={`w-5 h-5 shrink-0 transition-colors ${sidebarOpen ? '' : 'mx-auto'}`} />
+                {sidebarOpen && <span>{link.name}</span>}
+              </>
+            </NavLink>
+          )
+        })}
+      </nav>
+
+      <div className="p-4 border-t border-white/10 space-y-2">
+        <div className={`mt-2 flex items-center ${sidebarOpen ? 'justify-between px-2' : 'justify-center'}`}>
+          {sidebarOpen && <span className="text-xs text-text-muted">Theme</span>}
+          <ThemeToggle />
+        </div>
+        <button
+          onClick={handleLogout}
+          className={`sidebar-footer-button ${!sidebarOpen ? 'justify-center' : ''}`}
+        >
+          <LogOut className="w-5 h-5" />
+          {sidebarOpen && <span>Sign Out</span>}
+        </button>
+      </div>
+    </>
+  )
+
+  const mobileMenuContent = (
+    <>
+      <div className="flex justify-end mb-8">
+        <button
+          onClick={() => setMobileMenuOpen(false)}
+          className="p-2 text-text-secondary hover:text-text-primary"
+          aria-label="Close menu"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      <nav className="flex-1 space-y-2">
+        {sidebarLinks.map((link) => {
+          if (link.comingSoon) {
+            return (
+              <div
+                key={link.path}
+                className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-text-muted opacity-70 cursor-not-allowed"
+                aria-disabled="true"
+                title="Marketplace coming soon"
+              >
+                <link.icon className="w-6 h-6" />
+                {link.name}
+                <span className="ml-auto inline-flex items-center justify-center whitespace-nowrap text-center w-max h-6 text-[10px] uppercase tracking-wider leading-none border border-white/20 text-text-muted px-3 rounded-full">
+                  Coming soon
+                </span>
+              </div>
+            )
+          }
+
+          return (
+            <NavLink
+              key={link.path}
+              to={link.path}
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) => `
+                flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium transition-colors
+                ${isActive ? 'bg-primary/20 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}
+              `}
+            >
+              <link.icon className="w-6 h-6" />
+              {link.name}
+            </NavLink>
+          )
+        })}
+      </nav>
+
+      <div className="pt-8 border-t border-white/15 space-y-4">
+        <ThemeToggle />
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-300 hover:bg-red-500/10 font-medium"
+        >
+          <LogOut className="w-5 h-5" />
+          Sign Out
+        </button>
+      </div>
+    </>
+  )
+
   return (
     <div className="app-shell flex h-screen overflow-hidden font-sans selection:bg-primary/30">
-      <GalaxyWaveBackground />
+      {isDarkTheme && <GalaxyWaveBackground />}
 
       {/* Sidebar (Desktop) */}
-      <motion.aside
-        initial={{ width: 292 }}
-        animate={{ width: sidebarOpen ? 292 : 88 }}
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="app-sidebar hidden md:flex flex-col relative z-20"
-      >
-        <div className="h-24 flex items-center px-6 border-b border-white/10 relative">
-          <Link to="/" className="flex items-center gap-3 group overflow-hidden">
-            <AnimatedBrandText
-              className={`transition-all duration-200 ${sidebarOpen ? 'text-[1.8rem]' : 'text-[1.5rem]'}`}
-              text="JuaLuma"
-            />
-          </Link>
-
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="sidebar-collapse-btn"
-            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-          >
-            <ChevronLeft className={`w-3.5 h-3.5 transition-transform ${!sidebarOpen ? 'rotate-180' : ''}`} />
-          </button>
-        </div>
-
-        <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
-          {sidebarLinks.map((link) => {
-            if (link.comingSoon) {
-              return (
-                <div
-                  key={link.path}
-                  aria-disabled="true"
-                  title="Marketplace coming soon"
-                  className="sidebar-link sidebar-coming-soon"
-                >
-                  <link.icon className={`w-5 h-5 shrink-0 ${sidebarOpen ? '' : 'mx-auto'}`} />
-                  {sidebarOpen && <span>{link.name}</span>}
-                  {sidebarOpen && <span className="sidebar-badge">Coming soon</span>}
-                </div>
-              )
-            }
-
-            return (
-              <NavLink
-                key={link.path}
-                to={link.path}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'is-active' : ''}`}
-              >
-                <>
-                  <link.icon className={`w-5 h-5 shrink-0 transition-colors ${sidebarOpen ? '' : 'mx-auto'}`} />
-                  {sidebarOpen && <span>{link.name}</span>}
-                </>
-              </NavLink>
-            )
-          })}
-        </nav>
-
-        <div className="p-4 border-t border-white/10 space-y-2">
-          <div className={`mt-2 flex items-center ${sidebarOpen ? 'justify-between px-2' : 'justify-center'}`}>
-            {sidebarOpen && <span className="text-xs text-text-muted">Theme</span>}
-            <ThemeToggle />
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`sidebar-footer-button ${!sidebarOpen ? 'justify-center' : ''}`}
-          >
-            <LogOut className="w-5 h-5" />
-            {sidebarOpen && <span>Sign Out</span>}
-          </button>
-        </div>
-      </motion.aside>
+      {isDarkTheme ? (
+        <motion.aside
+          initial={{ width: 292 }}
+          animate={{ width: sidebarOpen ? 292 : 88 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="app-sidebar hidden md:flex flex-col relative z-20"
+        >
+          {sidebarContent}
+        </motion.aside>
+      ) : (
+        <aside
+          className="app-sidebar hidden md:flex flex-col relative z-20"
+          style={{ width: sidebarOpen ? '292px' : '88px' }}
+        >
+          {sidebarContent}
+        </aside>
+      )}
 
       {/* Mobile Header */}
       <header className="app-mobile-header md:hidden fixed top-0 w-full z-40">
@@ -224,79 +315,41 @@ export const AppLayout: React.FC = () => {
       </header>
 
       {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden"
-            onClick={() => setMobileMenuOpen(false)}
-          >
+      {isDarkTheme ? (
+        <AnimatePresence>
+          {mobileMenuOpen && (
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="absolute right-0 top-0 bottom-0 w-3/4 max-w-sm bg-surface-1/85 border-l border-white/15 p-6 flex flex-col shadow-2xl backdrop-blur-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {mobileMenuContent}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      ) : (
+        mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setMobileMenuOpen(false)}>
+            <div
               className="absolute right-0 top-0 bottom-0 w-3/4 max-w-sm bg-surface-1/85 border-l border-white/15 p-6 flex flex-col shadow-2xl backdrop-blur-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-end mb-8">
-                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-text-secondary hover:text-text-primary">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <nav className="flex-1 space-y-2">
-                {sidebarLinks.map((link) => {
-                  if (link.comingSoon) {
-                    return (
-                      <div
-                        key={link.path}
-                        className="flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium text-text-muted opacity-70 cursor-not-allowed"
-                        aria-disabled="true"
-                        title="Marketplace coming soon"
-                      >
-                        <link.icon className="w-6 h-6" />
-                        {link.name}
-                        <span className="ml-auto inline-flex items-center justify-center whitespace-nowrap text-center w-max h-6 text-[10px] uppercase tracking-wider leading-none border border-white/20 text-text-muted px-3 rounded-full">
-                          Coming soon
-                        </span>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <NavLink
-                      key={link.path}
-                      to={link.path}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) => `
-                        flex items-center gap-4 px-4 py-4 rounded-xl text-lg font-medium transition-colors
-                        ${isActive ? 'bg-primary/20 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}
-                      `}
-                    >
-                      <link.icon className="w-6 h-6" />
-                      {link.name}
-                    </NavLink>
-                  )
-                })}
-              </nav>
-
-              <div className="pt-8 border-t border-white/15 space-y-4">
-                <ThemeToggle />
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-300 hover:bg-red-500/10 font-medium"
-                >
-                  <LogOut className="w-5 h-5" />
-                  Sign Out
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {mobileMenuContent}
+            </div>
+          </div>
+        )
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10 pt-20 md:pt-0">
