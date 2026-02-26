@@ -150,3 +150,47 @@ def test_uploaded_documents_context_respects_attachment_ids_filter(test_db, mock
     assert "other.txt (txt)" not in section
     assert audit["considered"] == 1
     assert audit["included"] == 1
+
+
+def test_uploaded_documents_context_uses_query_relevance_across_user_corpus(
+    test_db, mock_auth, tmp_path
+):
+    important_path = tmp_path / "important.txt"
+    important_path.write_text(
+        "Cross-thread marker ZEPHYR-CONTEXT-7781 should always be retrievable.",
+        encoding="utf-8",
+    )
+    _create_user_document(
+        test_db=test_db,
+        uid=mock_auth.uid,
+        name="important.txt",
+        file_type="txt",
+        file_path=important_path,
+        size_bytes=important_path.stat().st_size,
+    )
+
+    for idx in range(5):
+        noise_path = tmp_path / f"noise-{idx}.txt"
+        noise_path.write_text(
+            f"Recent unrelated file {idx} with generic spending notes.",
+            encoding="utf-8",
+        )
+        _create_user_document(
+            test_db=test_db,
+            uid=mock_auth.uid,
+            name=f"noise-{idx}.txt",
+            file_type="txt",
+            file_path=noise_path,
+            size_bytes=noise_path.stat().st_size,
+        )
+
+    section, audit = _uploaded_documents_context(
+        test_db,
+        mock_auth.uid,
+        max_docs=5,
+        query="Where is ZEPHYR-CONTEXT-7781 mentioned?",
+    )
+
+    assert "important.txt (txt): Cross-thread marker ZEPHYR-CONTEXT-7781" in section
+    assert audit["considered"] == 6
+    assert audit["included"] == 5

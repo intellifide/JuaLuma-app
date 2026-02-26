@@ -120,6 +120,9 @@ class AppSettings(BaseSettings):
     gmail_impersonate_user: str = Field(
         default="hello@jualuma.com", alias="GMAIL_IMPERSONATE_USER"
     )
+    gmail_otp_impersonate_user: str = Field(
+        default="noreply@jualuma.com", alias="GMAIL_OTP_IMPERSONATE_USER"
+    )
     mail_from_name: str = Field(default="JuaLuma Support", alias="MAIL_FROM_NAME")
     mail_from_email: str = Field(default="support@jualuma.com", alias="MAIL_FROM_EMAIL")
     mail_reply_to: str = Field(default="support@jualuma.com", alias="MAIL_REPLY_TO")

@@ -204,14 +204,14 @@ jobs:
           gcloud run services update jualuma-backend \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
-            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}" \
+            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}|GMAIL_OTP_IMPERSONATE_USER=noreply@jualuma.com" \
             --quiet
 
       - name: Force public invoker policy (Dev)
         run: |
           set -euo pipefail
 
-          for service in frontend-app support-portal; do
+          for service in frontend-app support-portal marketing-site; do
             gcloud run services add-iam-policy-binding "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
@@ -240,6 +240,7 @@ jobs:
           FRONTEND_URL="${{ steps.deploy_frontend.outputs.url }}"
           BACKEND_URL="${{ steps.deploy_backend.outputs.url }}"
           SUPPORT_URL="${{ steps.deploy_support.outputs.url }}"
+          MARKETING_URL="${{ steps.deploy_marketing.outputs.url }}"
 
           check_html_or_iap() {
             local url="$1"
@@ -284,6 +285,7 @@ jobs:
           # Public shell endpoints should not be IAP/gateway HTML.
           check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
           check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
+          check_html_or_iap "${MARKETING_URL}/pricing" "GET" "" "true"
           check_html_or_iap "${BACKEND_URL}/api/health"
 
           # Invalid Firebase token should fail in app (JSON), not Cloud Run gateway HTML.
