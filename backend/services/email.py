@@ -347,9 +347,8 @@ class GmailApiEmailClient:
 
     def __init__(self):
         self.default_impersonate_user = settings.gmail_impersonate_user
-        self.otp_impersonate_user = (
-            settings.gmail_otp_impersonate_user or self.default_impersonate_user
-        )
+        # Gmail aliases are attached to the primary mailbox; send as alias via primary user.
+        self.otp_impersonate_user = self.default_impersonate_user
         self.friendly_from_name = FRIENDLY_FROM_NAME
         self.friendly_from_email = settings.mail_contact_hello or FRIENDLY_FROM_EMAIL
         self.friendly_reply_to = self.friendly_from_email
@@ -574,6 +573,21 @@ class GmailApiEmailClient:
                 if (entry.get("sendAsEmail") or "").strip().lower() == target
             ),
             None,
+        )
+        default_send_as = next(
+            (
+                (entry.get("sendAsEmail") or "").strip().lower()
+                for entry in send_as_entries
+                if entry.get("isDefault")
+            ),
+            "",
+        )
+        logger.info(
+            "GMAIL_SENDAS_STATE sender_user=%s preferred=%s default=%s available=%s",
+            sender_user,
+            target,
+            default_send_as,
+            [entry.get("sendAsEmail") for entry in send_as_entries],
         )
         if not preferred:
             logger.warning(
