@@ -8,6 +8,13 @@ from backend.core import settings
 
 logger = logging.getLogger(__name__)
 
+FRIENDLY_FROM_EMAIL = "hello@jualuma.com"
+FRIENDLY_FROM_NAME = "JuaLuma"
+SUPPORT_FROM_EMAIL = "support@jualuma.com"
+SUPPORT_FROM_NAME = "JuaLuma Support"
+OTP_FROM_EMAIL = "noreply@jualuma.com"
+OTP_FROM_NAME = "JuaLuma Security"
+
 
 class EmailClient(Protocol):
     def send_generic_alert(self, to_email: str, title: str) -> None:
@@ -69,9 +76,23 @@ class TestmailEmailClient:
     def __init__(self):
         self.api_key = settings.testmail_api_key
         self.namespace = settings.testmail_namespace
-        self.from_email = "noreply@testmail.app"
+        self.friendly_from_email = FRIENDLY_FROM_EMAIL
+        self.friendly_from_name = FRIENDLY_FROM_NAME
+        self.support_from_email = settings.support_email or SUPPORT_FROM_EMAIL
+        self.support_from_name = SUPPORT_FROM_NAME
+        self.otp_from_email = OTP_FROM_EMAIL
+        self.otp_from_name = OTP_FROM_NAME
 
-    def _send_via_api(self, to_email: str, subject: str, text: str, html: str = None) -> None:
+    def _send_via_api(
+        self,
+        to_email: str,
+        subject: str,
+        text: str,
+        html: str | None = None,
+        from_name: str | None = None,
+        from_email: str | None = None,
+        reply_to: str | None = None,
+    ) -> None:
         """Send email via Testmail SMTP (simpler than GraphQL API)."""
         # Testmail recommends using SMTP for sending
         import smtplib
@@ -79,9 +100,13 @@ class TestmailEmailClient:
         from email.mime.text import MIMEText
 
         msg = MIMEMultipart("alternative")
-        msg["From"] = self.from_email
+        sender_name = from_name or self.friendly_from_name
+        sender_email = from_email or self.friendly_from_email
+        msg["From"] = f"{sender_name} <{sender_email}>"
         msg["To"] = to_email
         msg["Subject"] = subject
+        if reply_to:
+            msg["Reply-To"] = reply_to
 
         # Attach text version
         msg.attach(MIMEText(text, "plain", "utf-8"))
@@ -118,7 +143,14 @@ class TestmailEmailClient:
             "You can view more details securely in the app: "
             f"{settings.frontend_url}/ai\n"
         )
-        self._send_via_api(to_email, subject, f"{body}{footer}")
+        self._send_via_api(
+            to_email,
+            subject,
+            f"{body}{footer}",
+            from_name=self.friendly_from_name,
+            from_email=self.friendly_from_email,
+            reply_to=self.friendly_from_email,
+        )
 
     def send_subscription_welcome(self, to_email: str, plan_name: str) -> None:
         """Send welcome email for new subscription."""
@@ -129,7 +161,14 @@ class TestmailEmailClient:
             "We are excited to have you on board! You now have access to all premium features.\n"
             "If you have any questions, please contact support."
         )
-        self._send_via_api(to_email, subject, body)
+        self._send_via_api(
+            to_email,
+            subject,
+            body,
+            from_name=self.friendly_from_name,
+            from_email=self.friendly_from_email,
+            reply_to=self.friendly_from_email,
+        )
 
     def send_subscription_payment_failed(
         self, to_email: str, plan_name: str, grace_end_date: str
@@ -142,7 +181,14 @@ class TestmailEmailClient:
             f"If payment isn't completed by {grace_end_date}, your account will be moved to the Free plan.\n\n"
             "Please log in to update your billing details."
         )
-        self._send_via_api(to_email, subject, body)
+        self._send_via_api(
+            to_email,
+            subject,
+            body,
+            from_name=self.friendly_from_name,
+            from_email=self.friendly_from_email,
+            reply_to=self.friendly_from_email,
+        )
 
     def send_subscription_downgraded(self, to_email: str, reason: str) -> None:
         subject = "Your JuaLuma subscription was downgraded"
@@ -151,7 +197,14 @@ class TestmailEmailClient:
             f"Reason: {reason}\n\n"
             "If you'd like to restore your paid plan, please update your billing details and resubscribe."
         )
-        self._send_via_api(to_email, subject, body)
+        self._send_via_api(
+            to_email,
+            subject,
+            body,
+            from_name=self.friendly_from_name,
+            from_email=self.friendly_from_email,
+            reply_to=self.friendly_from_email,
+        )
 
     def send_otp(self, to_email: str, code: str) -> None:
         """Send OTP code."""
@@ -161,7 +214,14 @@ class TestmailEmailClient:
             "This code will expire in 10 minutes.\n"
             "If you did not request this code, please contact support."
         )
-        self._send_via_api(to_email, subject, body)
+        self._send_via_api(
+            to_email,
+            subject,
+            body,
+            from_name=self.otp_from_name,
+            from_email=self.otp_from_email,
+            reply_to=self.support_from_email,
+        )
 
     def send_password_reset(self, to_email: str, link: str) -> None:
         """Send password reset link."""
@@ -171,7 +231,14 @@ class TestmailEmailClient:
             f"Click the link below to reset your password:\n{link}\n\n"
             "If you did not request this change, please ignore this email or contact support."
         )
-        self._send_via_api(to_email, subject, body)
+        self._send_via_api(
+            to_email,
+            subject,
+            body,
+            from_name=self.otp_from_name,
+            from_email=self.otp_from_email,
+            reply_to=self.support_from_email,
+        )
 
     def send_household_invite(self, to_email: str, link: str, inviter_name: str) -> None:
         """Send household invitation email."""
@@ -206,7 +273,15 @@ class TestmailEmailClient:
 </body>
 </html>"""
 
-        self._send_via_api(to_email, subject, text_body, html_body)
+        self._send_via_api(
+            to_email,
+            subject,
+            text_body,
+            html_body,
+            from_name=self.friendly_from_name,
+            from_email=self.friendly_from_email,
+            reply_to=self.friendly_from_email,
+        )
 
     def send_household_welcome_member(
         self, to_email: str, household_name: str, owner_name: str
@@ -221,7 +296,14 @@ class TestmailEmailClient:
             "Log in to your dashboard to get started:\n"
             f"{settings.frontend_url}/dashboard"
         )
-        self._send_via_api(to_email, subject, body)
+        self._send_via_api(
+            to_email,
+            subject,
+            body,
+            from_name=self.friendly_from_name,
+            from_email=self.friendly_from_email,
+            reply_to=self.friendly_from_email,
+        )
 
     def send_support_ticket_notification(
         self,
@@ -242,20 +324,36 @@ class TestmailEmailClient:
             f"Description/Message:\n{description}\n\n"
             f"View in Portal: {settings.frontend_url}/support-portal/tickets/{ticket_id}"
         )
-        self._send_via_api(to_email, email_subject, body)
+        self._send_via_api(
+            to_email,
+            email_subject,
+            body,
+            from_name=self.support_from_name,
+            from_email=self.support_from_email,
+            reply_to=self.support_from_email,
+        )
 
 
 class GmailApiEmailClient:
     """
     Sends email via Gmail API using DWD service account impersonation of hello@jualuma.com.
-    Visible From address is support@jualuma.com (default sendAs identity on hello@jualuma.com).
+    Sender identities are role-based:
+    - OTP/security flows: noreply@jualuma.com
+    - Product/welcome flows: hello@jualuma.com
+    - Support ticket flows: support@jualuma.com
     """
 
     def __init__(self):
         self.impersonate_user = settings.gmail_impersonate_user
-        self.from_name = settings.mail_from_name
-        self.from_email = settings.mail_from_email
-        self.reply_to = settings.mail_reply_to
+        self.friendly_from_name = FRIENDLY_FROM_NAME
+        self.friendly_from_email = settings.mail_contact_hello or FRIENDLY_FROM_EMAIL
+        self.friendly_reply_to = self.friendly_from_email
+        self.support_from_name = SUPPORT_FROM_NAME
+        self.support_from_email = settings.support_email or SUPPORT_FROM_EMAIL
+        self.support_reply_to = self.support_from_email
+        self.otp_from_name = OTP_FROM_NAME
+        self.otp_from_email = OTP_FROM_EMAIL
+        self.otp_reply_to = self.support_from_email
         self._service = None
 
     def _get_service(self):
@@ -321,9 +419,11 @@ class GmailApiEmailClient:
         html_body: str | None = None,
         from_name: str | None = None,
         from_email: str | None = None,
+        reply_to: str | None = None,
     ) -> dict:
-        from_name = from_name or self.from_name
-        from_email = from_email or self.from_email
+        from_name = from_name or self.friendly_from_name
+        from_email = from_email or self.friendly_from_email
+        reply_to = reply_to or self.friendly_reply_to
 
         if html_body:
             msg = MIMEMultipart("alternative")
@@ -332,7 +432,7 @@ class GmailApiEmailClient:
 
         msg["From"] = f"{from_name} <{from_email}>"
         msg["To"] = to_email
-        msg["Reply-To"] = self.reply_to
+        msg["Reply-To"] = reply_to
         msg["Subject"] = subject
 
         msg.attach(MIMEText(text_body, "plain", "utf-8"))
@@ -358,7 +458,16 @@ class GmailApiEmailClient:
             "We do not include sensitive details in emails."
         )
         try:
-            self._send(self._build_message(to_email, title, body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    title,
+                    body,
+                    from_name=self.friendly_from_name,
+                    from_email=self.friendly_from_email,
+                    reply_to=self.friendly_reply_to,
+                )
+            )
             logger.info("Sent generic alert to %s", to_email)
         except Exception as e:
             logger.error("Failed to send generic alert: %s", e)
@@ -370,7 +479,16 @@ class GmailApiEmailClient:
             f"View more details securely: {settings.frontend_url}/ai\n"
         )
         try:
-            self._send(self._build_message(to_email, subject, f"{body}{footer}"))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    f"{body}{footer}",
+                    from_name=self.friendly_from_name,
+                    from_email=self.friendly_from_email,
+                    reply_to=self.friendly_reply_to,
+                )
+            )
             logger.info("Sent financial digest to %s", to_email)
         except Exception as e:
             logger.error("Failed to send financial digest: %s", e)
@@ -384,7 +502,16 @@ class GmailApiEmailClient:
             "If you have any questions, please contact support."
         )
         try:
-            self._send(self._build_message(to_email, subject, body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    body,
+                    from_name=self.friendly_from_name,
+                    from_email=self.friendly_from_email,
+                    reply_to=self.friendly_reply_to,
+                )
+            )
             logger.info("Sent subscription welcome to %s", to_email)
         except Exception as e:
             logger.error("Failed to send subscription welcome: %s", e)
@@ -401,7 +528,16 @@ class GmailApiEmailClient:
             "Please log in to update your billing details."
         )
         try:
-            self._send(self._build_message(to_email, subject, body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    body,
+                    from_name=self.friendly_from_name,
+                    from_email=self.friendly_from_email,
+                    reply_to=self.friendly_reply_to,
+                )
+            )
             logger.info("Sent payment failed notice to %s", to_email)
         except Exception as e:
             logger.error("Failed to send payment failed notice: %s", e)
@@ -414,7 +550,16 @@ class GmailApiEmailClient:
             "If you'd like to restore your paid plan, please update your billing details and resubscribe."
         )
         try:
-            self._send(self._build_message(to_email, subject, body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    body,
+                    from_name=self.friendly_from_name,
+                    from_email=self.friendly_from_email,
+                    reply_to=self.friendly_reply_to,
+                )
+            )
             logger.info("Sent downgrade notice to %s", to_email)
         except Exception as e:
             logger.error("Failed to send downgrade notice: %s", e)
@@ -427,7 +572,16 @@ class GmailApiEmailClient:
             "If you did not request this code, please contact support."
         )
         try:
-            self._send(self._build_message(to_email, subject, body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    body,
+                    from_name=self.otp_from_name,
+                    from_email=self.otp_from_email,
+                    reply_to=self.otp_reply_to,
+                )
+            )
             logger.info("Sent OTP to %s", to_email)
         except Exception as e:
             logger.error("Failed to send OTP: %s", e)
@@ -440,7 +594,16 @@ class GmailApiEmailClient:
             "If you did not request this change, please ignore this email or contact support."
         )
         try:
-            self._send(self._build_message(to_email, subject, body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    body,
+                    from_name=self.otp_from_name,
+                    from_email=self.otp_from_email,
+                    reply_to=self.otp_reply_to,
+                )
+            )
             logger.info("Sent password reset link to %s", to_email)
         except Exception as e:
             logger.error("Failed to send password reset: %s", e)
@@ -475,7 +638,17 @@ class GmailApiEmailClient:
 </body>
 </html>"""
         try:
-            self._send(self._build_message(to_email, subject, text_body, html_body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    text_body,
+                    html_body,
+                    from_name=self.friendly_from_name,
+                    from_email=self.friendly_from_email,
+                    reply_to=self.friendly_reply_to,
+                )
+            )
             logger.info("Sent household invite to %s", to_email)
         except Exception as e:
             logger.error("Failed to send household invite: %s", e)
@@ -493,7 +666,16 @@ class GmailApiEmailClient:
             f"{settings.frontend_url}/dashboard"
         )
         try:
-            self._send(self._build_message(to_email, subject, body))
+            self._send(
+                self._build_message(
+                    to_email,
+                    subject,
+                    body,
+                    from_name=self.friendly_from_name,
+                    from_email=self.friendly_from_email,
+                    reply_to=self.friendly_reply_to,
+                )
+            )
             logger.info("Sent household welcome to %s", to_email)
         except Exception as e:
             logger.error("Failed to send household welcome: %s", e)
@@ -521,7 +703,16 @@ class GmailApiEmailClient:
             f"View in Portal: {settings.frontend_url}/support-portal/tickets/{ticket_id}"
         )
         try:
-            self._send(self._build_message(target_email, email_subject, body))
+            self._send(
+                self._build_message(
+                    target_email,
+                    email_subject,
+                    body,
+                    from_name=self.support_from_name,
+                    from_email=self.support_from_email,
+                    reply_to=self.support_reply_to,
+                )
+            )
             logger.info("Sent support ticket notification to %s", target_email)
         except Exception as e:
             logger.error("Failed to send support ticket notification: %s", e)
@@ -530,7 +721,7 @@ class GmailApiEmailClient:
 def get_email_client() -> EmailClient:
     """
     Returns the configured email client.
-    Production: GmailApiEmailClient (DWD impersonation, visible From = support@jualuma.com).
+    Production: GmailApiEmailClient (DWD impersonation, role-based From identities).
     Development fallback (no SA key): TestmailEmailClient.
     """
     if settings.google_application_credentials or __import__("os").environ.get(

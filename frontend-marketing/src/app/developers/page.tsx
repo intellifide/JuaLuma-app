@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -43,7 +43,7 @@ export default function DevelopersPage() {
                 <p className="text-muted mb-3">
                     Commercial resale or enterprise deployment is strictly prohibited.
                 </p>
-                <a href="/PolyForm-Noncommercial-1.0.0.txt" className="text-primary underline" title="PolyForm Noncommercial 1.0.0">
+                <a href="/legal/license" className="text-primary underline" title="JuaLuma License Notice">
                     View the full license
                 </a>
             </section>

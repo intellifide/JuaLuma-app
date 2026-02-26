@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -60,8 +60,12 @@ export const AIPrivacyModal: React.FC<AIPrivacyModalProps> = ({ onAccept, isOpen
                         <p className="text-xs text-text-secondary mt-4">By interacting with the AI, you agree to the storing of conversation history associated with your account. You can delete this history at any time in <a href="/settings" className="text-primary hover:underline">Settings</a>. Please review our <a href="/terms" className="text-primary hover:underline">Terms of Service</a> and <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>.</p>
 
                         <h3 className="text-lg font-semibold mt-4 mb-2">1. Nature of the AI Assistant</h3>
-                        <p className="mb-2">The AI Assistant provides direct, unrestricted access to Large Language Models (LLMs) via cloud LLMs provided exclusively by Google Vertex AI Gemini (e.g., Gemini 2.5 Flash, Gemini 2.5 Pro for Ultimate tier).</p>
-                        <p className="mb-4">No other cloud LLM providers (including but not limited to OpenAI, xAI Grok, or Claude) are used by the Service.</p>
+                        <p className="mb-2">The AI Assistant provides direct, unrestricted access to configured Large Language Models (LLMs) using environment-based model routing.</p>
+                        <ul className="list-disc pl-5 mb-4 space-y-1">
+                            <li>Free-tier default model: <strong>gpt-oss-120b</strong></li>
+                            <li>Paid-tier default model: <strong>gemini-2.5-flash</strong></li>
+                            <li>If paid premium capacity is exhausted, requests automatically fall back to <strong>gpt-oss-120b</strong> with explicit in-product messaging.</li>
+                        </ul>
 
                         <h3 className="text-lg font-semibold mt-4 mb-2">2. No Financial Advice</h3>
                         <p className="mb-2">The AI Assistant:</p>
@@ -117,11 +121,19 @@ export const AIPrivacyModal: React.FC<AIPrivacyModalProps> = ({ onAccept, isOpen
                             <li>Intellifide, LLC is not responsible for third-party LLM provider actions or policies</li>
                         </ul>
 
-                        <h3 className="text-lg font-semibold mt-4 mb-2">8. Acknowledgment and Acceptance</h3>
+                        <h3 className="text-lg font-semibold mt-4 mb-2">8. Usage Metering and Reset Date Notice</h3>
+                        <ul className="list-disc pl-5 mb-4 space-y-1">
+                            <li>AI usage is displayed as <strong>AI usage this period</strong>.</li>
+                            <li>The product displays a reset date tied to your billing-cycle anniversary period.</li>
+                            <li>Usage limits are enforced by backend token-based metering.</li>
+                        </ul>
+
+                        <h3 className="text-lg font-semibold mt-4 mb-2">9. Acknowledgment and Acceptance</h3>
                         <p className="mb-2">By clicking &quot;I Agree&quot; or &quot;Accept&quot; below, you acknowledge that:</p>
                         <ul className="list-disc pl-5 mb-4 space-y-1">
                             <li>You have read and understood this disclaimer</li>
                             <li>You understand the limitations and risks of using the AI Assistant</li>
+                            <li>You understand model routing and paid-capacity fallback behavior described above</li>
                             <li>You agree not to rely on AI Assistant responses for financial decisions</li>
                             <li>You agree to consult qualified professionals for financial, investment, tax, or legal matters</li>
                             <li>You accept all risks associated with using the AI Assistant</li>

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -96,7 +96,6 @@ describe('Signup Flow - End to End', () => {
             const requiredChecks = {
                 acceptTerms: false,
                 acceptPrivacy: false,
-                acceptResident: false,
             }
 
             // All must be true to proceed
@@ -104,7 +103,6 @@ describe('Signup Flow - End to End', () => {
 
             requiredChecks.acceptTerms = true
             requiredChecks.acceptPrivacy = true
-            requiredChecks.acceptResident = true
 
             expect(Object.values(requiredChecks).every(Boolean)).toBe(true)
         })

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -16,10 +16,11 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-	import Switch from '../components/ui/Switch'
-	import { MfaRequiredError } from '../services/auth'
-	import { AnimatedBrandText } from '../components/AnimatedBrandText'
-	import { ATTRIBUTION_PRIMARY } from '../constants/branding'
+import Switch from '../components/ui/Switch'
+import { MfaRequiredError } from '../services/auth'
+import { PasswordInput } from '../components/ui/PasswordInput'
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
+import { ATTRIBUTION_PRIMARY } from '../constants/branding'
 
 export const Login = () => {
   const { login } = useAuth()
@@ -94,9 +95,8 @@ export const Login = () => {
 
               <div>
                 <label htmlFor="password" className="form-label">Password</label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input"

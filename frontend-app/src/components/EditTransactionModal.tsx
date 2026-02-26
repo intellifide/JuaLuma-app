@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -37,7 +37,7 @@ export const EditTransactionModal = ({ open, transaction, onClose, onSuccess }: 
   const [loading, setLoading] = useState(false)
   const timeZone = useUserTimeZone()
   const { show } = useToast()
-  
+
   const [formData, setFormData] = useState({
     ts: '',
     amount: '',
@@ -101,7 +101,7 @@ export const EditTransactionModal = ({ open, transaction, onClose, onSuccess }: 
         updatePayload.merchantName = formData.merchantName || null
         updatePayload.ts = ts
       }
-      
+
       updatePayload.category = formData.category || null
       updatePayload.description = formData.description || null
 

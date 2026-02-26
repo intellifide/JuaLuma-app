@@ -457,14 +457,14 @@ If you have questions about this Privacy Policy or our privacy practices, please
 
 [Business Address - To be determined]
 [Phone - To be determined]
-Email: privacy@jualuma.com
+Email: support@jualuma.com
 
 #### 13.2 Privacy Requests
 
 To exercise your privacy rights (access, deletion, opt-out), please:
 
 - Submit requests through your account settings
-- Email us at privacy@jualuma.com
+- Email us at support@jualuma.com
 - Include sufficient information to verify your identity
 
 #### 13.3 Response Time

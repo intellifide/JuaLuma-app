@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -16,6 +16,7 @@ import React, { useState } from 'react';
 import { Document } from '../services/documentService';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatDate } from '../utils/datetime';
+import { resolveFileIconKind } from '../utils/fileIconMapping';
 
 interface DocumentListProps {
     documents: Document[];
@@ -44,15 +45,24 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
     };
 
     const getIcon = (fileType: string) => {
-        const type = fileType.toLowerCase();
-        if (['pdf'].includes(type)) return (
+        const kind = resolveFileIconKind(fileType);
+        if (kind === 'pdf') return (
             <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
         );
-        if (['csv', 'xls', 'xlsx'].includes(type)) return (
+        if (kind === 'sheet') return (
             <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
         );
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(type)) return (
+        if (kind === 'image') return (
             <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        );
+        if (kind === 'word') return (
+            <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4h11l3 3v13a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l1.5 6L12 9l2.5 6L16 9" /></svg>
+        );
+        if (kind === 'slide') return (
+            <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16v11H4z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 16v3m4-3v3M8 19h8" /></svg>
+        );
+        if (kind === 'text') return (
+            <svg className="w-5 h-5 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m-7-8h8m2 13H6a2 2 0 01-2-2V5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2z" /></svg>
         );
         return (
             <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -80,12 +90,12 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
         <div className="glass-panel mt-8 relative">
             {/* Tooltip Preview */}
             {hoveredDoc && onPreview && (
-                <div 
+                <div
                     className="fixed z-50 p-2 bg-surface-1 border border-white/10 rounded-lg shadow-xl pointer-events-none"
                     style={{ left: tooltipPos.x, top: tooltipPos.y, maxWidth: '300px' }}
                 >
                     <div className="w-64 h-48 bg-black/20 rounded overflow-hidden flex items-center justify-center">
-                        {['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(hoveredDoc.fileType.toLowerCase()) ? (
+                        {resolveFileIconKind(hoveredDoc.fileType) === 'image' ? (
                             <img src={onPreview(hoveredDoc)} alt="preview" className="w-full h-full object-cover" />
                         ) : (
                              <div className="flex flex-col items-center text-text-secondary">
@@ -110,8 +120,8 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                             key={t}
                             onClick={() => setFilter(t)}
                             className={`px-3 py-1 text-xs rounded-md capitalize transition-colors ${
-                                filter === t 
-                                    ? 'bg-primary text-white shadow-sm' 
+                                filter === t
+                                    ? 'bg-primary text-white shadow-sm'
                                     : 'text-text-secondary hover:text-text-primary'
                             }`}
                         >
@@ -150,8 +160,8 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {currentDocs.map((doc) => (
-                                    <tr 
-                                        key={doc.id} 
+                                    <tr
+                                        key={doc.id}
                                         className="hover:bg-white/5 transition-colors group cursor-pointer"
                                         onMouseEnter={() => setHoveredDoc(doc)}
                                         onMouseLeave={() => setHoveredDoc(null)}
@@ -168,8 +178,8 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize
-                                                ${doc.type === 'generated' ? 'bg-purple-500/10 text-purple-400' : 
-                                                  doc.type === 'uploaded' ? 'bg-blue-500/10 text-blue-400' : 
+                                                ${doc.type === 'generated' ? 'bg-purple-500/10 text-purple-400' :
+                                                  doc.type === 'uploaded' ? 'bg-blue-500/10 text-blue-400' :
                                                   'bg-gray-500/10 text-gray-400'}`}>
                                                 {doc.type}
                                             </span>
@@ -181,7 +191,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                                             {doc.size}
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <button 
+                                            <button
                                                 // Click handled by row, prevent propagation if needed
                                                 onClick={(e) => { e.stopPropagation(); onDownload?.(doc); }}
                                                 className="text-text-secondary hover:text-primary p-1 rounded-full hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
@@ -221,12 +231,12 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                     )}
                 </div>
             )}
-            
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                onChange={handleFileChange} 
+
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileChange}
             />
 
             {filteredDocs.length > 0 && onUpload && (

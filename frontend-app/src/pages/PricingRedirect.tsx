@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -14,6 +14,7 @@
 
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { getMarketingSiteUrl } from '../utils/marketing'
 
 export const PricingRedirect = () => {
   const location = useLocation()
@@ -33,13 +34,7 @@ export const PricingRedirect = () => {
         normalizedReturnUrl = ''
       }
     }
-    const isLocalhost = window.location.hostname === 'localhost'
-    const fallbackMarketing = isLocalhost
-      ? 'http://localhost:5177'
-      : 'https://jualuma-marketing-298159098975.us-central1.run.app'
-    const env = (import.meta as any).env || {}
-    const marketingOrigin =
-      env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL || fallbackMarketing
+    const marketingOrigin = getMarketingSiteUrl()
 
     if (marketingOrigin === window.location.origin) {
       navigate(normalizedReturnUrl || '/settings', { replace: true })

@@ -1,0 +1,53 @@
+{
+  "required_api_targets": [
+    "identitytoolkit.googleapis.com",
+    "securetoken.googleapis.com"
+  ],
+  "environments": {
+    "dev": {
+      "project_id": "jualuma-dev",
+      "key_display_name_regex": "^Jualuma Browser Auth Key dev\\b",
+      "required_referrers": [
+        "https://*.jualuma.com/*",
+        "http://localhost:5173/*",
+        "http://localhost:4173/*",
+        "http://localhost:5175/*"
+      ],
+      "allowed_referrer_regex": [
+        "^https://frontend-app-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
+        "^https://support-portal-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
+        "^https://jualuma-user-app-[0-9]+\\.us-central1\\.run\\.app/\\*$",
+        "^https://jualuma-support-[0-9]+\\.us-central1\\.run\\.app/\\*$",
+        "^https://jualuma-user-app-stage-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
+        "^https://jualuma-support-stage-[a-z0-9-]+\\.a\\.run\\.app/\\*$"
+      ]
+    },
+    "stage": {
+      "project_id": "jualuma-stage",
+      "key_display_name_regex": "^Jualuma Browser Auth Key stage\\b",
+      "required_referrers": [
+        "https://*.jualuma.com/*",
+        "http://localhost:5173/*",
+        "http://localhost:4173/*",
+        "http://localhost:5175/*"
+      ],
+      "allowed_referrer_regex": [
+        "^https://jualuma-user-app-stage-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
+        "^https://jualuma-support-stage-[a-z0-9-]+\\.a\\.run\\.app/\\*$"
+      ]
+    },
+    "prod": {
+      "project_id": "jualuma-prod",
+      "key_display_name_regex": "^Jualuma Browser Auth Key prod\\b",
+      "required_referrers": [
+        "https://*.jualuma.com/*"
+      ],
+      "allowed_referrer_regex": [
+        "^https://frontend-app-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
+        "^https://support-portal-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
+        "^https://jualuma-user-app-[0-9]+\\.us-central1\\.run\\.app/\\*$",
+        "^https://jualuma-support-[0-9]+\\.us-central1\\.run\\.app/\\*$"
+      ]
+    }
+  }
+}

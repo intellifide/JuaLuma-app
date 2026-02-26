@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -33,6 +33,8 @@ const featureStories = [
     subtitle: 'Context-aware analysis over your actual transactions, not generic advice.',
     bullets: [
       'Natural language Q&A tied directly to transaction history',
+      'Model routing: free uses gpt-oss-120b, paid uses gemini-2.5-flash with paid-capacity fallback',
+      'Supported file context uploads: docs, sheets, slides, images, JSON/XML (unsupported files rejected)',
       'Anomaly detection for spending spikes and recurring drifts',
       'Insight cards with explainable “what changed” narratives',
     ],

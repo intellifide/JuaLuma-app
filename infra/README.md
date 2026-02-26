@@ -11,6 +11,12 @@ All GCP infrastructure is managed via Terraform using Google Cloud Foundation To
 - Full auditability of infrastructure changes
 - High availability and disaster recovery capabilities
 
+## Current State
+
+- Environment stacks (`envs/dev`, `envs/stage`, `envs/prod`) are now fully composed with module wiring and gated rollout flags.
+- Default rollout posture is safe: only Artifact Registry is enabled by default; network, Cloud SQL, Cloud Run, and policy modules are opt-in via `terraform.tfvars`.
+- Runtime adoption path is import-first for existing resources. Use `scripts/terraform_generate_imports.sh` before enabling module flags.
+
 ## Directory Structure
 
 ```
@@ -92,6 +98,7 @@ All modules use Google Cloud Foundation Toolkit (CFT) or Fabric modules:
 
 ```bash
 cd envs/prod  # or stage, dev
+cp terraform.tfvars.example terraform.tfvars
 terraform init
 ```
 
@@ -102,6 +109,19 @@ terraform plan
 ```
 
 Review the plan carefully. It shows what resources will be created, modified, or destroyed.
+
+### Import Existing Runtime Resources (Required Before Enabling Modules)
+
+```bash
+# Generate import commands for an environment
+./scripts/terraform_generate_imports.sh --env dev
+./scripts/terraform_generate_imports.sh --env stage
+./scripts/terraform_generate_imports.sh --env prod
+```
+
+Execute generated import commands only after:
+1. `terraform init` has been run in that env directory.
+2. Rollout flags are aligned with resources you are importing (for example `enable_cloud_run=true` before Cloud Run imports).
 
 ### Apply Changes
 
@@ -141,21 +161,20 @@ Deploy infrastructure in this order:
 Run these checks before committing:
 
 ```bash
-terraform fmt -recursive
-terraform validate
-tflint
-tfsec  # or checkov
+bash scripts/terraform_ci_plan.sh
 ```
+
+`scripts/terraform_ci_plan.sh` auto-detects `terraform` or `tofu`, enforces formatting, validates each env stack, and runs speculative no-op plans with rollout flags disabled.
 
 ### CI Pipeline
 
 The CI pipeline should:
 1. Run `terraform fmt -check`
-2. Run `terraform validate`
-3. Run `tflint`
-4. Run `tfsec/checkov` for security scanning
-5. Run `terraform plan` and save output as artifact
-6. Require manual approval for applies
+2. Run `terraform validate` per env
+3. Run speculative `terraform plan` per env (all rollout flags disabled)
+4. Require manual approval for applies
+
+Repository workflow: `.github/workflows/terraform-ci.yml`
 
 ### Policy Checks
 

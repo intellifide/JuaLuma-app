@@ -17,8 +17,12 @@ from backend.services.ai import (
     check_rate_limit,
     generate_chat_response,
     generate_chat_response_stream,
+    get_quota_snapshot_sync,
 )
-from backend.services.financial_context import get_financial_context
+from backend.services.financial_context import (
+    get_financial_context,
+    get_uploaded_documents_context,
+)
 from backend.utils import get_db
 
 # Import encryption utils (TIER 3.4)
@@ -38,6 +42,13 @@ class ChatRequest(BaseModel):
     client_context: dict[str, Any] | None = Field(
         default=None, description="Optional frontend page/view context."
     )
+    attachment_ids: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional uploaded document IDs selected in the composer. "
+            "When provided, context assembly prioritizes these uploads."
+        ),
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -52,6 +63,10 @@ class ChatResponse(BaseModel):
     quota_remaining: int | None = None
     quota_limit: int | None = None
     quota_used: int | None = None
+    effective_model: str | None = None
+    fallback_applied: bool = False
+    fallback_reason: str | None = None
+    fallback_message: str | None = None
     web_search_used: bool = False
     citations: list[dict[str, str]] = Field(default_factory=list)
 
@@ -139,15 +154,28 @@ async def chat_endpoint(
         limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
         prechecked_limit = (tier, limit, int(precheck) if precheck is not None else 0)
 
-    # 3. RAG Context (Essential+ only)
+    # 3. Context Assembly
     context = ""
     if tier not in ["free"]:
-        # TIER 3.5: RAG Context Injection
         try:
-            context = await get_financial_context(user_id, message, db=db)
+            context = await get_financial_context(
+                user_id,
+                message,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
         except Exception as e:
             logger.warning(f"RAG context retrieval failed: {e}")
             # Continue without context
+    else:
+        try:
+            context = await get_uploaded_documents_context(
+                user_id,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
+        except Exception as e:
+            logger.warning(f"Upload context retrieval failed for free tier: {e}")
 
     # 4. Generate Response (TIER 3.2/3.6)
     # Pass prechecked_limit to avoid duplicate lookups in generate_chat_response.
@@ -167,6 +195,10 @@ async def chat_endpoint(
     )
     ai_response = result.get("response", "")
     usage_today = result.get("usage_today")
+    effective_model = result.get("effective_model") or _active_model_name()
+    fallback_applied = bool(result.get("fallback_applied"))
+    fallback_reason = result.get("fallback_reason")
+    fallback_message = result.get("fallback_message")
     # Compute quota remaining using the same limit used for the rate check
     # Fall back gracefully if the generator did not return usage info
     if usage_today is not None:
@@ -193,7 +225,7 @@ async def chat_endpoint(
 
         log_entry = LLMLog(
             uid=user_id,
-            model=_active_model_name(),
+            model=effective_model,
             encrypted_prompt=encrypted_prompt,
             encrypted_response=encrypted_response,
             # context_used not in model
@@ -210,6 +242,10 @@ async def chat_endpoint(
         quota_remaining=quota_remaining,
         quota_limit=quota_limit,
         quota_used=quota_used,
+        effective_model=effective_model,
+        fallback_applied=fallback_applied,
+        fallback_reason=fallback_reason,
+        fallback_message=fallback_message,
         web_search_used=bool(result.get("web_search_used")),
         citations=result.get("citations") or [],
     )
@@ -240,13 +276,27 @@ async def chat_stream_endpoint(
         limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
         prechecked_limit = (tier, limit, int(precheck) if precheck is not None else 0)
 
-    # 3. RAG Context (Essential+ only)
+    # 3. Context Assembly
     context = ""
     if tier not in ["free"]:
         try:
-            context = await get_financial_context(user_id, message, db=db)
+            context = await get_financial_context(
+                user_id,
+                message,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
         except Exception as e:
             logger.warning(f"RAG context retrieval failed during stream: {e}")
+    else:
+        try:
+            context = await get_uploaded_documents_context(
+                user_id,
+                db=db,
+                attachment_ids=payload.attachment_ids,
+            )
+        except Exception as e:
+            logger.warning(f"Upload context retrieval failed for free tier stream: {e}")
 
     async def event_stream():
         final_response = ""
@@ -256,6 +306,10 @@ async def chat_stream_endpoint(
         effective_tier = tier
         citations: list[dict[str, str]] = []
         web_search_used = False
+        effective_model: str | None = None
+        fallback_applied = False
+        fallback_reason: str | None = None
+        fallback_message: str | None = None
 
         try:
             async for event in generate_chat_response_stream(
@@ -291,6 +345,10 @@ async def chat_stream_endpoint(
                     quota_remaining = max(quota_limit - quota_used, 0)
                     citations = event.get("citations") or []
                     web_search_used = bool(event.get("web_search_used"))
+                    effective_model = str(event.get("effective_model") or "") or _active_model_name()
+                    fallback_applied = bool(event.get("fallback_applied"))
+                    fallback_reason = event.get("fallback_reason")
+                    fallback_message = event.get("fallback_message")
 
             # 4. Log to Audit (LLMLog) - skip for free tier to keep sessions ephemeral
             if effective_tier != "free" and final_response:
@@ -299,7 +357,7 @@ async def chat_stream_endpoint(
 
                 log_entry = LLMLog(
                     uid=user_id,
-                    model=_active_model_name(),
+                    model=effective_model or _active_model_name(),
                     encrypted_prompt=encrypted_prompt,
                     encrypted_response=encrypted_response,
                     tokens=0,
@@ -316,6 +374,10 @@ async def chat_stream_endpoint(
                 "quota_remaining": quota_remaining,
                 "quota_limit": quota_limit,
                 "quota_used": quota_used,
+                "effective_model": effective_model or _active_model_name(),
+                "fallback_applied": fallback_applied,
+                "fallback_reason": fallback_reason,
+                "fallback_message": fallback_message,
                 "web_search_used": web_search_used,
                 "citations": citations,
             }
@@ -399,53 +461,20 @@ def get_quota_status(
     Get current AI usage quota for the user.
 
     Returns:
-    - **used**: Requests made today.
-    - **limit**: Daily limit based on tier.
-    - **resets_at**: Time of next reset (UTC midnight).
+    - **used**: Token usage in current billing-cycle period.
+    - **limit**: Token budget for current billing-cycle period.
+    - **resets_at**: Time of next reset (billing-cycle anniversary).
     - **tier**: Current subscription plan.
     """
+    _ = db  # keep dependency for auth/session parity with existing route contracts
     user_id = current_user.uid
-
-    # 1. Get Tier limit
-    subscription = db.query(Subscription).filter(Subscription.uid == user_id).first()
-    tier = subscription.plan.lower() if subscription else "free"
-
-    # TIER_LIMITS is imported from backend.services.ai at module level
-    limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
-
-    # 2. Check Usage (read-only)
-    # check_rate_limit modifies usage.
-    # I should implement a read_only version or just read Firestore directly here.
-    # Reading Firestore directly is better to avoid side effects.
-
-    import datetime
-
-    from backend.utils.firestore import get_firestore_client
-
-    db_fs = get_firestore_client()
-    today = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
-    doc_ref = (
-        db_fs.collection("ai_quota")
-        .document(user_id)
-        .collection("daily_stats")
-        .document(today)
-    )
-
-    snapshot = doc_ref.get()
-    used = 0
-    if snapshot.exists:
-        used = snapshot.get("request_count") or 0
-
-    # Calculate resets_at (next UTC midnight)
-    now = datetime.datetime.now(datetime.UTC)
-    tomorrow = now + datetime.timedelta(days=1)
-    resets_at = datetime.datetime(
-        year=tomorrow.year, month=tomorrow.month, day=tomorrow.day, tzinfo=datetime.UTC
-    )
+    quota = get_quota_snapshot_sync(user_id)
 
     return {
-        "used": used,
-        "limit": limit,
-        "resets_at": resets_at.isoformat(),
-        "tier": tier,
+        "used": quota["used"],
+        "limit": quota["limit"],
+        "usage_progress": quota["usage_progress"],
+        "usage_copy": quota["usage_copy"],
+        "resets_at": quota["resets_at"],
+        "tier": quota["tier"],
     }

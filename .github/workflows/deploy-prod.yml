@@ -3,6 +3,17 @@ name: CD - Deploy to Prod (jualuma-prod)
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      incident_id:
+        description: "Incident ID or emergency reference"
+        required: true
+      change_summary:
+        description: "High-level summary of the change"
+        required: true
+      rollback_plan:
+        description: "Immediate rollback plan"
+        required: true
 
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -35,6 +46,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Record emergency deploy context
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          : "${{ github.event.inputs.incident_id }}"
+          : "${{ github.event.inputs.change_summary }}"
+          : "${{ github.event.inputs.rollback_plan }}"
+          {
+            echo "## Emergency deployment metadata"
+            echo "- **Incident ID**: `${{ github.event.inputs.incident_id }}`"
+            echo "- **Change summary**: ${{ github.event.inputs.change_summary }}"
+            echo "- **Rollback plan**: ${{ github.event.inputs.rollback_plan }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Google Auth
         uses: "google-github-actions/auth@v2"
         with:
@@ -53,6 +77,15 @@ jobs:
         run: |
           echo "VITE_GCP_API_KEY=$(gcloud secrets versions access latest --secret=VITE_GCP_API_KEY --project=${{ env.PROJECT_ID }})" >> "$GITHUB_ENV"
 
+      - name: Validate Plaid production credentials
+        run: |
+          set -euo pipefail
+          export PLAID_CLIENT_ID="$(gcloud secrets versions access latest --secret=PLAID_CLIENT_ID --project=${PROJECT_ID})"
+          export PLAID_SECRET="$(gcloud secrets versions access latest --secret=PLAID_SECRET --project=${PROJECT_ID})"
+          export PLAID_ENV="production"
+          export PLAID_REDIRECT_URI="https://app.jualuma.com/connect-accounts"
+          ./scripts/check_plaid_credentials.sh
+
       # 1. Backend
       - name: Build and Push Backend
         run: |
@@ -69,8 +102,8 @@ jobs:
             --keyversion-keyring=${{ env.BINAUTHZ_KEYRING }} \
             --keyversion-key=${{ env.BINAUTHZ_KEY }} \
             --keyversion=${{ env.BINAUTHZ_KEY_VERSION }}
-      # NOTE: All env vars and secrets are managed directly on GCP (GCP-first).
-      # Do NOT redeclare here -- doing so overwrites secretKeyRef bindings
+      # NOTE: Runtime env vars/secrets are controlled via repository-driven promotion.
+      # Do NOT redeclare here without controlled config updates -- doing so overwrites secretKeyRef bindings
       # and drops any vars not listed. See scripts/guard_env_vars.py.
       - name: Deploy Backend
         uses: "google-github-actions/deploy-cloudrun@v2"
@@ -79,6 +112,14 @@ jobs:
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
           flags: "--binary-authorization=default"
+
+      - name: Enforce Plaid production mode on backend runtime
+        run: |
+          gcloud run services update jualuma-backend \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --update-env-vars=PLAID_ENV=production,PLAID_REDIRECT_URI=https://app.jualuma.com/connect-accounts \
+            --quiet
 
       # 2. Frontend App
       - name: Build and Push Frontend App
