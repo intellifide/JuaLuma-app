@@ -4,7 +4,10 @@ from fastapi.testclient import TestClient
 
 from backend.api import auth as auth_api
 from backend.main import app
-from backend.middleware.auth import get_current_identity
+from backend.middleware.auth import (
+    get_current_identity,
+    get_current_identity_with_user_guard,
+)
 from backend.models import PendingSignup, Subscription, User
 
 # Tests for backend/api/auth.py
@@ -197,6 +200,61 @@ def test_login_invalid_token(test_client: TestClient):
 
     assert response.status_code == 401
     assert "Invalid or expired token" in response.json()["detail"]
+
+
+def test_profile_returns_pending_by_email_with_uid_reconciliation(
+    test_client: TestClient, test_db
+):
+    pending = PendingSignup(
+        uid="old_uid_123",
+        email="pending-fallback@testmail.app",
+        first_name="Pending",
+        last_name="User",
+        agreements_json=[
+            {"agreement_key": "terms_of_service"},
+            {"agreement_key": "privacy_policy"},
+        ],
+    )
+    test_db.add(pending)
+    test_db.commit()
+
+    def override_identity():
+        return {"uid": "new_uid_456", "email": "pending-fallback@testmail.app"}
+
+    app.dependency_overrides[get_current_identity_with_user_guard] = override_identity
+    response = test_client.get("/api/auth/profile")
+    app.dependency_overrides.pop(get_current_identity_with_user_guard, None)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["uid"] == "new_uid_456"
+    assert data["user"]["email"] == "pending-fallback@testmail.app"
+    assert data["user"]["status"] == "pending_verification"
+
+    reconciled = (
+        test_db.query(PendingSignup)
+        .filter(PendingSignup.email == "pending-fallback@testmail.app")
+        .first()
+    )
+    assert reconciled is not None
+    assert reconciled.uid == "new_uid_456"
+
+
+def test_profile_returns_identity_pending_payload_when_signup_record_missing(
+    test_client: TestClient,
+):
+    def override_identity():
+        return {"uid": "identity_only_uid", "email": "identity-only@testmail.app"}
+
+    app.dependency_overrides[get_current_identity_with_user_guard] = override_identity
+    response = test_client.get("/api/auth/profile")
+    app.dependency_overrides.pop(get_current_identity_with_user_guard, None)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["uid"] == "identity_only_uid"
+    assert data["user"]["email"] == "identity-only@testmail.app"
+    assert data["user"]["status"] == "pending_verification"
 
 
 def test_profile_update(test_client: TestClient, test_db, mock_auth):

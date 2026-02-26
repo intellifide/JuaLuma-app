@@ -9,7 +9,7 @@ from urllib.parse import urlparse, urlunparse
 import stripe
 from fastapi import HTTPException
 from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.core import settings
@@ -103,6 +103,30 @@ STRIPE_TEST_CARD_LAST4_EXEMPTIONS = {
 }
 
 
+def _is_missing_trial_redemptions_table_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "trial_redemptions" in message and (
+        "does not exist" in message or "undefinedtable" in message
+    )
+
+
+def _handle_missing_trial_redemptions_table(
+    db: Session, exc: Exception, *, operation: str
+) -> bool:
+    if not _is_missing_trial_redemptions_table_error(exc):
+        return False
+    logger.warning(
+        "Billing operation skipped because trial_redemptions table is missing.",
+        extra={"operation": operation},
+        exc_info=exc,
+    )
+    try:
+        db.rollback()
+    except Exception:
+        pass
+    return True
+
+
 def _append_checkout_session_id_param(return_url: str) -> str:
     """Append Stripe session placeholder without clobbering existing query params.
 
@@ -178,15 +202,22 @@ def _find_prior_trial_redemption(
     if not filters:
         return None
 
-    query = db.query(TrialRedemption).filter(or_(*filters))
-    if exclude_subscription_id:
-        query = query.filter(
-            or_(
-                TrialRedemption.stripe_subscription_id.is_(None),
-                TrialRedemption.stripe_subscription_id != exclude_subscription_id,
+    try:
+        query = db.query(TrialRedemption).filter(or_(*filters))
+        if exclude_subscription_id:
+            query = query.filter(
+                or_(
+                    TrialRedemption.stripe_subscription_id.is_(None),
+                    TrialRedemption.stripe_subscription_id != exclude_subscription_id,
+                )
             )
-        )
-    return query.order_by(TrialRedemption.created_at.desc()).first()
+        return query.order_by(TrialRedemption.created_at.desc()).first()
+    except SQLAlchemyError as exc:
+        if _handle_missing_trial_redemptions_table(
+            db, exc, operation="find_prior_trial_redemption"
+        ):
+            return None
+        raise
 
 
 def _resolve_trial_days_for_checkout(
@@ -200,7 +231,15 @@ def _resolve_trial_days_for_checkout(
         return None
 
     email_normalized = _normalize_email_for_trial(email)
-    prior = _find_prior_trial_redemption(db, email_normalized=email_normalized)
+    try:
+        prior = _find_prior_trial_redemption(db, email_normalized=email_normalized)
+    except SQLAlchemyError as exc:
+        if _handle_missing_trial_redemptions_table(
+            db, exc, operation="resolve_trial_days_for_checkout"
+        ):
+            return trial_days
+        raise
+
     if prior:
         logger.info(
             "Skipping free trial due to prior redemption.",
@@ -243,28 +282,35 @@ def _record_trial_redemption(
         )
         return
 
-    existing = None
-    if stripe_subscription_id:
-        existing = (
-            db.query(TrialRedemption)
-            .filter(TrialRedemption.stripe_subscription_id == stripe_subscription_id)
-            .first()
-        )
-    if existing:
-        return
+    try:
+        existing = None
+        if stripe_subscription_id:
+            existing = (
+                db.query(TrialRedemption)
+                .filter(TrialRedemption.stripe_subscription_id == stripe_subscription_id)
+                .first()
+            )
+        if existing:
+            return
 
-    db.add(
-        TrialRedemption(
-            uid=uid,
-            email_normalized=email_normalized,
-            card_last4=card_last4,
-            card_fingerprint=card_fingerprint,
-            stripe_customer_id=stripe_customer_id,
-            stripe_subscription_id=stripe_subscription_id,
-            plan_code=plan_code,
+        db.add(
+            TrialRedemption(
+                uid=uid,
+                email_normalized=email_normalized,
+                card_last4=card_last4,
+                card_fingerprint=card_fingerprint,
+                stripe_customer_id=stripe_customer_id,
+                stripe_subscription_id=stripe_subscription_id,
+                plan_code=plan_code,
+            )
         )
-    )
-    db.commit()
+        db.commit()
+    except SQLAlchemyError as exc:
+        if _handle_missing_trial_redemptions_table(
+            db, exc, operation="record_trial_redemption"
+        ):
+            return
+        raise
 
 
 def _obj_get(source: Any, key: str) -> Any:

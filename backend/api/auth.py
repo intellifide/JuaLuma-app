@@ -396,6 +396,22 @@ def _serialize_pending_profile(pending: PendingSignup) -> dict:
     }
 
 
+def _serialize_identity_pending_profile(uid: str, email: str | None) -> dict:
+    """Build a pending profile payload directly from identity claims."""
+    return {
+        "uid": uid,
+        "email": email,
+        "status": "pending_verification",
+        "plan": "free",
+        "subscription_status": "inactive",
+        "subscriptions": [],
+        "ai_settings": None,
+        "is_developer": False,
+        "time_zone": "UTC",
+        "household_member": None,
+    }
+
+
 # Simple in-memory rate limiter keyed by client IP
 _login_attempts: dict[str, deque[float]] = defaultdict(deque)
 _login_lock = Lock()
@@ -1378,15 +1394,36 @@ def get_profile(
     )
 
     if not user:
-        pending_signup = (
-            db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
-        )
-        if not pending_signup:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Your account session is invalid.",
+        pending_signup = db.query(PendingSignup).filter(PendingSignup.uid == uid).first()
+        identity_email = (identity.get("email") or "").strip().lower()
+
+        if not pending_signup and identity_email:
+            pending_signup = (
+                db.query(PendingSignup)
+                .filter(func.lower(PendingSignup.email) == identity_email)
+                .order_by(PendingSignup.created_at.desc())
+                .first()
             )
-        return {"user": _serialize_pending_profile(pending_signup)}
+            if pending_signup and pending_signup.uid != uid:
+                try:
+                    pending_signup.uid = uid
+                    db.commit()
+                    db.refresh(pending_signup)
+                except IntegrityError:
+                    db.rollback()
+
+        if pending_signup:
+            return {"user": _serialize_pending_profile(pending_signup)}
+
+        # During signup initialization there can be a short window where identity exists
+        # before pending_signup is persisted. Return a safe pending profile instead of 404.
+        if identity.get("email"):
+            return {"user": _serialize_identity_pending_profile(uid, identity.get("email"))}
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Your account session is invalid.",
+        )
 
     return {"user": _serialize_profile(user)}
 
