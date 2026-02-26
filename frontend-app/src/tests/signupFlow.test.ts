@@ -96,7 +96,6 @@ describe('Signup Flow - End to End', () => {
             const requiredChecks = {
                 acceptTerms: false,
                 acceptPrivacy: false,
-                acceptResident: false,
             }
 
             // All must be true to proceed
@@ -104,7 +103,6 @@ describe('Signup Flow - End to End', () => {
 
             requiredChecks.acceptTerms = true
             requiredChecks.acceptPrivacy = true
-            requiredChecks.acceptResident = true
 
             expect(Object.values(requiredChecks).every(Boolean)).toBe(true)
         })

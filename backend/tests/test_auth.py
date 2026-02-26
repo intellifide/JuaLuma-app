@@ -22,7 +22,6 @@ def test_signup_pending_success(test_client: TestClient, test_db):
         "agreements": [
             {"agreement_key": "terms_of_service"},
             {"agreement_key": "privacy_policy"},
-            {"agreement_key": "us_residency_certification"},
         ],
     }
 
@@ -61,7 +60,6 @@ def test_signup_pending_duplicate_email(test_client: TestClient, test_db):
         "agreements": [
             {"agreement_key": "terms_of_service"},
             {"agreement_key": "privacy_policy"},
-            {"agreement_key": "us_residency_certification"},
         ],
     }
     with patch("backend.api.auth.get_email_client") as mock_client:
@@ -109,7 +107,6 @@ def test_signup_pending_otp_send_failure_returns_503(test_client: TestClient):
         "agreements": [
             {"agreement_key": "terms_of_service"},
             {"agreement_key": "privacy_policy"},
-            {"agreement_key": "us_residency_certification"},
         ],
     }
 
@@ -136,7 +133,6 @@ def test_signup_pending_rate_limit_returns_429(test_client: TestClient):
         "agreements": [
             {"agreement_key": "terms_of_service"},
             {"agreement_key": "privacy_policy"},
-            {"agreement_key": "us_residency_certification"},
         ],
     }
 

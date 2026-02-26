@@ -22,6 +22,7 @@ import { AgreementAcceptanceInput } from '../types/legal'
 import Switch from '../components/ui/Switch'
 import { Alert } from '../components/ui/Alert'
 import { Check, Circle, AlertCircle } from 'lucide-react'
+import { PasswordInput } from '../components/ui/PasswordInput'
 import { AnimatedBrandText } from '../components/AnimatedBrandText'
 import { ATTRIBUTION_PRIMARY } from '../constants/branding'
 import { getMarketingSiteUrl } from '../utils/marketing'
@@ -50,13 +51,16 @@ export const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
-  const [acceptResident, setAcceptResident] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const passwordValid = useMemo(
     () => passwordChecks.every((check) => check.test(password)),
     [password],
+  )
+  const passwordsMatch = useMemo(
+    () => confirmPassword.length > 0 && password === confirmPassword,
+    [password, confirmPassword],
   )
 
   const marketingLegalBase = useMemo(() => getMarketingSiteUrl(), [])
@@ -82,11 +86,6 @@ export const Signup = () => {
 
     if (!acceptTerms || !acceptPrivacy) {
       setError('Please accept the Terms of Service and Privacy Policy.')
-      return
-    }
-
-    if (!acceptResident) {
-      setError('You must certify that you are a resident of the United States.')
       return
     }
 
@@ -117,11 +116,6 @@ export const Signup = () => {
         {
           agreement_key: LEGAL_AGREEMENTS.privacyPolicy.key,
           agreement_version: LEGAL_AGREEMENTS.privacyPolicy.version,
-          acceptance_method: 'clickwrap',
-        },
-        {
-          agreement_key: LEGAL_AGREEMENTS.usResidencyCertification.key,
-          agreement_version: LEGAL_AGREEMENTS.usResidencyCertification.version,
           acceptance_method: 'clickwrap',
         },
       ]
@@ -174,6 +168,14 @@ export const Signup = () => {
                   {check.label}
                 </li>
               ))}
+              <li className="flex items-center gap-2">
+                {passwordsMatch ? (
+                  <Check className="h-4 w-4 shrink-0 text-green-500" aria-hidden />
+                ) : (
+                  <Circle className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                )}
+                Passwords match
+              </li>
             </ul>
           </div>
 
@@ -240,9 +242,8 @@ export const Signup = () => {
 
               <div>
                 <label htmlFor="signup-password" className="form-label">Password</label>
-                <input
+                <PasswordInput
                   id="signup-password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input"
@@ -254,9 +255,8 @@ export const Signup = () => {
 
               <div>
                 <label htmlFor="confirm-password" className="form-label">Confirm Password</label>
-                <input
+                <PasswordInput
                   id="confirm-password"
-                  type="password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -300,11 +300,6 @@ export const Signup = () => {
                       </a>
                     </span>
                   }
-                />
-                <Switch
-                  checked={acceptResident}
-                  onChange={setAcceptResident}
-                  label="I certify that I am a resident of the United States and agree to the Terms of Service."
                 />
               </div>
 

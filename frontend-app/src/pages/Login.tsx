@@ -16,10 +16,11 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-	import Switch from '../components/ui/Switch'
-	import { MfaRequiredError } from '../services/auth'
-	import { AnimatedBrandText } from '../components/AnimatedBrandText'
-	import { ATTRIBUTION_PRIMARY } from '../constants/branding'
+import Switch from '../components/ui/Switch'
+import { MfaRequiredError } from '../services/auth'
+import { PasswordInput } from '../components/ui/PasswordInput'
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
+import { ATTRIBUTION_PRIMARY } from '../constants/branding'
 
 export const Login = () => {
   const { login } = useAuth()
@@ -94,9 +95,8 @@ export const Login = () => {
 
               <div>
                 <label htmlFor="password" className="form-label">Password</label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input"

@@ -2298,66 +2298,232 @@ body {
   z-index: 0;
 }
 
-.galaxy-wave-gradient,
+.galaxy-space-base,
+.galaxy-stars,
+.galaxy-milkyway-core,
+.galaxy-milkyway-haze,
+.galaxy-shooting-stars,
+.galaxy-click-stars,
 .galaxy-wave-haze {
   position: absolute;
   inset: 0;
 }
 
-.galaxy-wave-gradient {
-  background: radial-gradient(circle at 15% 20%, rgba(78, 156, 255, 0.2), transparent 34%),
-    radial-gradient(circle at 84% 16%, rgba(127, 94, 255, 0.24), transparent 36%),
-    radial-gradient(circle at 52% 88%, rgba(76, 224, 245, 0.18), transparent 42%);
-  animation: galaxyDrift 52s ease-in-out infinite alternate;
+.galaxy-space-base {
+  background:
+    radial-gradient(circle at 68% 46%, rgba(50, 93, 166, 0.26), transparent 28%),
+    radial-gradient(circle at 26% 68%, rgba(29, 69, 140, 0.22), transparent 30%),
+    radial-gradient(circle at 52% 58%, rgba(20, 45, 101, 0.2), transparent 46%),
+    linear-gradient(180deg, #01060f 0%, #020a17 42%, #021022 100%);
 }
 
-.galaxy-wave-network {
+.galaxy-stars {
   position: absolute;
-  inset: -4%;
-  width: 108%;
-  height: 108%;
-  opacity: 0.9;
-  transform-origin: center;
-  animation: galaxyDrift 78s ease-in-out infinite alternate;
+  inset: -10%;
+  background-repeat: repeat;
+  will-change: opacity;
+  animation: starTwinkle 22s ease-in-out infinite alternate;
 }
 
-.galaxy-wave-curves path {
-  fill: none;
-  stroke: url(#galaxyLineA);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-dasharray: 1.5 6;
-  animation: none;
+.galaxy-stars-far {
+  opacity: 0.48;
+  background-image:
+    radial-gradient(1px 1px at 22px 28px, rgba(212, 233, 255, 0.82), transparent 60%),
+    radial-gradient(1px 1px at 116px 78px, rgba(176, 213, 255, 0.76), transparent 62%),
+    radial-gradient(1px 1px at 198px 146px, rgba(225, 238, 255, 0.8), transparent 64%),
+    radial-gradient(1px 1px at 264px 34px, rgba(172, 205, 255, 0.68), transparent 62%),
+    radial-gradient(1px 1px at 314px 198px, rgba(205, 227, 255, 0.75), transparent 62%),
+    radial-gradient(1px 1px at 82px 214px, rgba(179, 215, 255, 0.72), transparent 64%);
+  background-size: 340px 340px, 420px 420px, 520px 520px, 620px 620px, 760px 760px, 900px 900px;
+  background-position: 0 0, 80px 140px, 190px 60px, 250px 190px, 420px 120px, 40px 320px;
 }
 
-.galaxy-wave-links polyline,
-.galaxy-wave-links line {
-  fill: none;
-  stroke: url(#galaxyLineB);
-  stroke-width: 1.2;
-  stroke-linecap: round;
+.galaxy-stars-mid {
+  opacity: 0.68;
+  background-image:
+    radial-gradient(1.2px 1.2px at 18px 38px, rgba(228, 242, 255, 0.95), transparent 58%),
+    radial-gradient(1.2px 1.2px at 74px 142px, rgba(187, 220, 255, 0.88), transparent 58%),
+    radial-gradient(1.2px 1.2px at 188px 66px, rgba(232, 242, 255, 0.9), transparent 56%),
+    radial-gradient(1.2px 1.2px at 238px 178px, rgba(198, 228, 255, 0.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 320px 118px, rgba(221, 237, 255, 0.84), transparent 58%),
+    radial-gradient(1.2px 1.2px at 140px 238px, rgba(180, 216, 255, 0.78), transparent 58%);
+  background-size: 260px 260px, 320px 320px, 410px 410px, 500px 500px, 620px 620px, 740px 740px;
+  background-position: 50px 80px, 140px 10px, 220px 180px, 10px 220px, 360px 120px, 120px 360px;
+  animation-duration: 28s;
 }
 
-.galaxy-wave-nodes circle {
-  fill: url(#galaxyNode);
-  animation: galaxyNodeGlow 13s ease-in-out infinite;
+.galaxy-stars-near {
+  opacity: 0.85;
+  background-image:
+    radial-gradient(1.7px 1.7px at 12px 16px, rgba(242, 248, 255, 0.98), transparent 54%),
+    radial-gradient(1.7px 1.7px at 52px 108px, rgba(232, 244, 255, 0.94), transparent 52%),
+    radial-gradient(1.7px 1.7px at 128px 44px, rgba(255, 255, 255, 0.98), transparent 50%),
+    radial-gradient(1.7px 1.7px at 184px 174px, rgba(226, 241, 255, 0.92), transparent 54%),
+    radial-gradient(1.7px 1.7px at 246px 90px, rgba(240, 248, 255, 0.96), transparent 50%),
+    radial-gradient(1.7px 1.7px at 308px 208px, rgba(228, 242, 255, 0.9), transparent 54%);
+  background-size: 190px 190px, 240px 240px, 320px 320px, 420px 420px, 540px 540px, 660px 660px;
+  background-position: 40px 20px, 120px 130px, 210px 70px, 0 240px, 280px 180px, 80px 300px;
+  filter: drop-shadow(0 0 2px rgba(205, 230, 255, 0.28));
+  animation-duration: 34s;
 }
 
-.galaxy-wave-nodes circle:nth-child(3n) {
-  animation-delay: 1.3s;
+.galaxy-milkyway-core {
+  inset: -24%;
+  background:
+    radial-gradient(ellipse 38% 11% at 23% 63%, rgba(137, 171, 228, 0.34), transparent 76%),
+    radial-gradient(ellipse 32% 10% at 37% 58%, rgba(156, 191, 244, 0.3), transparent 78%),
+    radial-gradient(ellipse 42% 13% at 51% 53%, rgba(132, 171, 233, 0.26), transparent 80%),
+    radial-gradient(ellipse 30% 9% at 64% 48%, rgba(116, 152, 217, 0.22), transparent 78%),
+    radial-gradient(ellipse 36% 10% at 75% 43%, rgba(93, 131, 201, 0.18), transparent 82%);
+  transform: rotate(-14deg) scale(1.14);
+  filter: blur(8px);
+  opacity: 0.82;
+  animation: milkyDrift 88s ease-in-out infinite alternate;
 }
 
-.galaxy-wave-nodes circle:nth-child(4n) {
-  animation-delay: 2.4s;
+.galaxy-milkyway-haze {
+  inset: -28%;
+  background:
+    radial-gradient(ellipse 36% 12% at 34% 57%, rgba(123, 165, 234, 0.18), transparent 78%),
+    radial-gradient(ellipse 40% 14% at 56% 50%, rgba(104, 148, 221, 0.16), transparent 80%),
+    radial-gradient(ellipse 35% 12% at 72% 45%, rgba(88, 127, 198, 0.14), transparent 84%);
+  transform: rotate(-14deg) scale(1.22);
+  filter: blur(20px);
+  opacity: 0.74;
+  animation: milkyDrift 104s ease-in-out infinite alternate-reverse;
+}
+
+.galaxy-shooting-stars {
+  inset: -8% 0 0;
+  overflow: hidden;
+}
+
+.shooting-star-flight {
+  position: absolute;
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+}
+
+.shooting-star-ray {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--star-length, 170px);
+  height: 2.8px;
+  transform-origin: left center;
+  transform: rotate(var(--rot, -22deg));
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(147, 196, 255, 0) 0%,
+    rgba(179, 221, 255, 0.45) 45%,
+    rgba(255, 255, 255, 0.99) 100%
+  );
+  filter: drop-shadow(0 0 8px rgba(178, 219, 255, 0.58));
+  pointer-events: none;
+}
+
+.shooting-star-ray-passive {
+  height: 3.2px;
+  background: linear-gradient(
+    90deg,
+    rgba(147, 196, 255, 0) 0%,
+    rgba(188, 226, 255, 0.58) 42%,
+    rgba(255, 255, 255, 1) 100%
+  );
+  filter: drop-shadow(0 0 10px rgba(188, 228, 255, 0.7));
+}
+
+.shooting-star-ray::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 246, 215, 0.98) 28%,
+    rgba(203, 230, 255, 0.88) 58%,
+    rgba(157, 198, 255, 0.22) 100%
+  );
+  transform: translateY(-50%);
+  box-shadow:
+    0 0 14px rgba(222, 242, 255, 0.9),
+    0 0 26px rgba(186, 220, 255, 0.52);
+}
+
+.shooting-star-ray::before {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%) rotate(45deg);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 45%,
+      rgba(219, 241, 255, 0.46) 50%,
+      rgba(255, 255, 255, 0) 55%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 45%,
+      rgba(219, 241, 255, 0.4) 50%,
+      rgba(255, 255, 255, 0) 55%
+    );
+  opacity: 0.72;
+  filter: blur(0.35px);
+}
+
+.shooting-star-ray-passive::after {
+  width: 10px;
+  height: 10px;
+  box-shadow: 0 0 16px rgba(232, 247, 255, 0.96);
+}
+
+.passive-shooting-star {
+  animation: passiveShootingStar var(--star-duration, 1800ms) cubic-bezier(0.15, 0.8, 0.25, 1) var(--star-delay, 20000ms) 1 forwards;
+}
+
+.galaxy-click-stars {
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.galaxy-click-anchor {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px rgba(224, 243, 255, 0.96);
+  pointer-events: none;
+}
+
+.click-shooting-star {
+  animation: clickStarShoot 980ms cubic-bezier(0.16, 0.84, 0.24, 1) forwards;
+}
+
+.shooting-star-ray-click {
+  width: var(--star-length, 110px);
+  height: 2.8px;
 }
 
 .galaxy-wave-haze {
   background: linear-gradient(
     180deg,
-    rgba(3, 9, 28, 0.16) 0%,
-    rgba(3, 8, 24, 0.34) 50%,
-    rgba(1, 4, 14, 0.68) 100%
+    rgba(1, 5, 12, 0.18) 0%,
+    rgba(1, 6, 16, 0.36) 54%,
+    rgba(0, 3, 9, 0.76) 100%
   );
+  box-shadow: inset 0 0 160px rgba(0, 0, 0, 0.55);
 }
 
 .app-sidebar {
@@ -2655,19 +2821,23 @@ body {
   background: rgba(44, 77, 141, 0.5);
 }
 
-.galaxy-wave-background.is-static .galaxy-wave-gradient,
-.galaxy-wave-background.is-static .galaxy-wave-network,
-.galaxy-wave-background.is-static .galaxy-wave-curves path,
-.galaxy-wave-background.is-static .galaxy-wave-nodes circle {
+.galaxy-wave-background.is-static .galaxy-stars,
+.galaxy-wave-background.is-static .galaxy-milkyway-core,
+.galaxy-wave-background.is-static .galaxy-milkyway-haze,
+.galaxy-wave-background.is-static .shooting-star-flight {
   animation: none !important;
 }
 
-.galaxy-wave-background.is-static .galaxy-wave-network {
-  opacity: 0.68;
+.galaxy-wave-background.is-static .galaxy-stars-near {
+  opacity: 0.7;
 }
 
-.galaxy-wave-background.is-static .galaxy-wave-nodes circle:nth-child(2n) {
-  opacity: 0.45;
+.galaxy-wave-background.is-static .shooting-star-flight {
+  opacity: 0;
+}
+
+.galaxy-wave-background.is-static .galaxy-click-stars {
+  display: none;
 }
 
 .info-popover-trigger {
@@ -2702,41 +2872,59 @@ body {
   }
 }
 
-@keyframes galaxyDrift {
+@keyframes starTwinkle {
   0% {
-    transform: scale(1) translate3d(0, 0, 0);
+    opacity: 0.55;
   }
 
   100% {
-    transform: scale(1.04) translate3d(-1.5%, -1.2%, 0);
+    opacity: 0.9;
   }
 }
 
-@keyframes galaxyPulse {
-  0% {
-    stroke-dashoffset: 0;
-    opacity: 0.62;
-  }
-
-  50% {
-    opacity: 0.92;
-  }
-
-  100% {
-    stroke-dashoffset: -160;
-    opacity: 0.62;
-  }
-}
-
-@keyframes galaxyNodeGlow {
+@keyframes milkyDrift {
   0%,
   100% {
-    opacity: 0.42;
-    transform: scale(0.95);
+    transform: rotate(-14deg) scale(1.14) translate3d(0, 0, 0);
   }
 
   50% {
-    opacity: 0.95;
-    transform: scale(1.08);
+    transform: rotate(-13deg) scale(1.17) translate3d(-1.2%, 0.8%, 0);
+  }
+}
+
+@keyframes passiveShootingStar {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+
+  10% {
+    opacity: 0.96;
+  }
+
+  62% {
+    opacity: 0.88;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx, 360px), var(--dy, -120px), 0);
+  }
+}
+
+@keyframes clickStarShoot {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx, 260px), var(--dy, -120px), 0);
   }
 }

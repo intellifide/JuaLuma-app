@@ -25,6 +25,7 @@ import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { api as apiClient } from '../services/api';
 import { householdService } from '../services/householdService';
 import { Household, HouseholdMember } from '../types/household';
@@ -323,8 +324,7 @@ const AddCexModal = ({
           </div>
           <div>
             <label className="form-label">API Key</label>
-            <input
-              type="password"
+            <PasswordInput
               className="input font-mono text-sm"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -333,8 +333,7 @@ const AddCexModal = ({
           </div>
           <div>
             <label className="form-label">API Secret</label>
-            <input
-              type="password"
+            <PasswordInput
               className="input font-mono text-sm"
               value={apiSecret}
               onChange={(e) => setApiSecret(e.target.value)}

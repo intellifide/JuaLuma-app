@@ -769,7 +769,10 @@ export default function Dashboard() {
   }, [accounts]);
 
   return (
-    <section className="container mx-auto py-6 md:py-8 px-3 md:px-4 space-y-6 md:space-y-8">
+    <section
+      className="container mx-auto py-6 md:py-8 px-3 md:px-4 space-y-6 md:space-y-8"
+      data-star-click-block="true"
+    >
       <div className="dashboard-intro">
         <h1 className="dashboard-greeting">Good Morning, {dashboardName}</h1>
       </div>

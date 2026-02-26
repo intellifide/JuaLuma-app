@@ -40,6 +40,7 @@ import type { UserProfile } from '../hooks/useAuth';
 
 import Switch from '../components/ui/Switch';
 import { Select } from '../components/ui/Select';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { TimeZonePicker } from '../components/TimeZonePicker';
 import { settingsService, NotificationPreference } from '../services/settingsService';
 import { useToast } from '../components/ui/Toast';
@@ -2024,8 +2025,7 @@ export const Settings = () => {
 
 	                    <div className="mb-4">
 	                      <label htmlFor="current-password" className="block text-sm font-medium text-text-secondary mb-1">Current Password</label>
-	                      <input
-                        type="password"
+	                      <PasswordInput
                         id="current-password"
                         className="form-input w-full"
                         value={currentPassword}
@@ -2036,8 +2036,7 @@ export const Settings = () => {
                     </div>
                     <div className="mb-4">
                       <label htmlFor="new-password" className="block text-sm font-medium text-text-secondary mb-1">New Password</label>
-                      <input
-                        type="password"
+                      <PasswordInput
                         id="new-password"
                         className="form-input w-full"
                         value={newPassword}
@@ -2049,8 +2048,7 @@ export const Settings = () => {
                     </div>
                     <div className="mb-4">
                       <label htmlFor="confirm-new-password" className="block text-sm font-medium text-text-secondary mb-1">Confirm New Password</label>
-                      <input
-                        type="password"
+                      <PasswordInput
                         id="confirm-new-password"
                         className="form-input w-full"
                         value={confirmPassword}

@@ -23,10 +23,6 @@ export const LEGAL_AGREEMENTS = {
     version: '2025-01-15',
     url: '/legal/privacy',
   },
-  usResidencyCertification: {
-    key: 'us_residency_certification',
-    version: '2025-01-15',
-  },
   developerAgreement: {
     key: 'developer_agreement',
     version: '2025-01-15',
