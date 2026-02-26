@@ -114,7 +114,7 @@ describe('Dashboard Integration', () => {
         )
 
         expect(screen.getByText(/Financial Overview/i)).toBeInTheDocument()
-        expect(screen.getByText(/Net Worth/i)).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: /^Net Worth$/i, level: 3 })).toBeInTheDocument()
         expect(screen.getByText(/Cash Flow Pulse/i)).toBeInTheDocument()
         expect(screen.getByRole('heading', { name: /Spending Health/i })).toBeInTheDocument()
         expect(screen.getByText(/Asset Snapshot/i)).toBeInTheDocument()
