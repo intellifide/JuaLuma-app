@@ -16,7 +16,7 @@
 
 import Link from 'next/link'
 import { motion, type Variants } from '@/lib/motion'
-import { APP_URL } from '@/lib/constants'
+import { AppAuthLink } from '@/components/AppAuthLink'
 import { Link2, LineChart, Sparkles } from 'lucide-react'
 
 const container: Variants = {
@@ -77,7 +77,7 @@ export default function Home() {
             JuaLuma unifies traditional accounts, crypto, and real-world assets into one real-time view so you can track net worth, spot changes faster, and make better financial decisions with confidence.
           </motion.p>
           <motion.div variants={item} className="marketing-hero-ctas">
-            <a href={`${APP_URL}/signup`} className="btn btn-lg marketing-primary-btn">Start Free Trial</a>
+            <AppAuthLink appPath="/signup" className="btn btn-lg marketing-primary-btn">Start Free Trial</AppAuthLink>
             <Link href="/features" className="btn btn-lg marketing-secondary-btn">See Feature Stories</Link>
           </motion.div>
 
@@ -166,7 +166,7 @@ export default function Home() {
           transition={{ duration: 0.5 }}
         >
           <h2>Ready to see your financial system in motion?</h2>
-          <a href={`${APP_URL}/signup`} className="btn btn-lg marketing-primary-btn">Create Free Account</a>
+          <AppAuthLink appPath="/signup" className="btn btn-lg marketing-primary-btn">Create Free Account</AppAuthLink>
         </motion.section>
       </div>
     </div>

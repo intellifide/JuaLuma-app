@@ -149,8 +149,8 @@ export const AppLayout: React.FC = () => {
               src={sidebarBrandIconSrc}
               alt="JuaLuma logo"
               className="sidebar-brand-logo"
-              width={57}
-              height={57}
+              width={86}
+              height={86}
             />
           )}
         </Link>
