@@ -26,6 +26,7 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
 const STORAGE_KEY = 'theme'
+const QUERY_KEY = 'theme'
 
 const applyTheme = (mode: ThemeMode) => {
   if (typeof document !== 'undefined') {
@@ -37,6 +38,16 @@ const applyTheme = (mode: ThemeMode) => {
 }
 
 const getInitialTheme = (): ThemeMode => {
+  if (typeof window !== 'undefined') {
+    const fromQuery = new URLSearchParams(window.location.search).get(QUERY_KEY)
+    if (fromQuery === 'dark' || fromQuery === 'light') {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, fromQuery)
+      }
+      return fromQuery
+    }
+  }
+
   if (typeof localStorage !== 'undefined') {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved === 'dark' || saved === 'light') return saved
