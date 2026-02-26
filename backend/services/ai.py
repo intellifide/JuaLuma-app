@@ -423,7 +423,7 @@ def resolve_model_routing(tier: str, usage_today: int, limit: int) -> dict[str, 
 
 
 def _is_unavailable_model_error(error: Exception) -> bool:
-    if isinstance(error, (NotFound, PermissionDenied, FailedPrecondition)):
+    if isinstance(error, NotFound | PermissionDenied | FailedPrecondition):
         return True
     message = str(error).lower()
     return (

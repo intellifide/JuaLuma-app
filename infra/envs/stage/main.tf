@@ -108,7 +108,7 @@ locals {
         API_UPSTREAM = "https://jualuma-backend-stage-ripznron4a-uc.a.run.app"
         TZ           = "America/Chicago"
       }
-      secret_env            = {}
+      secret_env = {}
     }
 
     "jualuma-support-stage" = {
@@ -125,7 +125,7 @@ locals {
         API_UPSTREAM = "https://jualuma-backend-stage-ripznron4a-uc.a.run.app"
         TZ           = "America/Chicago"
       }
-      secret_env            = {}
+      secret_env = {}
     }
 
     "jualuma-marketing-stage" = {
@@ -141,7 +141,7 @@ locals {
       env = {
         TZ = "America/Chicago"
       }
-      secret_env            = {}
+      secret_env = {}
     }
   }
 }
