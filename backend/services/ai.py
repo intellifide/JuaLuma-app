@@ -865,7 +865,7 @@ async def generate_chat_response_stream(
     chunks: list[str] = []
 
     try:
-        async def _stream_model(model_client: AIClient) -> None:
+        async def _stream_model(model_client: AIClient) -> AsyncIterator[dict[str, Any]]:
             async for delta in model_client.generate_content_stream(
                 final_prompt,
                 safety_settings=None,
