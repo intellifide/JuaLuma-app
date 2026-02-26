@@ -358,17 +358,22 @@ class GmailApiEmailClient:
         self.otp_from_name = OTP_FROM_NAME
         self.otp_from_email = OTP_FROM_EMAIL
         self.otp_reply_to = self.otp_from_email
-        self._services: dict[str, Any] = {}
+        self._services: dict[tuple[str, bool], Any] = {}
 
     def _resolve_sender_user(self, impersonate_user: str | None = None) -> str:
         """Resolve effective delegated mailbox for Gmail API calls."""
         candidate = impersonate_user or self.default_impersonate_user
         return candidate.strip()
 
-    def _get_service(self, impersonate_user: str | None = None):
+    def _get_service(
+        self,
+        impersonate_user: str | None = None,
+        include_settings_scopes: bool = False,
+    ):
         sender_user = self._resolve_sender_user(impersonate_user)
-        if sender_user in self._services:
-            return self._services[sender_user]
+        cache_key = (sender_user, include_settings_scopes)
+        if cache_key in self._services:
+            return self._services[cache_key]
         import json
         import os
 
@@ -388,11 +393,14 @@ class GmailApiEmailClient:
                 "GOOGLE_APPLICATION_CREDENTIALS is not set. "
                 "Cannot initialize Gmail API client."
             )
-        scopes = [
-            "https://www.googleapis.com/auth/gmail.send",
-            "https://www.googleapis.com/auth/gmail.settings.basic",
-            "https://www.googleapis.com/auth/gmail.settings.sharing",
-        ]
+        scopes = ["https://www.googleapis.com/auth/gmail.send"]
+        if include_settings_scopes:
+            scopes.extend(
+                [
+                    "https://www.googleapis.com/auth/gmail.settings.basic",
+                    "https://www.googleapis.com/auth/gmail.settings.sharing",
+                ]
+            )
         normalized = sa_value.strip()
         if normalized.startswith("{"):
             sa_info = json.loads(normalized)
@@ -477,13 +485,13 @@ class GmailApiEmailClient:
                     scopes=scopes,
                     subject=sender_user,
                 )
-        self._services[sender_user] = build(
+        self._services[cache_key] = build(
             "gmail",
             "v1",
             credentials=creds,
             cache_discovery=False,
         )
-        return self._services[sender_user]
+        return self._services[cache_key]
 
     def _build_message(
         self,
@@ -524,13 +532,25 @@ class GmailApiEmailClient:
     ) -> None:
         try:
             sender_user = self._resolve_sender_user(impersonate_user)
-            service = self._get_service(sender_user)
+            service = self._get_service(sender_user, include_settings_scopes=False)
             if preferred_from_email:
-                self._ensure_send_as_default(
-                    service=service,
-                    sender_user=sender_user,
-                    preferred_from_email=preferred_from_email,
-                )
+                try:
+                    settings_service = self._get_service(
+                        sender_user,
+                        include_settings_scopes=True,
+                    )
+                    self._ensure_send_as_default(
+                        service=settings_service,
+                        sender_user=sender_user,
+                        preferred_from_email=preferred_from_email,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "GMAIL_SENDAS_SERVICE_UNAVAILABLE sender_user=%s preferred=%s error=%s",
+                        sender_user,
+                        preferred_from_email.strip().lower(),
+                        exc,
+                    )
             logger.info("GMAIL_SEND sender_user=%s", sender_user)
             # Use explicit delegated user mailbox to avoid provider-side default sender rewrites.
             service.users().messages().send(

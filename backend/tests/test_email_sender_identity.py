@@ -67,13 +67,60 @@ def test_send_uses_explicit_sender_user_mailbox(monkeypatch):
         def users(self):
             return FakeUsersApi()
 
-    monkeypatch.setattr(client, "_get_service", lambda _impersonate_user=None: FakeService())
+    monkeypatch.setattr(
+        client,
+        "_get_service",
+        lambda _impersonate_user=None, include_settings_scopes=False: FakeService(),
+    )
 
     client._send({"raw": "abc"}, impersonate_user="noreply@jualuma.com")
 
     assert captured["userId"] == "noreply@jualuma.com"
     assert captured["raw"] == "abc"
     assert captured["executed"] == "true"
+
+
+def test_send_tolerates_settings_scope_failures_for_alias_enforcement(monkeypatch):
+    client = GmailApiEmailClient()
+    captured: dict[str, object] = {"settings_scope_attempted": False}
+
+    class FakeSendRequest:
+        def execute(self):
+            captured["executed"] = True
+            return {"id": "msg_456"}
+
+    class FakeMessagesApi:
+        def send(self, userId: str, body: dict):
+            captured["userId"] = userId
+            captured["raw"] = body["raw"]
+            return FakeSendRequest()
+
+    class FakeUsersApi:
+        def messages(self):
+            return FakeMessagesApi()
+
+    class FakeSendService:
+        def users(self):
+            return FakeUsersApi()
+
+    def fake_get_service(_impersonate_user=None, include_settings_scopes=False):
+        if include_settings_scopes:
+            captured["settings_scope_attempted"] = True
+            raise RuntimeError("invalid_scope")
+        return FakeSendService()
+
+    monkeypatch.setattr(client, "_get_service", fake_get_service)
+
+    client._send(
+        {"raw": "def"},
+        impersonate_user="hello@jualuma.com",
+        preferred_from_email="noreply@jualuma.com",
+    )
+
+    assert captured["settings_scope_attempted"] is True
+    assert captured["userId"] == "hello@jualuma.com"
+    assert captured["raw"] == "def"
+    assert captured["executed"] is True
 
 
 def test_ensure_send_as_default_creates_missing_alias_and_sets_default():
