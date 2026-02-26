@@ -1,5 +1,6 @@
 import base64
 import logging
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any
@@ -374,8 +375,11 @@ class GmailApiEmailClient:
 
         import google.auth
         from google.auth import impersonated_credentials
+        from google.auth.transport.requests import Request
+        from google.oauth2 import credentials as oauth2_credentials
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
+        import requests
 
         sa_value = settings.google_application_credentials or os.environ.get(
             "GOOGLE_APPLICATION_CREDENTIALS"
@@ -396,7 +400,8 @@ class GmailApiEmailClient:
             )
         else:
             if normalized.endswith(".gserviceaccount.com") and "@" in normalized:
-                # Keyless path: use ADC to impersonate a DWD-enabled service account.
+                # Keyless path: mint a domain-wide delegated access token with explicit subject.
+                # This avoids provider-side sender fallback when the subject is not bound correctly.
                 env_backup = os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
                 try:
                     source_creds, _ = google.auth.default(
@@ -405,13 +410,64 @@ class GmailApiEmailClient:
                 finally:
                     if env_backup is not None:
                         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = env_backup
-                creds = impersonated_credentials.Credentials(
-                    source_credentials=source_creds,
-                    target_principal=normalized,
-                    target_scopes=scopes,
-                    subject=sender_user,
-                    lifetime=3600,
-                )
+
+                try:
+                    if not source_creds.valid:
+                        source_creds.refresh(Request())
+
+                    now = int(time.time())
+                    jwt_payload = {
+                        "iss": normalized,
+                        "scope": " ".join(scopes),
+                        "aud": "https://oauth2.googleapis.com/token",
+                        "exp": now + 3600,
+                        "iat": now,
+                        "sub": sender_user,
+                    }
+                    sign_resp = requests.post(
+                        f"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{normalized}:signJwt",
+                        headers={
+                            "Authorization": f"Bearer {source_creds.token}",
+                            "Content-Type": "application/json",
+                        },
+                        json={"payload": json.dumps(jwt_payload)},
+                        timeout=20,
+                    )
+                    sign_resp.raise_for_status()
+                    signed_jwt = sign_resp.json().get("signedJwt")
+                    if not signed_jwt:
+                        raise RuntimeError("IAM signJwt response missing signedJwt.")
+
+                    token_resp = requests.post(
+                        "https://oauth2.googleapis.com/token",
+                        data={
+                            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                            "assertion": signed_jwt,
+                        },
+                        timeout=20,
+                    )
+                    token_resp.raise_for_status()
+                    access_token = token_resp.json().get("access_token")
+                    if not access_token:
+                        raise RuntimeError("OAuth token exchange missing access_token.")
+
+                    creds = oauth2_credentials.Credentials(token=access_token)
+                    # Token is static; do not cache this service across sends.
+                    return build("gmail", "v1", credentials=creds, cache_discovery=False)
+                except Exception as token_exc:
+                    logger.warning(
+                        "Keyless delegated token exchange failed for sender_user=%s; "
+                        "falling back to impersonated_credentials subject flow: %s",
+                        sender_user,
+                        token_exc,
+                    )
+                    creds = impersonated_credentials.Credentials(
+                        source_credentials=source_creds,
+                        target_principal=normalized,
+                        target_scopes=scopes,
+                        subject=sender_user,
+                        lifetime=3600,
+                    )
             else:
                 creds = service_account.Credentials.from_service_account_file(
                     normalized,
