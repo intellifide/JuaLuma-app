@@ -73,7 +73,7 @@ vi.mock('../../services/eventTracking', () => ({
 }))
 
 describe('PlanSelection badge visibility', () => {
-  it('renders POPULAR badge in a card with overflow-visible to prevent clipping', async () => {
+  it('renders POPULAR badge in a card with enforced visible overflow to prevent clipping', async () => {
     render(
       <MemoryRouter initialEntries={['/plan-selection']}>
         <Routes>
@@ -87,5 +87,6 @@ describe('PlanSelection badge visibility', () => {
 
     expect(card).not.toBeNull()
     expect(card).toHaveClass('overflow-visible')
+    expect(card).toHaveStyle({ overflow: 'visible' })
   })
 })
