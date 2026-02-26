@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -30,8 +30,10 @@ import { Modal } from '../components/ui/Modal';
 import Switch from '../components/ui/Switch';
 import { InfoPopover } from '../components/ui/InfoPopover';
 import { FeaturePreview } from '../components/ui/FeaturePreview';
+import { GlassCard } from '../components/ui/GlassCard';
 import { householdService } from '../services/householdService';
 import { eventTracking, SignupFunnelEvent } from '../services/eventTracking';
+import type { DataPoint } from '../services/analytics';
 import { formatDateParam, formatTimeframeLabel, getTransactionDateRange } from '../utils/dateRanges';
 import { loadDashboardPreferences, saveDashboardPreferences, type InsightsPeriod } from '../utils/dashboardPreferences';
 import { getAccountPrimaryCategory, getCategoryLabel, type PrimaryAccountCategory } from '../utils/accountCategories';
@@ -97,6 +99,117 @@ const normalizePlan = (value?: string | null): PlanTier | null => {
   return null
 }
 
+type MiniTrendChartProps = {
+  primarySeries: DataPoint[]
+  secondarySeries?: DataPoint[]
+  primaryColor: string
+  secondaryColor?: string
+  className?: string
+  emptyLabel?: string
+}
+
+const buildSparklinePath = (
+  series: DataPoint[],
+  width: number,
+  height: number,
+  minValue: number,
+  maxValue: number,
+) => {
+  if (series.length === 0) return { linePath: '', areaPath: '' }
+
+  const paddingX = 6
+  const paddingY = 6
+  const range = maxValue - minValue || 1
+  const denominator = Math.max(series.length - 1, 1)
+  const points = series.map((point, index) => {
+    const x = paddingX + (index / denominator) * (width - paddingX * 2)
+    const y = height - paddingY - ((point.value - minValue) / range) * (height - paddingY * 2)
+    return { x, y }
+  })
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(' ')
+
+  const firstPoint = points[0]
+  const lastPoint = points[points.length - 1]
+  const areaPath = `${linePath} L ${lastPoint.x.toFixed(2)} ${(height - paddingY).toFixed(2)} L ${firstPoint.x.toFixed(2)} ${(height - paddingY).toFixed(2)} Z`
+
+  return { linePath, areaPath }
+}
+
+const MiniTrendChart: React.FC<MiniTrendChartProps> = ({
+  primarySeries,
+  secondarySeries,
+  primaryColor,
+  secondaryColor,
+  className = '',
+  emptyLabel = 'No trend data for this period',
+}) => {
+  const width = 320
+  const height = 78
+  const safePrimary = primarySeries?.filter((point) => Number.isFinite(point.value)) ?? []
+  const safeSecondary = secondarySeries?.filter((point) => Number.isFinite(point.value)) ?? []
+  const hasData = safePrimary.length > 1 || safeSecondary.length > 1
+
+  const { minValue, maxValue } = useMemo(() => {
+    const values = [...safePrimary, ...safeSecondary].map((point) => point.value)
+    if (values.length === 0) {
+      return { minValue: -1, maxValue: 1 }
+    }
+    let min = Math.min(...values)
+    let max = Math.max(...values)
+    if (min === max) {
+      min -= 1
+      max += 1
+    }
+    return { minValue: min, maxValue: max }
+  }, [safePrimary, safeSecondary])
+
+  const primaryPath = useMemo(
+    () => buildSparklinePath(safePrimary, width, height, minValue, maxValue),
+    [safePrimary, minValue, maxValue],
+  )
+  const secondaryPath = useMemo(
+    () => buildSparklinePath(safeSecondary, width, height, minValue, maxValue),
+    [safeSecondary, minValue, maxValue],
+  )
+
+  if (!hasData) {
+    return (
+      <div className={`mini-trend-chart ${className}`} aria-hidden="true">
+        <div className="mini-trend-empty-line">
+          <span className="mini-trend-empty-label">{emptyLabel}</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`mini-trend-chart ${className}`} aria-hidden="true">
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="presentation">
+        {primaryPath.areaPath && <path d={primaryPath.areaPath} fill={primaryColor} fillOpacity={0.16} />}
+        {secondaryPath.areaPath && (
+          <path d={secondaryPath.areaPath} fill={secondaryColor ?? 'rgba(255, 255, 255, 0.18)'} fillOpacity={0.1} />
+        )}
+        {primaryPath.linePath && (
+          <path d={primaryPath.linePath} fill="none" stroke={primaryColor} strokeWidth={2.4} strokeLinecap="round" />
+        )}
+        {secondaryPath.linePath && (
+          <path
+            d={secondaryPath.linePath}
+            fill="none"
+            stroke={secondaryColor ?? 'rgba(255, 255, 255, 0.6)'}
+            strokeWidth={2.1}
+            strokeLinecap="round"
+            strokeOpacity={0.95}
+          />
+        )}
+      </svg>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { profile, user } = useAuth();
   const timeZone = useUserTimeZone();
@@ -118,6 +231,13 @@ export default function Dashboard() {
   const familyPreviewTier = hasHouseholdAccess ? 'ultimate' : undefined;
   const uid = user?.uid ?? profile?.uid ?? null;
   const savedDashboardPreferences = useMemo(() => loadDashboardPreferences(uid), [uid]);
+  const dashboardName = useMemo(() => {
+    const firstName = profile?.first_name?.trim()
+    if (firstName) return firstName
+    const username = profile?.username?.trim()
+    if (username) return username
+    return 'User'
+  }, [profile?.first_name, profile?.username])
   const [insightsPeriod, setInsightsPeriod] = useState<InsightsPeriod>(
     savedDashboardPreferences.insightsPeriod,
   );
@@ -164,7 +284,7 @@ export default function Dashboard() {
   const { data: budgetStatus, loading: budgetStatusLoading } = useBudgetStatus(dashboardScope);
   const toast = useToast();
 
-  
+
 
 
   // Invite Member State
@@ -224,8 +344,8 @@ export default function Dashboard() {
     if (!inviteEmail) return;
     setSendingInvite(true);
     try {
-      await householdService.inviteMember({ 
-        email: inviteEmail, 
+      await householdService.inviteMember({
+        email: inviteEmail,
         is_minor: inviteIsMinor,
         can_view_household: inviteCanViewHousehold
       });
@@ -235,7 +355,7 @@ export default function Dashboard() {
       setInviteIsMinor(false);
       setInviteCanViewHousehold(true);
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail 
+      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
         || (err instanceof Error ? err.message : "Failed to send invite.");
       toast.show(message, "error");
     } finally {
@@ -642,6 +762,18 @@ export default function Dashboard() {
     : netWorthTotal;
   const netWorthStart = netWorthSeries.length ? netWorthSeries[0].value : null;
   const netWorthChange = netWorthStart !== null ? netWorthCurrent - netWorthStart : null;
+  const hasNetWorthData =
+    netWorthSeries.length > 1 ||
+    Math.abs(assetsTotal) > 0 ||
+    Math.abs(liabilitiesTotal) > 0 ||
+    Math.abs(netWorthCurrent) > 0;
+  const hasCashFlowTrendData =
+    (insightsCashFlowData?.income?.length ?? 0) > 1 ||
+    (insightsCashFlowData?.expenses?.length ?? 0) > 1;
+  const hasCashFlowData =
+    hasCashFlowTrendData ||
+    Math.abs(insightsCashFlowStats.income) > 0 ||
+    Math.abs(insightsCashFlowStats.expense) > 0;
 
   const linkedAccountCategories = useMemo(() => {
     const counts = new Map<PrimaryAccountCategory, number>();
@@ -653,10 +785,16 @@ export default function Dashboard() {
   }, [accounts]);
 
   return (
-    <section className="container mx-auto py-10 px-4 space-y-8">
+    <section
+      className="container mx-auto py-6 md:py-8 px-3 md:px-4 space-y-6 md:space-y-8"
+      data-star-click-block="true"
+    >
+      <div className="dashboard-intro">
+        <h1 className="dashboard-greeting">Good Morning, {dashboardName}</h1>
+      </div>
 
       {/* Insights Period Controls */}
-      <div className="glass-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="glass-panel dashboard-insights-panel mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="timeframe-controls">
           <div className="section-timeframe-wrapper">
             <span className="section-timeframe-label">Insights Period:</span>
@@ -673,7 +811,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
+
         {/* Scope Toggle & Invite */}
         <div className="flex items-center gap-4">
           {canSeeScopeToggle && (
@@ -702,9 +840,9 @@ export default function Dashboard() {
               </FeaturePreview>
             </div>
           )}
-          
+
           {profile?.plan?.toLowerCase().includes('ultimate') && (
-            <button 
+            <button
               onClick={handleInviteClick}
               className="text-xs font-medium text-primary border border-primary/30 rounded px-2 py-1.5 hover:bg-primary/10 transition-colors flex items-center gap-1"
             >
@@ -722,7 +860,7 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
           {/* Net Worth */}
-          <div className="card gap-3">
+          <GlassCard className="gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm text-text-muted">Net Worth</h3>
@@ -732,21 +870,29 @@ export default function Dashboard() {
                 Assets minus liabilities for connected accounts and manual holdings in the selected period.
               </InfoPopover>
             </div>
+            <MiniTrendChart
+              primarySeries={netWorthSeries}
+              primaryColor="rgba(144, 205, 255, 0.95)"
+              emptyLabel="No net worth trend available"
+              className="mb-1"
+            />
             <p id="net-worth-value" className="text-3xl font-bold text-primary">
-              {insightsNetWorthLoading ? '...' : formatCurrency(netWorthCurrent)}
+              {insightsNetWorthLoading ? '...' : hasNetWorthData ? formatCurrency(netWorthCurrent) : '—'}
             </p>
             <p className="text-xs text-text-muted">
-              Assets {formatCompactCurrency(assetsTotal)} • Liabilities {formatCompactCurrency(liabilitiesTotal)}
+              {hasNetWorthData
+                ? `Assets ${formatCompactCurrency(assetsTotal)} • Liabilities ${formatCompactCurrency(liabilitiesTotal)}`
+                : 'Connect accounts or add manual assets to populate net worth.'}
             </p>
-            {netWorthChange !== null && (
+            {hasNetWorthData && netWorthChange !== null && (
               <p className={`text-xs ${netWorthChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {netWorthChange >= 0 ? 'Up' : 'Down'} {formatCompactCurrency(Math.abs(netWorthChange))} in {insightsLabel}
               </p>
             )}
-          </div>
+          </GlassCard>
 
           {/* Cash Flow */}
-          <div className="card gap-3">
+          <GlassCard className="gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm text-text-muted">Cash Flow</h3>
@@ -756,16 +902,35 @@ export default function Dashboard() {
                 Inflow minus outflow during the selected period, based on categorized transactions.
               </InfoPopover>
             </div>
-            <p id="cashflow-value" className={`text-3xl font-bold ${insightsCashFlowStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {insightsCashFlowLoading ? '...' : formatCurrency(insightsCashFlowStats.net)}
+            <MiniTrendChart
+              primarySeries={insightsCashFlowData?.income ?? []}
+              secondarySeries={insightsCashFlowData?.expenses ?? []}
+              primaryColor="rgba(103, 252, 198, 0.98)"
+              secondaryColor="rgba(255, 134, 196, 0.85)"
+              emptyLabel="No cash flow trend available"
+              className="mb-1"
+            />
+            <p
+              id="cashflow-value"
+              className={`cashflow-value text-3xl font-bold ${
+                !hasCashFlowData
+                  ? 'cashflow-value-neutral'
+                  : insightsCashFlowStats.net >= 0
+                  ? 'cashflow-value-positive'
+                  : 'cashflow-value-negative'
+              }`}
+            >
+              {insightsCashFlowLoading ? '...' : hasCashFlowData ? formatCurrency(insightsCashFlowStats.net) : '—'}
             </p>
             <p className="text-xs text-text-muted">
-              In {formatCompactCurrency(insightsCashFlowStats.income)} • Out {formatCompactCurrency(insightsCashFlowStats.expense)}
+              {hasCashFlowData
+                ? `In ${formatCompactCurrency(insightsCashFlowStats.income)} • Out ${formatCompactCurrency(insightsCashFlowStats.expense)}`
+                : 'No categorized cash flow activity in this period.'}
             </p>
-          </div>
+          </GlassCard>
 
           {/* Budget Status */}
-          <div className="card gap-3">
+          <GlassCard className="gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm text-text-muted">Budget Status</h3>
@@ -790,10 +955,10 @@ export default function Dashboard() {
             ) : (
               <p className="text-sm text-text-muted">No active budgets yet.</p>
             )}
-          </div>
+          </GlassCard>
 
           {/* Linked Accounts */}
-          <div className="card gap-3">
+          <GlassCard className="gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm text-text-muted">Linked Accounts</h3>
@@ -812,12 +977,12 @@ export default function Dashboard() {
                 {linkedAccountCategories.length > 3 ? ' • +more' : ''}
               </p>
             )}
-          </div>
+          </GlassCard>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Cash Flow Pulse */}
-          <div className="card gap-4">
+          <GlassCard className="gap-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">Cash Flow Pulse</h3>
@@ -841,10 +1006,10 @@ export default function Dashboard() {
                 </p>
               </div>
             )}
-          </div>
+          </GlassCard>
 
 	          {/* Spending Health */}
-	          <div className="card gap-4">
+	          <GlassCard className="gap-4">
 	            <div className="flex items-start justify-between gap-3">
 	              <div>
 	                <h3 className="text-lg font-semibold">Spending Health</h3>
@@ -889,10 +1054,10 @@ export default function Dashboard() {
 	                </div>
 	              </div>
 	            )}
-	          </div>
+	          </GlassCard>
 
           {/* Top Money Drivers */}
-          <div className="card gap-4">
+          <GlassCard className="gap-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">Top Money Drivers</h3>
@@ -917,10 +1082,10 @@ export default function Dashboard() {
                 <p className="text-xs text-text-muted">Total spend {formatCompactCurrency(insightsTotalSpend)}</p>
               </div>
             )}
-          </div>
+          </GlassCard>
 
           {/* Upcoming Bills (Forecast) */}
-          <div className="card gap-4">
+          <GlassCard className="gap-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">Upcoming Bills (Forecast)</h3>
@@ -967,7 +1132,7 @@ export default function Dashboard() {
                 </p>
               </div>
             )}
-          </div>
+          </GlassCard>
 
           {/* Savings Progress Snapshot */}
           <div className="card gap-4">
@@ -1238,14 +1403,14 @@ export default function Dashboard() {
         title="Invite Family Member"
         footer={
           <div className="flex justify-end gap-2">
-            <button 
-              onClick={() => setInviteModalOpen(false)} 
+            <button
+              onClick={() => setInviteModalOpen(false)}
               className="btn btn-ghost text-sm"
             >
               Cancel
             </button>
-            <button 
-              onClick={sendInvite} 
+            <button
+              onClick={sendInvite}
               disabled={sendingInvite || !inviteEmail}
               className="btn btn-primary text-sm"
             >
@@ -1260,9 +1425,9 @@ export default function Dashboard() {
           </p>
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">Email Address</label>
-            <input 
-              type="email" 
-              className="form-input w-full" 
+            <input
+              type="email"
+              className="form-input w-full"
               placeholder="family@example.com"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
@@ -1270,19 +1435,19 @@ export default function Dashboard() {
             />
           </div>
           <div className="space-y-4 mt-4">
-            <Switch 
+            <Switch
               checked={inviteIsMinor}
               onChange={setInviteIsMinor}
               label="Is this member a minor?"
               description="Minors have restricted access to AI features."
             />
-            
-            <Switch 
+
+            <Switch
               checked={inviteCanViewHousehold}
               onChange={setInviteCanViewHousehold}
               label="Allow viewing finances?"
               description="Enable access to shared household metrics."
-              disabled={inviteIsMinor} 
+              disabled={inviteIsMinor}
             />
           </div>
         </div>
