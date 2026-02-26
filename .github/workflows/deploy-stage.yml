@@ -55,7 +55,19 @@ jobs:
             "firestore.googleapis.com"
           )
           for API_NAME in "${REQUIRED_APIS[@]}"; do
-            ENABLED_API="$(gcloud services list --enabled --project="${PROJECT_ID}" --filter="name:${API_NAME}" --format='value(config.name)')"
+            set +e
+            ENABLED_API="$(gcloud services list --enabled --project="${PROJECT_ID}" --filter="name:${API_NAME}" --format='value(config.name)' 2>/tmp/gcloud-services-list.err)"
+            STATUS=$?
+            set -e
+            if [[ ${STATUS} -ne 0 ]]; then
+              if grep -qiE "AUTH_PERMISSION_DENIED|Permission denied to list services" /tmp/gcloud-services-list.err; then
+                echo "::warning::Skipping API enablement check because deploy identity lacks serviceusage.services.list on ${PROJECT_ID}."
+                break
+              fi
+              cat /tmp/gcloud-services-list.err
+              echo "::error::Failed to verify enabled APIs in ${PROJECT_ID}."
+              exit "${STATUS}"
+            fi
             if [[ "${ENABLED_API}" != "${API_NAME}" ]]; then
               echo "::error::Required API ${API_NAME} is disabled in project ${PROJECT_ID}. Enable it before deploying stage."
               exit 1
