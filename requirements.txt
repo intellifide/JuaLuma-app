@@ -21,6 +21,7 @@ google-cloud-aiplatform
 google-api-python-client>=2.0.0
 google-auth-httplib2>=0.2.0
 pgvector==0.4.2
+pillow-heif>=0.16.0
 plaid-python==17.0.0
 httpx==0.28.1
 requests>=2.31.0

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -25,6 +25,7 @@ import { PlaidLinkButton } from '../components/PlaidLinkButton';
 import { useToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { api as apiClient } from '../services/api';
 import { householdService } from '../services/householdService';
 import { Household, HouseholdMember } from '../types/household';
@@ -154,7 +155,7 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
     } catch (err) {
       const errorMessage = (err as ApiError).response?.data?.detail || 'Failed to link wallet';
       toast.show(errorMessage, 'error');
-      
+
       // If limit error, redirect to billing after delay
       if (errorMessage.toLowerCase().includes('limit') || errorMessage.toLowerCase().includes('upgrade')) {
         setTimeout(() => {
@@ -191,7 +192,7 @@ const AddWalletModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess
             <label className="form-label text-sm">Blockchain Network</label>
             <Select
               variant="input"
-              value={chain} 
+              value={chain}
               onChange={(e) => setChain(e.target.value)}
             >
               {CHAIN_PRESETS.map(p => (
@@ -281,7 +282,7 @@ const AddCexModal = ({
     } catch (err) {
       const errorMessage = (err as ApiError).response?.data?.detail || 'Failed to link exchange';
       toast.show(errorMessage, 'error');
-      
+
       // If limit error, redirect to billing after delay
       if (errorMessage.toLowerCase().includes('limit') || errorMessage.toLowerCase().includes('upgrade')) {
         setTimeout(() => {
@@ -323,8 +324,7 @@ const AddCexModal = ({
           </div>
           <div>
             <label className="form-label">API Key</label>
-            <input
-              type="password"
+            <PasswordInput
               className="input font-mono text-sm"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -333,8 +333,7 @@ const AddCexModal = ({
           </div>
           <div>
             <label className="form-label">API Secret</label>
-            <input
-              type="password"
+            <PasswordInput
               className="input font-mono text-sm"
               value={apiSecret}
               onChange={(e) => setApiSecret(e.target.value)}
@@ -991,10 +990,10 @@ export const ConnectAccounts = () => {
 
   const checkAccountLimit = (accountType: 'plaid' | 'web3' | 'cex' | 'manual'): boolean => {
     if (!accountLimits) return true; // Allow if limits not loaded yet
-    
+
     const current = accountLimits.current[accountType] || 0;
     const limit = accountLimits.limits[accountType] || 0;
-    
+
     if (current >= limit) {
       const tierDisplay = accountLimits.tier_display;
       const upgradeLink = accountLimits.upgrade_url;
@@ -1005,21 +1004,21 @@ export const ConnectAccounts = () => {
         manual: 'manual',
       };
       const accountTypeLabel = accountTypeLabelMap[accountType];
-      
+
       toast.show(
         `You've reached your ${tierDisplay} plan limit of ${limit} ${accountTypeLabel} account${limit !== 1 ? 's' : ''}. ` +
         `Upgrade to add more connections.`,
         'error'
       );
-      
+
       // Optional: Navigate to upgrade page after a delay
       setTimeout(() => {
         window.location.href = upgradeLink;
       }, 3000);
-      
+
       return false;
     }
-    
+
     return true;
   };
 
@@ -1265,8 +1264,8 @@ export const ConnectAccounts = () => {
                       )}
                       <div>
                         {section.id === 'plaid' && (
-                          <PlaidLinkButton 
-                            onSuccess={handlePlaidSuccess} 
+                          <PlaidLinkButton
+                            onSuccess={handlePlaidSuccess}
                             onError={handlePlaidError}
                             onBeforeOpen={() => checkAccountLimit('plaid')}
                           />
@@ -1324,8 +1323,8 @@ export const ConnectAccounts = () => {
         {showWalletModal && (
           <AddWalletModal
             onClose={() => setShowWalletModal(false)}
-            onSuccess={() => { 
-              setShowWalletModal(false); 
+            onSuccess={() => {
+              setShowWalletModal(false);
               refetch();
               // Refresh limits
               apiClient.get<AccountLimits>('/accounts/limits')
@@ -1337,8 +1336,8 @@ export const ConnectAccounts = () => {
         {showCexModal && (
           <AddCexModal
             onClose={() => setShowCexModal(false)}
-            onSuccess={() => { 
-              setShowCexModal(false); 
+            onSuccess={() => {
+              setShowCexModal(false);
               refetch();
               // Refresh limits
               apiClient.get<AccountLimits>('/accounts/limits')
@@ -1353,8 +1352,8 @@ export const ConnectAccounts = () => {
             initialExchange={reconnectPayload.exchange}
             initialName={reconnectPayload.name}
             onClose={() => setReconnectPayload(null)}
-            onSuccess={() => { 
-              setReconnectPayload(null); 
+            onSuccess={() => {
+              setReconnectPayload(null);
               refetch();
               // Refresh limits
               apiClient.get<AccountLimits>('/accounts/limits')
@@ -1373,8 +1372,8 @@ export const ConnectAccounts = () => {
         {showManualAccountModal && (
           <AddManualAccountModal
             onClose={() => setShowManualAccountModal(false)}
-            onSuccess={() => { 
-              setShowManualAccountModal(false); 
+            onSuccess={() => {
+              setShowManualAccountModal(false);
               refetch();
               // Refresh limits
               apiClient.get<AccountLimits>('/accounts/limits')
@@ -1592,7 +1591,7 @@ export const ConnectAccounts = () => {
                         className="btn btn-primary btn-sm flex items-center gap-2"
                         disabled={syncingAccounts.size > 0}
                       >
-                        <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span> 
+                        <span className={syncingAccounts.size > 0 ? "animate-spin" : ""}>↻</span>
                         {syncingAccounts.size > 0 ? `Syncing ${syncingAccounts.size}...` : 'Sync Web3/CEX'}
                       </button>
                     </div>

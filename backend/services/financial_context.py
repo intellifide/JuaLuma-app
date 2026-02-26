@@ -9,7 +9,10 @@ enforces RLS for user-data isolation, and formats structured context for prompts
 import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
+from uuid import UUID
+from xml.etree import ElementTree
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -20,11 +23,22 @@ from backend.models import (
     Subscription,
     SupportTicket,
     Transaction,
+    UserDocument,
     get_session,
 )
 from backend.utils.rls import set_db_user_context
 
 logger = logging.getLogger(__name__)
+
+try:
+    from PIL import Image
+except ImportError:  # pragma: no cover - optional dependency
+    Image = None  # type: ignore[assignment]
+
+TEXT_PARSABLE_FILE_TYPES = {"txt", "md", "csv", "json", "xml", "rtf"}
+IMAGE_FILE_TYPES = {"png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "svg"}
+UPLOAD_CONTEXT_MAX_DOCS = 5
+UPLOAD_CONTEXT_MAX_CHARS_PER_DOC = 1800
 
 
 async def get_financial_context(
@@ -33,6 +47,7 @@ async def get_financial_context(
     db: Session | None = None,
     top_k: int = 5,
     days: int = 30,
+    attachment_ids: list[str] | None = None,
 ) -> str:
     """
     Retrieves relevant financial context for AI prompt injection.
@@ -73,18 +88,76 @@ async def get_financial_context(
         account_summary = _account_summary(db, user_id)
         support_summary = _support_summary(db, user_id)
         subscription_summary = _subscription_summary(db, user_id)
+        uploaded_file_context, upload_audit = _uploaded_documents_context(
+            db,
+            user_id,
+            attachment_ids=attachment_ids,
+        )
 
         # 4. Format combined context
-        return _format_context(
+        context_str = _format_context(
             transactions=similar_txns,
             spending_summary=spending_summary,
             account_summary=account_summary,
             support_summary=support_summary,
             subscription_summary=subscription_summary,
+            uploaded_file_context=uploaded_file_context,
         )
+        logger.info(
+            "AI_UPLOAD_CONTEXT_ASSEMBLY uid=%s docs_considered=%s docs_included=%s skip_reasons=%s",
+            user_id,
+            upload_audit["considered"],
+            upload_audit["included"],
+            upload_audit["skip_reasons"],
+        )
+        return context_str
 
     except Exception as e:
         logger.error(f"Financial context retrieval failed: {e}", exc_info=True)
+        if db is not None:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        return ""
+    finally:
+        if local_session and db is not None:
+            db.close()
+
+
+async def get_uploaded_documents_context(
+    user_id: str,
+    db: Session | None = None,
+    max_docs: int = UPLOAD_CONTEXT_MAX_DOCS,
+    max_chars_per_doc: int = UPLOAD_CONTEXT_MAX_CHARS_PER_DOC,
+    attachment_ids: list[str] | None = None,
+) -> str:
+    """Fetch only uploaded-file context for prompt injection."""
+    local_session = False
+    try:
+        if db is None:
+            session_gen = get_session()
+            db = next(session_gen)
+            local_session = True
+
+        set_db_user_context(db, user_id)
+        section, upload_audit = _uploaded_documents_context(
+            db,
+            user_id,
+            max_docs=max_docs,
+            max_chars_per_doc=max_chars_per_doc,
+            attachment_ids=attachment_ids,
+        )
+        logger.info(
+            "AI_UPLOAD_CONTEXT_ONLY uid=%s docs_considered=%s docs_included=%s skip_reasons=%s",
+            user_id,
+            upload_audit["considered"],
+            upload_audit["included"],
+            upload_audit["skip_reasons"],
+        )
+        return section
+    except Exception as exc:
+        logger.error("Uploaded documents context retrieval failed: %s", exc, exc_info=True)
         if db is not None:
             try:
                 db.rollback()
@@ -186,6 +259,7 @@ def _format_context(
     account_summary: dict[str, Any] | None = None,
     support_summary: dict[str, Any] | None = None,
     subscription_summary: dict[str, Any] | None = None,
+    uploaded_file_context: str | None = None,
 ) -> str:
     """
     Formats transaction search results and spending summary into
@@ -257,7 +331,150 @@ def _format_context(
             )
         sections.append("\n".join(lines))
 
+    if uploaded_file_context:
+        sections.append(uploaded_file_context)
+
     return "\n\n".join(sections)
+
+
+def _uploaded_documents_context(
+    db: Session,
+    user_id: str,
+    max_docs: int = UPLOAD_CONTEXT_MAX_DOCS,
+    max_chars_per_doc: int = UPLOAD_CONTEXT_MAX_CHARS_PER_DOC,
+    attachment_ids: list[str] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    normalized_attachment_ids = _normalize_attachment_ids(attachment_ids)
+
+    query = (
+        db.query(UserDocument)
+        .filter(UserDocument.uid == user_id)
+        .order_by(UserDocument.created_at.desc())
+    )
+    if normalized_attachment_ids:
+        query = query.filter(UserDocument.id.in_(normalized_attachment_ids))
+
+    docs = query.limit(max_docs).all()
+
+    lines: list[str] = []
+    skip_reasons: dict[str, int] = {}
+
+    for doc in docs:
+        excerpt, skip_reason = _document_excerpt_for_context(doc, max_chars_per_doc)
+        if skip_reason:
+            skip_reasons[skip_reason] = skip_reasons.get(skip_reason, 0) + 1
+            continue
+        if excerpt:
+            lines.append(f"- {doc.name} ({doc.file_type}): {excerpt}")
+
+    if not lines:
+        return "", {
+            "considered": len(docs),
+            "included": 0,
+            "skip_reasons": skip_reasons,
+        }
+
+    section = "## Uploaded File Context\n" + "\n".join(lines)
+    return section, {
+        "considered": len(docs),
+        "included": len(lines),
+        "skip_reasons": skip_reasons,
+    }
+
+
+def _document_excerpt_for_context(
+    doc: UserDocument, max_chars: int
+) -> tuple[str | None, str | None]:
+    path = Path(doc.file_path)
+    if not path.exists():
+        return None, "DOC_FILE_MISSING"
+
+    file_type = (doc.file_type or "").lower()
+    if file_type == "svg":
+        return _svg_excerpt_for_context(doc, path, max_chars)
+
+    if file_type in TEXT_PARSABLE_FILE_TYPES:
+        return _text_excerpt_for_context(path, max_chars)
+
+    return _binary_descriptor_for_context(doc, path, max_chars), None
+
+
+def _text_excerpt_for_context(path: Path, max_chars: int) -> tuple[str | None, str | None]:
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None, "DOC_READ_ERROR"
+
+    normalized = " ".join(content.split())
+    if not normalized:
+        return None, "DOC_EMPTY_CONTENT"
+
+    return normalized[:max_chars], None
+
+
+def _svg_excerpt_for_context(
+    doc: UserDocument, path: Path, max_chars: int
+) -> tuple[str | None, str | None]:
+    try:
+        tree = ElementTree.parse(path)
+    except (ElementTree.ParseError, OSError):
+        return _binary_descriptor_for_context(doc, path, max_chars), None
+
+    root = tree.getroot()
+    snippets: list[str] = []
+    for tag_name in ("title", "desc"):
+        node = root.find(f".//{{*}}{tag_name}")
+        if node is not None and node.text and node.text.strip():
+            snippets.append(node.text.strip())
+
+    for node in root.findall(".//{*}text"):
+        if node.text and node.text.strip():
+            snippets.append(node.text.strip())
+        if len(" ".join(snippets)) >= max_chars:
+            break
+
+    merged = " ".join(" ".join(snippets).split())
+    if merged:
+        return merged[:max_chars], None
+
+    return _binary_descriptor_for_context(doc, path, max_chars), None
+
+
+def _binary_descriptor_for_context(doc: UserDocument, path: Path, max_chars: int) -> str:
+    file_type = (doc.file_type or "").lower() or "unknown"
+    details = [
+        f"Uploaded file metadata only.",
+        f"Type: {file_type}.",
+    ]
+    if doc.size_bytes:
+        details.append(f"Size: {doc.size_bytes} bytes.")
+    if file_type in IMAGE_FILE_TYPES:
+        dimensions = _read_image_dimensions(path)
+        if dimensions:
+            details.append(f"Dimensions: {dimensions[0]}x{dimensions[1]} pixels.")
+    return " ".join(details)[:max_chars]
+
+
+def _read_image_dimensions(path: Path) -> tuple[int, int] | None:
+    if Image is None:
+        return None
+    try:
+        with Image.open(path) as img:
+            return img.size
+    except Exception:
+        return None
+
+
+def _normalize_attachment_ids(attachment_ids: list[str] | None) -> list[UUID]:
+    if not attachment_ids:
+        return []
+    normalized: list[UUID] = []
+    for raw_id in attachment_ids:
+        try:
+            normalized.append(UUID(str(raw_id)))
+        except (TypeError, ValueError):
+            continue
+    return normalized
 
 
 def _account_summary(db: Session, user_id: str) -> dict[str, Any]:

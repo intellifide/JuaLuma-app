@@ -451,10 +451,10 @@ User → POST /chat
 
 **Checkpoint 1: Quota Enforcement**
 
-- Free Tier: 5 cloud queries/day (Vertex AI Gemini 2.5 Flash)
-- Essential Tier: 75 cloud queries/day limit
-- Pro Tier: 75 cloud queries/day limit (shared with Essential Tier)
-- Ultimate Tier: 80 cloud queries/day limit
+- Free Tier: routed to `gpt-oss-120b` with token-based period metering.
+- Paid Tiers: routed to `gemini-2.5-flash` by default.
+- Paid premium exhausted: automatic fallback to `gpt-oss-120b` with explicit fallback message.
+- Quota surface: `AI usage this period` + reset date (billing-cycle anniversary anchor).
 - Hard limit: 5 requests/minute (burst protection)
 
 **Checkpoint 2: Feature Flag**

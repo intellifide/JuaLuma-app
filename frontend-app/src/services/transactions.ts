@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -157,7 +157,7 @@ export const updateTransaction = async (
     if (payload.amount !== undefined) updateData.amount = payload.amount
     if (payload.merchantName !== undefined) updateData.merchant_name = payload.merchantName
     if (payload.ts !== undefined) updateData.ts = payload.ts
-    
+
     const { data } = await api.patch(`/transactions/${id}`, updateData)
     return mapTransaction(data)
   } catch (error) {

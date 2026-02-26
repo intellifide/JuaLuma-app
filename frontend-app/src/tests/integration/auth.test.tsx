@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -63,7 +63,7 @@ describe('Auth Integration', () => {
             )
 
             fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@testmail.app' } })
-            fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'password123' } })
+            fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'password123' } })
 
             const submitButton = screen.getByRole('button', { name: /Sign In/i })
             fireEvent.click(submitButton)
@@ -83,7 +83,7 @@ describe('Auth Integration', () => {
             )
 
             fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@testmail.app' } })
-            fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'wrong' } })
+            fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'wrong' } })
 
             fireEvent.click(screen.getByRole('button', { name: /Sign In/i }))
 
@@ -109,10 +109,9 @@ describe('Auth Integration', () => {
 
             // Switches use role="switch"
             const switches = screen.getAllByRole('switch')
-            // Assuming first two are Terms and Privacy based on render order (Terms first, Privacy second)
+            // Terms and Privacy based on render order (Terms first, Privacy second)
             fireEvent.click(switches[0]) // Terms
             fireEvent.click(switches[1]) // Privacy
-            fireEvent.click(switches[2]) // Resident Cert check
 
             const submitButton = screen.getByRole('button', { name: /Create account/i })
             fireEvent.click(submitButton)

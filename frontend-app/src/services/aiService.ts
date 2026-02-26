@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -22,6 +22,10 @@ export interface AIResponse {
     quota_remaining?: number;
     quota_limit?: number;
     quota_used?: number;
+    effective_model?: string;
+    fallback_applied?: boolean;
+    fallback_reason?: string | null;
+    fallback_message?: string | null;
     web_search_used?: boolean;
     citations?: Array<{ title: string; url: string }>;
 }
@@ -39,6 +43,8 @@ export interface HistoryResponse {
 export interface QuotaStatus {
     used: number;
     limit: number;
+    usage_progress?: number;
+    usage_copy?: string;
     resets_at: string;
     tier: string;
 }
@@ -58,10 +64,14 @@ const envBase =
 const baseURL = (envBase && !envBase.includes('backend')) ? envBase : '/api';
 
 export const aiService = {
-    sendMessage: async (message: string, clientContext?: PageContext): Promise<AIResponse> => {
+    sendMessage: async (
+        message: string,
+        clientContext?: PageContext,
+        attachmentIds?: string[],
+    ): Promise<AIResponse> => {
         const response = await api.post<AIResponse>(
             '/ai/chat',
-            { message, client_context: clientContext },
+            { message, client_context: clientContext, attachment_ids: attachmentIds },
             { timeout: 30000 }
         );
         return response.data;
@@ -70,7 +80,8 @@ export const aiService = {
     sendMessageStream: async (
         message: string,
         handlers: StreamHandlers,
-        clientContext?: PageContext
+        clientContext?: PageContext,
+        attachmentIds?: string[],
     ): Promise<AIResponse> => {
         const token = await getIdToken();
         const flushMs = Math.max(0, handlers.chunkDebounceMs ?? 60);
@@ -81,7 +92,11 @@ export const aiService = {
                 'Accept': 'text/event-stream',
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
-            body: JSON.stringify({ message, client_context: clientContext }),
+            body: JSON.stringify({
+                message,
+                client_context: clientContext,
+                attachment_ids: attachmentIds,
+            }),
             signal: handlers.signal,
         });
 
@@ -130,6 +145,10 @@ export const aiService = {
                     quota_remaining?: number;
                     quota_limit?: number;
                     quota_used?: number;
+                    effective_model?: string;
+                    fallback_applied?: boolean;
+                    fallback_reason?: string | null;
+                    fallback_message?: string | null;
                     web_search_used?: boolean;
                     citations?: Array<{ title: string; url: string }>;
                     status?: 'started' | 'completed';
@@ -161,6 +180,10 @@ export const aiService = {
                         quota_remaining: parsed.quota_remaining,
                         quota_limit: parsed.quota_limit,
                         quota_used: parsed.quota_used,
+                        effective_model: parsed.effective_model,
+                        fallback_applied: parsed.fallback_applied,
+                        fallback_reason: parsed.fallback_reason,
+                        fallback_message: parsed.fallback_message,
                         web_search_used: parsed.web_search_used,
                         citations: parsed.citations ?? [],
                     };

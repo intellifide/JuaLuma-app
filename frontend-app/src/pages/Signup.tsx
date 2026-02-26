@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -20,10 +20,12 @@ import { eventTracking, SignupFunnelEvent } from '../services/eventTracking'
 import { LEGAL_AGREEMENTS } from '../constants/legal'
 import { AgreementAcceptanceInput } from '../types/legal'
 import Switch from '../components/ui/Switch'
-	import { Alert } from '../components/ui/Alert'
-	import { Check, Circle, AlertCircle } from 'lucide-react'
-	import { AnimatedBrandText } from '../components/AnimatedBrandText'
-	import { ATTRIBUTION_PRIMARY } from '../constants/branding'
+import { Alert } from '../components/ui/Alert'
+import { Check, Circle, AlertCircle } from 'lucide-react'
+import { PasswordInput } from '../components/ui/PasswordInput'
+import { AnimatedBrandText } from '../components/AnimatedBrandText'
+import { ATTRIBUTION_PRIMARY } from '../constants/branding'
+import { getMarketingSiteUrl } from '../utils/marketing'
 
 const passwordChecks = [
   { label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
@@ -49,7 +51,6 @@ export const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
-  const [acceptResident, setAcceptResident] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,16 +58,12 @@ export const Signup = () => {
     () => passwordChecks.every((check) => check.test(password)),
     [password],
   )
+  const passwordsMatch = useMemo(
+    () => confirmPassword.length > 0 && password === confirmPassword,
+    [password, confirmPassword],
+  )
 
-  // Marketing site base URL for legal docs (GCP portability: env-driven, no hardcoded origins)
-  const marketingLegalBase = useMemo(() => {
-    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    const fallback = isLocalhost
-      ? 'http://localhost:5177'
-      : 'https://jualuma-marketing-298159098975.us-central1.run.app'
-    const env = (import.meta as any).env || {}
-    return env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL || fallback
-  }, [])
+  const marketingLegalBase = useMemo(() => getMarketingSiteUrl(), [])
 
   // Track when user lands on signup page
   useEffect(() => {
@@ -89,11 +86,6 @@ export const Signup = () => {
 
     if (!acceptTerms || !acceptPrivacy) {
       setError('Please accept the Terms of Service and Privacy Policy.')
-      return
-    }
-
-    if (!acceptResident) {
-      setError('You must certify that you are a resident of the United States.')
       return
     }
 
@@ -124,11 +116,6 @@ export const Signup = () => {
         {
           agreement_key: LEGAL_AGREEMENTS.privacyPolicy.key,
           agreement_version: LEGAL_AGREEMENTS.privacyPolicy.version,
-          acceptance_method: 'clickwrap',
-        },
-        {
-          agreement_key: LEGAL_AGREEMENTS.usResidencyCertification.key,
-          agreement_version: LEGAL_AGREEMENTS.usResidencyCertification.version,
           acceptance_method: 'clickwrap',
         },
       ]
@@ -181,6 +168,14 @@ export const Signup = () => {
                   {check.label}
                 </li>
               ))}
+              <li className="flex items-center gap-2">
+                {passwordsMatch ? (
+                  <Check className="h-4 w-4 shrink-0 text-green-500" aria-hidden />
+                ) : (
+                  <Circle className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                )}
+                Passwords match
+              </li>
             </ul>
           </div>
 
@@ -247,9 +242,8 @@ export const Signup = () => {
 
               <div>
                 <label htmlFor="signup-password" className="form-label">Password</label>
-                <input
+                <PasswordInput
                   id="signup-password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input"
@@ -261,9 +255,8 @@ export const Signup = () => {
 
               <div>
                 <label htmlFor="confirm-password" className="form-label">Confirm Password</label>
-                <input
+                <PasswordInput
                   id="confirm-password"
-                  type="password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -307,11 +300,6 @@ export const Signup = () => {
                       </a>
                     </span>
                   }
-                />
-                <Switch
-                  checked={acceptResident}
-                  onChange={setAcceptResident}
-                  label="I certify that I am a resident of the United States and agree to the Terms of Service."
                 />
               </div>
 

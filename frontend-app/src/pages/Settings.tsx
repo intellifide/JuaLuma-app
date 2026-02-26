@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Intellifide, LLC.
  * Licensed under PolyForm Noncommercial License 1.0.0.
- * See "PolyForm-Noncommercial-1.0.0.txt" for full text.
+ * See "/legal/license" for full license terms.
  *
  * COMMUNITY RIGHTS:
  * - You CAN modify this code for personal use.
@@ -15,7 +15,7 @@
 // Core Purpose: Account settings page covering profile, subscription, household, and security preferences.
 // Last Updated 2026-01-26 13:00 CST
 
-import React, { useCallback, useEffect, useRef, useState, FormEvent } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   changePassword,
@@ -40,16 +40,19 @@ import type { UserProfile } from '../hooks/useAuth';
 
 import Switch from '../components/ui/Switch';
 import { Select } from '../components/ui/Select';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { TimeZonePicker } from '../components/TimeZonePicker';
 import { settingsService, NotificationPreference } from '../services/settingsService';
 import { useToast } from '../components/ui/Toast';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { digestService, DigestSettings } from '../services/digestService';
+import { createCheckoutSession } from '../services/billing';
 import { createPasskeyCredential, getPasskeyAssertion } from '../services/passkey';
 import { CopyIconButton } from '../components/ui/CopyIconButton';
 import QRCode from 'qrcode';
 import { ATTRIBUTION_PRIMARY } from '../constants/branding';
+import { getMarketingSiteUrl } from '../utils/marketing';
 
 type ProfileUpdatePayload = Partial<Pick<UserProfile, 'first_name' | 'last_name' | 'username' | 'phone_number' | 'display_name_pref' | 'time_zone'>> & {
   phone_number?: string | null;
@@ -1113,15 +1116,64 @@ export const Settings = () => {
     { id: 'about', label: 'About' },
   ];
 
-  // Marketing site base URL for legal docs (env-driven; avoid hardcoded origins).
-  const marketingLegalBase = React.useMemo(() => {
-    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    const fallback = isLocalhost
-      ? 'http://localhost:5177'
-      : 'https://jualuma-marketing-298159098975.us-central1.run.app'
-    const env = (import.meta as any).env || {}
-    return env.VITE_MARKETING_SITE_URL || env.VITE_MARKETING_URL || fallback
-  }, [])
+  const [selectedUpgradePlan, setSelectedUpgradePlan] = useState<string>('');
+
+  const upgradePlanOptions = useMemo(() => {
+    const currentPlan = (profile?.plan || 'free').toLowerCase();
+    const currentTierRank = currentPlan.includes('ultimate')
+      ? 3
+      : currentPlan.includes('pro')
+        ? 2
+        : currentPlan.includes('essential')
+          ? 1
+          : 0;
+
+    const allUpgradeTiers = [
+      { code: 'essential', label: 'Essential' , rank: 1 },
+      { code: 'pro', label: 'Pro', rank: 2 },
+      { code: 'ultimate', label: 'Ultimate', rank: 3 },
+    ];
+
+    return allUpgradeTiers.filter((plan) => plan.rank > currentTierRank);
+  }, [profile?.plan]);
+
+  useEffect(() => {
+    if (upgradePlanOptions.length === 0) {
+      setSelectedUpgradePlan('');
+      return;
+    }
+    const hasValidSelectedOption = upgradePlanOptions.some(
+      (option) => option.code === selectedUpgradePlan,
+    );
+    if (!hasValidSelectedOption) {
+      setSelectedUpgradePlan(upgradePlanOptions[0].code);
+    }
+  }, [upgradePlanOptions, selectedUpgradePlan]);
+
+  const handleUpgrade = useCallback(async () => {
+    if (!selectedUpgradePlan || !user) {
+      if (!user) {
+        alert('You must be signed in to upgrade your subscription.');
+      } else {
+        alert('Please select a plan to upgrade.');
+      }
+      return;
+    }
+
+    try {
+      const returnUrl = new URL('/settings?tab=subscription', window.location.origin);
+      const checkoutUrl = await createCheckoutSession(
+        selectedUpgradePlan,
+        returnUrl.toString()
+      );
+      window.location.assign(checkoutUrl);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Unable to start upgrade checkout.';
+      alert(message);
+    }
+  }, [selectedUpgradePlan, user]);
+
+  const marketingLegalBase = React.useMemo(() => getMarketingSiteUrl(), [])
 
   return (
     <div>
@@ -1198,29 +1250,54 @@ export const Settings = () => {
                       )}
                     </div>
                     <div className="card-footer">
-                      <button onClick={async () => {
-                        try {
-                          if (!user) {
-                            alert('You must be signed in to manage billing.');
-                            return;
-                          }
+                      <div className="flex flex-wrap items-end gap-3">
+                        <button onClick={async () => {
+                          try {
+                            if (!user) {
+                              alert('You must be signed in to manage billing.');
+                              return;
+                            }
 
-                          const response = await apiFetch('/billing/portal', {
-                            method: 'POST',
-                            body: JSON.stringify({ return_url: window.location.href })
-                          });
+                            const response = await apiFetch('/billing/portal', {
+                              method: 'POST',
+                              body: JSON.stringify({ return_url: window.location.href })
+                            });
 
-                          if (response.ok) {
-                            const data = await response.json();
-                            window.location.href = data.url;
-                          } else {
-                            alert('Failed to redirect to billing portal.');
+                            if (response.ok) {
+                              const data = await response.json();
+                              window.location.href = data.url;
+                            } else {
+                              alert('Failed to redirect to billing portal.');
+                            }
+                          } catch (e) {
+                            const message = e instanceof Error ? e.message : 'An error occurred opening the billing portal.';
+                            alert(message);
                           }
-                        } catch (e) {
-                          const message = e instanceof Error ? e.message : 'An error occurred opening the billing portal.';
-                          alert(message);
-                        }
-                      }} className="btn btn-primary">Manage Subscription</button>
+                        }} className="btn btn-primary">Manage Subscription</button>
+                        {upgradePlanOptions.length > 0 && (
+                          <>
+                            <div className="min-w-[180px]">
+                              <label htmlFor="upgrade-plan-select" className="block text-xs text-text-muted mb-1">
+                                Upgrade to
+                              </label>
+                              <Select
+                                id="upgrade-plan-select"
+                                value={selectedUpgradePlan}
+                                onChange={(e) => setSelectedUpgradePlan(e.target.value)}
+                              >
+                                {upgradePlanOptions.map((option) => (
+                                  <option key={option.code} value={option.code}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </div>
+                            <button onClick={handleUpgrade} className="btn btn-secondary">
+                              Upgrade Subscription
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1948,8 +2025,7 @@ export const Settings = () => {
 
 	                    <div className="mb-4">
 	                      <label htmlFor="current-password" className="block text-sm font-medium text-text-secondary mb-1">Current Password</label>
-	                      <input
-                        type="password"
+	                      <PasswordInput
                         id="current-password"
                         className="form-input w-full"
                         value={currentPassword}
@@ -1960,8 +2036,7 @@ export const Settings = () => {
                     </div>
                     <div className="mb-4">
                       <label htmlFor="new-password" className="block text-sm font-medium text-text-secondary mb-1">New Password</label>
-                      <input
-                        type="password"
+                      <PasswordInput
                         id="new-password"
                         className="form-input w-full"
                         value={newPassword}
@@ -1973,8 +2048,7 @@ export const Settings = () => {
                     </div>
                     <div className="mb-4">
                       <label htmlFor="confirm-new-password" className="block text-sm font-medium text-text-secondary mb-1">Confirm New Password</label>
-                      <input
-                        type="password"
+                      <PasswordInput
                         id="confirm-new-password"
                         className="form-input w-full"
                         value={confirmPassword}

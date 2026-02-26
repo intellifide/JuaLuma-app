@@ -8,12 +8,20 @@ from urllib.parse import urlparse, urlunparse
 
 import stripe
 from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.core import settings
 from backend.core.constants import UserStatus
-from backend.models import AISettings, Payment, PendingSignup, Subscription, User
+from backend.models import (
+    AISettings,
+    Payment,
+    PendingSignup,
+    Subscription,
+    TrialRedemption,
+    User,
+)
 from backend.schemas.legal import AgreementAcceptancePayload
 from backend.services.email import get_email_client
 from backend.services.legal import record_agreement_acceptances
@@ -64,9 +72,10 @@ STRIPE_PRICE_TO_TIER.update(
 # Keeping this for legacy compatibility or reverse lookups if needed, but preferable to use above.
 STRIPE_PRICE_TO_PLAN = STRIPE_PRICE_TO_TIER
 
-# Trial period configuration (in days) for each plan type
-# Pro and Ultimate tiers include a 14-day free trial
+# Trial period configuration (in days) for each plan type.
+# Free users upgrading to any paid tier are eligible unless blocked by prior redemption.
 TRIAL_PERIOD_DAYS = {
+    "essential_monthly": 14,
     "pro_monthly": 14,
     "pro_annual": 14,
     "ultimate_monthly": 14,
@@ -74,6 +83,24 @@ TRIAL_PERIOD_DAYS = {
 }
 
 GRACE_PERIOD_DAYS = 3
+
+# Official Stripe test card numbers (last4 values) are excluded from anti-gaming checks.
+STRIPE_TEST_CARD_LAST4_EXEMPTIONS = {
+    "4242",
+    "0002",
+    "9995",
+    "9987",
+    "9979",
+    "9969",
+    "0069",
+    "0127",
+    "0341",
+    "3220",
+    "3155",
+    "3055",
+    "3063",
+    "0077",
+}
 
 
 def _append_checkout_session_id_param(return_url: str) -> str:
@@ -99,6 +126,241 @@ def _normalize_plan_type(plan_type: str) -> str:
     if normalized == "essential":
         return "essential_monthly"
     return normalized
+
+
+def _normalize_email_for_trial(email: str | None) -> str:
+    return (email or "").strip().lower()
+
+
+def _is_test_card_last4(last4: str | None) -> bool:
+    return (last4 or "").strip() in STRIPE_TEST_CARD_LAST4_EXEMPTIONS
+
+
+def _extract_card_signal(payment_method: Any) -> tuple[str | None, str | None]:
+    if not payment_method:
+        return None, None
+
+    card = getattr(payment_method, "card", None)
+    if card is None and isinstance(payment_method, dict):
+        card = payment_method.get("card")
+    if not card:
+        return None, None
+
+    if isinstance(card, dict):
+        last4 = (card.get("last4") or "").strip() or None
+        fingerprint = (card.get("fingerprint") or "").strip() or None
+        return last4, fingerprint
+
+    last4 = (getattr(card, "last4", None) or "").strip() or None
+    fingerprint = (getattr(card, "fingerprint", None) or "").strip() or None
+    return last4, fingerprint
+
+
+def _find_prior_trial_redemption(
+    db: Session,
+    *,
+    email_normalized: str,
+    card_last4: str | None = None,
+    card_fingerprint: str | None = None,
+    exclude_subscription_id: str | None = None,
+) -> TrialRedemption | None:
+    if not email_normalized and not card_last4 and not card_fingerprint:
+        return None
+
+    filters = []
+    if email_normalized:
+        filters.append(TrialRedemption.email_normalized == email_normalized)
+    if card_fingerprint:
+        filters.append(TrialRedemption.card_fingerprint == card_fingerprint)
+    if card_last4 and not _is_test_card_last4(card_last4):
+        filters.append(TrialRedemption.card_last4 == card_last4)
+
+    if not filters:
+        return None
+
+    query = db.query(TrialRedemption).filter(or_(*filters))
+    if exclude_subscription_id:
+        query = query.filter(
+            or_(
+                TrialRedemption.stripe_subscription_id.is_(None),
+                TrialRedemption.stripe_subscription_id != exclude_subscription_id,
+            )
+        )
+    return query.order_by(TrialRedemption.created_at.desc()).first()
+
+
+def _resolve_trial_days_for_checkout(
+    db: Session,
+    *,
+    plan_type: str,
+    email: str,
+) -> int | None:
+    trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
+    if not trial_days:
+        return None
+
+    email_normalized = _normalize_email_for_trial(email)
+    prior = _find_prior_trial_redemption(db, email_normalized=email_normalized)
+    if prior:
+        logger.info(
+            "Skipping free trial due to prior redemption.",
+            extra={"email_normalized": email_normalized, "plan_type": plan_type},
+        )
+        return None
+
+    return trial_days
+
+
+def _record_trial_redemption(
+    db: Session,
+    *,
+    uid: str | None,
+    email: str | None,
+    plan_code: str | None,
+    stripe_customer_id: str | None,
+    stripe_subscription_id: str | None,
+    card_last4: str | None,
+    card_fingerprint: str | None,
+    livemode: bool | None,
+) -> None:
+    email_normalized = _normalize_email_for_trial(email)
+    if not email_normalized:
+        return
+
+    # Never let Stripe official test cards affect anti-gaming eligibility.
+    if _is_test_card_last4(card_last4):
+        logger.info(
+            "Skipping trial redemption signal for official Stripe test card.",
+            extra={"stripe_subscription_id": stripe_subscription_id, "card_last4": card_last4},
+        )
+        return
+
+    # Keep test-mode checkouts from polluting production anti-gaming signals.
+    if livemode is False:
+        logger.info(
+            "Skipping trial redemption signal for Stripe test-mode subscription.",
+            extra={"stripe_subscription_id": stripe_subscription_id},
+        )
+        return
+
+    existing = None
+    if stripe_subscription_id:
+        existing = (
+            db.query(TrialRedemption)
+            .filter(TrialRedemption.stripe_subscription_id == stripe_subscription_id)
+            .first()
+        )
+    if existing:
+        return
+
+    db.add(
+        TrialRedemption(
+            uid=uid,
+            email_normalized=email_normalized,
+            card_last4=card_last4,
+            card_fingerprint=card_fingerprint,
+            stripe_customer_id=stripe_customer_id,
+            stripe_subscription_id=stripe_subscription_id,
+            plan_code=plan_code,
+        )
+    )
+    db.commit()
+
+
+def _obj_get(source: Any, key: str) -> Any:
+    if isinstance(source, dict):
+        return source.get(key)
+    return getattr(source, key, None)
+
+
+def _apply_trial_policy_after_checkout(
+    db: Session,
+    *,
+    session: dict[str, Any],
+    uid: str,
+    plan_type: str | None,
+) -> None:
+    subscription_id = session.get("subscription")
+    if not subscription_id or not settings.stripe_secret_key:
+        return
+
+    try:
+        subscription_obj = stripe.Subscription.retrieve(
+            subscription_id, expand=["default_payment_method"]
+        )
+    except Exception as exc:
+        logger.warning(
+            "Webhook: failed to retrieve subscription for trial policy evaluation.",
+            extra={"uid": uid, "subscription_id": subscription_id},
+            exc_info=exc,
+        )
+        return
+
+    trial_start = _obj_get(subscription_obj, "trial_start")
+    trial_end = _obj_get(subscription_obj, "trial_end")
+    if not trial_start or not trial_end or int(trial_end) <= int(trial_start):
+        return
+
+    customer_id = session.get("customer")
+    email = _get_user_email(db, uid) or ((session.get("customer_details") or {}).get("email"))
+    email_normalized = _normalize_email_for_trial(email)
+    livemode = _obj_get(subscription_obj, "livemode")
+
+    payment_method = _obj_get(subscription_obj, "default_payment_method")
+    if isinstance(payment_method, str) and settings.stripe_secret_key:
+        try:
+            payment_method = stripe.PaymentMethod.retrieve(payment_method)
+        except Exception as exc:
+            logger.warning(
+                "Webhook: unable to retrieve default payment method for trial policy.",
+                extra={"uid": uid, "subscription_id": subscription_id},
+                exc_info=exc,
+            )
+            payment_method = None
+
+    card_last4, card_fingerprint = _extract_card_signal(payment_method)
+    prior = _find_prior_trial_redemption(
+        db,
+        email_normalized=email_normalized,
+        card_last4=card_last4,
+        card_fingerprint=card_fingerprint,
+        exclude_subscription_id=subscription_id,
+    )
+
+    if prior and not _is_test_card_last4(card_last4):
+        try:
+            stripe.Subscription.modify(
+                subscription_id,
+                trial_end="now",
+                proration_behavior="none",
+            )
+            logger.info(
+                "Webhook: revoked duplicate free trial after checkout.",
+                extra={
+                    "uid": uid,
+                    "subscription_id": subscription_id,
+                    "prior_trial_id": str(prior.id),
+                },
+            )
+        except Exception as exc:
+            logger.error(
+                "Webhook: failed to revoke duplicate trial.",
+                extra={"uid": uid, "subscription_id": subscription_id},
+                exc_info=exc,
+            )
+        return
+
+    _record_trial_redemption(
+        db,
+        uid=uid,
+        email=email,
+        plan_code=plan_type,
+        stripe_customer_id=customer_id,
+        stripe_subscription_id=subscription_id,
+        card_last4=card_last4,
+        card_fingerprint=card_fingerprint,
+        livemode=livemode,
+    )
 
 
 def _require_billing_email(email: str | None) -> str:
@@ -297,6 +559,7 @@ def _ensure_user_from_pending(db: Session, uid: str) -> User | None:
 
 
 def create_checkout_session_for_pending(
+    db: Session,
     uid: str,
     email: str,
     plan_type: str,
@@ -323,7 +586,11 @@ def create_checkout_session_for_pending(
         session_kwargs["customer_email"] = resolved_email
 
     subscription_data = {"metadata": {"uid": uid, "plan": plan_type}}
-    trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
+    trial_days = _resolve_trial_days_for_checkout(
+        db,
+        plan_type=plan_type,
+        email=resolved_email,
+    )
     if trial_days:
         subscription_data["trial_period_days"] = trial_days
         subscription_data["trial_settings"] = {
@@ -413,10 +680,7 @@ def create_stripe_customer(
 def create_checkout_session(
     db: Session, uid: str, plan_type: str, return_url: str
 ) -> str:
-    """
-    Creates a Stripe Checkout Session for a subscription.
-    Pro and Ultimate tiers include a 14-day free trial.
-    """
+    """Creates a Stripe Checkout Session for a subscription."""
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="The payment system is currently unavailable.")
 
@@ -434,9 +698,13 @@ def create_checkout_session(
         customer_name = _full_name(user.first_name, user.last_name)
         customer_id = create_stripe_customer(db, uid, resolved_email, customer_name=customer_name)
 
-        # Build subscription_data with trial period if applicable
+        # Build subscription_data with trial period when eligible.
         subscription_data = {"metadata": {"uid": uid, "plan": plan_type}}
-        trial_days = TRIAL_PERIOD_DAYS.get(plan_type)
+        trial_days = _resolve_trial_days_for_checkout(
+            db,
+            plan_type=plan_type,
+            email=resolved_email,
+        )
         if trial_days:
             subscription_data["trial_period_days"] = trial_days
             subscription_data["trial_settings"] = {
@@ -1050,6 +1318,13 @@ async def _handle_checkout_session_completed(session: dict[str, Any], db: Sessio
             extra={"uid": uid, "customer_id": customer_id},
             exc_info=exc,
         )
+
+    _apply_trial_policy_after_checkout(
+        db,
+        session=session,
+        uid=uid,
+        plan_type=plan_type,
+    )
 
     # If we have a subscription ID in the session, we can fetch details,
     # but the subscription.updated webhook will likely follow and handle details (renew_at, etc).

@@ -1,0 +1,18 @@
+name: Branch Case Policy
+
+on:
+  create:
+  push:
+  pull_request:
+
+jobs:
+  check-branch-case:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Ensure no case-only duplicate branch names exist
+        env:
+          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: bash scripts/check-branch-case-collision.sh
