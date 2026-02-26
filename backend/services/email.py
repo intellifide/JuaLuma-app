@@ -1,5 +1,6 @@
 import base64
 import logging
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any
@@ -346,9 +347,8 @@ class GmailApiEmailClient:
 
     def __init__(self):
         self.default_impersonate_user = settings.gmail_impersonate_user
-        self.otp_impersonate_user = (
-            settings.gmail_otp_impersonate_user or self.default_impersonate_user
-        )
+        # Gmail aliases are attached to the primary mailbox; send as alias via primary user.
+        self.otp_impersonate_user = self.default_impersonate_user
         self.friendly_from_name = FRIENDLY_FROM_NAME
         self.friendly_from_email = settings.mail_contact_hello or FRIENDLY_FROM_EMAIL
         self.friendly_reply_to = self.friendly_from_email
@@ -357,20 +357,33 @@ class GmailApiEmailClient:
         self.support_reply_to = self.support_from_email
         self.otp_from_name = OTP_FROM_NAME
         self.otp_from_email = OTP_FROM_EMAIL
-        self.otp_reply_to = self.support_from_email
-        self._services: dict[str, Any] = {}
+        self.otp_reply_to = self.otp_from_email
+        self._services: dict[tuple[str, bool], Any] = {}
 
-    def _get_service(self, impersonate_user: str | None = None):
-        sender_user = (impersonate_user or self.default_impersonate_user).strip()
-        if sender_user in self._services:
-            return self._services[sender_user]
+    def _resolve_sender_user(self, impersonate_user: str | None = None) -> str:
+        """Resolve effective delegated mailbox for Gmail API calls."""
+        candidate = impersonate_user or self.default_impersonate_user
+        return candidate.strip()
+
+    def _get_service(
+        self,
+        impersonate_user: str | None = None,
+        include_settings_scopes: bool = False,
+    ):
+        sender_user = self._resolve_sender_user(impersonate_user)
+        cache_key = (sender_user, include_settings_scopes)
+        if cache_key in self._services:
+            return self._services[cache_key]
         import json
         import os
 
         import google.auth
         from google.auth import impersonated_credentials
+        from google.auth.transport.requests import Request
+        from google.oauth2 import credentials as oauth2_credentials
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
+        import requests
 
         sa_value = settings.google_application_credentials or os.environ.get(
             "GOOGLE_APPLICATION_CREDENTIALS"
@@ -381,6 +394,13 @@ class GmailApiEmailClient:
                 "Cannot initialize Gmail API client."
             )
         scopes = ["https://www.googleapis.com/auth/gmail.send"]
+        if include_settings_scopes:
+            scopes.extend(
+                [
+                    "https://www.googleapis.com/auth/gmail.settings.basic",
+                    "https://www.googleapis.com/auth/gmail.settings.sharing",
+                ]
+            )
         normalized = sa_value.strip()
         if normalized.startswith("{"):
             sa_info = json.loads(normalized)
@@ -391,7 +411,8 @@ class GmailApiEmailClient:
             )
         else:
             if normalized.endswith(".gserviceaccount.com") and "@" in normalized:
-                # Keyless path: use ADC to impersonate a DWD-enabled service account.
+                # Keyless path: mint a domain-wide delegated access token with explicit subject.
+                # This avoids provider-side sender fallback when the subject is not bound correctly.
                 env_backup = os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
                 try:
                     source_creds, _ = google.auth.default(
@@ -400,26 +421,77 @@ class GmailApiEmailClient:
                 finally:
                     if env_backup is not None:
                         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = env_backup
-                creds = impersonated_credentials.Credentials(
-                    source_credentials=source_creds,
-                    target_principal=normalized,
-                    target_scopes=scopes,
-                    subject=sender_user,
-                    lifetime=3600,
-                )
+
+                try:
+                    if not source_creds.valid:
+                        source_creds.refresh(Request())
+
+                    now = int(time.time())
+                    jwt_payload = {
+                        "iss": normalized,
+                        "scope": " ".join(scopes),
+                        "aud": "https://oauth2.googleapis.com/token",
+                        "exp": now + 3600,
+                        "iat": now,
+                        "sub": sender_user,
+                    }
+                    sign_resp = requests.post(
+                        f"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{normalized}:signJwt",
+                        headers={
+                            "Authorization": f"Bearer {source_creds.token}",
+                            "Content-Type": "application/json",
+                        },
+                        json={"payload": json.dumps(jwt_payload)},
+                        timeout=20,
+                    )
+                    sign_resp.raise_for_status()
+                    signed_jwt = sign_resp.json().get("signedJwt")
+                    if not signed_jwt:
+                        raise RuntimeError("IAM signJwt response missing signedJwt.")
+
+                    token_resp = requests.post(
+                        "https://oauth2.googleapis.com/token",
+                        data={
+                            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                            "assertion": signed_jwt,
+                        },
+                        timeout=20,
+                    )
+                    token_resp.raise_for_status()
+                    access_token = token_resp.json().get("access_token")
+                    if not access_token:
+                        raise RuntimeError("OAuth token exchange missing access_token.")
+
+                    creds = oauth2_credentials.Credentials(token=access_token)
+                    # Token is static; do not cache this service across sends.
+                    return build("gmail", "v1", credentials=creds, cache_discovery=False)
+                except Exception as token_exc:
+                    logger.warning(
+                        "Keyless delegated token exchange failed for sender_user=%s; "
+                        "falling back to impersonated_credentials subject flow: %s",
+                        sender_user,
+                        token_exc,
+                    )
+                    creds = impersonated_credentials.Credentials(
+                        source_credentials=source_creds,
+                        target_principal=normalized,
+                        target_scopes=scopes,
+                        subject=sender_user,
+                        lifetime=3600,
+                    )
             else:
                 creds = service_account.Credentials.from_service_account_file(
                     normalized,
                     scopes=scopes,
                     subject=sender_user,
                 )
-        self._services[sender_user] = build(
+        self._services[cache_key] = build(
             "gmail",
             "v1",
             credentials=creds,
             cache_discovery=False,
         )
-        return self._services[sender_user]
+        return self._services[cache_key]
 
     def _build_message(
         self,
@@ -456,13 +528,140 @@ class GmailApiEmailClient:
         self,
         message_body: dict,
         impersonate_user: str | None = None,
+        preferred_from_email: str | None = None,
     ) -> None:
         try:
-            service = self._get_service(impersonate_user)
-            service.users().messages().send(userId="me", body=message_body).execute()
+            sender_user = self._resolve_sender_user(impersonate_user)
+            service = self._get_service(sender_user, include_settings_scopes=False)
+            if preferred_from_email:
+                try:
+                    settings_service = self._get_service(
+                        sender_user,
+                        include_settings_scopes=True,
+                    )
+                    self._ensure_send_as_default(
+                        service=settings_service,
+                        sender_user=sender_user,
+                        preferred_from_email=preferred_from_email,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "GMAIL_SENDAS_SERVICE_UNAVAILABLE sender_user=%s preferred=%s error=%s",
+                        sender_user,
+                        preferred_from_email.strip().lower(),
+                        exc,
+                    )
+            logger.info("GMAIL_SEND sender_user=%s", sender_user)
+            # Use explicit delegated user mailbox to avoid provider-side default sender rewrites.
+            service.users().messages().send(
+                userId=sender_user,
+                body=message_body,
+            ).execute()
         except Exception as e:
             logger.error("Gmail API send failed: %s", e)
             raise
+
+    def _ensure_send_as_default(
+        self,
+        service: Any,
+        sender_user: str,
+        preferred_from_email: str,
+    ) -> None:
+        """Ensure Gmail sends from the preferred alias when available."""
+        target = preferred_from_email.strip().lower()
+        try:
+            send_as_entries = (
+                service.users()
+                .settings()
+                .sendAs()
+                .list(userId=sender_user)
+                .execute()
+                .get("sendAs", [])
+            )
+        except Exception as exc:
+            logger.warning(
+                "GMAIL_SENDAS_LIST_FAILED sender_user=%s preferred=%s error=%s",
+                sender_user,
+                target,
+                exc,
+            )
+            return
+
+        preferred = next(
+            (
+                entry
+                for entry in send_as_entries
+                if (entry.get("sendAsEmail") or "").strip().lower() == target
+            ),
+            None,
+        )
+        default_send_as = next(
+            (
+                (entry.get("sendAsEmail") or "").strip().lower()
+                for entry in send_as_entries
+                if entry.get("isDefault")
+            ),
+            "",
+        )
+        logger.info(
+            "GMAIL_SENDAS_STATE sender_user=%s preferred=%s default=%s available=%s",
+            sender_user,
+            target,
+            default_send_as,
+            [entry.get("sendAsEmail") for entry in send_as_entries],
+        )
+        if not preferred:
+            try:
+                created = (
+                    service.users()
+                    .settings()
+                    .sendAs()
+                    .create(
+                        userId=sender_user,
+                        body={
+                            "sendAsEmail": preferred_from_email,
+                            "treatAsAlias": True,
+                        },
+                    )
+                    .execute()
+                )
+                logger.info(
+                    "GMAIL_SENDAS_CREATED sender_user=%s preferred=%s verification=%s",
+                    sender_user,
+                    target,
+                    created.get("verificationStatus"),
+                )
+                preferred = created
+            except Exception as exc:
+                logger.warning(
+                    "GMAIL_SENDAS_MISSING sender_user=%s preferred=%s available=%s create_error=%s",
+                    sender_user,
+                    target,
+                    [entry.get("sendAsEmail") for entry in send_as_entries],
+                    exc,
+                )
+                return
+        if preferred.get("isDefault"):
+            return
+
+        try:
+            service.users().settings().sendAs().patch(
+                userId=sender_user,
+                sendAsEmail=preferred_from_email,
+                body={"isDefault": True},
+            ).execute()
+            logger.info(
+                "GMAIL_SENDAS_DEFAULT_SET sender_user=%s preferred=%s",
+                sender_user,
+                target,
+            )
+        except Exception as exc:
+            logger.warning(
+                "GMAIL_SENDAS_DEFAULT_SET_FAILED sender_user=%s preferred=%s error=%s",
+                sender_user,
+                target,
+                exc,
+            )
 
     def send_generic_alert(self, to_email: str, title: str) -> None:
         body = (
@@ -596,6 +795,7 @@ class GmailApiEmailClient:
                     reply_to=self.otp_reply_to,
                 ),
                 impersonate_user=self.otp_impersonate_user,
+                preferred_from_email=self.otp_from_email,
             )
             logger.info("Sent OTP to %s", to_email)
         except Exception as e:
@@ -619,6 +819,7 @@ class GmailApiEmailClient:
                     reply_to=self.otp_reply_to,
                 ),
                 impersonate_user=self.otp_impersonate_user,
+                preferred_from_email=self.otp_from_email,
             )
             logger.info("Sent password reset link to %s", to_email)
         except Exception as e:
