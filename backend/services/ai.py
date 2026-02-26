@@ -10,7 +10,13 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import HTTPException
-from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+from google.api_core.exceptions import (
+    FailedPrecondition,
+    NotFound,
+    PermissionDenied,
+    ResourceExhausted,
+    ServiceUnavailable,
+)
 from google.cloud import firestore
 
 from backend.core import settings
@@ -416,6 +422,47 @@ def resolve_model_routing(tier: str, usage_today: int, limit: int) -> dict[str, 
     }
 
 
+def _is_unavailable_model_error(error: Exception) -> bool:
+    if isinstance(error, (NotFound, PermissionDenied, FailedPrecondition)):
+        return True
+    message = str(error).lower()
+    return (
+        "publisher model" in message
+        and ("not found" in message or "does not have access" in message)
+    )
+
+
+def _resolve_recovery_model(primary_model: str) -> str | None:
+    candidates = [
+        settings.ai_paid_model,
+        settings.ai_model_prod,
+        settings.ai_model,
+        "gemini-2.5-flash",
+    ]
+    normalized_primary = (primary_model or "").strip()
+    for candidate in candidates:
+        normalized_candidate = (candidate or "").strip()
+        if normalized_candidate and normalized_candidate != normalized_primary:
+            return normalized_candidate
+    return None
+
+
+def _allows_model_recovery_for_tier(tier: str) -> bool:
+    return tier.strip().lower() != "free"
+
+
+def _apply_model_recovery_metadata(routing: dict[str, Any], recovery_model: str) -> dict[str, Any]:
+    updated = dict(routing)
+    updated["model"] = recovery_model
+    updated["fallback_applied"] = True
+    updated["fallback_reason"] = updated.get("fallback_reason") or "primary_model_unavailable"
+    updated["fallback_message"] = (
+        updated.get("fallback_message")
+        or "Your request was retried with a compatible AI model."
+    )
+    return updated
+
+
 def _runtime_context_block() -> str:
     now_utc = datetime.datetime.now(datetime.UTC)
     return (
@@ -588,7 +635,9 @@ async def generate_chat_response(  # noqa: C901
         tier, limit, current_usage = await check_rate_limit(user_id)
 
     routing = resolve_model_routing(tier=tier, usage_today=current_usage, limit=limit)
-    client = get_ai_client(model_name=str(routing["model"]))
+    active_routing = dict(routing)
+    client = get_ai_client(model_name=str(active_routing["model"]))
+    allow_model_recovery = _allows_model_recovery_for_tier(tier)
 
     # 2. Prepare Prompt & System Instructions using PromptManager
     # Fetch dynamically from Vertex AI if available
@@ -627,22 +676,40 @@ async def generate_chat_response(  # noqa: C901
         "and do not claim you lack access to current date/internet."
     )
 
-    # 3. Call Model
-    start_time = time.time()
-    try:
-        if use_cache and merged_context and client.client_type == "vertex":
-            # Use caching if requested and context is present
-            response = await client.generate_with_cache(
+    async def _invoke_model(model_client: AIClient) -> Any:
+        if use_cache and merged_context and model_client.client_type == "vertex":
+            return await model_client.generate_with_cache(
                 prompt=prompt,
                 context=merged_context,
                 system_instruction=system_instruction,
             )
-        else:
-            response = await client.generate_content(
-                final_prompt,
-                safety_settings=None,
-                system_instruction=system_instruction
+        return await model_client.generate_content(
+            final_prompt,
+            safety_settings=None,
+            system_instruction=system_instruction,
+        )
+
+    # 3. Call Model
+    start_time = time.time()
+    try:
+        try:
+            response = await _invoke_model(client)
+        except Exception as model_error:
+            recovery_model = _resolve_recovery_model(str(active_routing["model"]))
+            if (
+                not allow_model_recovery
+                or not recovery_model
+                or not _is_unavailable_model_error(model_error)
+            ):
+                raise
+            logger.warning(
+                "Primary AI model %s unavailable; retrying with %s.",
+                active_routing["model"],
+                recovery_model,
             )
+            active_routing = _apply_model_recovery_metadata(active_routing, recovery_model)
+            client = get_ai_client(model_name=recovery_model)
+            response = await _invoke_model(client)
         end_time = time.time()
 
         # 4. Parse Response
@@ -690,18 +757,26 @@ async def generate_chat_response(  # noqa: C901
             tokens_input=resolved_prompt_tokens,
             tokens_output=resolved_response_tokens,
             latency_ms=(end_time - start_time) * 1000,
-            model=str(routing["model"]),
+            model=str(active_routing["model"]),
             user_id=user_id,
             is_cached=use_cache and bool(context),
         )
 
         # 5. Persist usage only after success to avoid charging failures
-        usage_after = await record_rate_limit_usage(
-            user_id,
-            tier,
-            limit,
-            consumed_tokens,
-        )
+        try:
+            usage_after = await record_rate_limit_usage(
+                user_id,
+                tier,
+                limit,
+                consumed_tokens,
+            )
+        except Exception as usage_error:
+            logger.warning(
+                "AI quota usage persistence failed; continuing without blocking response: %s",
+                usage_error,
+                exc_info=True,
+            )
+            usage_after = None
 
         # 6. Return both the model response and updated usage
         return {
@@ -709,10 +784,10 @@ async def generate_chat_response(  # noqa: C901
             "usage_today": usage_after,
             "citations": citations,
             "web_search_used": web_search_used,
-            "effective_model": routing["model"],
-            "fallback_applied": routing["fallback_applied"],
-            "fallback_reason": routing["fallback_reason"],
-            "fallback_message": routing["fallback_message"],
+            "effective_model": active_routing["model"],
+            "fallback_applied": active_routing["fallback_applied"],
+            "fallback_reason": active_routing["fallback_reason"],
+            "fallback_message": active_routing["fallback_message"],
         }
     except HTTPException:
         # Re-raise HTTPExceptions (like 429/503 from generate_content)
@@ -743,8 +818,14 @@ async def generate_chat_response_stream(
     else:
         tier, limit, _ = await check_rate_limit(user_id)
 
-    routing = resolve_model_routing(tier=tier, usage_today=prechecked_limit[2] if prechecked_limit else 0, limit=limit)
-    client = get_ai_client(model_name=str(routing["model"]))
+    routing = resolve_model_routing(
+        tier=tier,
+        usage_today=prechecked_limit[2] if prechecked_limit else 0,
+        limit=limit,
+    )
+    active_routing = dict(routing)
+    client = get_ai_client(model_name=str(active_routing["model"]))
+    allow_model_recovery = _allows_model_recovery_for_tier(tier)
     context_parts = [part for part in [context or "", _client_context_block(client_context)] if part]
     merged_context = "\n\n".join(context_parts)
 
@@ -784,13 +865,37 @@ async def generate_chat_response_stream(
     chunks: list[str] = []
 
     try:
-        async for delta in client.generate_content_stream(
-            final_prompt,
-            safety_settings=None,
-            system_instruction=system_instruction,
-        ):
-            chunks.append(delta)
-            yield {"type": "chunk", "delta": delta}
+        async def _stream_model(model_client: AIClient) -> None:
+            async for delta in model_client.generate_content_stream(
+                final_prompt,
+                safety_settings=None,
+                system_instruction=system_instruction,
+            ):
+                chunks.append(delta)
+                yield_payload = {"type": "chunk", "delta": delta}
+                yield yield_payload
+
+        try:
+            async for stream_event in _stream_model(client):
+                yield stream_event
+        except Exception as model_error:
+            recovery_model = _resolve_recovery_model(str(active_routing["model"]))
+            if (
+                chunks
+                or not allow_model_recovery
+                or not recovery_model
+                or not _is_unavailable_model_error(model_error)
+            ):
+                raise
+            logger.warning(
+                "Primary stream model %s unavailable; retrying with %s.",
+                active_routing["model"],
+                recovery_model,
+            )
+            active_routing = _apply_model_recovery_metadata(active_routing, recovery_model)
+            client = get_ai_client(model_name=recovery_model)
+            async for stream_event in _stream_model(client):
+                yield stream_event
 
         full_response = "".join(chunks)
         end_time = time.time()
@@ -812,17 +917,25 @@ async def generate_chat_response_stream(
             tokens_input=resolved_prompt_tokens,
             tokens_output=resolved_response_tokens,
             latency_ms=(end_time - start_time) * 1000,
-            model=str(routing["model"]),
+            model=str(active_routing["model"]),
             user_id=user_id,
             is_cached=False,
         )
 
-        usage_after = await record_rate_limit_usage(
-            user_id,
-            tier,
-            limit,
-            consumed_tokens,
-        )
+        try:
+            usage_after = await record_rate_limit_usage(
+                user_id,
+                tier,
+                limit,
+                consumed_tokens,
+            )
+        except Exception as usage_error:
+            logger.warning(
+                "AI quota usage persistence failed for stream; continuing without blocking response: %s",
+                usage_error,
+                exc_info=True,
+            )
+            usage_after = None
         yield {
             "type": "complete",
             "response": full_response,
@@ -831,10 +944,10 @@ async def generate_chat_response_stream(
             "limit": limit,
             "citations": citations,
             "web_search_used": web_search_used,
-            "effective_model": routing["model"],
-            "fallback_applied": routing["fallback_applied"],
-            "fallback_reason": routing["fallback_reason"],
-            "fallback_message": routing["fallback_message"],
+            "effective_model": active_routing["model"],
+            "fallback_applied": active_routing["fallback_applied"],
+            "fallback_reason": active_routing["fallback_reason"],
+            "fallback_message": active_routing["fallback_message"],
         }
     except HTTPException:
         raise

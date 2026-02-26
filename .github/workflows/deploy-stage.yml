@@ -47,6 +47,21 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
 
+      - name: Verify required GCP APIs are enabled
+        run: |
+          set -euo pipefail
+          REQUIRED_APIS=(
+            "aiplatform.googleapis.com"
+            "firestore.googleapis.com"
+          )
+          for API_NAME in "${REQUIRED_APIS[@]}"; do
+            ENABLED_API="$(gcloud services list --enabled --project="${PROJECT_ID}" --filter="name:${API_NAME}" --format='value(config.name)')"
+            if [[ "${ENABLED_API}" != "${API_NAME}" ]]; then
+              echo "::error::Required API ${API_NAME} is disabled in project ${PROJECT_ID}. Enable it before deploying stage."
+              exit 1
+            fi
+          done
+
       - name: Configure Artifact Registry auth
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
@@ -196,8 +211,25 @@ jobs:
           gcloud run services update jualuma-backend-stage \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
-            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}" \
+            --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}|AI_FREE_MODEL=gpt-oss-120b|AI_PAID_FALLBACK_MODEL=gpt-oss-120b|TZ=America/Chicago" \
             --quiet
+
+      - name: Enforce stage runtime timezone (CST/CDT)
+        run: |
+          set -euo pipefail
+
+          for service in \
+            jualuma-backend-stage \
+            jualuma-approvals-stage \
+            jualuma-user-app-stage \
+            jualuma-support-stage \
+            jualuma-marketing-stage; do
+            gcloud run services update "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --update-env-vars=TZ=America/Chicago \
+              --quiet
+          done
 
       - name: Enforce public runtime access posture (Stage)
         run: |

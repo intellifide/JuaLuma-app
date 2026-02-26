@@ -63,6 +63,7 @@ export const AIPrivacyModal: React.FC<AIPrivacyModalProps> = ({ onAccept, isOpen
                         <p className="mb-2">The AI Assistant provides direct, unrestricted access to configured Large Language Models (LLMs) using environment-based model routing.</p>
                         <ul className="list-disc pl-5 mb-4 space-y-1">
                             <li>Free-tier default model: <strong>gpt-oss-120b</strong></li>
+                            <li>Free-tier has no fallback model. When free-tier quota is exhausted, AI access resumes at the next reset.</li>
                             <li>Paid-tier default model: <strong>gemini-2.5-flash</strong></li>
                             <li>If paid premium capacity is exhausted, requests automatically fall back to <strong>gpt-oss-120b</strong> with explicit in-product messaging.</li>
                         </ul>
