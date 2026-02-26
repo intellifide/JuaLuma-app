@@ -11,7 +11,7 @@ def _decode_raw_message(raw: str):
     return BytesParser(policy=default).parsebytes(message_bytes)
 
 
-def test_send_otp_uses_dedicated_otp_impersonation_and_noreply_sender(monkeypatch):
+def test_send_otp_uses_primary_mailbox_and_noreply_sender(monkeypatch):
     from backend.services import email as email_service
 
     monkeypatch.setattr(email_service.settings, "gmail_impersonate_user", "hello@jualuma.com")
@@ -74,3 +74,77 @@ def test_send_uses_explicit_sender_user_mailbox(monkeypatch):
     assert captured["userId"] == "noreply@jualuma.com"
     assert captured["raw"] == "abc"
     assert captured["executed"] == "true"
+
+
+def test_ensure_send_as_default_creates_missing_alias_and_sets_default():
+    client = GmailApiEmailClient()
+    captured: dict[str, object] = {}
+
+    class FakeListRequest:
+        def execute(self):
+            return {
+                "sendAs": [
+                    {"sendAsEmail": "hello@jualuma.com", "isDefault": True},
+                    {"sendAsEmail": "support@jualuma.com", "isDefault": False},
+                ]
+            }
+
+    class FakeCreateRequest:
+        def execute(self):
+            captured["create_executed"] = True
+            return {
+                "sendAsEmail": "noreply@jualuma.com",
+                "isDefault": False,
+                "verificationStatus": "accepted",
+            }
+
+    class FakePatchRequest:
+        def execute(self):
+            captured["patch_executed"] = True
+            return {"sendAsEmail": "noreply@jualuma.com", "isDefault": True}
+
+    class FakeSendAsApi:
+        def list(self, userId: str):
+            captured["list_userId"] = userId
+            return FakeListRequest()
+
+        def create(self, userId: str, body: dict):
+            captured["create_userId"] = userId
+            captured["create_body"] = body
+            return FakeCreateRequest()
+
+        def patch(self, userId: str, sendAsEmail: str, body: dict):
+            captured["patch_userId"] = userId
+            captured["patch_sendAsEmail"] = sendAsEmail
+            captured["patch_body"] = body
+            return FakePatchRequest()
+
+    class FakeSettingsApi:
+        def sendAs(self):
+            return FakeSendAsApi()
+
+    class FakeUsersApi:
+        def settings(self):
+            return FakeSettingsApi()
+
+    class FakeService:
+        def users(self):
+            return FakeUsersApi()
+
+    client._ensure_send_as_default(
+        service=FakeService(),
+        sender_user="hello@jualuma.com",
+        preferred_from_email="noreply@jualuma.com",
+    )
+
+    assert captured["list_userId"] == "hello@jualuma.com"
+    assert captured["create_userId"] == "hello@jualuma.com"
+    assert captured["create_body"] == {
+        "sendAsEmail": "noreply@jualuma.com",
+        "treatAsAlias": True,
+    }
+    assert captured["create_executed"] is True
+    assert captured["patch_userId"] == "hello@jualuma.com"
+    assert captured["patch_sendAsEmail"] == "noreply@jualuma.com"
+    assert captured["patch_body"] == {"isDefault": True}
+    assert captured["patch_executed"] is True

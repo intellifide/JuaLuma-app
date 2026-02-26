@@ -391,6 +391,7 @@ class GmailApiEmailClient:
         scopes = [
             "https://www.googleapis.com/auth/gmail.send",
             "https://www.googleapis.com/auth/gmail.settings.basic",
+            "https://www.googleapis.com/auth/gmail.settings.sharing",
         ]
         normalized = sa_value.strip()
         if normalized.startswith("{"):
@@ -590,13 +591,36 @@ class GmailApiEmailClient:
             [entry.get("sendAsEmail") for entry in send_as_entries],
         )
         if not preferred:
-            logger.warning(
-                "GMAIL_SENDAS_MISSING sender_user=%s preferred=%s available=%s",
-                sender_user,
-                target,
-                [entry.get("sendAsEmail") for entry in send_as_entries],
-            )
-            return
+            try:
+                created = (
+                    service.users()
+                    .settings()
+                    .sendAs()
+                    .create(
+                        userId=sender_user,
+                        body={
+                            "sendAsEmail": preferred_from_email,
+                            "treatAsAlias": True,
+                        },
+                    )
+                    .execute()
+                )
+                logger.info(
+                    "GMAIL_SENDAS_CREATED sender_user=%s preferred=%s verification=%s",
+                    sender_user,
+                    target,
+                    created.get("verificationStatus"),
+                )
+                preferred = created
+            except Exception as exc:
+                logger.warning(
+                    "GMAIL_SENDAS_MISSING sender_user=%s preferred=%s available=%s create_error=%s",
+                    sender_user,
+                    target,
+                    [entry.get("sendAsEmail") for entry in send_as_entries],
+                    exc,
+                )
+                return
         if preferred.get("isDefault"):
             return
 
