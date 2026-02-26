@@ -15,7 +15,7 @@
 'use client'
 
 import { motion } from '@/lib/motion'
-import { APP_URL } from '@/lib/constants'
+import { AppAuthLink } from '@/components/AppAuthLink'
 
 const faqs = [
   {
@@ -88,7 +88,7 @@ export default function SupportPage() {
           Log in for ticket support or contact us directly for onboarding and product issues.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <a href={`${APP_URL}/login`} className="btn">Log In to Submit Ticket</a>
+          <AppAuthLink appPath="/login" className="btn">Log In to Submit Ticket</AppAuthLink>
           <a href="mailto:support@jualuma.com" className="btn btn-secondary">Email Support</a>
         </div>
       </section>

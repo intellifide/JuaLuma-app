@@ -20,7 +20,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from '@/lib/motion'
 import { ThemeToggle } from './ThemeToggle'
-import { APP_URL } from '@/lib/constants'
+import { AppAuthLink } from './AppAuthLink'
 
 const navLinks = [
   { name: 'Features', path: '/features' },
@@ -212,15 +212,12 @@ export const Navbar: React.FC = () => {
 
         <div ref={navActionsRef} className={`${showDesktopNav ? 'hidden md:flex' : 'hidden'} items-center gap-3 flex-shrink-0 whitespace-nowrap marketing-nav-actions`}>
           <ThemeToggle className="marketing-theme-btn marketing-theme-btn-nav" />
-          <a
-            href={`${APP_URL}/login`}
-            className={`nav-link text-sm font-medium transition-colors ${navLogIn}`}
-          >
+          <AppAuthLink appPath="/login" className={`nav-link text-sm font-medium transition-colors ${navLogIn}`}>
             Log In
-          </a>
-          <a href={`${APP_URL}/signup`} className="btn btn-sm marketing-nav-get-started">
+          </AppAuthLink>
+          <AppAuthLink appPath="/signup" className="btn btn-sm marketing-nav-get-started">
             Get Started
-          </a>
+          </AppAuthLink>
         </div>
 
         <button
@@ -286,20 +283,20 @@ export const Navbar: React.FC = () => {
                 <ThemeToggle className="marketing-theme-btn" />
               </div>
               <div className="marketing-mobile-menu-divider my-1" />
-              <a
-                href={`${APP_URL}/login`}
+              <AppAuthLink
+                appPath="/login"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`text-lg font-medium transition-colors ${navLogIn}`}
               >
                 Log In
-              </a>
-              <a
-                href={`${APP_URL}/signup`}
+              </AppAuthLink>
+              <AppAuthLink
+                appPath="/signup"
                 onClick={() => setMobileMenuOpen(false)}
                 className="btn btn-sm w-full"
               >
                 Sign Up
-              </a>
+              </AppAuthLink>
             </div>
           </motion.div>
         )}
