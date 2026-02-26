@@ -360,8 +360,13 @@ class GmailApiEmailClient:
         self.otp_reply_to = self.support_from_email
         self._services: dict[str, Any] = {}
 
+    def _resolve_sender_user(self, impersonate_user: str | None = None) -> str:
+        """Resolve effective delegated mailbox for Gmail API calls."""
+        candidate = impersonate_user or self.default_impersonate_user
+        return candidate.strip()
+
     def _get_service(self, impersonate_user: str | None = None):
-        sender_user = (impersonate_user or self.default_impersonate_user).strip()
+        sender_user = self._resolve_sender_user(impersonate_user)
         if sender_user in self._services:
             return self._services[sender_user]
         import json
@@ -458,8 +463,14 @@ class GmailApiEmailClient:
         impersonate_user: str | None = None,
     ) -> None:
         try:
-            service = self._get_service(impersonate_user)
-            service.users().messages().send(userId="me", body=message_body).execute()
+            sender_user = self._resolve_sender_user(impersonate_user)
+            service = self._get_service(sender_user)
+            logger.info("GMAIL_SEND sender_user=%s", sender_user)
+            # Use explicit delegated user mailbox to avoid provider-side default sender rewrites.
+            service.users().messages().send(
+                userId=sender_user,
+                body=message_body,
+            ).execute()
         except Exception as e:
             logger.error("Gmail API send failed: %s", e)
             raise

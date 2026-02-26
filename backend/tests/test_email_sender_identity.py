@@ -36,3 +36,35 @@ def test_send_otp_uses_dedicated_otp_impersonation_and_noreply_sender(monkeypatc
     assert captured["impersonate_user"] == "noreply@jualuma.com"
     assert parsed["From"] == "JuaLuma Security <noreply@jualuma.com>"
     assert parsed["Reply-To"] == "support@jualuma.com"
+
+
+def test_send_uses_explicit_sender_user_mailbox(monkeypatch):
+    client = GmailApiEmailClient()
+    captured: dict[str, str] = {}
+
+    class FakeSendRequest:
+        def execute(self):
+            captured["executed"] = "true"
+            return {"id": "msg_123"}
+
+    class FakeMessagesApi:
+        def send(self, userId: str, body: dict):
+            captured["userId"] = userId
+            captured["raw"] = body["raw"]
+            return FakeSendRequest()
+
+    class FakeUsersApi:
+        def messages(self):
+            return FakeMessagesApi()
+
+    class FakeService:
+        def users(self):
+            return FakeUsersApi()
+
+    monkeypatch.setattr(client, "_get_service", lambda _impersonate_user=None: FakeService())
+
+    client._send({"raw": "abc"}, impersonate_user="noreply@jualuma.com")
+
+    assert captured["userId"] == "noreply@jualuma.com"
+    assert captured["raw"] == "abc"
+    assert captured["executed"] == "true"
