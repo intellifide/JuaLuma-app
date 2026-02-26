@@ -47,6 +47,9 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
 
+      - name: Install Cloud SDK beta component
+        run: gcloud components install beta --quiet
+
       - name: Verify required GCP APIs are enabled
         run: |
           set -euo pipefail
