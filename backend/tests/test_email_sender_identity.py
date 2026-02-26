@@ -41,7 +41,7 @@ def test_send_otp_uses_dedicated_otp_impersonation_and_noreply_sender(monkeypatc
     assert captured["impersonate_user"] == "noreply@jualuma.com"
     assert captured["preferred_from_email"] == "noreply@jualuma.com"
     assert parsed["From"] == "JuaLuma Security <noreply@jualuma.com>"
-    assert parsed["Reply-To"] == "support@jualuma.com"
+    assert parsed["Reply-To"] == "noreply@jualuma.com"
 
 
 def test_send_uses_explicit_sender_user_mailbox(monkeypatch):

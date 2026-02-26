@@ -358,7 +358,7 @@ class GmailApiEmailClient:
         self.support_reply_to = self.support_from_email
         self.otp_from_name = OTP_FROM_NAME
         self.otp_from_email = OTP_FROM_EMAIL
-        self.otp_reply_to = self.support_from_email
+        self.otp_reply_to = self.otp_from_email
         self._services: dict[str, Any] = {}
 
     def _resolve_sender_user(self, impersonate_user: str | None = None) -> str:
