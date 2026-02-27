@@ -27,6 +27,8 @@ Last updated: 2026-02-23 (UTC)
 - `LOCAL_ENCRYPTION_KEY` (secret ref)
 - `GOOGLE_APPLICATION_CREDENTIALS` (secret ref)
 - `STRIPE_WEBHOOK_SECRET` (secret ref)
+- `AI_FREE_MODEL` (secret ref)
+- `AI_PAID_FALLBACK_MODEL` (secret ref)
 
 ## Approvals Required Keys (Stage)
 

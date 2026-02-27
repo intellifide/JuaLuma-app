@@ -119,6 +119,7 @@ jobs:
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
             --update-env-vars=PLAID_ENV=production,PLAID_REDIRECT_URI=https://app.jualuma.com/connect-accounts \
+            --update-secrets=AI_FREE_MODEL=AI_FREE_MODEL:latest,AI_PAID_FALLBACK_MODEL=AI_PAID_FALLBACK_MODEL:latest \
             --quiet
 
       # 2. Frontend App
@@ -204,3 +205,56 @@ jobs:
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest"
           region: ${{ env.REGION }}
           flags: "--binary-authorization=default"
+
+      - name: Post-deploy smoke verification (Prod)
+        run: |
+          set -euo pipefail
+
+          FRONTEND_URL="$(gcloud run services describe frontend-app --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          BACKEND_URL="$(gcloud run services describe jualuma-backend --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          SUPPORT_URL="$(gcloud run services describe support-portal --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          MARKETING_URL="$(gcloud run services describe marketing-site --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+
+          check_html_or_iap() {
+            local url="$1"
+            local method="${2:-GET}"
+            local data="${3:-}"
+            local expect_html="${4:-false}"
+            local headers_file body_file status
+            headers_file="$(mktemp)"
+            body_file="$(mktemp)"
+
+            if [[ "$method" == "POST" ]]; then
+              status="$(curl -sS -D "$headers_file" -o "$body_file" \
+                -X POST "$url" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer test.invalid.token" \
+                --data "$data" \
+                -w "%{http_code}")"
+            else
+              status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
+            fi
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              echo "::error::IAP interception detected at $url"
+              sed -n '1,30p' "$headers_file"
+              exit 1
+            fi
+            if [[ "${expect_html}" != "true" ]] && grep -qi '<html' "$body_file"; then
+              echo "::error::HTML gateway response detected at $url (status=$status)"
+              sed -n '1,20p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+            if [[ "${expect_html}" == "true" ]] && [[ "${status}" -ge 400 ]]; then
+              echo "::error::Unexpected status for web endpoint at $url (status=$status)"
+              sed -n '1,30p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+          }
+
+          check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
+          check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
+          check_html_or_iap "${MARKETING_URL}/pricing" "GET" "" "true"
+          check_html_or_iap "${BACKEND_URL}/api/health"
