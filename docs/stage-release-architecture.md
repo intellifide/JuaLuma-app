@@ -19,7 +19,7 @@ No cross-jumps are allowed. `feature/*` must never target `stage` or `main`.
 
 ## Merge Strategy
 
-- Use merge commits for `Dev` -> `stage` and `stage` -> `main`.
+- Use linear-history compatible merge strategy (`rebase` or `squash`) for `Dev` -> `stage` and `stage` -> `main`.
 - Require up-to-date branch before merge.
 - Disallow force-push and branch deletion on `Dev`, `stage`, and `main`.
 
@@ -53,8 +53,8 @@ No cross-jumps are allowed. `feature/*` must never target `stage` or `main`.
 
 ## Rollback Targets
 
-- `Dev` -> `stage` failed release: revert merge commit on `stage`.
-- `stage` -> `main` failed release: revert merge commit on `main` and redeploy previous known-good revision.
+- `Dev` -> `stage` failed release: revert promotion commit(s) on `stage`.
+- `stage` -> `main` failed release: revert promotion commit(s) on `main` and redeploy previous known-good revision.
 - Cloud Run rollback target is prior stable revision for each prod service.
 
 ## Environment Separation Rules
