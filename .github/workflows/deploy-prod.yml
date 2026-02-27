@@ -111,7 +111,11 @@ jobs:
           service: "jualuma-backend"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
-          flags: "--binary-authorization=default"
+          flags: >-
+            --binary-authorization=default
+            --service-account=cr-backend@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+            --no-invoker-iam-check
+            --ingress=all
 
       - name: Enforce Plaid production mode on backend runtime
         run: |
@@ -148,7 +152,11 @@ jobs:
           service: "frontend-app"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/frontend-app:latest"
           region: ${{ env.REGION }}
-          flags: "--binary-authorization=default"
+          flags: >-
+            --binary-authorization=default
+            --allow-unauthenticated
+            --no-invoker-iam-check
+            --ingress=all
 
       # 3. Marketing
       - name: Build and Push Marketing
@@ -176,7 +184,11 @@ jobs:
           service: "marketing-site"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest"
           region: ${{ env.REGION }}
-          flags: "--binary-authorization=default"
+          flags: >-
+            --binary-authorization=default
+            --allow-unauthenticated
+            --no-invoker-iam-check
+            --ingress=all
 
       # 4. Support
       - name: Build and Push Support
@@ -204,7 +216,33 @@ jobs:
           service: "support-portal"
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/support-portal:latest"
           region: ${{ env.REGION }}
-          flags: "--binary-authorization=default"
+          flags: >-
+            --binary-authorization=default
+            --allow-unauthenticated
+            --no-invoker-iam-check
+            --ingress=all
+
+      - name: Enforce public runtime access posture (Prod)
+        run: |
+          set -euo pipefail
+
+          for service in jualuma-backend frontend-app support-portal marketing-site; do
+            gcloud run services update "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --no-invoker-iam-check \
+              --ingress=all \
+              --quiet
+          done
+
+          # Public web shell endpoints must not be intercepted by IAP.
+          for service in frontend-app support-portal marketing-site; do
+            gcloud beta run services update "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --no-iap \
+              --quiet
+          done
 
       - name: Post-deploy smoke verification (Prod)
         run: |
