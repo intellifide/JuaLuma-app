@@ -1,4 +1,5 @@
 name: deploy-stage
+# Security posture: Stage must remain authenticated-only (no public invoker).
 
 on:
   push:

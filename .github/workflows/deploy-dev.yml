@@ -1,4 +1,5 @@
 name: CD - Deploy to Dev (jualuma-dev)
+# Security posture: Dev must remain authenticated-only (no public invoker).
 
 on:
   push:
