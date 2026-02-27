@@ -82,8 +82,8 @@ jobs:
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/backend:latest"
           region: ${{ env.REGION }}
           flags: >-
-            --allow-unauthenticated
-            --no-invoker-iam-check
+            --no-allow-unauthenticated
+            --invoker-iam-check
             --ingress=all
 
       - name: Enforce Plaid production mode on backend runtime
@@ -119,8 +119,8 @@ jobs:
           env_vars: |-
             API_UPSTREAM=${{ steps.deploy_backend.outputs.url }}
           flags: >-
-            --allow-unauthenticated
-            --no-invoker-iam-check
+            --no-allow-unauthenticated
+            --invoker-iam-check
             --ingress=all
 
       # 3. Marketing
@@ -155,8 +155,8 @@ jobs:
           image: "us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/jualuma-repo/marketing-site:latest"
           region: ${{ env.REGION }}
           flags: >-
-            --allow-unauthenticated
-            --no-invoker-iam-check
+            --no-allow-unauthenticated
+            --invoker-iam-check
             --ingress=all
 
       # 4. Support
@@ -184,8 +184,8 @@ jobs:
           env_vars: |-
             API_UPSTREAM=${{ steps.deploy_backend.outputs.url }}
           flags: >-
-            --allow-unauthenticated
-            --no-invoker-iam-check
+            --no-allow-unauthenticated
+            --invoker-iam-check
             --ingress=all
 
       - name: Align backend runtime URLs (Dev)
@@ -208,25 +208,35 @@ jobs:
             --update-secrets=AI_FREE_MODEL=AI_FREE_MODEL:latest,AI_PAID_FALLBACK_MODEL=AI_PAID_FALLBACK_MODEL:latest \
             --quiet
 
-      - name: Force public invoker policy (Dev)
+      - name: Enforce authenticated invoker policy (Dev)
         run: |
           set -euo pipefail
+          OPS_MEMBER="user:ops@intellifide.com"
 
-          for service in frontend-app support-portal marketing-site; do
-            gcloud run services add-iam-policy-binding "$service" \
+          for service in frontend-app support-portal marketing-site jualuma-backend; do
+            gcloud run services remove-iam-policy-binding "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --member="allUsers" \
+              --role="roles/run.invoker" \
+              --quiet || true
+
+            gcloud run services add-iam-policy-binding "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --member="${OPS_MEMBER}" \
               --role="roles/run.invoker" \
               --quiet
 
             gcloud run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
-              --no-invoker-iam-check \
+              --invoker-iam-check \
               --ingress=all \
               --quiet
+          done
 
+          for service in frontend-app support-portal marketing-site; do
             gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
@@ -234,7 +244,7 @@ jobs:
               --quiet
           done
 
-      - name: Verify public access policy (Dev)
+      - name: Verify authenticated access policy (Dev)
         run: |
           set -euo pipefail
 
@@ -243,11 +253,10 @@ jobs:
           SUPPORT_URL="${{ steps.deploy_support.outputs.url }}"
           MARKETING_URL="${{ steps.deploy_marketing.outputs.url }}"
 
-          check_html_or_iap() {
+          check_requires_auth() {
             local url="$1"
             local method="${2:-GET}"
             local data="${3:-}"
-            local expect_html="${4:-false}"
             local headers_file body_file status
             headers_file="$(mktemp)"
             body_file="$(mktemp)"
@@ -256,7 +265,6 @@ jobs:
               status="$(curl -sS -D "$headers_file" -o "$body_file" \
                 -X POST "$url" \
                 -H "Content-Type: application/json" \
-                -H "Authorization: Bearer test.invalid.token" \
                 --data "$data" \
                 -w "%{http_code}")"
             else
@@ -268,29 +276,21 @@ jobs:
               sed -n '1,30p' "$headers_file"
               exit 1
             fi
-            if [[ "${expect_html}" != "true" ]] && grep -qi '<html' "$body_file"; then
-              echo "::error::HTML gateway response detected at $url (status=$status)"
-              sed -n '1,20p' "$headers_file"
-              sed -n '1,40p' "$body_file"
-              exit 1
-            fi
 
-            if [[ "${expect_html}" == "true" ]] && [[ "${status}" -ge 400 ]]; then
-              echo "::error::Unexpected status for web shell endpoint at $url (status=$status)"
+            if [[ "${status}" != "401" && "${status}" != "403" ]]; then
+              echo "::error::Expected unauthenticated request to be blocked at $url (status=$status)"
               sed -n '1,30p' "$headers_file"
               sed -n '1,40p' "$body_file"
               exit 1
             fi
           }
 
-          # Public shell endpoints should not be IAP/gateway HTML.
-          check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
-          check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
-          check_html_or_iap "${MARKETING_URL}/pricing" "GET" "" "true"
-          check_html_or_iap "${BACKEND_URL}/api/health"
+          check_requires_auth "${FRONTEND_URL}/"
+          check_requires_auth "${SUPPORT_URL}/"
+          check_requires_auth "${MARKETING_URL}/pricing"
+          check_requires_auth "${BACKEND_URL}/api/health"
 
-          # Invalid Firebase token should fail in app (JSON), not Cloud Run gateway HTML.
-          check_html_or_iap \
+          check_requires_auth \
             "${BACKEND_URL}/api/auth/signup/pending" \
             "POST" \
             '{"agreements":[],"first_name":"probe","last_name":"probe"}'

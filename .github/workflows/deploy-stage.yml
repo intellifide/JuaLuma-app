@@ -156,7 +156,7 @@ jobs:
             --region="${REGION}" \
             --image="${IMAGE}" \
             --platform=managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --quiet
 
       - name: Build and deploy support portal
@@ -181,7 +181,7 @@ jobs:
             --region="${REGION}" \
             --image="${IMAGE}" \
             --platform=managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --quiet
 
       - name: Build and deploy marketing
@@ -208,7 +208,7 @@ jobs:
             --region="${REGION}" \
             --image="${IMAGE}" \
             --platform=managed \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --quiet
 
       - name: Align backend runtime URLs (Stage)
@@ -248,20 +248,39 @@ jobs:
               --quiet
           done
 
-      - name: Enforce public runtime access posture (Stage)
+      - name: Enforce authenticated runtime access posture (Stage)
         run: |
           set -euo pipefail
+          OPS_MEMBER="user:ops@intellifide.com"
 
-          for service in jualuma-backend-stage jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
+          for service in \
+            jualuma-backend-stage \
+            jualuma-approvals-stage \
+            jualuma-user-app-stage \
+            jualuma-support-stage \
+            jualuma-marketing-stage; do
+            gcloud run services remove-iam-policy-binding "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --member="allUsers" \
+              --role="roles/run.invoker" \
+              --quiet || true
+
+            gcloud run services add-iam-policy-binding "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --member="${OPS_MEMBER}" \
+              --role="roles/run.invoker" \
+              --quiet
+
             gcloud run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
-              --no-invoker-iam-check \
+              --invoker-iam-check \
               --ingress=all \
               --quiet
           done
 
-          # These stage shell endpoints must not be IAP-intercepted.
           for service in jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
             gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
@@ -270,7 +289,7 @@ jobs:
               --quiet
           done
 
-      - name: Verify public access policy (Stage)
+      - name: Verify authenticated access policy (Stage)
         run: |
           set -euo pipefail
 
@@ -279,11 +298,10 @@ jobs:
           SUPPORT_URL="$(gcloud run services describe jualuma-support-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
           MARKETING_URL="$(gcloud run services describe jualuma-marketing-stage --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
 
-          check_html_or_iap() {
+          check_requires_auth() {
             local url="$1"
             local method="${2:-GET}"
             local data="${3:-}"
-            local expect_html="${4:-false}"
             local headers_file body_file status
             headers_file="$(mktemp)"
             body_file="$(mktemp)"
@@ -292,7 +310,6 @@ jobs:
               status="$(curl -sS -D "$headers_file" -o "$body_file" \
                 -X POST "$url" \
                 -H "Content-Type: application/json" \
-                -H "Authorization: Bearer test.invalid.token" \
                 --data "$data" \
                 -w "%{http_code}")"
             else
@@ -304,28 +321,20 @@ jobs:
               sed -n '1,30p' "$headers_file"
               exit 1
             fi
-            if [[ "${expect_html}" != "true" ]] && grep -qi '<html' "$body_file"; then
-              echo "::error::HTML gateway response detected at $url (status=$status)"
-              sed -n '1,20p' "$headers_file"
-              sed -n '1,40p' "$body_file"
-              exit 1
-            fi
-            if [[ "${expect_html}" == "true" ]] && [[ "${status}" -ge 400 ]]; then
-              echo "::error::Unexpected status for web shell endpoint at $url (status=$status)"
+            if [[ "${status}" != "401" && "${status}" != "403" ]]; then
+              echo "::error::Expected unauthenticated request to be blocked at $url (status=$status)"
               sed -n '1,30p' "$headers_file"
               sed -n '1,40p' "$body_file"
               exit 1
             fi
           }
 
-          # Public shell endpoints should not be IAP/gateway HTML.
-          check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
-          check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
-          check_html_or_iap "${MARKETING_URL}/pricing" "GET" "" "true"
-          check_html_or_iap "${BACKEND_URL}/api/health"
+          check_requires_auth "${FRONTEND_URL}/"
+          check_requires_auth "${SUPPORT_URL}/"
+          check_requires_auth "${MARKETING_URL}/pricing"
+          check_requires_auth "${BACKEND_URL}/api/health"
 
-          # Invalid Firebase token should fail in app (JSON), not Cloud Run gateway HTML.
-          check_html_or_iap \
+          check_requires_auth \
             "${BACKEND_URL}/api/auth/signup/pending" \
             "POST" \
             '{"agreements":[],"first_name":"probe","last_name":"probe"}'
