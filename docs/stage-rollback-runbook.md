@@ -34,16 +34,16 @@ Use this runbook when any of these occur after a promotion:
 
 ## Rollback: Dev -> Stage
 
-1. Identify merge commit on `stage` for failed promotion.
-2. Revert merge commit on `stage` via PR.
+1. Identify promotion commit(s) on `stage` for failed promotion.
+2. Revert promotion commit(s) on `stage` via PR.
 3. Redeploy previous known-good `stage` revision if required.
 4. Run stage smoke suite and confirm recovery.
 5. Keep freeze until root cause and patch are verified.
 
 ## Rollback: Stage -> Main
 
-1. Identify merge commit on `main` for failed release.
-2. Revert merge commit on `main` via PR.
+1. Identify promotion commit(s) on `main` for failed release.
+2. Revert promotion commit(s) on `main` via PR.
 3. Redeploy previous known-good production revisions.
 4. Execute production post-release validation checks.
 5. Publish incident update and recovery confirmation.
@@ -52,7 +52,7 @@ Use this runbook when any of these occur after a promotion:
 
 Record and retain:
 
-- merge commit SHAs,
+- promotion commit SHAs,
 - Cloud Run revision IDs (bad and rollback target),
 - workflow run URLs,
 - smoke/parity outputs,

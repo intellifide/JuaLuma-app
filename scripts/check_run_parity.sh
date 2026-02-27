@@ -11,8 +11,7 @@ Usage:
     [--output /path/to/report.txt]
 
 Checks Cloud Run runtime parity shape between prod and stage for equivalent services.
-Service-role mapping supports naming drift (for example `frontend-app` vs
-`jualuma-user-app`).
+Service-role mapping uses canonical prod service names.
 
 Parity enforces:
   - required stage keys exist
@@ -91,6 +90,8 @@ required_stage_backend = {
     "LOCAL_ENCRYPTION_KEY",
     "GOOGLE_APPLICATION_CREDENTIALS",
     "STRIPE_WEBHOOK_SECRET",
+    "AI_FREE_MODEL",
+    "AI_PAID_FALLBACK_MODEL",
 }
 required_stage_approvals = {
     "APP_ENV",
@@ -113,21 +114,21 @@ service_specs = [
     {
         "role": "user-app",
         "stage": "jualuma-user-app-stage",
-        "prod_candidates": ["jualuma-user-app", "frontend-app"],
+        "prod_candidates": ["frontend-app"],
         "required_prod_pair": True,
         "required_stage_keys": set(),
     },
     {
         "role": "support",
         "stage": "jualuma-support-stage",
-        "prod_candidates": ["jualuma-support", "support-portal"],
+        "prod_candidates": ["support-portal"],
         "required_prod_pair": True,
         "required_stage_keys": set(),
     },
     {
         "role": "marketing",
         "stage": "jualuma-marketing-stage",
-        "prod_candidates": ["jualuma-marketing", "marketing-site"],
+        "prod_candidates": ["marketing-site"],
         "required_prod_pair": True,
         "required_stage_keys": set(),
     },
