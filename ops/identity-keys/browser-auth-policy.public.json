@@ -16,10 +16,12 @@
       "allowed_referrer_regex": [
         "^https://frontend-app-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
         "^https://support-portal-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
-        "^https://jualuma-user-app-[0-9]+\\.us-central1\\.run\\.app/\\*$",
-        "^https://jualuma-support-[0-9]+\\.us-central1\\.run\\.app/\\*$",
         "^https://jualuma-user-app-stage-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
         "^https://jualuma-support-stage-[a-z0-9-]+\\.a\\.run\\.app/\\*$"
+      ],
+      "deprecated_referrer_regex": [
+        "^https://jualuma-user-app-[0-9]+\\.us-central1\\.run\\.app/\\*$",
+        "^https://jualuma-support-[0-9]+\\.us-central1\\.run\\.app/\\*$"
       ]
     },
     "stage": {
@@ -44,7 +46,9 @@
       ],
       "allowed_referrer_regex": [
         "^https://frontend-app-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
-        "^https://support-portal-[a-z0-9-]+\\.a\\.run\\.app/\\*$",
+        "^https://support-portal-[a-z0-9-]+\\.a\\.run\\.app/\\*$"
+      ],
+      "deprecated_referrer_regex": [
         "^https://jualuma-user-app-[0-9]+\\.us-central1\\.run\\.app/\\*$",
         "^https://jualuma-support-[0-9]+\\.us-central1\\.run\\.app/\\*$"
       ]

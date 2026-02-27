@@ -66,7 +66,7 @@ jobs:
 
       - name: Check dev browser key drift
         if: steps.auth_inputs.outputs.enabled == 'true'
-        run: ./scripts/check_identity_key_drift.sh --env dev
+        run: ./scripts/check_identity_key_drift.sh --env dev --fail-on-deprecated
 
   drift-stage:
     needs: [key-material-guard]
@@ -103,7 +103,7 @@ jobs:
 
       - name: Check stage browser key drift
         if: steps.auth_inputs.outputs.enabled == 'true'
-        run: ./scripts/check_identity_key_drift.sh --env stage
+        run: ./scripts/check_identity_key_drift.sh --env stage --fail-on-deprecated
 
   drift-prod:
     needs: [key-material-guard]
@@ -140,4 +140,4 @@ jobs:
 
       - name: Check prod browser key drift
         if: steps.auth_inputs.outputs.enabled == 'true'
-        run: ./scripts/check_identity_key_drift.sh --env prod
+        run: ./scripts/check_identity_key_drift.sh --env prod --fail-on-deprecated

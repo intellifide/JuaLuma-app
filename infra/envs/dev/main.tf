@@ -67,6 +67,8 @@ locals {
         GOOGLE_APPLICATION_CREDENTIALS = { secret = "GMAIL_SA_KEY", version = "latest" }
         TATUM_API_KEY                  = { secret = "TATUM_API_KEY", version = "latest" }
         TATUM_BASE_URL                 = { secret = "TATUM_BASE_URL", version = "latest" }
+        AI_FREE_MODEL                  = { secret = "AI_FREE_MODEL", version = "latest" }
+        AI_PAID_FALLBACK_MODEL         = { secret = "AI_PAID_FALLBACK_MODEL", version = "latest" }
       }
     }
 
