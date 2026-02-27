@@ -26,4 +26,24 @@ Run single environment:
 ./scripts/check_identity_key_drift.sh --env dev
 ```
 
+Fail on deprecated legacy referrers:
+
+```bash
+./scripts/check_identity_key_drift.sh --env all --fail-on-deprecated
+```
+
+## Remediation
+
+Dry-run policy apply:
+
+```bash
+./scripts/apply_identity_key_policy.sh --env all
+```
+
+Apply policy to live keys:
+
+```bash
+./scripts/apply_identity_key_policy.sh --env all --apply
+```
+
 CI workflow `.github/workflows/identity-key-drift-check.yml` enforces this on auth/deploy-related PR changes and on a daily schedule.

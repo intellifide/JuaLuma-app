@@ -1,62 +1,60 @@
 # Deploy & Release SOP
 
-**Effective:** 2026-02-19
+**Effective:** 2026-02-27  
 **Owner:** Engineering Lead
 
 ## Environments
 
 | Environment | GCP Project | Branch | Workflow | Approval |
-|------------|-------------|--------|----------|----------|
-| Development | jualuma-dev | Dev | deploy-dev.yml | None |
-| Production | jualuma-prod | main | deploy-prod.yml | Required |
+|---|---|---|---|---|
+| Development | `jualuma-dev` | `Dev` | `deploy-dev.yml` | None |
+| Stage | `jualuma-stage` | `stage` | `deploy-stage.yml` | Required by branch protection |
+| Production | `jualuma-prod` | `main` | `deploy-prod.yml` | Required (GitHub environment gate) |
+
+## Promotion Path
+
+1. `feature/*` -> `Dev` (PR only)
+2. `Dev` -> `stage` (PR only)
+3. `stage` -> `main` (PR only)
+
+No promotion skips are allowed.
 
 ## Release Process
 
-### 1. Development Iteration (Dev branch)
-```
-1. Code changes on Dev branch
-2. Push triggers CI (ci.yml) — lint, test, typecheck, security scan
-3. Push triggers CD (deploy-dev.yml) — build + deploy to jualuma-dev
-4. Verify on dev Cloud Run URLs
-```
+### 1. Development Iteration (`Dev`)
 
-### 2. Production Promotion (Dev → main)
-```
-1. Open PR: Dev → main
-2. CI runs on PR (all quality + security gates)
-3. Review PR (branch protection enforces PR flow)
-4. Merge PR to main (squash/rebase — linear history enforced)
-5. deploy-prod.yml triggers automatically
-6. Manual approval required (GitHub production environment gate)
-7. Approve → deploy to jualuma-prod
-8. Verify on production URLs
-```
+1. Merge code via PR into `Dev`.
+2. CI checks pass (lint/test/type/security).
+3. `deploy-dev.yml` deploys to `jualuma-dev`.
+4. Verify on dev Cloud Run URLs.
 
-### 3. Pre-Deploy Checklist
-- [ ] All CI checks pass (lint, test, typecheck, security)
-- [ ] No CRITICAL/HIGH vulnerabilities (pip-audit, npm audit, Trivy)
-- [ ] PR description documents changes
-- [ ] Database migrations tested on dev first
-- [ ] Secrets/env vars updated in GCP if needed (GCP-first)
+### 2. Stage Promotion (`Dev` -> `stage`)
 
-### 4. Post-Deploy Verification
-- [ ] Health check endpoints respond 200
-- [ ] Key user flows tested (signup, login, dashboard)
-- [ ] No 5xx errors in Cloud Logging (5 min observation)
-- [ ] Monitoring dashboard shows normal metrics
+1. Open PR: `Dev` -> `stage`.
+2. Run promotion gates:
+   - `bash scripts/check_gcp_drift.sh`
+   - `bash scripts/check_run_parity.sh --prod-project jualuma-prod --stage-project jualuma-stage --region us-central1`
+   - `bash scripts/check_identity_key_drift.sh --env stage`
+3. Merge PR with linear-history strategy (`rebase` or `squash`).
+4. `deploy-stage.yml` deploys to `jualuma-stage`.
+5. Run stage smoke verification.
 
-### 5. Rollback Procedure
-```bash
-# Immediate: route traffic to previous revision
-gcloud run services update-traffic <service> \
-  --to-revisions=<previous-revision>=100 \
-  --region=us-central1 --project=jualuma-prod
+### 3. Production Promotion (`stage` -> `main`)
 
-# If code fix needed: revert PR on main, deploy
-```
+1. Open PR: `stage` -> `main`.
+2. Verify stage checks and release evidence are attached.
+3. Merge PR with linear-history strategy (`rebase` or `squash`).
+4. `deploy-prod.yml` triggers and waits for manual approval.
+5. Approve and verify production post-deploy checks.
 
-## GCP-First Config Changes
-Small config changes (env vars, secrets) follow GCP-first workflow:
-1. Update directly on GCP (Cloud Run env vars, Secret Manager)
-2. Sync to repo (deploy workflow, .env templates)
-3. Sync local dev environment
+## Configuration Policy
+
+- Source of truth is repository workflows, scripts, and IaC.
+- Do not directly change Cloud Run runtime config for normal work.
+- Break-glass runtime edits are incident-only and require immediate repo backfill.
+
+## Rollback Procedure
+
+1. Revert promotion commit(s) via PR on the affected branch (`stage` or `main`).
+2. Route Cloud Run traffic to prior stable revision if immediate containment is required.
+3. Re-run smoke checks and attach evidence to incident/release record.

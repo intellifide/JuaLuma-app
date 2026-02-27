@@ -205,6 +205,7 @@ jobs:
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
             --update-env-vars="^|^PLAID_ENV=production|PLAID_REDIRECT_URI=${FRONTEND_URL}/connect-accounts|FRONTEND_URL=${FRONTEND_URL}|BACKEND_CORS_ORIGINS=${FRONTEND_URL},${SUPPORT_URL},${MARKETING_URL}|GMAIL_OTP_IMPERSONATE_USER=noreply@jualuma.com" \
+            --update-secrets=AI_FREE_MODEL=AI_FREE_MODEL:latest,AI_PAID_FALLBACK_MODEL=AI_PAID_FALLBACK_MODEL:latest \
             --quiet
 
       - name: Force public invoker policy (Dev)

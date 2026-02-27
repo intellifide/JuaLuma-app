@@ -3,10 +3,11 @@ set -euo pipefail
 
 POLICY_FILE="ops/identity-keys/browser-auth-policy.public.json"
 ENVIRONMENT="all"
+FAIL_ON_DEPRECATED="false"
 
 usage() {
   cat <<USAGE
-Usage: $0 [--env dev|stage|prod|all] [--policy <path>]
+Usage: $0 [--env dev|stage|prod|all] [--policy <path>] [--fail-on-deprecated]
 
 Checks API key restriction drift for Identity Toolkit browser keys against a
 public-safe policy baseline.
@@ -22,6 +23,10 @@ while [[ $# -gt 0 ]]; do
     --policy)
       POLICY_FILE="$2"
       shift 2
+      ;;
+    --fail-on-deprecated)
+      FAIL_ON_DEPRECATED="true"
+      shift
       ;;
     -h|--help)
       usage
@@ -107,6 +112,9 @@ check_env() {
   local allowed_regex_json
   allowed_regex_json="$(jq -c --arg e "$env_name" '.environments[$e].allowed_referrer_regex // []' "$POLICY_FILE")"
 
+  local deprecated_regex_json
+  deprecated_regex_json="$(jq -c --arg e "$env_name" '.environments[$e].deprecated_referrer_regex // []' "$POLICY_FILE")"
+
   local actual_referrers_json
   actual_referrers_json="$(jq -c '[.restrictions.browserKeyRestrictions.allowedReferrers[]?] | map(select(. != null)) | unique' <<<"$key_json")"
 
@@ -120,11 +128,23 @@ check_env() {
   unexpected_referrers_json="$(jq -n \
     --argjson required "$required_referrers_json" \
     --argjson allowed_regex "$allowed_regex_json" \
+    --argjson deprecated_regex "$deprecated_regex_json" \
     --argjson actual "$actual_referrers_json" \
     '[
       $actual[] as $ref
       | select(($required | index($ref)) == null)
-      | select(([$allowed_regex[]? | ($ref | test(.))] | any) | not)
+      | select(([$allowed_regex[]? as $rx | ($ref | test($rx))] | any) | not)
+      | select(([$deprecated_regex[]? as $rx | ($ref | test($rx))] | any) | not)
+      | $ref
+    ]')"
+
+  local deprecated_referrers_json
+  deprecated_referrers_json="$(jq -n \
+    --argjson deprecated_regex "$deprecated_regex_json" \
+    --argjson actual "$actual_referrers_json" \
+    '[
+      $actual[] as $ref
+      | select(([$deprecated_regex[]? as $rx | ($ref | test($rx))] | any))
       | $ref
     ]')"
 
@@ -151,6 +171,17 @@ check_env() {
     echo "FAIL [$env_name] unexpected referrers:" >&2
     jq -r '.[] | "  - " + .' <<<"$unexpected_referrers_json" >&2
     failed=1
+  fi
+
+  if [[ "$(jq 'length' <<<"$deprecated_referrers_json")" -gt 0 ]]; then
+    if [[ "$FAIL_ON_DEPRECATED" == "true" ]]; then
+      echo "FAIL [$env_name] deprecated referrers still present:" >&2
+      jq -r '.[] | "  - " + .' <<<"$deprecated_referrers_json" >&2
+      failed=1
+    else
+      echo "WARN [$env_name] deprecated referrers still present:" >&2
+      jq -r '.[] | "  - " + .' <<<"$deprecated_referrers_json" >&2
+    fi
   fi
 
   if [[ "$failed" -eq 0 ]]; then
