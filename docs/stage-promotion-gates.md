@@ -1,6 +1,6 @@
 # Stage Promotion Gates
 
-Last updated: 2026-02-22 (UTC)
+Last updated: 2026-02-27 (UTC)
 
 ## Dev -> Stage PR Gate
 
@@ -9,7 +9,7 @@ A `Dev` -> `stage` PR is mergeable only when all conditions are met:
 1. Required CI checks pass (backend/frontend/tests/security checks).
 2. Terraform CI checks pass for changed IaC paths (`terraform-ci` workflow).
 3. No unresolved PR conversations.
-4. At least one approval from a maintainer.
+4. Branch protection requirements for `stage` are satisfied.
 5. `deploy-stage` workflow is green for the candidate commit.
 6. Stage smoke checks pass against stage endpoints.
 
@@ -22,7 +22,7 @@ A `stage` -> `main` PR is mergeable only when all conditions are met:
 3. Stage parity audit against prod passes (shape parity with approved diffs).
 4. Release notes are present in PR description.
 5. Rollback plan is present in PR description.
-6. Final reviewer approval is present and no unresolved conversations remain.
+6. Branch protection and production environment gate requirements are satisfied.
 
 ## Required PR Evidence
 
@@ -39,5 +39,5 @@ Do not merge promotion PRs when any condition below exists:
 
 - Required checks are missing or failing.
 - Stage uses prod domain/secret/database references.
-- Branch protections/rulesets were relaxed and not restored.
+- Branch protections/rulesets drift from the documented baseline in `docs/runbooks/deploy-release-sop.md`.
 - Rollback target is unknown.

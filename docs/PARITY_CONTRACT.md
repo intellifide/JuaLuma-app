@@ -1,6 +1,6 @@
 # Runtime Parity Contract (Prod vs Stage)
 
-Last updated: 2026-02-23 (UTC)
+Last updated: 2026-02-27 (UTC)
 
 ## Rule
 
@@ -53,3 +53,19 @@ Last updated: 2026-02-23 (UTC)
   - Service-account email principal for keyless impersonation (preferred).
 - For keyless mode, runtime service account must have:
   - `roles/iam.serviceAccountTokenCreator` on the delegated Gmail sender service account.
+
+## Backend Runtime Identity Contract
+
+- Stage backend must run as: `cr-backend@jualuma-stage.iam.gserviceaccount.com`.
+- Prod backend must run as: `cr-backend@jualuma-prod.iam.gserviceaccount.com`.
+- Use `scripts/check_run_parity.sh` to enforce this identity parity.
+
+## Public Access Posture Contract
+
+- Stage and prod shell services (`frontend-app`/`jualuma-user-app-stage`, `support-portal`/`jualuma-support-stage`, `marketing-site`/`jualuma-marketing-stage`) must be:
+  - `run.googleapis.com/ingress=all`
+  - `run.googleapis.com/invoker-iam-disabled=true`
+  - `IAP disabled` for shell web endpoints
+- Backend services in stage/prod must also keep:
+  - `run.googleapis.com/ingress=all`
+  - `run.googleapis.com/invoker-iam-disabled=true`
