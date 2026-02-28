@@ -152,7 +152,7 @@ jobs:
         run: npm ci
         working-directory: ./frontend-app
       - name: Sync Capacitor Android bridge files
-        run: npx cap sync android --no-build
+        run: npx cap sync android
         working-directory: ./frontend-app
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -212,7 +212,7 @@ jobs:
         run: npm ci
         working-directory: ./frontend-app
       - name: Sync Capacitor Android bridge files
-        run: npx cap sync android --no-build
+        run: npx cap sync android
         working-directory: ./frontend-app
       - name: Set up Java
         uses: actions/setup-java@v4
