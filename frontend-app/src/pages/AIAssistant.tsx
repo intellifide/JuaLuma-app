@@ -15,6 +15,7 @@
 // Last Modified: 2026-01-24 04:25 CST
 import React, { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatTime } from '../utils/datetime';
@@ -38,6 +39,7 @@ interface Message {
   time: string;
   citations?: Array<{ title: string; url: string }>;
   webSearchUsed?: boolean;
+  attachments?: ComposerAttachment[];
 }
 
 interface Thread {
@@ -372,13 +374,16 @@ export default function AIAssistant() {
       localStorage.setItem(threadStorageKey, threadId);
     }
 
+    const sentAttachments = composerAttachments;
     const newMessage: Message = {
       role: 'user',
       text: text,
-      time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' })
+      time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' }),
+      attachments: sentAttachments,
     };
 
     setMessages(prev => [...prev, newMessage]);
+    setComposerAttachments([]);
     setIsTyping(true);
     const assistantTime = formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' });
     let streamedText = '';
@@ -387,7 +392,7 @@ export default function AIAssistant() {
     try {
       const abortController = new AbortController();
       streamAbortRef.current = abortController;
-      const attachmentIds = composerAttachments.map((attachment) => attachment.id);
+      const attachmentIds = sentAttachments.map((attachment) => attachment.id);
       const response = await aiService.sendMessageStream(text, {
         signal: abortController.signal,
         chunkDebounceMs: 50,
@@ -550,7 +555,7 @@ export default function AIAssistant() {
   const quotaExceeded = quota ? quota.used >= quota.limit : false;
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-bg-primary">
+    <div className="ai-surface h-full min-h-0 flex flex-col overflow-hidden bg-bg-primary">
       <AIPrivacyModal
         isOpen={showPrivacyModal}
         onAccept={handleAcceptPrivacy}
@@ -646,51 +651,69 @@ export default function AIAssistant() {
                     I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.
                   </p>
                   <div className="grid grid-cols-2 gap-4 max-w-2xl">
-                    <button
+                    <motion.button
                       onClick={() => handleSendMessage("How much did I spend this month?")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">💰 Spending Summary</div>
                       <div className="text-xs text-text-secondary">How much did I spend this month?</div>
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => handleSendMessage("What's my net worth?")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">📊 Net Worth</div>
                       <div className="text-xs text-text-secondary">What&apos;s my net worth?</div>
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => handleSendMessage("Show my subscriptions")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">🔄 Subscriptions</div>
                       <div className="text-xs text-text-secondary">Show my subscriptions</div>
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => handleSendMessage("Analyze my spending by category")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">📈 Category Analysis</div>
                       <div className="text-xs text-text-secondary">Analyze my spending by category</div>
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               ) : (
                 <>
-                  {messages.map((msg, idx) => (
-                    <ChatMessage
-                      key={idx}
-                      role={msg.role}
-                      text={msg.text}
-                      time={msg.time}
-                      citations={msg.citations}
-                    />
-                  ))}
+                  <AnimatePresence initial={false}>
+                    {messages.map((msg, idx) => (
+                      <motion.div
+                        key={`${msg.role}-${msg.time}-${idx}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        <ChatMessage
+                          role={msg.role}
+                          text={msg.text}
+                          time={msg.time}
+                          citations={msg.citations}
+                          attachments={msg.attachments}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                   {isWebSearching && (
                     <div className="chat-message chat-message-assistant">
                       <div className="chat-message-content text-sm text-text-secondary">
@@ -720,6 +743,7 @@ export default function AIAssistant() {
                 isLoading={isTyping}
                 disabled={!privacyAccepted}
                 quotaExceeded={quotaExceeded}
+                autoFocus
               />
               <div className="mt-3 text-xs text-text-secondary text-center">
                 <strong>Disclaimer:</strong> JuaLuma Insights are generated by AI for informational purposes only. Generated content may be inaccurate. Consult a qualified professional.
