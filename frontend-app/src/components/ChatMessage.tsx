@@ -17,15 +17,28 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CopyIconButton } from './ui/CopyIconButton';
+import { FILE_ICON_LABELS, resolveFileIconKind } from '../utils/fileIconMapping';
+
+interface ChatAttachment {
+    id: string;
+    name: string;
+    fileType: string;
+}
 
 interface ChatMessageProps {
     role: 'user' | 'assistant';
     text: string;
     time: string;
     citations?: Array<{ title: string; url: string }>;
+    attachments?: ChatAttachment[];
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time, citations = [] }) => {
+const shortenFileName = (name: string): string => {
+    if (name.length <= 22) return name
+    return `${name.slice(0, 22)}...`
+}
+
+export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time, citations = [], attachments = [] }) => {
     return (
         <div className={`chat-message chat-message-${role} group relative`}>
             <div className="chat-message-content">
@@ -61,7 +74,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, text, time, cita
                         {text}
                     </ReactMarkdown>
                 ) : (
-                    <p className="whitespace-pre-wrap">{text}</p>
+                    <>
+                        {attachments.length > 0 && (
+                            <div className="mb-3 flex flex-wrap gap-2">
+                                {attachments.map((attachment) => (
+                                    <div
+                                        key={attachment.id}
+                                        className="inline-flex items-center gap-2 rounded-full border px-2 py-1 text-xs"
+                                        style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}
+                                    >
+                                        <span className="inline-flex h-5 min-w-[2.2rem] items-center justify-center rounded-md bg-black/10 px-1 text-[10px] font-semibold tracking-wide text-text-primary">
+                                            {FILE_ICON_LABELS[resolveFileIconKind(attachment.fileType)]}
+                                        </span>
+                                        <span className="max-w-[12rem] truncate text-text-primary">
+                                            {shortenFileName(attachment.name)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <p className="whitespace-pre-wrap">{text}</p>
+                    </>
                 )}
             </div>
             {role === 'assistant' && citations.length > 0 && (
