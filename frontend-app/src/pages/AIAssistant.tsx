@@ -550,9 +550,8 @@ export default function AIAssistant() {
               return idx >= 0 ? updated.length - 1 - idx : -1;
             })();
         if (lastAssistantIndex >= 0) {
-          const index = updated.length - 1 - lastAssistantIndex;
-          updated[index] = {
-            ...updated[index],
+          updated[lastAssistantIndex] = {
+            ...updated[lastAssistantIndex],
             pending: false,
             text: errorText,
             citations: [],
