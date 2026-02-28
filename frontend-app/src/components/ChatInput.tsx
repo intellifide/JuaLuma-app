@@ -214,7 +214,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={!canUpload}
-                    className="absolute right-[3.1rem] bottom-3 p-0 rounded-xl text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9 border"
+                    className="absolute right-[3.95rem] bottom-3 p-0 rounded-xl text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9 border"
                     style={{ borderColor: 'var(--border-subtle)' }}
                     aria-label="Upload file"
                     title="Upload file"

@@ -37,6 +37,7 @@ interface Message {
   role: 'user' | 'assistant';
   text: string;
   time: string;
+  pending?: boolean;
   citations?: Array<{ title: string; url: string }>;
   webSearchUsed?: boolean;
   attachments?: ComposerAttachment[];
@@ -387,7 +388,7 @@ export default function AIAssistant() {
     setIsTyping(true);
     const assistantTime = formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' });
     let streamedText = '';
-    setMessages(prev => [...prev, { role: 'assistant', text: '', time: assistantTime }]);
+    setMessages(prev => [...prev, { role: 'assistant', text: '', time: assistantTime, pending: true }]);
 
     try {
       const abortController = new AbortController();
@@ -400,13 +401,27 @@ export default function AIAssistant() {
           setIsWebSearching(status === 'started');
         },
         onChunk: (delta: string) => {
+          if (!delta) return;
           streamedText += delta;
           setMessages((prev) => {
             const updated = [...prev];
+            const pendingAssistantIndex = [...updated]
+              .reverse()
+              .findIndex((msg) => msg.role === 'assistant' && msg.pending);
+            if (pendingAssistantIndex >= 0) {
+              const index = updated.length - 1 - pendingAssistantIndex;
+              updated[index] = {
+                ...updated[index],
+                pending: false,
+                text: (updated[index].text || '') + delta,
+              };
+              return updated;
+            }
+
             const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
             if (lastAssistantIndex >= 0) {
               const index = updated.length - 1 - lastAssistantIndex;
-              updated[index] = { ...updated[index], text: (updated[index].text || '') + delta };
+              updated[index] = { ...updated[index], text: (updated[index].text || '') + delta, pending: false };
             }
             return updated;
           });
@@ -416,15 +431,32 @@ export default function AIAssistant() {
       const finalResponse = response.response || streamedText;
       setMessages(prev => {
         const updated = [...prev];
-        const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+        const pendingAssistantIndex = [...updated]
+          .reverse()
+          .findIndex((msg) => msg.role === 'assistant' && msg.pending);
+        const lastAssistantIndex = pendingAssistantIndex >= 0
+          ? updated.length - 1 - pendingAssistantIndex
+          : (() => {
+              const idx = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+              return idx >= 0 ? updated.length - 1 - idx : -1;
+            })();
         if (lastAssistantIndex >= 0) {
-          const index = updated.length - 1 - lastAssistantIndex;
-          updated[index] = {
-            ...updated[index],
+          updated[lastAssistantIndex] = {
+            ...updated[lastAssistantIndex],
+            pending: false,
             text: finalResponse,
             citations: response.citations ?? [],
             webSearchUsed: response.web_search_used ?? false,
           };
+        } else {
+          updated.push({
+            role: 'assistant',
+            text: finalResponse,
+            time: assistantTime,
+            pending: false,
+            citations: response.citations ?? [],
+            webSearchUsed: response.web_search_used ?? false,
+          });
         }
 
         // Update thread in threads list
@@ -491,7 +523,9 @@ export default function AIAssistant() {
       if (error instanceof DOMException && error.name === 'AbortError') {
         setMessages((prev) => {
           const updated = [...prev];
-          const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+          const lastAssistantIndex = [...updated]
+            .reverse()
+            .findIndex((msg) => msg.role === 'assistant' && msg.pending);
           if (lastAssistantIndex >= 0) {
             const index = updated.length - 1 - lastAssistantIndex;
             if (!updated[index].text.trim()) {
@@ -506,11 +540,20 @@ export default function AIAssistant() {
       setMessages(prev => {
         const updated = [...prev];
         const errorText = `Error: ${error instanceof Error ? error.message : 'Something went wrong.'}`;
-        const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+        const pendingAssistantIndex = [...updated]
+          .reverse()
+          .findIndex((msg) => msg.role === 'assistant' && msg.pending);
+        const lastAssistantIndex = pendingAssistantIndex >= 0
+          ? updated.length - 1 - pendingAssistantIndex
+          : (() => {
+              const idx = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+              return idx >= 0 ? updated.length - 1 - idx : -1;
+            })();
         if (lastAssistantIndex >= 0) {
           const index = updated.length - 1 - lastAssistantIndex;
           updated[index] = {
             ...updated[index],
+            pending: false,
             text: errorText,
             citations: [],
             webSearchUsed: false,
@@ -520,6 +563,7 @@ export default function AIAssistant() {
             role: 'assistant',
             text: errorText,
             time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' }),
+            pending: false,
           });
         }
         localStorage.setItem(`${storageKey}_${threadId}`, JSON.stringify(updated));
@@ -553,6 +597,15 @@ export default function AIAssistant() {
   }, [messages, isTyping]);
 
   const quotaExceeded = quota ? quota.used >= quota.limit : false;
+  const shouldShowAssistantThinking =
+    isTyping &&
+    messages.length > 0 &&
+    messages[messages.length - 1].role === 'assistant' &&
+    Boolean(messages[messages.length - 1].pending) &&
+    !messages[messages.length - 1].text.trim();
+  const visibleMessages = messages.filter(
+    (msg) => !(msg.role === 'assistant' && msg.pending && !msg.text.trim()),
+  );
 
   return (
     <div className="ai-surface h-full min-h-0 flex flex-col overflow-hidden bg-bg-primary">
@@ -696,13 +749,14 @@ export default function AIAssistant() {
               ) : (
                 <>
                   <AnimatePresence initial={false}>
-                    {messages.map((msg, idx) => (
+                    {visibleMessages.map((msg, idx) => (
                       <motion.div
                         key={`${msg.role}-${msg.time}-${idx}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        layout
+                        initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                       >
                         <ChatMessage
                           role={msg.role}
@@ -713,6 +767,25 @@ export default function AIAssistant() {
                         />
                       </motion.div>
                     ))}
+                    {shouldShowAssistantThinking && (
+                      <motion.div
+                        key="assistant-thinking-row"
+                        className="chat-message chat-message-assistant"
+                        initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                        transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        <div className="assistant-thinking-indicator" aria-live="polite">
+                          <span className="assistant-thinking-indicator-text">Crunching numbers</span>
+                          <span className="assistant-thinking-indicator-dots" aria-hidden="true">
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                   {isWebSearching && (
                     <div className="chat-message chat-message-assistant">
