@@ -198,7 +198,7 @@ export const AppLayout: React.FC = () => {
 
       <div className="p-4 border-t border-white/10 space-y-2">
         <div className={`mt-2 flex items-center ${sidebarOpen ? 'justify-between px-2' : 'justify-center'}`}>
-          {sidebarOpen && <span className="text-xs text-text-muted">Theme</span>}
+          {sidebarOpen && <span className="theme-label text-text-muted">Theme</span>}
           <ThemeToggle />
         </div>
         <button

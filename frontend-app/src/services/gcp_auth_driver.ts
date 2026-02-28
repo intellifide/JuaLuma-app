@@ -35,6 +35,18 @@ let _expiresAt = 0
 type AuthStateListener = (user: User | null) => void
 const listeners: AuthStateListener[] = []
 
+const getStorage = () => {
+    if (
+        typeof localStorage !== 'undefined' &&
+        typeof localStorage.getItem === 'function' &&
+        typeof localStorage.setItem === 'function' &&
+        typeof localStorage.removeItem === 'function'
+    ) {
+        return localStorage
+    }
+    return null
+}
+
 const notifyListeners = () => {
     listeners.forEach(l => l(currentUser))
 }
@@ -80,13 +92,16 @@ const saveSession = (
     }
   }
 
-  localStorage.setItem('gcp_auth_session', JSON.stringify({
-    idToken,
-    refreshToken,
-    expiresAt: expiresAppx,
-    uid: localId,
-    email
-  }))
+  const storage = getStorage()
+  if (storage) {
+      storage.setItem('gcp_auth_session', JSON.stringify({
+        idToken,
+        refreshToken,
+        expiresAt: expiresAppx,
+        uid: localId,
+        email
+      }))
+  }
   if (options.notifyAuthState !== false) {
     notifyListeners()
   }
@@ -97,13 +112,18 @@ const clearSession = () => {
   _idToken = null
   _refreshToken = null
   _expiresAt = 0
-  localStorage.removeItem('gcp_auth_session')
+  const storage = getStorage()
+  if (storage) {
+      storage.removeItem('gcp_auth_session')
+  }
   notifyListeners()
 }
 
 // Restore session on load
 const restoreSession = () => {
-    const json = localStorage.getItem('gcp_auth_session')
+    const storage = getStorage()
+    if (!storage) return
+    const json = storage.getItem('gcp_auth_session')
     if (json) {
         try {
             const data = JSON.parse(json)

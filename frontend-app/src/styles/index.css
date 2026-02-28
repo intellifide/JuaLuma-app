@@ -3208,3 +3208,141 @@ body {
     transform: translate3d(var(--dx, 260px), var(--dy, -120px), 0);
   }
 }
+
+/* ------------------------------------------------------------
+   WEB UX OVERHAUL BASELINE (WEBUX-001+)
+   Apple-premium core shell + Google-like AI productivity surfaces.
+------------------------------------------------------------- */
+
+:root {
+  --font-family: 'SF Pro Text', 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-hover: rgba(248, 251, 255, 0.92);
+  --surface-active: rgba(232, 242, 255, 0.95);
+  --border-subtle: rgba(101, 126, 166, 0.28);
+  --glass-shadow: 0 20px 48px rgba(18, 34, 62, 0.16);
+  --send-button-bg: #13213d;
+  --send-icon-color: #ffffff;
+  --theme-toggle-sun-color: #ffd60a;
+}
+
+[data-theme='light'] {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-secondary: #0ea5e9;
+  --text-primary: #152238;
+  --text-secondary: #3d516f;
+  --text-muted: #6b7f9c;
+  --bg-primary: #eef3fb;
+  --bg-secondary: #f9fbff;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-hover: rgba(246, 250, 255, 0.95);
+  --surface-active: rgba(231, 241, 255, 0.95);
+  --border-color: rgba(110, 132, 168, 0.24);
+  --border-subtle: rgba(110, 132, 168, 0.28);
+  --shadow-md: 0 12px 30px rgba(19, 33, 61, 0.1);
+  --shadow-lg: 0 20px 48px rgba(19, 33, 61, 0.12);
+  --glass-shadow: 0 24px 54px rgba(19, 33, 61, 0.14);
+  --send-button-bg: #122548;
+  --send-icon-color: #ffffff;
+}
+
+[data-theme='dark'] {
+  --color-primary: #7db4ff;
+  --color-primary-dark: #5f9eff;
+  --color-secondary: #68cbff;
+  --text-primary: #e9f0fd;
+  --text-secondary: #b8cae7;
+  --text-muted: #8fa5c8;
+  --bg-primary: #070e1b;
+  --bg-secondary: #101a2c;
+  --surface: rgba(14, 28, 50, 0.8);
+  --surface-hover: rgba(18, 34, 61, 0.9);
+  --surface-active: rgba(27, 49, 83, 0.9);
+  --border-color: rgba(157, 193, 255, 0.2);
+  --border-subtle: rgba(164, 198, 255, 0.25);
+  --glass-shadow: 0 24px 52px rgba(0, 4, 16, 0.55);
+  --send-button-bg: #f3f7ff;
+  --send-icon-color: #000000;
+  --theme-toggle-sun-color: #ffd60a;
+}
+
+.app-shell {
+  background: radial-gradient(circle at 14% 8%, rgba(132, 184, 255, 0.16), transparent 36%),
+    radial-gradient(circle at 88% 4%, rgba(102, 217, 255, 0.14), transparent 30%),
+    var(--bg-primary);
+}
+
+[data-theme='dark'] .app-shell {
+  background: radial-gradient(circle at 16% 10%, rgba(85, 142, 235, 0.24), transparent 34%),
+    radial-gradient(circle at 84% 8%, rgba(61, 150, 205, 0.16), transparent 30%),
+    var(--bg-primary);
+}
+
+.app-sidebar,
+.app-topbar,
+.app-mobile-header {
+  border-color: var(--border-subtle) !important;
+}
+
+.app-sidebar {
+  background: var(--surface) !important;
+  border-right: 1px solid var(--border-subtle);
+  box-shadow: 18px 0 36px rgba(10, 22, 45, 0.18);
+}
+
+.app-topbar,
+.app-mobile-header {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar-link {
+  border-radius: 12px;
+}
+
+.sidebar-link.is-active {
+  background: var(--surface-active);
+  border-color: var(--border-subtle);
+  box-shadow: 0 8px 20px rgba(24, 49, 92, 0.2);
+}
+
+.theme-label {
+  font-size: calc(var(--font-size-xs) * 2);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.theme-toggle-icon {
+  transition: color 150ms ease;
+}
+
+[data-theme='dark'] .theme-toggle-sun {
+  color: var(--theme-toggle-sun-color);
+  filter: drop-shadow(0 0 6px rgba(255, 214, 10, 0.45));
+}
+
+.ai-surface {
+  background: linear-gradient(180deg, rgba(240, 246, 255, 0.9) 0%, rgba(230, 239, 252, 0.72) 100%);
+}
+
+[data-theme='dark'] .ai-surface {
+  background: linear-gradient(180deg, rgba(7, 14, 27, 0.95) 0%, rgba(10, 20, 37, 0.92) 100%);
+}
+
+.ai-surface .chat-message {
+  max-width: min(76%, 760px);
+  box-shadow: 0 12px 30px rgba(20, 35, 63, 0.12);
+}
+
+.ai-surface .chat-message-user {
+  background: var(--surface-active);
+  border-color: var(--border-subtle);
+  border-radius: 18px 18px 8px 18px;
+}
+
+.ai-surface .chat-message-assistant {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  border-radius: 18px 18px 18px 8px;
+}

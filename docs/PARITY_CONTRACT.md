@@ -59,7 +59,7 @@ Last updated: 2026-02-27 (UTC)
 - Dev and stage services must remain authenticated-only.
   - `run.googleapis.com/invoker-iam-disabled=false`
   - `allUsers` must not hold `roles/run.invoker`
-  - Allowed human invokers: `user:ops@intellifide.com`, `user:tdcollins166@gmail.com`
+- Allowed human invokers: `user:ops@intellifide.com`
 - Prod services must be reachable publicly only via approved custom domains.
   - `run.googleapis.com/ingress=internal-and-cloud-load-balancing`
   - Direct `*.run.app` access must return blocked status (`401/403/404`)

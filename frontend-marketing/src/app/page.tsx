@@ -84,33 +84,55 @@ export default function Home() {
           <motion.div variants={item} className="marketing-preview-panel">
             <h2>Wealth Builder Preview</h2>
             <div className="marketing-metric-grid">
-              <article className="marketing-metric-card">
+              <motion.article
+                className="marketing-metric-card"
+                whileHover={{ y: -5, scale: 1.01 }}
+                transition={{ duration: 0.2 }}
+              >
                 <h3>Net Worth</h3>
                 <p className="marketing-metric-value positive">$638,240</p>
                 <p className="marketing-metric-detail">Assets $1.00M • Liabilities $415K</p>
                 <p className="marketing-metric-footnote">Up $12.7k in last 30 days</p>
-              </article>
+              </motion.article>
 
-              <article className="marketing-metric-card">
+              <motion.article
+                className="marketing-metric-card"
+                whileHover={{ y: -5, scale: 1.01 }}
+                transition={{ duration: 0.2, delay: 0.02 }}
+              >
                 <h3>Cash Flow</h3>
                 <p className="marketing-metric-value positive">+$3,180</p>
                 <p className="marketing-metric-detail">In $11,450 • Out $8,270</p>
-              </article>
+              </motion.article>
 
-              <article className="marketing-metric-card">
+              <motion.article
+                className="marketing-metric-card"
+                whileHover={{ y: -5, scale: 1.01 }}
+                transition={{ duration: 0.2, delay: 0.04 }}
+              >
                 <h3>Budget Status</h3>
                 <p className="marketing-metric-value">72%</p>
                 <div className="marketing-meter-track" aria-hidden>
-                  <span className="marketing-meter-fill" style={{ width: '72%' }} />
+                  <motion.span
+                    className="marketing-meter-fill"
+                    initial={{ width: '0%' }}
+                    whileInView={{ width: '72%' }}
+                    viewport={{ once: true, amount: 0.6 }}
+                    transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                  />
                 </div>
                 <p className="marketing-metric-detail">$8.0k of $8.0k spent</p>
-              </article>
+              </motion.article>
 
-              <article className="marketing-metric-card">
+              <motion.article
+                className="marketing-metric-card"
+                whileHover={{ y: -5, scale: 1.01 }}
+                transition={{ duration: 0.2, delay: 0.06 }}
+              >
                 <h3>Linked Accounts</h3>
                 <p className="marketing-metric-value">21</p>
                 <p className="marketing-metric-detail">Checking 5 • Savings 4 • Brokerage 3 • + more</p>
-              </article>
+              </motion.article>
             </div>
           </motion.div>
         </motion.section>
