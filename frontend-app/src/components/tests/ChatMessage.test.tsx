@@ -33,6 +33,24 @@ describe('ChatMessage', () => {
         expect(screen.getByTitle('Copy assistant message')).toBeInTheDocument()
     })
 
+    it('renders uploaded attachments above the user prompt', () => {
+        renderWithToast(
+            <ChatMessage
+                role="user"
+                text="Use these docs"
+                time="10:02 AM"
+                attachments={[
+                    { id: 'doc-1', name: 'expense-summary-2026.pdf', fileType: 'pdf' },
+                    { id: 'doc-2', name: 'notes.txt', fileType: 'txt' },
+                ]}
+            />,
+        )
+
+        expect(screen.getByText('expense-summary-2026.p...')).toBeInTheDocument()
+        expect(screen.getByText('notes.txt')).toBeInTheDocument()
+        expect(screen.getByText('Use these docs')).toBeInTheDocument()
+    })
+
     it('copies text when copy button is clicked', async () => {
         const writeTextMock = vi.fn()
         Object.assign(navigator, {
