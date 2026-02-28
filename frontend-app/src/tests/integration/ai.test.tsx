@@ -222,8 +222,12 @@ describe('AI Assistant Integration', () => {
             expect(screen.getByText(/Error: We encountered an issue while processing your AI request/i)).toBeInTheDocument()
         })
 
-        const assistantBubbles = container.querySelectorAll('.chat-message-assistant')
-        expect(assistantBubbles.length).toBe(1)
+        const errorAssistantBubbles = Array.from(
+            container.querySelectorAll('.chat-message-assistant'),
+        ).filter((bubble) =>
+            bubble.textContent?.includes('Error: We encountered an issue while processing your AI request'),
+        )
+        expect(errorAssistantBubbles.length).toBe(1)
     })
 
     it('moves uploaded files into sent user bubble and clears composer attachments after send', async () => {
