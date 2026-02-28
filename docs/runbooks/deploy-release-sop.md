@@ -8,7 +8,7 @@
 | Environment | GCP Project | Branch | Workflow | Approval |
 |---|---|---|---|---|
 | Development | `jualuma-dev` | `Dev` | `deploy-dev.yml` | None |
-| Stage | `jualuma-stage` | `stage` | `deploy-stage.yml` | None |
+| Stage | `jualuma-stage` | `stage` | `deploy-stage.yml` | Required by branch protection |
 | Production | `jualuma-prod` | `main` | `deploy-prod.yml` | Required (GitHub environment gate) |
 
 ## Promotion Path
@@ -18,26 +18,6 @@
 3. `stage` -> `main` (PR only)
 
 No promotion skips are allowed.
-
-## Branch & Environment Policy Baseline (Solo Operator)
-
-- `Dev` branch protection:
-  - required PR approvals: `0`
-  - conversation resolution required: `false`
-  - linear history required: `true`
-- `stage` branch protection:
-  - required PR approvals: `0`
-  - conversation resolution required: `true`
-  - linear history required: `true`
-- `main` branch protection:
-  - required PR approvals: `0`
-  - `require_last_push_approval`: `false`
-  - conversation resolution required: `true`
-  - linear history required: `true`
-- GitHub `production` environment:
-  - required reviewer: `intellifide`
-  - `prevent_self_review`: `false`
-  - protected branches only: `true`
 
 ## Release Process
 
