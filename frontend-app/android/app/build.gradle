@@ -1,0 +1,111 @@
+apply plugin: 'com.android.application'
+
+def resolveMobileProperty = { String key ->
+    def projectValue = project.findProperty(key)
+    if (projectValue != null) {
+        def normalized = projectValue.toString().trim()
+        if (!normalized.isEmpty()) {
+            return normalized
+        }
+    }
+
+    def envValue = System.getenv(key)
+    if (envValue != null) {
+        def normalized = envValue.toString().trim()
+        if (!normalized.isEmpty()) {
+            return normalized
+        }
+    }
+
+    return null
+}
+
+def mobileReleaseStoreFile = resolveMobileProperty("MOBILE_ANDROID_RELEASE_STORE_FILE")
+def mobileReleaseStorePassword = resolveMobileProperty("MOBILE_ANDROID_RELEASE_STORE_PASSWORD")
+def mobileReleaseKeyAlias = resolveMobileProperty("MOBILE_ANDROID_RELEASE_KEY_ALIAS")
+def mobileReleaseKeyPassword = resolveMobileProperty("MOBILE_ANDROID_RELEASE_KEY_PASSWORD")
+def hasMobileReleaseSigningConfig = [
+    mobileReleaseStoreFile,
+    mobileReleaseStorePassword,
+    mobileReleaseKeyAlias,
+    mobileReleaseKeyPassword
+].every { value -> value != null && !value.trim().isEmpty() }
+
+android {
+    namespace = "com.intellifide.jualuma"
+    compileSdk = rootProject.ext.compileSdkVersion
+    buildFeatures {
+        buildConfig true
+    }
+    defaultConfig {
+        applicationId "com.intellifide.jualuma"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    if (hasMobileReleaseSigningConfig) {
+        signingConfigs {
+            release {
+                storeFile file(mobileReleaseStoreFile)
+                storePassword mobileReleaseStorePassword
+                keyAlias mobileReleaseKeyAlias
+                keyPassword mobileReleaseKeyPassword
+                enableV1Signing true
+                enableV2Signing true
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField "String", "MOBILE_SESSION_STORE_MODE", "\"local\""
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            buildConfigField "String", "MOBILE_SESSION_STORE_MODE", "\"secure\""
+            if (hasMobileReleaseSigningConfig) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
+    implementation "com.plaid.link:sdk-core:5.1.1"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+    implementation project(':mobile-shared-core')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

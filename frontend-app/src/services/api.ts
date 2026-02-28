@@ -17,6 +17,11 @@ import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { clearCachedToken, getIdToken, MfaRequiredError } from './auth'
 import { normalizeApiErrorMessage } from './apiErrorMessages'
 
+type ApiClientError = Error & {
+  status?: number
+  rawMessage?: string
+}
+
 // Accept both env naming conventions across dev/prod.
 const envBase =
   import.meta.env.VITE_API_BASE_URL ||
@@ -77,7 +82,11 @@ api.interceptors.response.use(
       }
     }
 
-    return Promise.reject(new Error(message))
+    const normalizedError: ApiClientError = new Error(message)
+    normalizedError.name = 'ApiClientError'
+    normalizedError.status = status
+    normalizedError.rawMessage = rawMessage
+    return Promise.reject(normalizedError)
   },
 )
 

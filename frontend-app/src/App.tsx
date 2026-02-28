@@ -14,7 +14,8 @@
 
 // Updated 2025-01-25 18:30 CST by Antigravity
 
-import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Route, Routes, Navigate, useNavigate } from 'react-router-dom'
 import { SWRConfig } from 'swr'
 import { AuthProvider } from './hooks/useAuth'
 import { ThemeProvider } from './hooks/useTheme'
@@ -50,9 +51,43 @@ import { DeveloperDashboard } from './pages/developers/DeveloperDashboard'
 import { CheckoutSuccess } from './pages/CheckoutSuccess'
 import { CheckoutStart } from './pages/CheckoutStart'
 import Maintenance from './pages/Maintenance'
+import { attachNativeDeepLinkListener } from './services/deepLinkRouting'
+import { initializeClientObservability } from './services/clientObservability'
+
+function NativeDeepLinkHandler() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    return attachNativeDeepLinkListener((route) => {
+      navigate(route)
+    })
+  }, [navigate])
+
+  return null
+}
 
 function App() {
   const MAINTENANCE_MODE = import.meta.env.VITE_MAINTENANCE_MODE === 'true'
+
+  useEffect(() => {
+    let dispose: (() => void) | null = null
+    let unmounted = false
+
+    void initializeClientObservability().then((cleanup) => {
+      if (unmounted) {
+        cleanup()
+        return
+      }
+      dispose = cleanup
+    })
+
+    return () => {
+      unmounted = true
+      if (dispose) {
+        dispose()
+      }
+    }
+  }, [])
 
   if (MAINTENANCE_MODE) {
     return <Maintenance />
@@ -60,15 +95,33 @@ function App() {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <NativeDeepLinkHandler />
       <ThemeProvider>
         <SWRConfig
           value={{
             // Avoid SWR retry storms when the backend rate limiter returns 429s.
-            shouldRetryOnError: (error: any) => {
-              const status = error?.response?.status ?? error?.status
+            shouldRetryOnError: (error: unknown) => {
+              const status =
+                (error as { response?: { status?: number }; status?: number } | null)?.response
+                  ?.status ??
+                (error as { status?: number } | null)?.status
               return status !== 429
             },
-            errorRetryInterval: 5000,
+            errorRetryCount: 2,
+            onErrorRetry: (error, _key, _config, revalidate, context) => {
+              const status =
+                (error as { response?: { status?: number }; status?: number } | null)?.response
+                  ?.status ??
+                (error as { status?: number } | null)?.status
+              if (status === 429 || context.retryCount >= 2) {
+                return
+              }
+              const delayMs = Math.min(6000, 1000 * 2 ** context.retryCount)
+              setTimeout(() => {
+                void revalidate({ retryCount: context.retryCount })
+              }, delayMs)
+            },
+            isPaused: () => typeof navigator !== 'undefined' && navigator.onLine === false,
             dedupingInterval: 1000,
           }}
         >

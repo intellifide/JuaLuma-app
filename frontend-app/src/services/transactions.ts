@@ -15,6 +15,7 @@
 // Updated 2025-12-08 21:49 CST by ChatGPT
 import { api } from './api'
 import { PaginatedResponse, Transaction, TransactionFilters } from '../types'
+import { readCachedValue, withRetry, writeCachedValue } from './mobileDataResilience'
 
 type TransactionUpdatePayload = Partial<{
   category: string
@@ -25,6 +26,9 @@ type BulkUpdatePayload = {
   transactionIds: string[]
   updates: TransactionUpdatePayload
 }
+
+const TRANSACTION_LIST_CACHE_TTL_MS = 2 * 60 * 1000
+const TRANSACTION_LIST_OFFLINE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
 const handleError = (error: unknown) => {
   const message =
@@ -120,13 +124,42 @@ const buildQueryParams = (filters?: TransactionFilters) => {
   return params
 }
 
+const buildTransactionsCacheKey = (
+  endpoint: 'transactions' | 'transactions_search',
+  params: URLSearchParams,
+): string => {
+  const suffix = params.toString()
+  return `jualuma_cache_${endpoint}_v1:${suffix || 'all'}`
+}
+
 export const getTransactions = async (
   filters?: TransactionFilters,
 ): Promise<PaginatedResponse<Transaction>> => {
+  const params = buildQueryParams(filters)
+  const cacheKey = buildTransactionsCacheKey('transactions', params)
+  const cached = readCachedValue<PaginatedResponse<Transaction>>(
+    cacheKey,
+    TRANSACTION_LIST_CACHE_TTL_MS,
+  )
+
   try {
-    const { data } = await api.get('/transactions', { params: buildQueryParams(filters) })
-    return mapListResponse(data)
+    const transactions = await withRetry(async () => {
+      const { data } = await api.get('/transactions', { params })
+      return mapListResponse(data)
+    })
+    writeCachedValue(cacheKey, transactions)
+    return transactions
   } catch (error) {
+    const stale = readCachedValue<PaginatedResponse<Transaction>>(
+      cacheKey,
+      TRANSACTION_LIST_OFFLINE_MAX_AGE_MS,
+    )
+    if (stale) {
+      return stale
+    }
+    if (cached) {
+      return cached
+    }
     handleError(error)
     return { data: [], total: 0, page: 1, pageSize: 50 }
   }
@@ -134,7 +167,7 @@ export const getTransactions = async (
 
 export const getTransaction = async (id: string): Promise<Transaction> => {
   try {
-    const { data } = await api.get(`/transactions/${id}`)
+    const { data } = await withRetry(() => api.get(`/transactions/${id}`))
     return mapTransaction(data)
   } catch (error) {
     handleError(error)
@@ -222,12 +255,32 @@ export const searchTransactions = async (
   query: string,
   filters?: TransactionFilters,
 ): Promise<PaginatedResponse<Transaction>> => {
+  const params = buildQueryParams(filters)
+  params.set('q', query)
+  const cacheKey = buildTransactionsCacheKey('transactions_search', params)
+  const cached = readCachedValue<PaginatedResponse<Transaction>>(
+    cacheKey,
+    TRANSACTION_LIST_CACHE_TTL_MS,
+  )
+
   try {
-    const params = buildQueryParams(filters)
-    params.set('q', query)
-    const { data } = await api.get('/transactions/search', { params })
-    return mapListResponse(data)
+    const transactions = await withRetry(async () => {
+      const { data } = await api.get('/transactions/search', { params })
+      return mapListResponse(data)
+    })
+    writeCachedValue(cacheKey, transactions)
+    return transactions
   } catch (error) {
+    const stale = readCachedValue<PaginatedResponse<Transaction>>(
+      cacheKey,
+      TRANSACTION_LIST_OFFLINE_MAX_AGE_MS,
+    )
+    if (stale) {
+      return stale
+    }
+    if (cached) {
+      return cached
+    }
     handleError(error)
     return { data: [], total: 0, page: 1, pageSize: 50 }
   }

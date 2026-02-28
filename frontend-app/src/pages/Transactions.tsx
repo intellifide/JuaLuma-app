@@ -72,7 +72,7 @@ export const Transactions = () => {
   const timeZone = useUserTimeZone()
   const toast = useToast()
   const [scope, setScope] = useState<'personal' | 'household'>('personal')
-  const { accounts } = useAccounts({ filters: { scope } })
+  const { accounts, loading: accountsLoading, error: accountsError } = useAccounts({ filters: { scope } })
 
   // Check if user has Pro or Ultimate tier for manual transactions
   // Check both profile.plan and subscriptions array as fallback
@@ -103,7 +103,16 @@ export const Transactions = () => {
     return isManualFilter === 'manual'
   }, [isManualFilter])
 
-  const { transactions, total, pageSize: actualPageSize, loading, refetch, updateOne, remove } = useTransactions({
+  const {
+    transactions,
+    total,
+    pageSize: actualPageSize,
+    loading,
+    error: transactionsError,
+    refetch,
+    updateOne,
+    remove,
+  } = useTransactions({
     filters: {
       category: category || undefined,
       page,
@@ -277,6 +286,21 @@ export const Transactions = () => {
           </div>
         ) : null}
 
+        {accountsError ? (
+          <div className="alert alert-error flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <span className="text-sm">Unable to load account metadata for this scope.</span>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => {
+                void refetch()
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+
         {/* Advanced Filters Toggle */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <button
@@ -414,9 +438,26 @@ export const Transactions = () => {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading || accountsLoading ? (
                 <tr>
                   <td colSpan={6} className="text-center py-6 text-text-muted italic">Loading...</td>
+                </tr>
+              ) : transactionsError ? (
+                <tr>
+                  <td colSpan={6} className="py-6">
+                    <div className="flex flex-col items-center justify-center gap-3 text-center">
+                      <p className="text-sm text-rose-300">Failed to load transactions.</p>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => {
+                          void refetch()
+                        }}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ) : transactions.length === 0 ? (
                 <tr>
