@@ -2594,7 +2594,7 @@ body {
 }
 
 [data-theme='light'] .app-sidebar {
-  background: #14203a;
+  background: #f8fafc;
   border-right: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -2727,7 +2727,7 @@ body {
 
 [data-theme='light'] .app-topbar,
 [data-theme='light'] .app-mobile-header {
-  background: #14203a;
+  background: #ffffff;
   border-bottom: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -2738,10 +2738,10 @@ body {
 }
 
 [data-theme='light'] .sidebar-link.is-active {
-  color: #f4f8ff;
-  background: linear-gradient(130deg, rgba(136, 188, 255, 0.2), rgba(136, 130, 255, 0.13));
-  border-color: rgba(164, 205, 255, 0.4);
-  box-shadow: inset 0 1px 0 rgba(247, 252, 255, 0.24), 0 8px 22px rgba(4, 16, 41, 0.42);
+  color: #0f172a;
+  background: linear-gradient(130deg, rgba(206, 226, 255, 0.58), rgba(219, 230, 255, 0.44));
+  border-color: rgba(161, 190, 234, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 8px 18px rgba(107, 140, 191, 0.16);
 }
 
 .topbar-actions {
@@ -2828,6 +2828,107 @@ body {
 .app-sidebar .theme-toggle:hover {
   color: #edf3ff;
   background: rgba(44, 77, 141, 0.5);
+}
+
+[data-theme='light'] .sidebar-link {
+  color: #111827;
+}
+
+[data-theme='light'] .sidebar-link:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.06);
+}
+
+[data-theme='light'] .sidebar-badge {
+  border-color: rgba(15, 23, 42, 0.22);
+  color: #1f2937;
+}
+
+[data-theme='light'] .sidebar-collapse-btn {
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #1f2937;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
+}
+
+[data-theme='light'] .sidebar-collapse-btn:hover {
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.32);
+}
+
+[data-theme='light'] .app-sidebar .text-text-muted,
+[data-theme='light'] .app-topbar .text-text-primary,
+[data-theme='light'] .app-topbar .text-text-secondary {
+  color: #111827;
+}
+
+[data-theme='light'] .sidebar-coming-soon {
+  opacity: 0.8;
+}
+
+[data-theme='light'] .app-sidebar .theme-toggle {
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #0f172a;
+  background: #ffffff;
+}
+
+[data-theme='light'] .app-sidebar .theme-toggle:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme='light'] .app-topbar h1,
+[data-theme='light'] .app-topbar p {
+  color: #111827;
+}
+
+.assistant-thinking-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.assistant-thinking-indicator-text {
+  letter-spacing: 0.01em;
+}
+
+.assistant-thinking-indicator-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.assistant-thinking-indicator-dots span {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.4;
+  animation: assistantThinkingPulse 1.05s ease-in-out infinite;
+}
+
+.assistant-thinking-indicator-dots span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.assistant-thinking-indicator-dots span:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+@keyframes assistantThinkingPulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-2px);
+  }
 }
 
 .dashboard-intro {
@@ -3207,4 +3308,142 @@ body {
     opacity: 0;
     transform: translate3d(var(--dx, 260px), var(--dy, -120px), 0);
   }
+}
+
+/* ------------------------------------------------------------
+   WEB UX OVERHAUL BASELINE (WEBUX-001+)
+   Apple-premium core shell + Google-like AI productivity surfaces.
+------------------------------------------------------------- */
+
+:root {
+  --font-family: 'SF Pro Text', 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-hover: rgba(248, 251, 255, 0.92);
+  --surface-active: rgba(232, 242, 255, 0.95);
+  --border-subtle: rgba(101, 126, 166, 0.28);
+  --glass-shadow: 0 20px 48px rgba(18, 34, 62, 0.16);
+  --send-button-bg: #13213d;
+  --send-icon-color: #ffffff;
+  --theme-toggle-sun-color: #ffd60a;
+}
+
+[data-theme='light'] {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-secondary: #0ea5e9;
+  --text-primary: #152238;
+  --text-secondary: #3d516f;
+  --text-muted: #6b7f9c;
+  --bg-primary: #eef3fb;
+  --bg-secondary: #f9fbff;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-hover: rgba(246, 250, 255, 0.95);
+  --surface-active: rgba(231, 241, 255, 0.95);
+  --border-color: rgba(110, 132, 168, 0.24);
+  --border-subtle: rgba(110, 132, 168, 0.28);
+  --shadow-md: 0 12px 30px rgba(19, 33, 61, 0.1);
+  --shadow-lg: 0 20px 48px rgba(19, 33, 61, 0.12);
+  --glass-shadow: 0 24px 54px rgba(19, 33, 61, 0.14);
+  --send-button-bg: #122548;
+  --send-icon-color: #ffffff;
+}
+
+[data-theme='dark'] {
+  --color-primary: #7db4ff;
+  --color-primary-dark: #5f9eff;
+  --color-secondary: #68cbff;
+  --text-primary: #e9f0fd;
+  --text-secondary: #b8cae7;
+  --text-muted: #8fa5c8;
+  --bg-primary: #070e1b;
+  --bg-secondary: #101a2c;
+  --surface: rgba(14, 28, 50, 0.8);
+  --surface-hover: rgba(18, 34, 61, 0.9);
+  --surface-active: rgba(27, 49, 83, 0.9);
+  --border-color: rgba(157, 193, 255, 0.2);
+  --border-subtle: rgba(164, 198, 255, 0.25);
+  --glass-shadow: 0 24px 52px rgba(0, 4, 16, 0.55);
+  --send-button-bg: #f3f7ff;
+  --send-icon-color: #000000;
+  --theme-toggle-sun-color: #ffd60a;
+}
+
+.app-shell {
+  background: radial-gradient(circle at 14% 8%, rgba(132, 184, 255, 0.16), transparent 36%),
+    radial-gradient(circle at 88% 4%, rgba(102, 217, 255, 0.14), transparent 30%),
+    var(--bg-primary);
+}
+
+[data-theme='dark'] .app-shell {
+  background: radial-gradient(circle at 16% 10%, rgba(85, 142, 235, 0.24), transparent 34%),
+    radial-gradient(circle at 84% 8%, rgba(61, 150, 205, 0.16), transparent 30%),
+    var(--bg-primary);
+}
+
+.app-sidebar,
+.app-topbar,
+.app-mobile-header {
+  border-color: var(--border-subtle) !important;
+}
+
+.app-sidebar {
+  background: var(--surface) !important;
+  border-right: 1px solid var(--border-subtle);
+  box-shadow: 18px 0 36px rgba(10, 22, 45, 0.18);
+}
+
+.app-topbar,
+.app-mobile-header {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar-link {
+  border-radius: 12px;
+}
+
+.sidebar-link.is-active {
+  background: var(--surface-active);
+  border-color: var(--border-subtle);
+  box-shadow: 0 8px 20px rgba(24, 49, 92, 0.2);
+}
+
+.theme-label {
+  font-size: calc(var(--font-size-xs) * 2);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.theme-toggle-icon {
+  transition: color 150ms ease;
+}
+
+[data-theme='dark'] .theme-toggle-sun {
+  color: var(--theme-toggle-sun-color);
+  filter: drop-shadow(0 0 6px rgba(255, 214, 10, 0.45));
+}
+
+.ai-surface {
+  background: linear-gradient(180deg, rgba(240, 246, 255, 0.9) 0%, rgba(230, 239, 252, 0.72) 100%);
+}
+
+[data-theme='dark'] .ai-surface {
+  background: linear-gradient(180deg, rgba(7, 14, 27, 0.95) 0%, rgba(10, 20, 37, 0.92) 100%);
+}
+
+.ai-surface .chat-message {
+  max-width: min(76%, 760px);
+  box-shadow: 0 12px 30px rgba(20, 35, 63, 0.12);
+}
+
+.ai-surface .chat-message-user {
+  background: var(--surface-active);
+  border-color: var(--border-subtle);
+  border-radius: 18px 18px 8px 18px;
+}
+
+.ai-surface .chat-message-assistant {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  border-radius: 18px 18px 18px 8px;
 }

@@ -15,6 +15,7 @@
 // Last Modified: 2026-01-24 04:25 CST
 import React, { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { useUserTimeZone } from '../hooks/useUserTimeZone';
 import { formatTime } from '../utils/datetime';
@@ -36,8 +37,10 @@ interface Message {
   role: 'user' | 'assistant';
   text: string;
   time: string;
+  pending?: boolean;
   citations?: Array<{ title: string; url: string }>;
   webSearchUsed?: boolean;
+  attachments?: ComposerAttachment[];
 }
 
 interface Thread {
@@ -372,22 +375,25 @@ export default function AIAssistant() {
       localStorage.setItem(threadStorageKey, threadId);
     }
 
+    const sentAttachments = composerAttachments;
     const newMessage: Message = {
       role: 'user',
       text: text,
-      time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' })
+      time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' }),
+      attachments: sentAttachments,
     };
 
     setMessages(prev => [...prev, newMessage]);
+    setComposerAttachments([]);
     setIsTyping(true);
     const assistantTime = formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' });
     let streamedText = '';
-    setMessages(prev => [...prev, { role: 'assistant', text: '', time: assistantTime }]);
+    setMessages(prev => [...prev, { role: 'assistant', text: '', time: assistantTime, pending: true }]);
 
     try {
       const abortController = new AbortController();
       streamAbortRef.current = abortController;
-      const attachmentIds = composerAttachments.map((attachment) => attachment.id);
+      const attachmentIds = sentAttachments.map((attachment) => attachment.id);
       const response = await aiService.sendMessageStream(text, {
         signal: abortController.signal,
         chunkDebounceMs: 50,
@@ -395,13 +401,27 @@ export default function AIAssistant() {
           setIsWebSearching(status === 'started');
         },
         onChunk: (delta: string) => {
+          if (!delta) return;
           streamedText += delta;
           setMessages((prev) => {
             const updated = [...prev];
+            const pendingAssistantIndex = [...updated]
+              .reverse()
+              .findIndex((msg) => msg.role === 'assistant' && msg.pending);
+            if (pendingAssistantIndex >= 0) {
+              const index = updated.length - 1 - pendingAssistantIndex;
+              updated[index] = {
+                ...updated[index],
+                pending: false,
+                text: (updated[index].text || '') + delta,
+              };
+              return updated;
+            }
+
             const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
             if (lastAssistantIndex >= 0) {
               const index = updated.length - 1 - lastAssistantIndex;
-              updated[index] = { ...updated[index], text: (updated[index].text || '') + delta };
+              updated[index] = { ...updated[index], text: (updated[index].text || '') + delta, pending: false };
             }
             return updated;
           });
@@ -411,15 +431,32 @@ export default function AIAssistant() {
       const finalResponse = response.response || streamedText;
       setMessages(prev => {
         const updated = [...prev];
-        const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+        const pendingAssistantIndex = [...updated]
+          .reverse()
+          .findIndex((msg) => msg.role === 'assistant' && msg.pending);
+        const lastAssistantIndex = pendingAssistantIndex >= 0
+          ? updated.length - 1 - pendingAssistantIndex
+          : (() => {
+              const idx = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+              return idx >= 0 ? updated.length - 1 - idx : -1;
+            })();
         if (lastAssistantIndex >= 0) {
-          const index = updated.length - 1 - lastAssistantIndex;
-          updated[index] = {
-            ...updated[index],
+          updated[lastAssistantIndex] = {
+            ...updated[lastAssistantIndex],
+            pending: false,
             text: finalResponse,
             citations: response.citations ?? [],
             webSearchUsed: response.web_search_used ?? false,
           };
+        } else {
+          updated.push({
+            role: 'assistant',
+            text: finalResponse,
+            time: assistantTime,
+            pending: false,
+            citations: response.citations ?? [],
+            webSearchUsed: response.web_search_used ?? false,
+          });
         }
 
         // Update thread in threads list
@@ -486,7 +523,9 @@ export default function AIAssistant() {
       if (error instanceof DOMException && error.name === 'AbortError') {
         setMessages((prev) => {
           const updated = [...prev];
-          const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+          const lastAssistantIndex = [...updated]
+            .reverse()
+            .findIndex((msg) => msg.role === 'assistant' && msg.pending);
           if (lastAssistantIndex >= 0) {
             const index = updated.length - 1 - lastAssistantIndex;
             if (!updated[index].text.trim()) {
@@ -501,11 +540,19 @@ export default function AIAssistant() {
       setMessages(prev => {
         const updated = [...prev];
         const errorText = `Error: ${error instanceof Error ? error.message : 'Something went wrong.'}`;
-        const lastAssistantIndex = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+        const pendingAssistantIndex = [...updated]
+          .reverse()
+          .findIndex((msg) => msg.role === 'assistant' && msg.pending);
+        const lastAssistantIndex = pendingAssistantIndex >= 0
+          ? updated.length - 1 - pendingAssistantIndex
+          : (() => {
+              const idx = [...updated].reverse().findIndex((msg) => msg.role === 'assistant');
+              return idx >= 0 ? updated.length - 1 - idx : -1;
+            })();
         if (lastAssistantIndex >= 0) {
-          const index = updated.length - 1 - lastAssistantIndex;
-          updated[index] = {
-            ...updated[index],
+          updated[lastAssistantIndex] = {
+            ...updated[lastAssistantIndex],
+            pending: false,
             text: errorText,
             citations: [],
             webSearchUsed: false,
@@ -515,6 +562,7 @@ export default function AIAssistant() {
             role: 'assistant',
             text: errorText,
             time: formatTime(new Date(), timeZone, { hour: '2-digit', minute: '2-digit' }),
+            pending: false,
           });
         }
         localStorage.setItem(`${storageKey}_${threadId}`, JSON.stringify(updated));
@@ -548,9 +596,18 @@ export default function AIAssistant() {
   }, [messages, isTyping]);
 
   const quotaExceeded = quota ? quota.used >= quota.limit : false;
+  const shouldShowAssistantThinking =
+    isTyping &&
+    messages.length > 0 &&
+    messages[messages.length - 1].role === 'assistant' &&
+    Boolean(messages[messages.length - 1].pending) &&
+    !messages[messages.length - 1].text.trim();
+  const visibleMessages = messages.filter(
+    (msg) => !(msg.role === 'assistant' && msg.pending && !msg.text.trim()),
+  );
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-bg-primary">
+    <div className="ai-surface h-full min-h-0 flex flex-col overflow-hidden bg-bg-primary">
       <AIPrivacyModal
         isOpen={showPrivacyModal}
         onAccept={handleAcceptPrivacy}
@@ -646,51 +703,89 @@ export default function AIAssistant() {
                     I can help you understand your spending patterns, track your net worth, review your subscriptions, and answer questions about your financial data.
                   </p>
                   <div className="grid grid-cols-2 gap-4 max-w-2xl">
-                    <button
+                    <motion.button
                       onClick={() => handleSendMessage("How much did I spend this month?")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">💰 Spending Summary</div>
                       <div className="text-xs text-text-secondary">How much did I spend this month?</div>
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => handleSendMessage("What's my net worth?")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">📊 Net Worth</div>
                       <div className="text-xs text-text-secondary">What&apos;s my net worth?</div>
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => handleSendMessage("Show my subscriptions")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">🔄 Subscriptions</div>
                       <div className="text-xs text-text-secondary">Show my subscriptions</div>
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => handleSendMessage("Analyze my spending by category")}
                       className="p-4 rounded-lg border transition-colors text-left hover:opacity-80"
                       style={{ background: 'var(--surface-hover)', borderColor: 'var(--border-subtle)' }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.16 }}
                     >
                       <div className="text-sm font-medium mb-1">📈 Category Analysis</div>
                       <div className="text-xs text-text-secondary">Analyze my spending by category</div>
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               ) : (
                 <>
-                  {messages.map((msg, idx) => (
-                    <ChatMessage
-                      key={idx}
-                      role={msg.role}
-                      text={msg.text}
-                      time={msg.time}
-                      citations={msg.citations}
-                    />
-                  ))}
+                  <AnimatePresence initial={false}>
+                    {visibleMessages.map((msg, idx) => (
+                      <motion.div
+                        key={`${msg.role}-${msg.time}-${idx}`}
+                        layout
+                        initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        <ChatMessage
+                          role={msg.role}
+                          text={msg.text}
+                          time={msg.time}
+                          citations={msg.citations}
+                          attachments={msg.attachments}
+                        />
+                      </motion.div>
+                    ))}
+                    {shouldShowAssistantThinking && (
+                      <motion.div
+                        key="assistant-thinking-row"
+                        className="chat-message chat-message-assistant"
+                        initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                        transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        <div className="assistant-thinking-indicator" aria-live="polite">
+                          <span className="assistant-thinking-indicator-text">Crunching numbers</span>
+                          <span className="assistant-thinking-indicator-dots" aria-hidden="true">
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   {isWebSearching && (
                     <div className="chat-message chat-message-assistant">
                       <div className="chat-message-content text-sm text-text-secondary">
@@ -720,6 +815,7 @@ export default function AIAssistant() {
                 isLoading={isTyping}
                 disabled={!privacyAccepted}
                 quotaExceeded={quotaExceeded}
+                autoFocus
               />
               <div className="mt-3 text-xs text-text-secondary text-center">
                 <strong>Disclaimer:</strong> JuaLuma Insights are generated by AI for informational purposes only. Generated content may be inaccurate. Consult a qualified professional.

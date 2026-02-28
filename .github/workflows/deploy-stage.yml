@@ -249,13 +249,37 @@ jobs:
               --quiet
           done
 
-      - name: Enforce authenticated runtime access posture (Stage)
+      - name: Enforce stage runtime access posture (Web IAP + API app auth)
         run: |
           set -euo pipefail
+          ALLOWLIST_MEMBERS=(
+            "user:ops@intellifide.com"
+          )
+
+          add_allowlisted_member() {
+            local service="$1"
+            local member="$2"
+            local output
+
+            if output="$(gcloud run services add-iam-policy-binding "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --member="${member}" \
+              --role="roles/run.invoker" \
+              --quiet 2>&1)"; then
+              return 0
+            fi
+
+            if grep -q "FAILED_PRECONDITION: One or more users named in the policy do not belong to a permitted customer" <<<"$output"; then
+              echo "::warning::Skipping disallowed member ${member} for ${service}; principal is blocked by org policy."
+              return 0
+            fi
+
+            echo "$output"
+            return 1
+          }
 
           for service in \
-            jualuma-backend-stage \
-            jualuma-approvals-stage \
             jualuma-user-app-stage \
             jualuma-support-stage \
             jualuma-marketing-stage; do
@@ -265,43 +289,41 @@ jobs:
               --member="allUsers" \
               --role="roles/run.invoker" \
               --quiet || true
-          done
 
-          # Backend uses app-layer auth; keep /api/health public and disable IAP.
-          gcloud run services update jualuma-backend-stage \
-            --project="${PROJECT_ID}" \
-            --region="${REGION}" \
-            --no-invoker-iam-check \
-            --ingress=all \
-            --quiet
-          gcloud beta run services update jualuma-backend-stage \
-            --project="${PROJECT_ID}" \
-            --region="${REGION}" \
-            --no-iap \
-            --quiet
+            for member in "${ALLOWLIST_MEMBERS[@]}"; do
+              add_allowlisted_member "$service" "$member"
+            done
 
-          # Approvals remains non-public and IAM-protected.
-          gcloud run services update jualuma-approvals-stage \
-            --project="${PROJECT_ID}" \
-            --region="${REGION}" \
-            --invoker-iam-check \
-            --ingress=all \
-            --quiet
-
-          # Web shells stay protected by IAP with invoker IAM checks enabled.
-          for service in jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
             gcloud run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --invoker-iam-check \
               --ingress=all \
               --quiet
+          done
+
+          # Backend API is app-authenticated and must accept proxied Firebase
+          # bearer tokens from browser requests routed through frontend services.
+          gcloud run services update jualuma-backend-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --no-invoker-iam-check \
+            --ingress=all \
+            --quiet
+
+          for service in jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
             gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --iap \
               --quiet
           done
+
+          gcloud beta run services update jualuma-backend-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --no-iap \
+            --quiet
 
       - name: Verify authenticated access policy (Stage)
         run: |
@@ -330,13 +352,15 @@ jobs:
               status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
             fi
 
-            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
-              echo "::error::IAP interception detected at $url"
-              sed -n '1,30p' "$headers_file"
-              exit 1
-            fi
             if [[ "${status}" != "401" && "${status}" != "403" ]]; then
               echo "::error::Expected unauthenticated request to be blocked at $url (status=$status)"
+              sed -n '1,30p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              echo "::error::Unexpected IAP interception for backend endpoint $url"
               sed -n '1,30p' "$headers_file"
               sed -n '1,40p' "$body_file"
               exit 1

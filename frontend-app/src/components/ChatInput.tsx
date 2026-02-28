@@ -47,6 +47,7 @@ interface ChatInputProps {
     disabled?: boolean;
     placeholder?: string;
     quotaExceeded?: boolean;
+    autoFocus?: boolean;
 }
 
 export interface ComposerAttachment {
@@ -69,7 +70,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     isLoading,
     disabled = false,
     placeholder = "Ask me anything about your finances...",
-    quotaExceeded = false
+    quotaExceeded = false,
+    autoFocus = false,
 }) => {
     const [value, setValue] = useState('');
     const [fileError, setFileError] = useState<string | null>(null);
@@ -88,6 +90,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         setValue('');
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
+            if (autoFocus) {
+                textareaRef.current.focus();
+            }
         }
     };
 
@@ -104,6 +109,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     const isInputDisabled = disabled || isLoading || quotaExceeded;
     const canUpload = Boolean(onUploadFile) && !isInputDisabled;
+
+    useEffect(() => {
+        if (!autoFocus || isInputDisabled || !textareaRef.current) return;
+        const raf = window.requestAnimationFrame(() => {
+            const input = textareaRef.current;
+            if (!input) return;
+            input.focus();
+            const caret = input.value.length;
+            input.setSelectionRange(caret, caret);
+        });
+        return () => window.cancelAnimationFrame(raf);
+    }, [autoFocus, isInputDisabled]);
 
     return (
         <div className="flex flex-col gap-2 p-2 bg-transparent">
@@ -197,7 +214,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={!canUpload}
-                    className="absolute right-[3.1rem] bottom-3 p-0 rounded-xl text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9 border"
+                    className="absolute right-[3.95rem] bottom-3 p-0 rounded-xl text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9 border"
                     style={{ borderColor: 'var(--border-subtle)' }}
                     aria-label="Upload file"
                     title="Upload file"
@@ -208,8 +225,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 </button>
                 <button
                     disabled={isLoading ? false : (!value.trim() || isInputDisabled)}
-                    className="absolute right-3 bottom-3 p-0 rounded-xl bg-royal-purple hover:bg-royal-purple-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9"
-                    style={{ color: 'var(--text-primary)' }}
+                    className="absolute right-3 bottom-3 p-0 rounded-xl border disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center h-9 w-9"
+                    style={{
+                        borderColor: 'var(--border-subtle)',
+                        background: 'var(--send-button-bg)',
+                        color: 'var(--send-icon-color)',
+                    }}
                     aria-label={isLoading ? "Stop response" : "Send message"}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -218,7 +239,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     {isLoading ? (
                         <div className="w-4 h-4 rounded-sm" style={{ background: 'currentColor' }} />
                     ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
