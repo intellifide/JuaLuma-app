@@ -18,6 +18,7 @@ import { BrowserRouter } from 'react-router-dom'
 import AIAssistant from '../../pages/AIAssistant'
 import { useAuth, UserProfile } from '../../hooks/useAuth'
 import { aiService } from '../../services/aiService'
+import { documentService } from '../../services/documentService'
 import { User } from '../../services/gcp_auth_driver'
 import { ToastProvider } from '../../components/ui/Toast'
 
@@ -34,6 +35,15 @@ vi.mock('../../services/aiService', () => ({
 vi.mock('../../services/legal', () => ({
     legalService: {
         acceptAgreements: vi.fn().mockResolvedValue({ accepted: 1 }),
+    },
+}))
+vi.mock('../../services/documentService', () => ({
+    MAX_UPLOAD_SIZE_BYTES: 20 * 1024 * 1024,
+    documentService: {
+        getAll: vi.fn(),
+        upload: vi.fn(),
+        getDownloadUrl: vi.fn((id: string) => `/api/documents/${id}/download`),
+        getPreviewUrl: vi.fn((id: string) => `/api/documents/${id}/preview`),
     },
 }))
 
@@ -76,6 +86,7 @@ describe('AI Assistant Integration', () => {
                 resets_at: '',
                 tier: 'free',
             })
+            ; vi.mocked(documentService.getAll).mockResolvedValue([])
     })
 
     it('loads and displays initial state', async () => {
@@ -213,5 +224,60 @@ describe('AI Assistant Integration', () => {
 
         const assistantBubbles = container.querySelectorAll('.chat-message-assistant')
         expect(assistantBubbles.length).toBe(1)
+    })
+
+    it('moves uploaded files into sent user bubble and clears composer attachments after send', async () => {
+        vi.mocked(documentService.upload).mockResolvedValue({
+            id: 'doc-1',
+            uid: 'u1',
+            name: 'receipt.txt',
+            type: 'uploaded',
+            fileType: 'txt',
+            date: new Date().toISOString(),
+            size: '1 KB',
+            size_bytes: 1024,
+        })
+        vi.mocked(aiService.sendMessageStream).mockResolvedValue({
+            response: 'Got it',
+            tokens: 6,
+            quota_remaining: 14,
+        })
+
+        const { container } = render(
+            <BrowserRouter>
+                <ToastProvider>
+                    <AIAssistant />
+                </ToastProvider>
+            </BrowserRouter>,
+        )
+
+        await waitFor(() => {
+            expect(aiService.getQuota).toHaveBeenCalled()
+        })
+
+        const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement | null
+        expect(fileInput).not.toBeNull()
+        const file = new File(['receipt'], 'receipt.txt', { type: 'text/plain' })
+        fireEvent.change(fileInput!, { target: { files: [file] } })
+
+        await waitFor(() => {
+            expect(documentService.upload).toHaveBeenCalled()
+            expect(screen.getByText('receipt.tx...')).toBeInTheDocument()
+        })
+
+        const input = screen.getByRole('textbox', { name: /Chat input/i })
+        const sendButton = screen.getByRole('button', { name: /Send/i })
+        fireEvent.change(input, { target: { value: 'Please review this.' } })
+        fireEvent.click(sendButton)
+
+        await waitFor(() => {
+            expect(aiService.sendMessageStream).toHaveBeenCalled()
+            expect(screen.getByText('Please review this.')).toBeInTheDocument()
+        })
+
+        await waitFor(() => {
+            expect(screen.getByText('receipt.txt')).toBeInTheDocument()
+            expect(screen.queryByText('receipt.tx...')).not.toBeInTheDocument()
+        })
     })
 })
