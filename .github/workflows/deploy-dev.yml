@@ -264,7 +264,7 @@ jobs:
             gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
-              --no-iap \
+              --iap \
               --quiet
           done
 
@@ -295,23 +295,47 @@ jobs:
               status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
             fi
 
-            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
-              echo "::error::IAP interception detected at $url"
-              sed -n '1,30p' "$headers_file"
-              exit 1
-            fi
-
             if [[ "${status}" != "401" && "${status}" != "403" ]]; then
               echo "::error::Expected unauthenticated request to be blocked at $url (status=$status)"
               sed -n '1,30p' "$headers_file"
               sed -n '1,40p' "$body_file"
               exit 1
             fi
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              echo "::error::Unexpected IAP interception for backend endpoint $url"
+              sed -n '1,30p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
           }
 
-          check_requires_auth "${FRONTEND_URL}/"
-          check_requires_auth "${SUPPORT_URL}/"
-          check_requires_auth "${MARKETING_URL}/pricing"
+          check_requires_iap() {
+            local url="$1"
+            local headers_file body_file status location
+            headers_file="$(mktemp)"
+            body_file="$(mktemp)"
+
+            status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
+            location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {print $2}' "$headers_file" | tr -d '\r' | head -n1)"
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              return 0
+            fi
+
+            if [[ -n "${location}" && ( "${location}" == *"_gcp_iap"* || "${location}" == *"accounts.google.com"* ) ]]; then
+              return 0
+            fi
+
+            echo "::error::Expected IAP interception at $url (status=$status)"
+            sed -n '1,30p' "$headers_file"
+            sed -n '1,40p' "$body_file"
+            exit 1
+          }
+
+          check_requires_iap "${FRONTEND_URL}/"
+          check_requires_iap "${SUPPORT_URL}/"
+          check_requires_iap "${MARKETING_URL}/pricing"
           check_requires_auth "${BACKEND_URL}/api/health"
 
           check_requires_auth \
