@@ -7,6 +7,13 @@
 // This file replaces the Firebase SDK with direct REST API calls to GCP Identity Platform
 // Documentation: https://cloud.google.com/identity-platform/docs/use-rest-api
 
+import {
+  clearNativeSession,
+  loadNativeSession,
+  saveNativeSession,
+  type PersistedSessionPayload,
+} from './nativeSessionStore'
+
 const API_KEY = import.meta.env.VITE_GCP_API_KEY
 if (!API_KEY || API_KEY === 'undefined') {
   throw new Error(
@@ -51,6 +58,43 @@ const notifyListeners = () => {
     listeners.forEach(l => l(currentUser))
 }
 
+const hydrateUser = (uid: string, email: string) => {
+  currentUser = {
+    uid,
+    email,
+    emailVerified: false,
+    displayName: null,
+    isAnonymous: false,
+    getIdToken: async (forceRefresh = false) => {
+      if (forceRefresh || Date.now() > _expiresAt - 60000) {
+        await refreshAuthToken()
+      }
+      return _idToken!
+    },
+  }
+}
+
+const applySessionPayload = (
+  payload: PersistedSessionPayload,
+  options: { notifyAuthState?: boolean; persistNative?: boolean } = {},
+) => {
+  _idToken = payload.idToken
+  _refreshToken = payload.refreshToken
+  _expiresAt = payload.expiresAt
+  hydrateUser(payload.uid, payload.email)
+
+  const storage = getStorage()
+  if (storage) {
+    storage.setItem('gcp_auth_session', JSON.stringify(payload))
+  }
+  if (options.persistNative !== false) {
+    void saveNativeSession(payload)
+  }
+  if (options.notifyAuthState !== false) {
+    notifyListeners()
+  }
+}
+
 export const onAuthStateChanged = (auth: any, listener: AuthStateListener) => {
     listeners.push(listener)
     // Immediately trigger with current user
@@ -73,38 +117,13 @@ const saveSession = (
   options: { notifyAuthState?: boolean } = {},
 ) => {
   const expiresAppx = Date.now() + parseInt(expiresIn, 10) * 1000
-  _idToken = idToken
-  _refreshToken = refreshToken
-  _expiresAt = expiresAppx
-
-  // Construct User object
-  currentUser = {
+  applySessionPayload({
+    idToken,
+    refreshToken,
+    expiresAt: expiresAppx,
     uid: localId,
-    email: email,
-    emailVerified: false, // Default, would need to check response
-    displayName: null,
-    isAnonymous: false,
-    getIdToken: async (forceRefresh = false) => {
-        if (forceRefresh || Date.now() > _expiresAt - 60000) { // Refresh if close to expiring
-            await refreshAuthToken()
-        }
-        return _idToken!
-    }
-  }
-
-  const storage = getStorage()
-  if (storage) {
-      storage.setItem('gcp_auth_session', JSON.stringify({
-        idToken,
-        refreshToken,
-        expiresAt: expiresAppx,
-        uid: localId,
-        email
-      }))
-  }
-  if (options.notifyAuthState !== false) {
-    notifyListeners()
-  }
+    email,
+  }, { notifyAuthState: options.notifyAuthState })
 }
 
 const clearSession = () => {
@@ -114,8 +133,9 @@ const clearSession = () => {
   _expiresAt = 0
   const storage = getStorage()
   if (storage) {
-      storage.removeItem('gcp_auth_session')
+    storage.removeItem('gcp_auth_session')
   }
+  void clearNativeSession()
   notifyListeners()
 }
 
@@ -127,25 +147,7 @@ const restoreSession = () => {
     if (json) {
         try {
             const data = JSON.parse(json)
-            // Validate if expired? We can try to refresh immediately if needed,
-            // but for now just load it.
-            _idToken = data.idToken
-            _refreshToken = data.refreshToken
-            _expiresAt = data.expiresAt
-            currentUser = {
-                uid: data.uid,
-                email: data.email,
-                emailVerified: false,
-                displayName: null,
-                isAnonymous: false,
-                getIdToken: async (forceRefresh = false) => {
-                     // Check if expired
-                     if (forceRefresh || Date.now() > _expiresAt - 60000) {
-                         await refreshAuthToken()
-                     }
-                     return _idToken!
-                }
-            }
+            applySessionPayload(data as PersistedSessionPayload, { notifyAuthState: false, persistNative: false })
         } catch (e) {
             console.error("Failed to restore session", e)
             clearSession()
@@ -153,6 +155,15 @@ const restoreSession = () => {
     }
 }
 restoreSession()
+
+const restoreSessionFromNative = async () => {
+  if (currentUser) return
+  const payload = await loadNativeSession()
+  if (!payload) return
+  if (!payload.idToken || !payload.refreshToken || !payload.uid) return
+  applySessionPayload(payload, { notifyAuthState: true, persistNative: false })
+}
+void restoreSessionFromNative()
 
 
 const refreshAuthToken = async () => {
