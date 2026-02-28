@@ -252,33 +252,6 @@ jobs:
       - name: Enforce authenticated runtime access posture (Stage)
         run: |
           set -euo pipefail
-          ALLOWLIST_MEMBERS=(
-            "user:ops@intellifide.com"
-            "user:tdcollins166@gmail.com"
-          )
-
-          add_allowlisted_member() {
-            local service="$1"
-            local member="$2"
-            local output
-
-            if output="$(gcloud run services add-iam-policy-binding "$service" \
-              --project="${PROJECT_ID}" \
-              --region="${REGION}" \
-              --member="${member}" \
-              --role="roles/run.invoker" \
-              --quiet 2>&1)"; then
-              return 0
-            fi
-
-            if grep -q "FAILED_PRECONDITION: One or more users named in the policy do not belong to a permitted customer" <<<"$output"; then
-              echo "::warning::Skipping disallowed member ${member} for ${service}; principal is blocked by org policy."
-              return 0
-            fi
-
-            echo "$output"
-            return 1
-          }
 
           for service in \
             jualuma-backend-stage \
@@ -292,20 +265,37 @@ jobs:
               --member="allUsers" \
               --role="roles/run.invoker" \
               --quiet || true
+          done
 
-            for member in "${ALLOWLIST_MEMBERS[@]}"; do
-              add_allowlisted_member "$service" "$member"
-            done
+          # Backend uses app-layer auth; keep /api/health public and disable IAP.
+          gcloud run services update jualuma-backend-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --no-invoker-iam-check \
+            --ingress=all \
+            --quiet
+          gcloud beta run services update jualuma-backend-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --no-iap \
+            --quiet
 
+          # Approvals remains non-public and IAM-protected.
+          gcloud run services update jualuma-approvals-stage \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --invoker-iam-check \
+            --ingress=all \
+            --quiet
+
+          # Web shells stay protected by IAP with invoker IAM checks enabled.
+          for service in jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
             gcloud run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --invoker-iam-check \
               --ingress=all \
               --quiet
-          done
-
-          for service in jualuma-user-app-stage jualuma-support-stage jualuma-marketing-stage; do
             gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
