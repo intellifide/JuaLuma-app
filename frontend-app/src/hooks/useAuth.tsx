@@ -39,6 +39,10 @@ import {
   signup as signupWithAuth,
 } from '../services/auth'
 import { getPasskeyAssertion } from '../services/passkey'
+import {
+  deactivatePushLifecycleTokenForUid,
+  setPushLifecycleAuthenticatedUid,
+} from '../services/pushTokenLifecycle'
 import { AgreementAcceptanceInput } from '../types/legal'
 
 type Subscription = {
@@ -288,6 +292,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [localAuthBypassEnabled, refetchProfile])
 
   useEffect(() => {
+    if (localAuthBypassEnabled) {
+      return
+    }
+
+    void setPushLifecycleAuthenticatedUid(user?.uid ?? null)
+  }, [localAuthBypassEnabled, user?.uid])
+
+  useEffect(() => {
     if (localAuthBypassEnabled) return
 
     const handler = (event: Event) => {
@@ -444,12 +456,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null)
     setLoading(true)
     try {
+      try {
+        await deactivatePushLifecycleTokenForUid(user?.uid ?? auth.currentUser?.uid ?? null)
+      } catch {
+        // Best effort; continue logout even if token cleanup fails.
+      }
+      try {
+        await setPushLifecycleAuthenticatedUid(null)
+      } catch {
+        // Best effort; continue logout even if lifecycle state reset fails.
+      }
       await logoutWithAuth()
       setProfile(null)
     } finally {
       setLoading(false)
     }
-  }, [localAuthBypassEnabled])
+  }, [localAuthBypassEnabled, user?.uid])
 
   const resetPassword = useCallback(
     async (email: string, mfa_code?: string, passkey_assertion?: Record<string, unknown>) => {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.jualuma.com</string>
+		<string>applinks:jualuma-user-app-stage-ripznron4a-uc.a.run.app</string>
+		<string>applinks:frontend-app-77ybfmw7cq-uc.a.run.app</string>
+	</array>
+</dict>
+</plist>

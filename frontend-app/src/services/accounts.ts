@@ -15,6 +15,7 @@
 // Updated 2025-12-08 21:49 CST by ChatGPT
 import { api } from './api'
 import { Account, AccountFilter } from '../types'
+import { readCachedValue, withRetry, writeCachedValue } from './mobileDataResilience'
 
 type ManualAccountPayload = {
   accountType: 'manual'
@@ -44,8 +45,24 @@ type AccountSyncResponse = {
   plan: string
 }
 
+const ACCOUNT_LIST_CACHE_TTL_MS = 2 * 60 * 1000
+const ACCOUNT_LIST_OFFLINE_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
 const handleError = (error: unknown) => {
   throw error
+}
+
+const buildAccountParams = (filters?: AccountFilter): URLSearchParams => {
+  const params = new URLSearchParams()
+  if (filters?.accountType) params.set('account_type', filters.accountType)
+  if (filters?.provider) params.set('provider', filters.provider)
+  if (filters?.scope) params.set('scope', filters.scope)
+  return params
+}
+
+const buildAccountsCacheKey = (params: URLSearchParams): string => {
+  const suffix = params.toString()
+  return `jualuma_cache_accounts_v1:${suffix || 'all'}`
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,15 +96,25 @@ const mapAccount = (data: any): Account => ({
 })
 
 export const getAccounts = async (filters?: AccountFilter): Promise<Account[]> => {
-  try {
-    const params = new URLSearchParams()
-    if (filters?.accountType) params.set('account_type', filters.accountType)
-    if (filters?.provider) params.set('provider', filters.provider)
-    if (filters?.scope) params.set('scope', filters.scope)
+  const params = buildAccountParams(filters)
+  const cacheKey = buildAccountsCacheKey(params)
+  const cached = readCachedValue<Account[]>(cacheKey, ACCOUNT_LIST_CACHE_TTL_MS)
 
-    const { data } = await api.get('/accounts', { params })
-    return Array.isArray(data) ? data.map(mapAccount) : []
+  try {
+    const accounts = await withRetry(async () => {
+      const { data } = await api.get('/accounts', { params })
+      return Array.isArray(data) ? data.map(mapAccount) : []
+    })
+    writeCachedValue(cacheKey, accounts)
+    return accounts
   } catch (error) {
+    const stale = readCachedValue<Account[]>(cacheKey, ACCOUNT_LIST_OFFLINE_MAX_AGE_MS)
+    if (stale) {
+      return stale
+    }
+    if (cached) {
+      return cached
+    }
     handleError(error)
     return []
   }
@@ -95,7 +122,7 @@ export const getAccounts = async (filters?: AccountFilter): Promise<Account[]> =
 
 export const getAccount = async (id: string): Promise<Account> => {
   try {
-    const { data } = await api.get(`/accounts/${id}`)
+    const { data } = await withRetry(() => api.get(`/accounts/${id}`))
     return mapAccount(data)
   } catch (error) {
     handleError(error)

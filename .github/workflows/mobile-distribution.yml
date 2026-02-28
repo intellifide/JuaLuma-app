@@ -1,0 +1,206 @@
+name: Mobile Distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Release environment"
+        required: true
+        type: choice
+        options:
+          - stage
+          - prod
+        default: stage
+      android_track:
+        description: "Google Play track for Android upload"
+        required: true
+        type: choice
+        options:
+          - internal
+          - beta
+        default: internal
+      publish_android:
+        description: "Publish Android AAB to Google Play track"
+        required: true
+        type: boolean
+        default: false
+      publish_ios:
+        description: "Upload iOS IPA to TestFlight"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  android-distribution:
+    runs-on: ubuntu-latest
+    env:
+      MOBILE_ENV_FILE: .codex-artifacts/mobile-release.env
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve GCP auth inputs
+        id: gcp
+        run: |
+          if [[ "${{ inputs.target_env }}" == "prod" ]]; then
+            echo "project_id=jualuma-prod" >> "$GITHUB_OUTPUT"
+            echo "provider=${{ secrets.GCP_WIF_PROVIDER }}" >> "$GITHUB_OUTPUT"
+            echo "service_account=${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "project_id=jualuma-stage" >> "$GITHUB_OUTPUT"
+            echo "provider=${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}" >> "$GITHUB_OUTPUT"
+            echo "service_account=${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate GCP auth inputs
+        run: |
+          test -n "${{ steps.gcp.outputs.provider }}" || (echo "Missing GCP workload identity provider secret" && exit 1)
+          test -n "${{ steps.gcp.outputs.service_account }}" || (echo "Missing GCP service account secret" && exit 1)
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ steps.gcp.outputs.provider }}
+          service_account: ${{ steps.gcp.outputs.service_account }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ steps.gcp.outputs.project_id }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Materialize mobile release env from GCP
+        run: ./mobile/scripts/materialize-mobile-release-env-from-gcp.sh "${{ inputs.target_env }}" "$MOBILE_ENV_FILE" "${{ steps.gcp.outputs.project_id }}"
+
+      - name: Validate mobile release contract (Android)
+        run: ./mobile/scripts/validate-mobile-release-contract.sh "$MOBILE_ENV_FILE" "${{ inputs.target_env }}" android
+
+      - name: Build signed Android artifacts
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        run: MOBILE_ENV_FILE="$MOBILE_ENV_FILE" MOBILE_TARGET_ENV="${{ inputs.target_env }}" ./mobile/scripts/build-android-release-signed.sh
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signed-${{ inputs.target_env }}
+          path: |
+            frontend-app/android/app/build/outputs/bundle/release/app-release.aab
+            frontend-app/android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Resolve Android package name
+        id: android_meta
+        run: |
+          package_name="$(rg '^MOBILE_ANDROID_PACKAGE_NAME=' "$MOBILE_ENV_FILE" | tail -n1 | cut -d'=' -f2- | tr -d '\"')"
+          test -n "$package_name" || (echo "MOBILE_ANDROID_PACKAGE_NAME missing in $MOBILE_ENV_FILE" && exit 1)
+          echo "package_name=$package_name" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Android to Google Play
+        if: ${{ inputs.publish_android && secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ steps.android_meta.outputs.package_name }}
+          releaseFiles: frontend-app/android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.android_track }}
+          status: completed
+
+  ios-distribution:
+    runs-on: macos-latest
+    env:
+      MOBILE_ENV_FILE: .codex-artifacts/mobile-release.env
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve GCP auth inputs
+        id: gcp
+        run: |
+          if [[ "${{ inputs.target_env }}" == "prod" ]]; then
+            echo "project_id=jualuma-prod" >> "$GITHUB_OUTPUT"
+            echo "provider=${{ secrets.GCP_WIF_PROVIDER }}" >> "$GITHUB_OUTPUT"
+            echo "service_account=${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "project_id=jualuma-stage" >> "$GITHUB_OUTPUT"
+            echo "provider=${{ secrets.GCP_WIF_PROVIDER_STAGE || secrets.GCP_WIF_PROVIDER }}" >> "$GITHUB_OUTPUT"
+            echo "service_account=${{ secrets.GCP_WIF_SERVICE_ACCOUNT_STAGE || secrets.GCP_WIF_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate GCP auth inputs
+        run: |
+          test -n "${{ steps.gcp.outputs.provider }}" || (echo "Missing GCP workload identity provider secret" && exit 1)
+          test -n "${{ steps.gcp.outputs.service_account }}" || (echo "Missing GCP service account secret" && exit 1)
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ steps.gcp.outputs.provider }}
+          service_account: ${{ steps.gcp.outputs.service_account }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ steps.gcp.outputs.project_id }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Materialize mobile release env from GCP
+        run: ./mobile/scripts/materialize-mobile-release-env-from-gcp.sh "${{ inputs.target_env }}" "$MOBILE_ENV_FILE" "${{ steps.gcp.outputs.project_id }}"
+
+      - name: Validate mobile release contract (iOS)
+        run: ./mobile/scripts/validate-mobile-release-contract.sh "$MOBILE_ENV_FILE" "${{ inputs.target_env }}" ios
+
+      - name: Build signed iOS IPA
+        run: MOBILE_ENV_FILE="$MOBILE_ENV_FILE" MOBILE_TARGET_ENV="${{ inputs.target_env }}" CI=true ./mobile/scripts/build-ios-release-signed.sh
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-signed-${{ inputs.target_env }}
+          path: .codex-artifacts/ios-release/export/*
+
+      - name: Resolve App Store Connect metadata
+        id: ios_meta
+        run: |
+          api_key_id="$(rg '^app_store_connect_api_key_id=' "$MOBILE_ENV_FILE" | tail -n1 | cut -d'=' -f2- | tr -d '\"')"
+          issuer_id="$(rg '^app_store_connect_issuer_id=' "$MOBILE_ENV_FILE" | tail -n1 | cut -d'=' -f2- | tr -d '\"')"
+          ipa_path="$(ls .codex-artifacts/ios-release/export/*.ipa | head -n1)"
+          test -n "$api_key_id" || (echo "app_store_connect_api_key_id missing in $MOBILE_ENV_FILE" && exit 1)
+          test -n "$issuer_id" || (echo "app_store_connect_issuer_id missing in $MOBILE_ENV_FILE" && exit 1)
+          test -n "$ipa_path" || (echo "No IPA produced in .codex-artifacts/ios-release/export" && exit 1)
+          echo "api_key_id=$api_key_id" >> "$GITHUB_OUTPUT"
+          echo "issuer_id=$issuer_id" >> "$GITHUB_OUTPUT"
+          echo "ipa_path=$ipa_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload iOS IPA to TestFlight
+        if: ${{ inputs.publish_ios && secrets.APP_STORE_CONNECT_API_PRIVATE_KEY_P8 != '' }}
+        env:
+          APP_STORE_CONNECT_API_PRIVATE_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY_P8 }}
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          printf '%s' "$APP_STORE_CONNECT_API_PRIVATE_KEY_P8" > "$HOME/.appstoreconnect/private_keys/AuthKey_${{ steps.ios_meta.outputs.api_key_id }}.p8"
+          xcrun altool --upload-app --type ios --file "${{ steps.ios_meta.outputs.ipa_path }}" --apiKey "${{ steps.ios_meta.outputs.api_key_id }}" --apiIssuer "${{ steps.ios_meta.outputs.issuer_id }}"

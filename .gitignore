@@ -154,9 +154,21 @@ AGENTS.md
 CLAUDE.md
 CONVENTIONS.md
 
-# Capacitor native platforms (generated)
-frontend-app/ios/
-frontend-app/android/
+# Native build artifacts
+frontend-app/android/.gradle/
+frontend-app/android/.kotlin/
+frontend-app/android/**/build/
+frontend-app/ios/**/DerivedData/
+frontend-app/ios/App/Pods/
+frontend-app/ios/App/CapApp-SPM/.swiftpm/
+mobile/shared-core/.gradle/
+mobile/shared-core/build/
+mobile/shared-core/generated/openapi-kotlin-client/.gradle/
+mobile/release/listing/output/
+mobile/vendor/capacitor-swift-pm-local/.git/
+mobile/vendor/capacitor-swift-pm-local/.tmp/
+mobile/vendor/capacitor-swift-pm-local/.swiftpm/
+mobile/vendor/capacitor-splash-screen-local/.swiftpm/
 
 # Debug scripts
 scripts/debug_*.py
