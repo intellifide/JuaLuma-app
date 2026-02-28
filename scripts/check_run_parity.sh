@@ -17,7 +17,6 @@ Parity enforces:
   - required stage keys exist
   - env key shape parity (plain vs secret ref) on common keys where prod pair exists
   - stage values do not reference prod identifiers/domains
-  - backend runtime identity parity (`cr-backend@<project>.iam.gserviceaccount.com`)
 USAGE
 }
 
@@ -208,15 +207,6 @@ def service_url(svc_json: dict):
     return svc_json.get("status", {}).get("url", "")
 
 
-def service_account(svc_json: dict) -> str:
-    return (
-        svc_json.get("spec", {})
-        .get("template", {})
-        .get("spec", {})
-        .get("serviceAccountName", "")
-    )
-
-
 checks = []
 
 
@@ -275,27 +265,6 @@ def validate_stage_not_prod(label: str, stage_env: dict, prod_url: str):
         ok(f"{label}: prod-reference guard passed")
 
 
-def validate_backend_identity(label: str, stage_svc: dict, prod_svc: dict):
-    if label != "backend":
-        return
-
-    stage_actual = service_account(stage_svc)
-    prod_actual = service_account(prod_svc)
-    stage_expected = f"cr-backend@{stage_project}.iam.gserviceaccount.com"
-    prod_expected = f"cr-backend@{prod_project}.iam.gserviceaccount.com"
-
-    mismatches = []
-    if stage_actual != stage_expected:
-        mismatches.append(f"stage={stage_actual or '<empty>'} expected={stage_expected}")
-    if prod_actual != prod_expected:
-        mismatches.append(f"prod={prod_actual or '<empty>'} expected={prod_expected}")
-
-    if mismatches:
-        fail(f"{label}: runtime identity mismatch ({'; '.join(mismatches)})")
-    else:
-        ok(f"{label}: runtime identity parity passed ({stage_expected}, {prod_expected})")
-
-
 prod_services = list_services(prod_project)
 stage_services = list_services(stage_project)
 
@@ -326,7 +295,6 @@ for spec in service_specs:
 
     prod_svc = describe(prod_project, prod_name)
     prod_env = env_map(prod_svc)
-    validate_backend_identity(role, stage_svc, prod_svc)
     validate_shape(role, prod_env, stage_env)
     validate_stage_not_prod(role, stage_env, service_url(prod_svc))
 

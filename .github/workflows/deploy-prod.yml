@@ -1,4 +1,5 @@
 name: CD - Deploy to Prod (jualuma-prod)
+# Security posture: Prod must be publicly reachable only via approved custom domains.
 
 on:
   push:
@@ -115,7 +116,7 @@ jobs:
             --binary-authorization=default
             --service-account=cr-backend@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
             --no-invoker-iam-check
-            --ingress=all
+            --ingress=internal-and-cloud-load-balancing
 
       - name: Enforce Plaid production mode on backend runtime
         run: |
@@ -154,9 +155,8 @@ jobs:
           region: ${{ env.REGION }}
           flags: >-
             --binary-authorization=default
-            --allow-unauthenticated
             --no-invoker-iam-check
-            --ingress=all
+            --ingress=internal-and-cloud-load-balancing
 
       # 3. Marketing
       - name: Build and Push Marketing
@@ -186,9 +186,8 @@ jobs:
           region: ${{ env.REGION }}
           flags: >-
             --binary-authorization=default
-            --allow-unauthenticated
             --no-invoker-iam-check
-            --ingress=all
+            --ingress=internal-and-cloud-load-balancing
 
       # 4. Support
       - name: Build and Push Support
@@ -218,29 +217,26 @@ jobs:
           region: ${{ env.REGION }}
           flags: >-
             --binary-authorization=default
-            --allow-unauthenticated
             --no-invoker-iam-check
-            --ingress=all
+            --ingress=internal-and-cloud-load-balancing
 
-      - name: Enforce public runtime access posture (Prod)
+      - name: Enforce custom-domain-only runtime access posture (Prod)
         run: |
           set -euo pipefail
 
           for service in jualuma-backend frontend-app support-portal marketing-site; do
+            gcloud run services remove-iam-policy-binding "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --member="allUsers" \
+              --role="roles/run.invoker" \
+              --quiet || true
+
             gcloud run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --no-invoker-iam-check \
-              --ingress=all \
-              --quiet
-          done
-
-          # Public web shell endpoints must not be intercepted by IAP.
-          for service in frontend-app support-portal marketing-site; do
-            gcloud beta run services update "$service" \
-              --project="${PROJECT_ID}" \
-              --region="${REGION}" \
-              --no-iap \
+              --ingress=internal-and-cloud-load-balancing \
               --quiet
           done
 
@@ -248,16 +244,19 @@ jobs:
         run: |
           set -euo pipefail
 
-          FRONTEND_URL="$(gcloud run services describe frontend-app --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
-          BACKEND_URL="$(gcloud run services describe jualuma-backend --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
-          SUPPORT_URL="$(gcloud run services describe support-portal --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
-          MARKETING_URL="$(gcloud run services describe marketing-site --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          FRONTEND_RUN_URL="$(gcloud run services describe frontend-app --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          BACKEND_RUN_URL="$(gcloud run services describe jualuma-backend --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          SUPPORT_RUN_URL="$(gcloud run services describe support-portal --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          MARKETING_RUN_URL="$(gcloud run services describe marketing-site --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
 
-          check_html_or_iap() {
+          PUBLIC_MARKETING_URL="https://jualuma.com"
+          PUBLIC_APP_URL="${{ vars.NEXT_PUBLIC_APP_URL || 'https://app.jualuma.com' }}"
+          PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL || 'https://api.jualuma.com' }}"
+
+          check_run_url_blocked() {
             local url="$1"
             local method="${2:-GET}"
             local data="${3:-}"
-            local expect_html="${4:-false}"
             local headers_file body_file status
             headers_file="$(mktemp)"
             body_file="$(mktemp)"
@@ -278,21 +277,48 @@ jobs:
               sed -n '1,30p' "$headers_file"
               exit 1
             fi
-            if [[ "${expect_html}" != "true" ]] && grep -qi '<html' "$body_file"; then
-              echo "::error::HTML gateway response detected at $url (status=$status)"
-              sed -n '1,20p' "$headers_file"
-              sed -n '1,40p' "$body_file"
-              exit 1
-            fi
-            if [[ "${expect_html}" == "true" ]] && [[ "${status}" -ge 400 ]]; then
-              echo "::error::Unexpected status for web endpoint at $url (status=$status)"
+            if [[ "${status}" != "401" && "${status}" != "403" && "${status}" != "404" ]]; then
+              echo "::error::Expected direct run.app URL to be blocked at $url (status=$status)"
               sed -n '1,30p' "$headers_file"
               sed -n '1,40p' "$body_file"
               exit 1
             fi
           }
 
-          check_html_or_iap "${FRONTEND_URL}/" "GET" "" "true"
-          check_html_or_iap "${SUPPORT_URL}/" "GET" "" "true"
-          check_html_or_iap "${MARKETING_URL}/pricing" "GET" "" "true"
-          check_html_or_iap "${BACKEND_URL}/api/health"
+          check_public_url() {
+            local url="$1"
+            local headers_file body_file status location
+            headers_file="$(mktemp)"
+            body_file="$(mktemp)"
+
+            status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
+            location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {print $2}' "$headers_file" | tr -d '\r' | head -n1)"
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              echo "::error::IAP interception detected at public URL $url"
+              sed -n '1,30p' "$headers_file"
+              exit 1
+            fi
+
+            if [[ -n "${location}" && ( "${location}" == *"_gcp_iap"* || "${location}" == *"accounts.google.com"* || "${location}" == *"/login"* ) ]]; then
+              echo "::error::Public URL $url redirected to auth flow (${location})"
+              sed -n '1,30p' "$headers_file"
+              exit 1
+            fi
+
+            if [[ "${status}" -ge 400 ]]; then
+              echo "::error::Expected public custom domain to be reachable at $url (status=$status)"
+              sed -n '1,30p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
+          }
+
+          check_run_url_blocked "${FRONTEND_RUN_URL}/"
+          check_run_url_blocked "${SUPPORT_RUN_URL}/"
+          check_run_url_blocked "${MARKETING_RUN_URL}/pricing"
+          check_run_url_blocked "${BACKEND_RUN_URL}/api/health"
+
+          check_public_url "${PUBLIC_MARKETING_URL%/}/"
+          check_public_url "${PUBLIC_APP_URL%/}/"
+          check_public_url "${PUBLIC_API_URL%/}/api/health"

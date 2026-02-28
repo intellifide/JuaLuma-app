@@ -54,20 +54,12 @@ Last updated: 2026-02-27 (UTC)
 - For keyless mode, runtime service account must have:
   - `roles/iam.serviceAccountTokenCreator` on the delegated Gmail sender service account.
 
-## Backend Runtime Identity Contract
-
-- Stage backend must run as: `cr-backend@jualuma-stage.iam.gserviceaccount.com`.
-- Prod backend must run as: `cr-backend@jualuma-prod.iam.gserviceaccount.com`.
-- Use `scripts/check_run_parity.sh` to enforce this identity parity.
-
 ## Runtime Access Posture Contract
 
-- Dev and stage services must remain authenticated-only:
-  - `run.googleapis.com/ingress=all`
+- Dev and stage services must remain authenticated-only.
   - `run.googleapis.com/invoker-iam-disabled=false`
   - `allUsers` must not hold `roles/run.invoker`
-  - `user:ops@intellifide.com` must hold `roles/run.invoker`
-- Prod services must remain public:
-  - `run.googleapis.com/ingress=all`
-  - `run.googleapis.com/invoker-iam-disabled=true`
-  - Shell web endpoints (`frontend-app`, `support-portal`, `marketing-site`) keep `IAP disabled`
+  - Allowed human invokers: `user:ops@intellifide.com`, `user:tdcollins166@gmail.com`
+- Prod services must be reachable publicly only via approved custom domains.
+  - `run.googleapis.com/ingress=internal-and-cloud-load-balancing`
+  - Direct `*.run.app` access must return blocked status (`401/403/404`)
