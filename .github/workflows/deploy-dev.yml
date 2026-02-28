@@ -217,6 +217,29 @@ jobs:
             "user:tdcollins166@gmail.com"
           )
 
+          add_allowlisted_member() {
+            local service="$1"
+            local member="$2"
+            local output
+
+            if output="$(gcloud run services add-iam-policy-binding "$service" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --member="${member}" \
+              --role="roles/run.invoker" \
+              --quiet 2>&1)"; then
+              return 0
+            fi
+
+            if grep -q "FAILED_PRECONDITION: One or more users named in the policy do not belong to a permitted customer" <<<"$output"; then
+              echo "::warning::Skipping disallowed member ${member} for ${service}; principal is blocked by org policy."
+              return 0
+            fi
+
+            echo "$output"
+            return 1
+          }
+
           for service in frontend-app support-portal marketing-site jualuma-backend; do
             gcloud run services remove-iam-policy-binding "$service" \
               --project="${PROJECT_ID}" \
@@ -226,12 +249,7 @@ jobs:
               --quiet || true
 
             for member in "${ALLOWLIST_MEMBERS[@]}"; do
-              gcloud run services add-iam-policy-binding "$service" \
-                --project="${PROJECT_ID}" \
-                --region="${REGION}" \
-                --member="${member}" \
-                --role="roles/run.invoker" \
-                --quiet
+              add_allowlisted_member "$service" "$member"
             done
 
             gcloud run services update "$service" \
