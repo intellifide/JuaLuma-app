@@ -287,23 +287,29 @@ jobs:
 
           check_public_url() {
             local url="$1"
-            local headers_file body_file status
+            local headers_file body_file status location
             headers_file="$(mktemp)"
             body_file="$(mktemp)"
-            status="$(curl -sS -D "$headers_file" -o "$body_file" -w "%{http_code}" "$url")"
+
+            status="$(curl -sS -D "$headers_file" -o "$body_file" "$url" -w "%{http_code}")"
+            location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {print $2}' "$headers_file" | tr -d '\r' | head -n1)"
+
             if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
-              echo "::error::IAP interception detected at $url"
+              echo "::error::IAP interception detected at public URL $url"
               sed -n '1,30p' "$headers_file"
               exit 1
             fi
-            if grep -qi '^location:.*\\(_gcp_iap\\|accounts\\.google\\.com\\|/login\\)' "$headers_file"; then
-              echo "::error::Public domain is redirecting to an auth/login flow at $url"
+
+            if [[ -n "${location}" && ( "${location}" == *"_gcp_iap"* || "${location}" == *"accounts.google.com"* || "${location}" == *"/login"* ) ]]; then
+              echo "::error::Public URL $url redirected to auth flow (${location})"
               sed -n '1,30p' "$headers_file"
               exit 1
             fi
+
             if [[ "${status}" -ge 400 ]]; then
               echo "::error::Expected public custom domain to be reachable at $url (status=$status)"
               sed -n '1,30p' "$headers_file"
+              sed -n '1,40p' "$body_file"
               exit 1
             fi
           }
