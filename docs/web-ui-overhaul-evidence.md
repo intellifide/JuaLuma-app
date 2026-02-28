@@ -1,6 +1,6 @@
 # Web UI Overhaul Evidence (WEBUX-001 to WEBUX-018)
 
-Date: 2026-02-27 (America/Chicago)
+Date: 2026-02-28 (America/Chicago)
 Scope: Web only (`frontend-app`, `frontend-marketing`), no mobile implementation changes.
 
 ## Requirement Coverage
@@ -59,12 +59,27 @@ Scope: Web only (`frontend-app`, `frontend-marketing`), no mobile implementation
 - `frontend-app`: build passed (`vite build`).
 - `frontend-marketing`: build passed (`next build`).
 
-## Remaining Blocker (Hosted Runtime QA)
-- WEBUX-017 requires backend-dependent flow verification against hosted GCP runtime.
-- Current environment receives forbidden/not-found responses on known URLs:
-  - `https://jualuma-user-app-stage-ripznron4a-uc.a.run.app/` -> 403
-  - `https://frontend-app-77ybfmw7cq-uc.a.run.app/` -> 403
-  - `https://marketing-site-77ybfmw7cq-uc.a.run.app/` -> 403
-  - `https://jualuma-marketing-298159098975.us-central1.run.app/` -> 404
+## Hosted Stage QA (WEBUX-017) - 2026-02-28
+- Playwright MCP authenticated session reached:
+  - `https://jualuma-user-app-stage-ripznron4a-uc.a.run.app/ai-assistant`
+- Curl without browser auth still returns IAP redirects (`302` with `x-goog-iap-generated-response`), expected for unauthenticated terminal requests.
 
-Until a reachable hosted URL (and auth path if required) is provided, WEBUX-017 cannot be closed from this environment.
+### Hosted Findings
+1. Attachment flow requirement is not satisfied on stage.
+- Uploaded file remains in composer with remove control after send.
+- Sent user bubble does not show attachment chip above prompt.
+
+2. Send icon color requirement is not satisfied on stage.
+- Light theme send icon computed color: `rgb(34, 50, 74)` (expected white).
+- Dark theme send icon computed color: `rgb(237, 243, 255)` (expected black).
+
+3. Theme toggle sun color requirement is not satisfied on stage.
+- Dark theme icon computed color: `rgb(237, 243, 255)` (expected bright yellow `#ffd60a`).
+
+4. Auto-focus requirement is not satisfied on stage.
+- `document.activeElement` remains `BODY` on page load.
+
+### Blocker State
+- Local branch implementation and tests include these requirements.
+- Hosted stage behavior indicates deployment/runtime drift from this branch.
+- WEBUX-017 remains blocked on stage rollout of the overhaul build, then re-run hosted verification.
