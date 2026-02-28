@@ -151,6 +151,13 @@ jobs:
       - name: Install frontend bridge dependencies
         run: npm ci
         working-directory: ./frontend-app
+      - name: Prepare placeholder web assets for Capacitor
+        run: |
+          mkdir -p dist
+          if [ ! -f dist/index.html ]; then
+            printf '%s\n' '<!doctype html><html><body>ci-placeholder</body></html>' > dist/index.html
+          fi
+        working-directory: ./frontend-app
       - name: Update Capacitor Android bridge files
         run: npx cap update android
         working-directory: ./frontend-app
@@ -210,6 +217,13 @@ jobs:
           cache-dependency-path: frontend-app/package-lock.json
       - name: Install iOS bridge dependencies
         run: npm ci
+        working-directory: ./frontend-app
+      - name: Prepare placeholder web assets for Capacitor
+        run: |
+          mkdir -p dist
+          if [ ! -f dist/index.html ]; then
+            printf '%s\n' '<!doctype html><html><body>ci-placeholder</body></html>' > dist/index.html
+          fi
         working-directory: ./frontend-app
       - name: Update Capacitor Android bridge files
         run: npx cap update android
