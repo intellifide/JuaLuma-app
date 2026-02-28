@@ -299,7 +299,7 @@ jobs:
             gcloud beta run services update "$service" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
-              --no-iap \
+              --iap \
               --quiet
           done
 
