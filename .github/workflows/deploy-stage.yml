@@ -346,6 +346,13 @@ jobs:
               sed -n '1,40p' "$body_file"
               exit 1
             fi
+
+            if grep -qi '^x-goog-iap-generated-response:' "$headers_file"; then
+              echo "::error::Unexpected IAP interception for backend endpoint $url"
+              sed -n '1,30p' "$headers_file"
+              sed -n '1,40p' "$body_file"
+              exit 1
+            fi
           }
 
           check_requires_iap() {
