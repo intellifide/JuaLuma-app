@@ -166,7 +166,7 @@ jobs:
             "build-tools;36.0.0"
       - name: Verify OpenAPI drift
         env:
-          DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/jualuma_ci
+          DATABASE_URL: sqlite+pysqlite:////tmp/jualuma_ci.db
           PLAID_CLIENT_ID: ci
           PLAID_SECRET: ci
         run: ./mobile/scripts/check-openapi-drift.sh
