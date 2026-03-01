@@ -641,42 +641,55 @@ export const Settings = () => {
   // Session Management State
   const [sessions, setSessions] = useState<UserSessionData[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [terminatingSessionId, setTerminatingSessionId] = useState<string | null>(null);
+  const [sessionActionLoading, setSessionActionLoading] = useState(false);
+  const [sessionConfirm, setSessionConfirm] = useState<{ type: 'single' | 'others'; sessionId?: string } | null>(null);
 
   const loadSessions = useCallback(async () => {
     setSessionsLoading(true);
+    setSessionsError(null);
     try {
       const data = await listSessions();
       setSessions(data);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load sessions.';
       console.error('Failed to load sessions', err);
+      setSessionsError(message);
     } finally {
       setSessionsLoading(false);
     }
   }, []);
 
-  const handleEndSession = async (sessionId: string) => {
-    if (!window.confirm('Terminate this session?')) return;
-    setTerminatingSessionId(sessionId);
+  const handleConfirmSessionAction = useCallback(async () => {
+    if (!sessionConfirm) return;
+
+    setSessionActionLoading(true);
+    const targetSessionId = sessionConfirm.type === 'single' ? sessionConfirm.sessionId ?? null : null;
+    if (targetSessionId) {
+      setTerminatingSessionId(targetSessionId);
+    }
+
     try {
-      await endSession(sessionId);
+      if (sessionConfirm.type === 'single') {
+        if (!targetSessionId) {
+          throw new Error('Invalid session target.');
+        }
+        await endSession(targetSessionId);
+        toast.show('Session ended.', 'success');
+      } else {
+        await endOtherSessions();
+        toast.show('All other sessions ended.', 'success');
+      }
       await loadSessions();
+      setSessionConfirm(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to end session');
+      toast.show(err instanceof Error ? err.message : 'Failed to update sessions.', 'error');
     } finally {
+      setSessionActionLoading(false);
       setTerminatingSessionId(null);
     }
-  };
-
-  const handleEndOtherSessions = async () => {
-    if (!window.confirm('Terminate all other active sessions? This will log you out of all other devices.')) return;
-    try {
-      await endOtherSessions();
-      await loadSessions();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to end other sessions');
-    }
-  };
+  }, [loadSessions, sessionConfirm, toast]);
 
   const getSessionPasskeyAssertion = useCallback(async () => {
     const token = await getIdToken(true);
@@ -2331,13 +2344,22 @@ export const Settings = () => {
               <div className="card">
                 <div className="card-header pb-2 border-b border-border mb-4 flex justify-between items-center">
                   <h3 className="text-xl font-bold">Active Sessions</h3>
-                  <button
-                    onClick={handleEndOtherSessions}
-                    className="text-sm text-red-500 hover:text-red-600 font-medium"
-                    disabled={sessions.filter(s => s.is_active && !s.is_current).length === 0}
-                  >
-                    End all other sessions
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => void loadSessions()}
+                      className="text-sm text-text-secondary hover:text-text-primary font-medium"
+                      disabled={sessionsLoading}
+                    >
+                      {sessionsLoading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                    <button
+                      onClick={() => setSessionConfirm({ type: 'others' })}
+                      className="text-sm text-red-500 hover:text-red-600 font-medium"
+                      disabled={sessions.filter(s => s.is_active && !s.is_current).length === 0 || sessionActionLoading}
+                    >
+                      End all other sessions
+                    </button>
+                  </div>
                 </div>
                 <div className="card-body overflow-x-auto">
                   <table className="w-full text-left">
@@ -2357,14 +2379,28 @@ export const Settings = () => {
                           </td>
                         </tr>
                       )}
-                      {!sessionsLoading && sessions.length === 0 && (
+                      {!sessionsLoading && sessionsError && (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-red-500">
+                            <div>{sessionsError}</div>
+                            <button
+                              type="button"
+                              className="btn btn-outline btn-sm mt-3"
+                              onClick={() => void loadSessions()}
+                            >
+                              Retry
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                      {!sessionsLoading && !sessionsError && sessions.length === 0 && (
                         <tr>
                           <td colSpan={4} className="py-6 text-center text-text-muted">
                             No sessions found.
                           </td>
                         </tr>
                       )}
-                      {!sessionsLoading && sessions.map((session) => (
+                      {!sessionsLoading && !sessionsError && sessions.map((session) => (
                         <tr key={session.id} className="border-b border-border/50 last:border-0 hover:bg-surface-2 transition-colors">
                           <td className="py-3">
                             <div className="font-medium text-text-primary">
@@ -2385,9 +2421,9 @@ export const Settings = () => {
                           <td className="py-3">
                             {session.is_active && !session.is_current && (
                               <button
-                                onClick={() => handleEndSession(session.id)}
+                                onClick={() => setSessionConfirm({ type: 'single', sessionId: session.id })}
                                 className="text-red-500 hover:text-red-600 text-xs font-medium"
-                                disabled={terminatingSessionId === session.id}
+                                disabled={terminatingSessionId === session.id || sessionActionLoading}
                               >
                                 {terminatingSessionId === session.id ? 'Ending...' : 'End Session'}
                               </button>
@@ -2565,6 +2601,51 @@ export const Settings = () => {
                   disabled={mfaLabelSaving}
                 >
                   Skip
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sessionConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
+          <div className="modal-content max-w-md">
+            <div className="modal-header">
+              <h3>{sessionConfirm.type === 'single' ? 'End session?' : 'End all other sessions?'}</h3>
+              <button
+                className="modal-close"
+                aria-label="Close modal"
+                onClick={() => {
+                  if (sessionActionLoading) return
+                  setSessionConfirm(null)
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div>
+              <p className="mb-6 text-text-secondary">
+                {sessionConfirm.type === 'single'
+                  ? 'This device session will be terminated immediately.'
+                  : 'All active sessions except your current one will be terminated immediately.'}
+              </p>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  className="btn btn-danger flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => void handleConfirmSessionAction()}
+                  disabled={sessionActionLoading}
+                >
+                  {sessionActionLoading ? 'Working...' : 'Confirm'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline flex-1"
+                  onClick={() => setSessionConfirm(null)}
+                  disabled={sessionActionLoading}
+                >
+                  Cancel
                 </button>
               </div>
             </div>

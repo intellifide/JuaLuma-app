@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata, type PlaidLinkError } from 'react-plaid-link'
 import { api } from '../services/api'
+import { isNativePlaidSupportedRuntime, openNativePlaidLink } from '../services/nativePlaidLink'
 import { ExternalLinkModal } from './ExternalLinkModal'
 
 const PLAID_OAUTH_TOKEN_KEY = 'plaid_oauth_link_token'
@@ -37,6 +38,18 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
     if (typeof window === 'undefined') return undefined
     return window.location.search.includes('oauth_state_id=') ? window.location.href : undefined
   }, [])
+  const useNativePlaid = useMemo(() => isNativePlaidSupportedRuntime(), [])
+
+  const clearCachedOauthToken = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    try {
+      window.sessionStorage.removeItem(PLAID_OAUTH_TOKEN_KEY)
+    } catch {
+      // no-op
+    }
+  }, [])
 
   useEffect(() => {
     const scripts = document.querySelectorAll('script[src*="plaid/link-initialize.js"]')
@@ -50,14 +63,14 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
   }, [])
 
   const fetchLinkToken = useCallback(
-    async (options?: { allowCachedOauthToken?: boolean }) => {
+    async (options?: { allowCachedOauthToken?: boolean }): Promise<string | null> => {
       const allowCachedOauthToken = options?.allowCachedOauthToken ?? true
       if (receivedRedirectUri && allowCachedOauthToken) {
         try {
           const cachedToken = window.sessionStorage.getItem(PLAID_OAUTH_TOKEN_KEY)
           if (cachedToken) {
             setLinkToken(cachedToken)
-            return
+            return cachedToken
           }
         } catch {
           // Ignore sessionStorage access issues and fall back to API token creation.
@@ -83,11 +96,13 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
             // Ignore sessionStorage access issues.
           }
         }
+        return resolvedLinkToken
       } catch (error) {
         // Surface backend token creation failures directly.
         console.warn('Plaid Link Token fetch failed.')
         const message = error instanceof Error ? error.message : 'Unable to start Plaid Link.'
         onError?.(message)
+        return null
       }
     },
     [onError, receivedRedirectUri]
@@ -124,11 +139,7 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
             institution_name: metadata.institution?.name ?? 'plaid',
             selected_account_ids: selectedAccountIds,
           })
-          try {
-            window.sessionStorage.removeItem(PLAID_OAUTH_TOKEN_KEY)
-          } catch {
-            // no-op
-          }
+          clearCachedOauthToken()
 
           const afterSync = onSuccess?.()
           if (afterSync instanceof Promise) {
@@ -140,11 +151,7 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
         }
       },
       onExit: (err: PlaidLinkError | null) => {
-        try {
-          window.sessionStorage.removeItem(PLAID_OAUTH_TOKEN_KEY)
-        } catch {
-          // no-op
-        }
+        clearCachedOauthToken()
         if (err) {
           if (err.error_code === 'INVALID_LINK_TOKEN') {
             setLoading(true)
@@ -159,7 +166,7 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
       },
       receivedRedirectUri,
     }
-  }, [fetchLinkToken, linkToken, onError, onSuccess, receivedRedirectUri])
+  }, [clearCachedOauthToken, fetchLinkToken, linkToken, onError, onSuccess, receivedRedirectUri])
 
   const fallbackConfig = useMemo(() => ({
     token: null,
@@ -169,8 +176,58 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
 
   const { open, ready } = usePlaidLink(linkConfig ?? fallbackConfig)
 
+  const exchangeNativePublicToken = useCallback(async (result: {
+    publicToken: string
+    institutionName: string
+    selectedAccountIds: string[]
+  }) => {
+    await api.post('/plaid/exchange-token', {
+      public_token: result.publicToken,
+      institution_name: result.institutionName,
+      selected_account_ids: result.selectedAccountIds,
+    })
+    clearCachedOauthToken()
+    const afterSync = onSuccess?.()
+    if (afterSync instanceof Promise) {
+      await afterSync
+    }
+  }, [clearCachedOauthToken, onSuccess])
+
+  const launchNativeLink = useCallback(async () => {
+    let resolvedLinkToken = linkToken
+    if (!resolvedLinkToken) {
+      setLoading(true)
+      resolvedLinkToken = await fetchLinkToken({ allowCachedOauthToken: false })
+      setLoading(false)
+    }
+
+    if (!resolvedLinkToken) {
+      onError?.('Unable to start Plaid Link.')
+      return
+    }
+
+    const result = await openNativePlaidLink(resolvedLinkToken)
+    if (result.status === 'success') {
+      await exchangeNativePublicToken(result)
+      return
+    }
+
+    clearCachedOauthToken()
+    if (result.errorCode === 'INVALID_LINK_TOKEN') {
+      setLoading(true)
+      await fetchLinkToken({ allowCachedOauthToken: false })
+      setLoading(false)
+      onError?.('Your Plaid session expired. Please try again.')
+      return
+    }
+
+    if (result.errorMessage) {
+      onError?.(result.errorMessage)
+    }
+  }, [clearCachedOauthToken, exchangeNativePublicToken, fetchLinkToken, linkToken, onError])
+
   const handleOpenModal = useCallback(() => {
-    if (!linkConfig || !ready) return
+    if (!useNativePlaid && (!linkConfig || !ready)) return
 
     // Check limit before opening if callback provided
     if (onBeforeOpen && !onBeforeOpen()) {
@@ -178,27 +235,40 @@ export const PlaidLinkButton = ({ onSuccess, onError, onBeforeOpen }: PlaidLinkB
     }
 
     setShowModal(true)
-  }, [linkConfig, ready, onBeforeOpen])
+  }, [linkConfig, onBeforeOpen, ready, useNativePlaid])
 
   const handleConfirm = useCallback(() => {
     setShowModal(false)
+    setOpening(true)
+
+    if (useNativePlaid) {
+      void launchNativeLink()
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : 'Unable to link account.'
+          onError?.(message)
+        })
+        .finally(() => {
+          setOpening(false)
+        })
+      return
+    }
+
     // Plaid Link should only initialize once per user action.
     linkReadyOnce.current = true
-    setOpening(true)
     open()
     // Allow subsequent clicks after the handler returns.
     setTimeout(() => {
       linkReadyOnce.current = false
       setOpening(false)
     }, 0)
-  }, [open])
+  }, [launchNativeLink, onError, open, useNativePlaid])
 
   return (
     <>
       <button
         type="button"
         onClick={handleOpenModal}
-        disabled={!linkConfig || !ready || loading || opening}
+        disabled={(!useNativePlaid && (!linkConfig || !ready)) || loading || opening}
         className="btn btn-primary btn-sm w-full md:w-[170px]"
       >
         {loading ? 'Preparing...' : 'Connect with Plaid'}
