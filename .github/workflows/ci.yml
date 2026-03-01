@@ -200,7 +200,6 @@ jobs:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
           ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-          PATH: ${{ env.JAVA_HOME_21_X64 }}/bin:${{ env.ANDROID_SDK_ROOT }}/platform-tools:/usr/local/bin:${{ env.PATH }}
         run: ./frontend-app/android/gradlew -p frontend-app/android :mobile-shared-core:test :app:lintDebug
 
   mobile-ios-checks:
