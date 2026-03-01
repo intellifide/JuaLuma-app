@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">JuaLuma</string>
+    <string name="title_activity_main">JuaLuma</string>
+    <string name="package_name">com.intellifide.jualuma</string>
+    <string name="custom_url_scheme">com.intellifide.jualuma</string>
+</resources>

@@ -1,0 +1,7 @@
+include ':app'
+include ':capacitor-cordova-android-plugins'
+include ':mobile-shared-core'
+project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+project(':mobile-shared-core').projectDir = new File('../../mobile/shared-core')
+
+apply from: 'capacitor.settings.gradle'

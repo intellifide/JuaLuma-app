@@ -215,7 +215,7 @@ export default function Dashboard() {
   const timeZone = useUserTimeZone();
   // Global Data Scope (Personal vs Family)
   const [dashboardScope, setDashboardScope] = useState<'personal' | 'household'>('personal');
-  const { accounts } = useAccounts({
+  const { accounts, loading: accountsLoading, error: accountsError, refetch: refetchAccounts } = useAccounts({
     filters: { scope: dashboardScope }
   });
   const { assets: manualAssets } = useManualAssets();
@@ -968,8 +968,23 @@ export default function Dashboard() {
                 Total connected accounts and their primary categories.
               </InfoPopover>
             </div>
-            <p className="text-3xl font-bold text-royal-purple">{accounts.length}</p>
-            {linkedAccountCategories.length === 0 ? (
+            <p className="text-3xl font-bold text-royal-purple">{accountsLoading ? '...' : accounts.length}</p>
+            {accountsLoading ? (
+              <p className="text-xs text-text-muted">Loading connected accounts...</p>
+            ) : accountsError ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-rose-300">Unable to load account summary.</p>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline w-fit"
+                  onClick={() => {
+                    void refetchAccounts()
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
+            ) : linkedAccountCategories.length === 0 ? (
               <p className="text-xs text-text-muted">No accounts connected yet.</p>
             ) : (
               <p className="text-xs text-text-muted">

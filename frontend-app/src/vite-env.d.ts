@@ -13,3 +13,12 @@
  */
 
 /// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_DEEP_LINK_HOSTS?: string
+  readonly VITE_DEEP_LINK_SCHEME?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
