@@ -31,6 +31,8 @@ jobs:
               - 'support-portal/**'
             mobile:
               - 'mobile/**'
+              - 'frontend-app/android/**'
+              - 'frontend-app/ios/**'
 
   backend-quality:
     runs-on: ubuntu-latest
