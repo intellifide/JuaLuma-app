@@ -228,8 +228,25 @@ jobs:
       - name: Update Capacitor Android bridge files
         run: npx cap update android
         working-directory: ./frontend-app
-      - name: Sync Capacitor iOS bridge files
-        run: npx cap sync ios
+      - name: Prepare iOS bridge artifacts for simulator build
+        run: |
+          mkdir -p ios/App/App/public
+          if [ ! -f ios/App/App/public/index.html ]; then
+            cp dist/index.html ios/App/App/public/index.html
+          fi
+          if [ ! -f ios/App/App/config.xml ]; then
+            cat > ios/App/App/config.xml <<'XML'
+          <?xml version='1.0' encoding='utf-8'?>
+          <widget version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+            <access origin="*" />
+          </widget>
+          XML
+          fi
+          if [ ! -f ios/App/App/capacitor.config.json ]; then
+            cat > ios/App/App/capacitor.config.json <<'JSON'
+          {"appId":"com.intellifide.jualuma","appName":"JuaLuma","webDir":"dist"}
+          JSON
+          fi
         working-directory: ./frontend-app
       - name: Set up Java
         uses: actions/setup-java@v4
